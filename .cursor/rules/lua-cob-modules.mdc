@@ -1,0 +1,55 @@
+---
+description: Lua module style for ChurchOfBeef / COB (naming, errors, purity)
+globs:
+  - "**/addon/**/*.lua"
+alwaysApply: false
+---
+
+# Lua / COB module style
+
+## Non-negotiables
+
+- One global: `ChurchOfBeef`; local alias always `COB`
+- Core stays pure (no frames, addon messages, or slash)
+- Multi-return errors — not `error()` for expected failures
+- Getters hand out **copies**; never expose live tables to UI/Net
+
+## Namespace bootstrap (every file)
+
+```lua
+ChurchOfBeef = ChurchOfBeef or {}
+local COB = ChurchOfBeef
+```
+
+Attach one public table per module (`COB.Ranks`, `COB.Ladder`, …). Colon methods (`Ladder:Commit(...)`). Helpers stay `local function` — do not pollute `_G`.
+
+## Naming
+
+- Fields: camelCase (`rankId`, `updatedBy`, `toRankId`)
+- Module constants: PascalCase where already used (`CouncilSeats`, `OfficerRankIndexMax`)
+- Slash: `SLASH_CHURCHOFBEEF1 = "/beef"`; chat prefix `|cffffaa00Church of Beef|r`
+
+## Errors and types
+
+```lua
+-- ✅ GOOD
+return nil, "invalid rank id"
+
+-- ❌ BAD
+error("invalid rank id")
+```
+
+Validate with `type(x) == "number"`. Lua treats `0` as truthy — never `and/or`-coalesce thresholds that may be `0`.
+
+## Core purity
+
+- No `CreateFrame`, `SendAddonMessage`, or slash registration in `Core/`
+- Time via injectable `now` or `time()` (`resolveTime` pattern in Ladder)
+- `ResetForTests` must no-op unless `COB._IN_TEST`
+
+## Common agent mistakes
+
+- Hardcoding titles/thresholds instead of `COB.Ranks` / `Data/Ranks.lua`
+- Treating standing changes as official (only `Commit` / remote apply bump `revision`)
+- Auto-suggesting Council/Prophet (ranks 6–7 appointed/bestowed only)
+- Using AceAddon / `NewModule` / LibStub for Core (breaks offline tests)

@@ -1,0 +1,50 @@
+---
+description: TOC load order plus ADDON_LOADED / login / logout / event lifecycle
+globs:
+  - "**/*.toc"
+  - "**/ChurchOfBeef/**/*.lua"
+  - "**/ChurchOfBeef/**/*.xml"
+alwaysApply: false
+---
+
+# Events and load lifecycle
+
+## Non-negotiables
+
+- Never touch SavedVariables before `ADDON_LOADED` for `ChurchOfBeef`
+- TOC order: `Data/` → `Core/` → `Net/`/`UI/` → bootstrap last
+- Product frames stay **insecure** so `/beef` can open in combat
+
+## Bootstrap order (locked)
+
+1. TOC scripts load top-to-bottom
+2. Client restores `ChurchOfBeefDB` (may be nil first run)
+3. `ADDON_LOADED` + `arg1 == "ChurchOfBeef"` → `COB:OnLoad()` (DB init/migrate)
+4. `PLAYER_LOGIN` → `COB:OnLogin()` (UI, Net, Sync)
+5. `PLAYER_LOGOUT` → last flush only; do not rely on it for normal writes
+
+```lua
+-- ✅ GOOD — gate on addon name
+if event == "ADDON_LOADED" and arg1 == "ChurchOfBeef" then
+  COB:OnLoad()
+elseif event == "PLAYER_LOGIN" then
+  COB:OnLogin()
+end
+```
+
+## Registration hygiene
+
+- Few dedicated frames; `RegisterEvent` only what you need
+- Unregister / nil `OnUpdate` when idle
+- Prefer discrete events over polling
+- Guild ready when `IsInGuild() and GetGuildInfo("player")`; listen to `GUILD_ROSTER_UPDATE` + `PLAYER_GUILD_UPDATE`
+
+## Combat deferral
+
+- Data paths (scoring, BeefNet apply) may run in combat
+- Queue show/hide/create/layout that touches **protected** widgets until `PLAYER_REGEN_ENABLED`
+
+## Slash / prefix
+
+- `SLASH_CHURCHOFBEEF1 = "/beef"` on load
+- Register `C_ChatInfo.RegisterAddonMessagePrefix("COB")` once early before expecting traffic

@@ -1,0 +1,38 @@
+---
+description: In-addon asset paths, media fallbacks, stream/consent hygiene
+globs:
+  - "**/ChurchOfBeef/**/*.lua"
+  - "**/ChurchOfBeef/**/*.xml"
+  - "**/ChurchOfBeef/**/*.toc"
+  - "**/ChurchOfBeef/**/*.tga"
+  - "**/ChurchOfBeef/**/*.blp"
+  - "**/ChurchOfBeef/**/*.ogg"
+  - "**/ChurchOfBeef/**/*.mp3"
+alwaysApply: false
+---
+
+# Assets & in-addon packaging hygiene
+
+Zip/install/CI: `build-packaging.mdc`. This rule covers files **inside** the addon tree.
+
+## Non-negotiables
+
+- TOC can only load files under `ChurchOfBeef/` — keep media next to code
+- Missing custom fonts/textures/sounds must **not** fail load; fall back to default UI
+- Quiet by default — no auto-invite, auto-whisper, or ambient `/g` spam
+
+## Paths
+
+- Stable addon-relative paths; never assume Classic Era AddOns/WTF trees
+- Consistent casing on disk and in TOC
+
+## Fallbacks / media
+
+- `/beef` frame must still exist if custom media is missing
+- Do not bundle ripped Blizzard soundtrack files
+
+## Consent / spectacle
+
+- Promotion announce = one throttled guild line from the approving officer only
+- Stream-safe defaults: no surprise dumps of officer notes or alt lists
+- No ads, tip jars, or donation CTAs in the game UI

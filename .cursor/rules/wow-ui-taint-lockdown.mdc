@@ -1,0 +1,51 @@
+---
+description: Insecure UI, combat lockdown, Classic taint footguns for Beef frames
+globs:
+  - "**/addon/**/UI/**/*.lua"
+  - "**/addon/**/UI/**/*.xml"
+  - "**/ChurchOfBeef/ChurchOfBeef.lua"
+alwaysApply: false
+---
+
+# UI taint and combat lockdown
+
+## Non-negotiables
+
+- Product windows are **fully insecure** `CreateFrame` under `UIParent` (or Beef-owned root)
+- Toggle with `:Show()` / `:Hide()` — not `ShowUIPanel` / `HideUIPanel` in combat
+- Tabs are views: read Core, never own ladder tables or grant points
+- Never inherit `SecureActionButtonTemplate` / secure headers “to open a panel”
+
+## Frame policy (V1)
+
+- Prefer Lua `CreateFrame` over XML; tabs register into `MainFrame`
+- Do not parent Beef chrome under raid frames, action bars, or other protected trees
+- Missing fonts/textures → default UI fallbacks; frame must exist on load or first `/beef`
+- Toasts/Announce display outcomes; Scoring owns grants
+- Confirm destructive actions (demote, Prophet bestowal, Council changes)
+- After Commit: `COB.UI:RefreshLadder()` (or equivalent) — no AceEvent bus in V1
+
+## Taint footguns
+
+| Avoid | Prefer |
+|-------|--------|
+| Stock `UIDropDownMenu_*` / `EasyMenu` | AceGUI / custom frames / LibUIDropDownMenu |
+| Blind `StaticPopup_Show` | Own confirm frame, or StaticPopup with `preferredIndex = 3` |
+| Replacing `ChatFrame.AddMessage` | `ChatFrame_AddMessageEventFilter` / `hooksecurefunc` / `HookScript` |
+| `SetScript` overwriting Blizzard handlers | `HookScript` |
+
+## Combat-safe vs deferred
+
+| OK in combat | Defer / avoid |
+|--------------|---------------|
+| Update own FontStrings/textures | SetPoint/SetParent on protected widgets |
+| Process BeefNet; mutate Core tables | Opening Blizzard options / guild panels |
+| Officer approve → SV + addon message | `SetBinding` / `EditMacro` / secure attributes |
+| Show insecure `/beef` window | Creating secure-template frames |
+
+## Product UX edges
+
+- Officer tab visible only when local Officer+ is known
+- Movable, clamped-to-screen; save position in `ChurchOfBeefDB.ui`
+- One hideable minimap button; `/beef` is the real entry — no Retail Addon Compartment
+- No ads, tip jars, or donation CTAs in the game UI

@@ -1,0 +1,42 @@
+---
+description: COB module map and layer coupling — where new Lua belongs
+globs:
+  - "**/addon/**/*.lua"
+alwaysApply: false
+---
+
+# Addon module map
+
+## Non-negotiables
+
+- Prefer extending planned modules over new top-level files
+- Expand TOC only when the file exists
+- UI→Core→Data / Net→Core→Data; never Core→UI
+- Lifecycle detail: `toc-lifecycle.mdc`. Style: `lua-cob-modules.mdc`
+
+## Put code here
+
+| `COB` key | File | Owns |
+|-----------|------|------|
+| `Ranks` | `Data/Ranks.lua` | ids, titles, thresholds, seats, officer index max |
+| `DB` | `Core/DB.lua` | `ChurchOfBeefDB` shape, defaults, migrate |
+| `Officer` | `Core/Officer.lua` | roster rank-index gate (sole commit authority check) |
+| `Scoring` | `Core/Scoring.lua` | grants, caps, anti-AFK buckets |
+| `Ladder` | `Core/Ladder.lua` | records, suggestions, commits, demote, seats |
+| `Gora` / `Ceremony` / `Instance` | matching `Core/*.lua` | thin domain → Scoring |
+| `Net` | `Net/BeefNet.lua` | send/recv, validate, dispatch into Core |
+| `Sync` | `Net/Sync.lua` | `SYNC_REQUEST` / `SYNC_STATE` |
+| `UI` | `UI/MainFrame.lua` (+ tabs) | frames; tabs are views over Core |
+
+## Coupling
+
+```
+✅ Officer approve: UI → Ladder:Commit → Net broadcast
+✅ Peer apply: Net validate Officer+ → Ladder:ApplyRemoteCommit → UI refresh
+✅ After commit: direct COB.UI refresh (no AceEvent bus in V1)
+
+❌ Core → UI / CreateFrame / SendAddonMessage / slash
+❌ Points granted in Toasts, Announce, or tab files
+❌ Net inventing rank/standing without Core apply APIs
+❌ Second officer-gate outside Core/Officer.lua
+```
