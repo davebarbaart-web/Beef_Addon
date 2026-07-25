@@ -160,6 +160,9 @@ function Ladder:MaybeSuggest(name)
 
   local pending = self.suggestions[key]
   if pending and pending.toRankId == nextId then
+    -- Keep the queued suggestion showing what the member has actually earned so far
+    -- rather than their standing at the moment they first crossed the line.
+    pending.standing = record.standing
     return copySuggestion(pending), false
   end
 
@@ -311,8 +314,9 @@ end
 -- the ladder. Returns how many records were accepted. Suggestions are left alone:
 -- they are live local state, not part of the official snapshot.
 function Ladder:ImportState(records)
-  self.records = {}
+  -- A non-table argument is a caller bug, not an instruction to erase the ladder.
   if type(records) ~= "table" then return 0 end
+  self.records = {}
 
   local accepted = 0
   for _, record in pairs(records) do

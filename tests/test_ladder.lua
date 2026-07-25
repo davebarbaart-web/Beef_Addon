@@ -72,9 +72,14 @@ assert_true(again ~= nil, "repeat call still returns the pending suggestion")
 assert_eq(againIsNew, false, "repeat call does not report a new suggestion")
 assert_eq(#L:GetSuggestions(), 1, "no duplicate suggestion queued")
 
+-- A pending suggestion tracks standing earned after it was raised.
+L:SetStanding("Edge", 90)
+assert_eq(L:MaybeSuggest("Edge").standing, 90, "pending suggestion shows current standing")
+assert_eq(L:GetSuggestions()[1].standing, 90, "queued suggestion shows current standing")
+
 L:RejectSuggestion("Edge")
 assert_eq(#L:GetSuggestions(), 0, "reject clears the suggestion")
-assert_eq(L:GetRecord("Edge").standing, 50, "reject leaves standing untouched")
+assert_eq(L:GetRecord("Edge").standing, 90, "reject leaves standing untouched")
 
 -- Standing far past several thresholds still only advances one rank at a time.
 L:ResetForTests()
@@ -260,6 +265,7 @@ assert_eq(L:ImportState({
   { name = "Ok", rankId = 2, standing = 0, revision = 1, updatedAt = 1, updatedBy = "Pope" },
 }), 1, "malformed records are skipped on import")
 assert_eq(L:ImportState(nil), 0, "a nil import is safe")
+assert_eq(#L:GetLadderView(), 1, "a nil import does not erase the ladder")
 
 -- Records handed out are copies; callers cannot corrupt official state by accident.
 L:ResetForTests()
