@@ -11,6 +11,7 @@ Core\Scoring.lua
 Core\Officer.lua
 Core\DB.lua
 UI\MainFrame.lua
+UI\Announce.lua
 UI\LadderTab.lua
 UI\StandingTab.lua
 UI\OfficerTab.lua

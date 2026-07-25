@@ -125,6 +125,15 @@ function widgetMethods:StopMovingOrSizing() self._moving = false end
 function widgetMethods:LockHighlight() self._highlighted = true end
 function widgetMethods:UnlockHighlight() self._highlighted = false end
 
+-- CheckButton state. The client flips this before OnClick runs, so tests that
+-- drive a checkbox should SetChecked first and then fire the script.
+function widgetMethods:SetChecked(checked) self._checked = checked and true or false end
+function widgetMethods:GetChecked() return self._checked and true or false end
+
+function widgetMethods:Enable() self._enabled = true end
+function widgetMethods:Disable() self._enabled = false end
+function widgetMethods:IsEnabled() return self._enabled ~= false end
+
 -- Test helpers -----------------------------------------------------------------
 
 function M.fire(widget, script, ...)
@@ -152,6 +161,7 @@ end
 local GLOBALS = {
   "CreateFrame", "UIParent", "Minimap", "UISpecialFrames",
   "GameTooltip", "C_Timer", "GetGuildInfo", "UnitName", "IsInGuild",
+  "SendChatMessage", "GetTime",
 }
 
 function M.install()
@@ -162,6 +172,8 @@ function M.install()
   M.guildRankIndex = nil
   M.playerName = "Beefina"
   M.inGuild = true
+  M.chat = {}
+  M.now = 0
 
   UIParent = newWidget("Frame", "UIParent", nil)
   Minimap = newWidget("Frame", "Minimap", nil)
@@ -202,6 +214,14 @@ function M.install()
   IsInGuild = function()
     return M.inGuild and true or false
   end
+
+  -- Guild chat recorder: the announce suite asserts on exact liturgy, so nothing
+  -- here reformats or trims the line the addon produced.
+  SendChatMessage = function(text, channel)
+    M.chat[#M.chat + 1] = { text = text, channel = channel }
+  end
+
+  GetTime = function() return M.now end
 
   return function()
     for i = 1, #GLOBALS do _G[GLOBALS[i]] = saved[GLOBALS[i]] end

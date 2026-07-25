@@ -17,6 +17,7 @@ local COB = ChurchOfBeef
 -- TOC order: MainFrame owns COB.UI, tab files register into it on load.
 local function loadUi()
   dofile("addon/ChurchOfBeef/UI/MainFrame.lua")
+  dofile("addon/ChurchOfBeef/UI/Announce.lua")
   dofile("addon/ChurchOfBeef/UI/LadderTab.lua")
   dofile("addon/ChurchOfBeef/UI/StandingTab.lua")
   dofile("addon/ChurchOfBeef/UI/OfficerTab.lua")
