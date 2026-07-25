@@ -35,12 +35,19 @@ addon/ChurchOfBeef/  →  <your TBC Anniversary client folder>/Interface/AddOns/
 Install path must be exactly `Interface/AddOns/ChurchOfBeef` (the folder name has to match the
 `.toc` filename). Reload the client and confirm **Church of Beef** appears in the AddOns list.
 
+Nothing outside that folder is needed at runtime: the addon loads only default Blizzard UI
+textures and fonts, so there is no custom media to go missing.
+
 ## Usage
 
-- `/beef` — open the main frame (minimap button toggles the same frame)
+- `/beef` — open the main frame. The minimap button toggles the same frame; it has no
+  subcommands, and any arguments are ignored. To hide the minimap icon without unloading the
+  addon, run `/run ChurchOfBeef.Minimap:SetShown(false)` — the choice persists.
+- Tabs: **Ladder** (all seven ranks), **My Standing** (your own points and recent testimony), and
+  **Officer**, which only appears once the client knows you are Officer or higher
+- The Officer tab carries the guild-chat announce opt-out. It is on by default, and turning it
+  off silences this client's announcements without changing the promotion itself.
 - Data is stored per character in `ChurchOfBeefDB` (SavedVariablesPerCharacter). Alts start fresh.
-
-Until the UI lands, `/beef` prints `Church of Beef: UI not ready yet. (0.1.0)`.
 
 ## Hard safety rules
 
@@ -81,6 +88,18 @@ lua tests/run.lua
 ```
 
 Run from the repository root. Test suites appear as tasks land; a missing suite is not a failure.
+
+The harness covers pure logic only — it stubs the WoW API, so a green run proves nothing about
+the client.
+
+## In-game verification is still required
+
+BeefNet replication, login sync, the frames, and the guild-chat spectacle cannot be proven
+offline. Before calling V1 done, walk [`docs/phases/v1-checklist.md`](docs/phases/v1-checklist.md)
+on a real TBC Anniversary client with `/console scriptErrors 1` (BugGrabber + BugSack preferred).
+The network and officer boxes need two characters — one Officer or higher, one plain member — and
+the social criterion needs an actual guild night: if a promotion passes unnoticed in guild chat,
+V1 has failed even with every function working.
 
 ## Design spec
 

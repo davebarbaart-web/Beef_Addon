@@ -47,8 +47,10 @@ frame:SetScript("OnEvent", function(_, event, arg1)
 end)
 
 SLASH_CHURCHOFBEEF1 = "/beef"
-SlashCmdList["CHURCHOFBEEF"] = function(msg)
-  msg = (msg or ""):lower():gsub("^%s+", ""):gsub("%s+$", "")
+-- No subcommands in V1, debug included: arguments are ignored rather than parsed so
+-- there is no verbose or force-send path shipping to a guild. In-game forging for
+-- checklist box 9 goes through /run and the public Net:Send.
+SlashCmdList["CHURCHOFBEEF"] = function()
   if COB.UI and COB.UI.Toggle then
     COB.UI:Toggle()
     return

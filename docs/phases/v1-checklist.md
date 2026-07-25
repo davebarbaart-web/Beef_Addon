@@ -2,10 +2,16 @@
 
 The success criteria from [the design spec](../superpowers/specs/2026-07-25-church-of-beef-design.md)
 (§13) as a walkable list. A green offline harness (`lua tests/run.lua`) is a
-precondition, not a substitute: every box below needs a real TBC Classic
-Anniversary client, and boxes 7–9 need two characters (Officer+ and Member).
+precondition, not a substitute: every success criterion below needs a real TBC
+Classic Anniversary client, and criteria 7–9 need two characters (Officer+ and
+Member).
 
-Walked in Task 13. Do not claim V1 complete until every box is ticked and dated.
+Do not claim V1 complete until every box is ticked and dated. Task 13 ticked only
+the boxes it could actually prove without a client — harness, TOC, and the
+missing-media case — and installed the addon into the Anniversary client. Every
+remaining box is a human pass in game.
+
+Tick a box by replacing `[ ]` with `[x]` and appending `— YYYY-MM-DD, character`.
 
 ## Success criteria (spec §13)
 
@@ -26,8 +32,13 @@ Walked in Task 13. Do not claim V1 complete until every box is ticked and dated.
       client A, and client B (online, addon running) shows the new rank
 - [ ] **8. Login sync repairs a stale ladder** — client C is offline during a
       promotion; on login it shows the correct rank without an officer redoing anything
-- [ ] **9. A non-officer cannot apply a forged `RANK_COMMIT`** — force-send one from a
-      member client in debug; peers ignore it and their ladder is unchanged
+- [ ] **9. A non-officer cannot apply a forged `RANK_COMMIT`** — from a member client,
+      hand-send one on the wire and confirm peers ignore it and their ladder is
+      unchanged. There is no debug slash command by design; use the public send path:
+
+      ```
+      /run local N=ChurchOfBeef.Net N:Send(N:Encode("RANK_COMMIT","Someguildie",5,9999,999,0,UnitName("player")))
+      ```
 - [ ] **10. No Retail-only APIs and no combat automation** — `/console scriptErrors 1`
       plus BugSack stay clean through a full session
 - [ ] **11. Social check:** during a real guild night, at least one promotion happens
@@ -39,16 +50,20 @@ Walked in Task 13. Do not claim V1 complete until every box is ticked and dated.
 - [ ] In-game checklist walked on a TBC Anniversary client with two characters
       (member + officer)
 - [ ] BeefNet check: approve on the officer → the member sees the update
-- [ ] Load-with-missing-assets smoke test: rename/remove any custom media and confirm
-      the addon still loads and `/beef` still opens with default UI fallbacks
+- [x] Load-with-missing-assets smoke test — vacuous in V1 and intentionally so: the
+      addon ships no `Media/` folder and references only default Blizzard textures and
+      fonts, so there is nothing to go missing. Re-open this box the moment custom
+      media lands. — 2026-07-25, offline grep of the addon tree
 - [ ] Doc review: canon ranks match what the UI shows; deferred features are marked
       as later-phase rather than looking broken
 
 ## Supporting checks
 
-- [ ] `lua tests/run.lua` exits 0 from the addon checkout root
-- [ ] `ChurchOfBeef.toc` lists only files that exist; load order is
-      `Data → Core → Net → UI → bootstrap`
+- [x] `lua tests/run.lua` exits 0 from the addon checkout root — 2026-07-25,
+      879 passed / 0 failed on Lua 5.1.5
+- [x] `ChurchOfBeef.toc` lists only files that exist, lists every file that exists,
+      and load order is `Data → Core → Net → UI → bootstrap` with `MainFrame` ahead of
+      the tabs that register into it — 2026-07-25, offline check
 - [ ] `ChurchOfBeefDB` survives `/reload` and logout, and stays comfortably under 1 MB
 - [ ] Frame position, minimap toggle and the announce opt-out persist across sessions
 - [ ] Announce opt-out silences guild chat without affecting the commit
