@@ -99,3 +99,40 @@ L:ResetForTests()
 DB:Init(noon)
 assert_eq(#L:GetSuggestions(), 0, "rejected suggestion does not reappear after reload")
 assert_eq(L:GetRecord("Rejected").standing, 50, "standing still present after reject+reload")
+
+--------------------------------------------------------------------------------
+-- State-changing paths flush to SV as they happen, not only at PLAYER_LOGOUT
+--------------------------------------------------------------------------------
+local realDb = ChurchOfBeef.DB
+local saves = 0
+ChurchOfBeef.DB = { Save = function() saves = saves + 1 return true end }
+
+L:ResetForTests()
+S:ResetForTests()
+
+assert_true(L:Commit("Flushed", 2, 50, "Pope", noon) ~= nil, "commit succeeds")
+assert_eq(saves, 1, "a commit flushes the DB")
+
+assert_eq(select(1, L:Commit("Flushed", 99, 0, "Pope", noon)), nil, "invalid commit rejected")
+assert_eq(saves, 1, "a rejected commit does not flush")
+
+assert_true(L:Demote("Flushed", 1, "Pope", noon) ~= nil, "demotion succeeds")
+assert_eq(saves, 2, "a demotion flushes once through Commit, not twice")
+
+assert_eq(L:ApplyRemoteCommit({
+  name = "Away", rankId = 3, standing = 10, revision = 2, updatedAt = 5, updatedBy = "Pope",
+}), true, "remote commit applies")
+assert_eq(saves, 3, "an applied remote commit flushes the DB")
+
+assert_eq(L:ApplyRemoteCommit({
+  name = "Away", rankId = 1, standing = 0, revision = 1, updatedAt = 4, updatedBy = "Pope",
+}), false, "stale remote commit ignored")
+assert_eq(saves, 3, "an ignored remote commit does not flush")
+
+assert_eq(S:GrantInstanceBucket("Flushed", noon, true), 5, "grant pays out")
+assert_eq(saves, 4, "a paid grant flushes the DB")
+
+assert_eq(S:GrantInstanceBucket("Flushed", noon, false), 0, "an AFK bucket pays nothing")
+assert_eq(saves, 4, "a zero grant does not flush")
+
+ChurchOfBeef.DB = realDb

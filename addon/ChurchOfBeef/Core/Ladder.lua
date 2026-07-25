@@ -49,6 +49,13 @@ local function resolveTime(now)
   return 0
 end
 
+-- PLAYER_LOGOUT is a last flush, not the only one: a client crash between commits
+-- would otherwise lose officer decisions the guild has already seen announced.
+-- Commits are rare enough that flushing on each one costs nothing.
+local function persist()
+  if COB.DB and COB.DB.Save then COB.DB:Save() end
+end
+
 local function newRecord(name)
   return {
     name = name,
@@ -221,6 +228,9 @@ function Ladder:Commit(name, rankId, standing, officerName, now)
   record.updatedBy = officer
   self.suggestions[key] = nil
 
+  -- Demote/AppointCouncil/BestowProphet route through here, so this is the one
+  -- flush point for every local officer decision.
+  persist()
   return copyRecord(record)
 end
 
@@ -285,6 +295,7 @@ function Ladder:ApplyRemoteCommit(record)
   target.updatedBy = updatedBy
   self.suggestions[key] = nil
 
+  persist()
   return true
 end
 

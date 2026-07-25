@@ -53,6 +53,13 @@ local function resolveTime(now)
   return 0
 end
 
+-- Daily caps bound how often a paid grant can happen, so flushing standing and the
+-- spent tally on each one keeps a crash from refunding cap or erasing an evening's
+-- points. Refused grants (zero payout) never touch SavedVariables.
+local function persist()
+  if COB.DB and COB.DB.Save then COB.DB:Save() end
+end
+
 -- WoW exposes date() as a global; the desktop harness stubs it onto os.date.
 local function dayString(at)
   if type(date) == "function" then return date("%Y-%m-%d", at) end
@@ -143,6 +150,7 @@ function Scoring:Grant(name, source, amount, now)
   ladder:MaybeSuggest(key)
 
   self:_remember(key, source, payout, at)
+  persist()
   return payout
 end
 
