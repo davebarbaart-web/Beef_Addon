@@ -7,4 +7,5 @@
 
 Data\Ranks.lua
 Core\Ladder.lua
+Core\Scoring.lua
 ChurchOfBeef.lua

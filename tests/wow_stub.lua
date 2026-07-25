@@ -10,3 +10,6 @@ end
 DEFAULT_CHAT_FRAME = DEFAULT_CHAT_FRAME or { AddMessage = function(_, m) print(m) end }
 SlashCmdList = SlashCmdList or {}
 time = time or function() return 0 end
+-- WoW exposes date() as a global rather than through os; mirror that so day-key code
+-- takes the same branch offline as it does in game.
+date = date or function(format, t) return os.date(format, t) end
