@@ -312,7 +312,7 @@ end
 
 -- Replaces the record store; malformed entries are dropped rather than poisoning
 -- the ladder. Returns how many records were accepted. Suggestions are left alone:
--- they are live local state, not part of the official snapshot.
+-- restore those separately via ImportSuggestions from SavedVariables.
 function Ladder:ImportState(records)
   -- A non-table argument is a caller bug, not an instruction to erase the ladder.
   if type(records) ~= "table" then return 0 end
@@ -332,6 +332,33 @@ function Ladder:ImportState(records)
         if type(record.updatedAt) == "number" then restored.updatedAt = record.updatedAt end
         restored.updatedBy = normalizeName(record.updatedBy) or ""
         self.records[key] = restored
+        accepted = accepted + 1
+      end
+    end
+  end
+
+  return accepted
+end
+
+-- Pending suggestions are local testimony of crossed thresholds; persist them so a
+-- /reload does not re-queue someone an officer already rejected (standing remains).
+function Ladder:ImportSuggestions(suggestions)
+  if type(suggestions) ~= "table" then return 0 end
+  self.suggestions = {}
+
+  local accepted = 0
+  for _, suggestion in pairs(suggestions) do
+    if type(suggestion) == "table" then
+      local key = normalizeName(suggestion.name)
+      if key and isValidRankId(suggestion.fromRankId) and isValidRankId(suggestion.toRankId) then
+        self.suggestions[key] = {
+          name = key,
+          fromRankId = suggestion.fromRankId,
+          toRankId = suggestion.toRankId,
+          standing = isValidStanding(suggestion.standing) and suggestion.standing or 0,
+          threshold = type(suggestion.threshold) == "number" and suggestion.threshold or 0,
+          createdAt = type(suggestion.createdAt) == "number" and suggestion.createdAt or 0,
+        }
         accepted = accepted + 1
       end
     end

@@ -28,6 +28,7 @@ local suites = {
   "test_ladder",
   "test_scoring",
   "test_officer",
+  "test_db",
   "test_net_validate",
 }
 

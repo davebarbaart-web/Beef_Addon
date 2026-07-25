@@ -22,15 +22,24 @@ function COB:OnLogin()
   end
 end
 
+function COB:OnLogout()
+  if COB.DB and COB.DB.Save then
+    COB.DB:Save()
+  end
+end
+
 local frame = CreateFrame("Frame")
 frame:RegisterEvent("ADDON_LOADED")
 frame:RegisterEvent("PLAYER_LOGIN")
+frame:RegisterEvent("PLAYER_LOGOUT")
 
 frame:SetScript("OnEvent", function(_, event, arg1)
   if event == "ADDON_LOADED" and arg1 == "ChurchOfBeef" then
     COB:OnLoad()
   elseif event == "PLAYER_LOGIN" then
     COB:OnLogin()
+  elseif event == "PLAYER_LOGOUT" then
+    COB:OnLogout()
   end
 end)
 

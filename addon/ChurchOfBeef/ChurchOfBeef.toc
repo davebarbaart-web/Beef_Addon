@@ -9,4 +9,5 @@ Data\Ranks.lua
 Core\Ladder.lua
 Core\Scoring.lua
 Core\Officer.lua
+Core\DB.lua
 ChurchOfBeef.lua
