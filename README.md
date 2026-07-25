@@ -85,3 +85,7 @@ Run from the repository root. Test suites appear as tasks land; a missing suite 
 ## Design spec
 
 Full V1 design: [`docs/superpowers/specs/2026-07-25-church-of-beef-design.md`](docs/superpowers/specs/2026-07-25-church-of-beef-design.md)
+
+## For AI agents
+
+Short orientation map: `AGENTS.md` at the Beef_Addon workspace root (the directory that contains `.worktrees/`). Persistent rules: `.cursor/rules/` on that same root; install/test loop: `.cursor/skills/church-of-beef-dev/`.
