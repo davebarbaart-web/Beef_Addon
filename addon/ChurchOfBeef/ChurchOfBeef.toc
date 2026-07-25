@@ -6,4 +6,5 @@
 ## SavedVariablesPerCharacter: ChurchOfBeefDB
 
 Data\Ranks.lua
+Core\Ladder.lua
 ChurchOfBeef.lua

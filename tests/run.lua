@@ -2,6 +2,10 @@ package.path = package.path .. ";./tests/?.lua;./addon/ChurchOfBeef/?.lua;./addo
 
 require("wow_stub")
 
+-- Suites need the test-only escape hatches (ResetForTests); the addon never sets this.
+ChurchOfBeef = ChurchOfBeef or {}
+ChurchOfBeef._IN_TEST = true
+
 local failed = 0
 local passed = 0
 
