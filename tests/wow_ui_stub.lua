@@ -163,6 +163,8 @@ local GLOBALS = {
   "GameTooltip", "C_Timer", "GetGuildInfo", "UnitName", "IsInGuild",
   "GetNumGuildMembers", "GetGuildRosterInfo",
   "SendChatMessage", "GetTime",
+  "C_ChatInfo", "SendAddonMessage", "RegisterAddonMessagePrefix",
+  "C_GuildInfo", "GuildRoster",
   "UnitIsInMyGuild", "UnitIsAFK", "GetNumGroupMembers", "IsInRaid",
   "IsInInstance", "GetInstanceInfo", "UnitAffectingCombat", "GetBattlefieldWinner",
 }
@@ -294,6 +296,32 @@ function M.install()
   SendChatMessage = function(text, channel)
     M.chat[#M.chat + 1] = { text = text, channel = channel }
   end
+
+  -- BeefNet recorder. Sends land here so the throttle suite can count them, and
+  -- prefix registration is remembered because forgetting it in game means silence.
+  M.addonMessages = {}
+  M.registeredPrefixes = {}
+  M.rosterRequests = 0
+
+  local function sendAddonMessage(prefix, payload, channel, target)
+    M.addonMessages[#M.addonMessages + 1] =
+      { prefix = prefix, payload = payload, channel = channel, target = target }
+    return true
+  end
+
+  SendAddonMessage = sendAddonMessage
+  RegisterAddonMessagePrefix = function(prefix)
+    M.registeredPrefixes[prefix] = true
+    return true
+  end
+
+  C_ChatInfo = {
+    SendAddonMessage = sendAddonMessage,
+    RegisterAddonMessagePrefix = RegisterAddonMessagePrefix,
+  }
+
+  C_GuildInfo = { GuildRoster = function() M.rosterRequests = M.rosterRequests + 1 end }
+  GuildRoster = C_GuildInfo.GuildRoster
 
   GetTime = function() return M.now end
 

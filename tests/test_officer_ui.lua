@@ -113,7 +113,11 @@ assert_eq(Tab.approve:GetText(), "Approve: Cooked Beef", "approve names the dest
 --------------------------------------------------------------------------------
 -- Approve: Commit → (Net) → Announce, no modal
 --------------------------------------------------------------------------------
-assert_eq(COB.Net, nil, "Net does not exist yet; approve must tolerate that")
+-- Replication is best effort; the commit is local truth. Approve must still work on
+-- a client where BeefNet failed to load at all.
+local realNet = COB.Net
+COB.Net = nil
+assert_eq(COB.Net, nil, "approve must tolerate a missing Net")
 assert_true(stub.fire(Tab.approve, "OnClick"), "approve button wired")
 
 assert_eq(rankOf("Beefina"), 2, "approve commits the suggested rank")
@@ -375,5 +379,5 @@ COB.Announce:SetEnabled(true)
 assert_eq(select(1, COB.Announce:Promotion("", "Beef Knight")), false, "an empty name never reaches chat")
 assert_eq(select(1, COB.Announce:Promotion("Lurkina", nil)), false, "a missing title never reaches chat")
 
-COB.Net = nil
+COB.Net = realNet
 restore()

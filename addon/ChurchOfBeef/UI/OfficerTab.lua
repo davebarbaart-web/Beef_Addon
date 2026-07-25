@@ -131,8 +131,10 @@ local function councilSeatsTaken()
   return taken, seats
 end
 
+-- Hands Core's committed record to the wire. Best effort by design: a client with no
+-- BeefNet (or no guild) still made a real local commit, and login sync will carry it
+-- to the peers who missed the broadcast.
 local function broadcast(committed)
-  -- Net lands in Task 12; until then an approval is local plus guild chat.
   if COB.Net and COB.Net.SendRankCommit then COB.Net:SendRankCommit(committed) end
 end
 

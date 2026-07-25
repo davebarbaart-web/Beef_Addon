@@ -52,8 +52,39 @@ end
 -- PLAYER_LOGOUT is a last flush, not the only one: a client crash between commits
 -- would otherwise lose officer decisions the guild has already seen announced.
 -- Commits are rare enough that flushing on each one costs nothing.
-local function persist()
+--
+-- Login sync is the exception: it can apply a whole guild's records in one frame,
+-- and a Save per record would export the entire ladder N times. Callers that apply
+-- in bulk wrap the run in BeginBatch/EndBatch to collapse that into one write.
+local batchDepth = 0
+local batchDirty = false
+
+local function save()
   if COB.DB and COB.DB.Save then COB.DB:Save() end
+end
+
+local function persist()
+  if batchDepth > 0 then
+    batchDirty = true
+    return
+  end
+  save()
+end
+
+function Ladder:BeginBatch()
+  batchDepth = batchDepth + 1
+  return batchDepth
+end
+
+-- Returns true when this call was the one that actually flushed.
+function Ladder:EndBatch()
+  if batchDepth == 0 then return false end
+  batchDepth = batchDepth - 1
+  if batchDepth > 0 then return false end
+  if not batchDirty then return false end
+  batchDirty = false
+  save()
+  return true
 end
 
 local function newRecord(name)
@@ -393,5 +424,7 @@ function Ladder:ResetForTests()
   if not COB._IN_TEST then return false end
   self.records = {}
   self.suggestions = {}
+  batchDepth = 0
+  batchDirty = false
   return true
 end

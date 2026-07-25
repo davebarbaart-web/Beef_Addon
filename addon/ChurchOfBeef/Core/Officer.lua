@@ -13,6 +13,16 @@ function Officer:IsOfficerIndex(rankIndex)
   return rankIndex <= ranks.OfficerRankIndexMax
 end
 
+-- Roster names and BeefNet sender names disagree about realm suffixes and case:
+-- the roster may say "Beefina-Whitemane" where CHAT_MSG_ADDON says "Beefina".
+-- One key shape for both sides is what stops that mismatch reading as "not an officer".
+local function rosterKey(name)
+  if type(name) ~= "string" then return nil end
+  name = name:gsub("^%s+", ""):gsub("%s+$", ""):lower()
+  if name == "" then return nil end
+  return name:match("^([^%-]+)") or name
+end
+
 -- rosterLookup(name) -> rankIndex|nil is injected so desktop tests stay pure.
 -- In game, wrap GetGuildRosterInfo after GuildRoster() / GUILD_ROSTER_UPDATE.
 function Officer:IsOfficerName(name, rosterLookup)
@@ -54,4 +64,61 @@ function Officer:LocalIsOfficer()
   if type(GetGuildInfo) ~= "function" then return false end
   local _, _, rankIndex = GetGuildInfo("player")
   return self:IsOfficerIndex(rankIndex)
+end
+
+--------------------------------------------------------------------------------
+-- Roster cache for BeefNet sender checks
+--------------------------------------------------------------------------------
+
+-- Snapshot the guild's rank indices once per GUILD_ROSTER_UPDATE. A commit burst
+-- must not walk the whole guild per message, and the client ignores GuildRoster()
+-- requests made less than ten seconds apart anyway.
+--
+-- An empty or unreadable roster clears the cache rather than caching "nobody is an
+-- officer": a login race must leave callers unsure, not confidently wrong.
+function Officer:RefreshRosterCache()
+  self.rosterCache = nil
+  if type(GetNumGuildMembers) ~= "function" or type(GetGuildRosterInfo) ~= "function" then
+    return false
+  end
+
+  local count = GetNumGuildMembers()
+  if type(count) ~= "number" or count < 1 then return false end
+
+  local cache, seen = {}, 0
+  for i = 1, count do
+    local rosterName, _, rankIndex = GetGuildRosterInfo(i)
+    local key = rosterKey(rosterName)
+    if key and type(rankIndex) == "number" then
+      cache[key] = rankIndex
+      seen = seen + 1
+    end
+  end
+  if seen == 0 then return false end
+
+  self.rosterCache = cache
+  return true
+end
+
+function Officer:HasRosterCache()
+  return self.rosterCache ~= nil
+end
+
+-- Returns lookup(name) -> rankIndex|nil for IsOfficerName. While the roster is
+-- unread every name answers nil, so BeefNet holds commits instead of trusting them.
+function Officer:GetRosterLookup()
+  if not self.rosterCache then self:RefreshRosterCache() end
+  local cache = self.rosterCache
+  return function(name)
+    if not cache then return nil end
+    local key = rosterKey(name)
+    if not key then return nil end
+    return cache[key]
+  end
+end
+
+function Officer:ResetForTests()
+  if not COB._IN_TEST then return false end
+  self.rosterCache = nil
+  return true
 end

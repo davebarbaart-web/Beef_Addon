@@ -13,6 +13,8 @@ Core\Gora.lua
 Core\Ceremony.lua
 Core\Instance.lua
 Core\DB.lua
+Net\BeefNet.lua
+Net\Sync.lua
 UI\MainFrame.lua
 UI\Announce.lua
 UI\LadderTab.lua
