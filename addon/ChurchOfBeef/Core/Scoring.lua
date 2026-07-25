@@ -84,11 +84,12 @@ function Scoring:_remember(name, source, amount, at)
   while #log > HistoryMax do table.remove(log) end
 end
 
--- How much of a source's daily cap a member has already spent today.
+-- How much of a source's daily cap a member has already spent today. Reads never roll
+-- the day over: a query about a different day must not be able to clear today's tally.
 function Scoring:GetGranted(name, source, now)
   local key = normalizeName(name)
   if not key then return 0 end
-  self:_rollover(self:GetDayKey(now))
+  if self.dayKey ~= self:GetDayKey(now) then return 0 end
   local perName = self.granted[key]
   if not perName then return 0 end
   return perName[source] or 0
@@ -122,17 +123,17 @@ function Scoring:Grant(name, source, amount, now)
   self:_rollover(self:GetDayKey(at))
 
   local perName = self.granted[key]
-  if not perName then
-    perName = {}
-    self.granted[key] = perName
-  end
-
-  local used = perName[source] or 0
+  local used = perName and perName[source] or 0
   local remaining = cap - used
   if remaining <= 0 then return 0 end
 
   local payout = amount
   if payout > remaining then payout = remaining end
+
+  if not perName then
+    perName = {}
+    self.granted[key] = perName
+  end
   perName[source] = used + payout
 
   local record = ladder:GetRecord(key)
@@ -197,9 +198,12 @@ end
 -- A snapshot from an earlier day is deliberately discarded rather than replayed:
 -- the point of the cap is that a new day starts clean.
 function Scoring:ImportState(state, now)
+  -- A missing SavedVariables blob is a caller passing nil, not an instruction to
+  -- refund everyone's daily cap, so validate before touching live tallies.
+  if type(state) ~= "table" then return 0 end
+
   self.granted = {}
   self.dayKey = self:GetDayKey(now)
-  if type(state) ~= "table" then return 0 end
   if state.dayKey ~= self.dayKey then return 0 end
   if type(state.granted) ~= "table" then return 0 end
 

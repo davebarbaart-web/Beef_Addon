@@ -123,6 +123,12 @@ assert_eq(S:GrantInstanceBucket("Daily", nextNoon, true), 5, "the cap resets the
 assert_eq(S:GetGranted("Daily", "instance", nextNoon), 5, "the new day starts a fresh tally")
 assert_eq(L:GetRecord("Daily").standing, 65, "standing itself never resets")
 
+-- Reading about another day must not roll today's tally over.
+assert_eq(S:GetGranted("Daily", "instance", noon), 0, "yesterday reads as nothing spent")
+assert_eq(S:GetGranted("Daily", "instance", nextNoon), 5, "the query did not clear today's tally")
+assert_eq(S:GetRemaining("Daily", "instance", nextNoon), 55, "remaining cap accounts for what was spent")
+assert_eq(S:GetRemaining("Daily", "chores", nextNoon), 0, "an unknown source has no budget")
+
 --------------------------------------------------------------------------------
 -- Grants feed the suggestion queue but never promote
 --------------------------------------------------------------------------------
@@ -217,11 +223,15 @@ S:ImportState(state, nextNoon)
 assert_eq(S:GetGranted("Saver", "instance", nextNoon), 0, "a stale day imports as a fresh day")
 assert_eq(S:GrantInstanceBucket("Saver", nextNoon, true), 5, "the new day pays")
 
+-- An unwritten SavedVariables key must not refund the day's spending.
 S:ResetForTests()
+S:ImportState(state, noon)
 S:ImportState(nil, noon)
-assert_eq(S:GetGranted("Saver", "instance", noon), 0, "a nil import is safe")
+assert_eq(S:GetGranted("Saver", "instance", noon), 55, "a nil import leaves live tallies alone")
 S:ImportState("scoring", noon)
-assert_eq(S:GetGranted("Saver", "instance", noon), 0, "a non-table import is safe")
+assert_eq(S:GetGranted("Saver", "instance", noon), 55, "a non-table import leaves live tallies alone")
+
+S:ResetForTests()
 S:ImportState({ dayKey = S:GetDayKey(noon), granted = { [S:GetDayKey(noon)] = { Junk = "nope" } } }, noon)
 assert_eq(S:GetGranted("Junk", "instance", noon), 0, "malformed tallies are dropped")
 
