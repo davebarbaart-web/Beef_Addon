@@ -10,4 +10,10 @@ Core\Ladder.lua
 Core\Scoring.lua
 Core\Officer.lua
 Core\DB.lua
+UI\MainFrame.lua
+UI\LadderTab.lua
+UI\StandingTab.lua
+UI\OfficerTab.lua
+UI\Minimap.lua
+UI\Toasts.lua
 ChurchOfBeef.lua
