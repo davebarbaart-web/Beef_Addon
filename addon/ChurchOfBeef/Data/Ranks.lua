@@ -23,7 +23,7 @@ COB.Ranks = {
   OfficerRankIndexMax = 1,
   Threshold = function(id)
     local r = BY_ID[id]
-    return r and r.threshold or nil
+    return r and r.threshold
   end,
   IsPointDriven = function(id)
     local r = BY_ID[id]
