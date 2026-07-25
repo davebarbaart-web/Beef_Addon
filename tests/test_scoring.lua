@@ -129,6 +129,15 @@ assert_eq(S:GetGranted("Daily", "instance", nextNoon), 5, "the query did not cle
 assert_eq(S:GetRemaining("Daily", "instance", nextNoon), 55, "remaining cap accounts for what was spent")
 assert_eq(S:GetRemaining("Daily", "chores", nextNoon), 0, "an unknown source has no budget")
 
+-- Rollover is one-way: a clock that jumps backwards must not refund today's cap.
+L:ResetForTests(); S:ResetForTests()
+assert_eq(S:Grant("Clock", "instance", 60, nextNoon), 60, "today's instance cap is spent")
+assert_eq(S:GrantInstanceBucket("Clock", nextNoon, true), 0, "the spent cap holds")
+assert_eq(S:GrantInstanceBucket("Clock", noon, true), 0, "a backwards timestamp does not refund the cap")
+assert_eq(S:GetGranted("Clock", "instance", nextNoon), 60, "today's tally survived the backwards grant")
+assert_eq(L:GetRecord("Clock").standing, 60, "no standing was paid out of a wiped tally")
+assert_eq(S:GrantInstanceBucket("Clock", nextNoon + 86400, true), 5, "a genuinely later day still rolls over")
+
 --------------------------------------------------------------------------------
 -- Grants feed the suggestion queue but never promote
 --------------------------------------------------------------------------------

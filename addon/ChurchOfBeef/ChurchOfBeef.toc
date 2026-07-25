@@ -11,6 +11,7 @@ Core\Scoring.lua
 Core\Officer.lua
 Core\Gora.lua
 Core\Ceremony.lua
+Core\Instance.lua
 Core\DB.lua
 UI\MainFrame.lua
 UI\Announce.lua

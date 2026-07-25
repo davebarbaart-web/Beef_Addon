@@ -73,8 +73,13 @@ end
 
 -- Only the current day's tallies are kept: yesterday's numbers can never restore a cap,
 -- and the table cannot grow without bound across a long session.
+--
+-- Rollover is one-way. Day keys are "%Y-%m-%d", so a plain string compare is a date
+-- compare, and only a *later* key clears the tallies. A backwards timestamp — a
+-- system clock correction, a stale queued grant — is then charged against today's
+-- cap instead of wiping it, which is the safe direction to be wrong in.
 function Scoring:_rollover(dayKey)
-  if self.dayKey ~= dayKey then
+  if self.dayKey ~= dayKey and dayKey > self.dayKey then
     self.dayKey = dayKey
     self.granted = {}
   end

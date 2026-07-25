@@ -164,6 +164,7 @@ local GLOBALS = {
   "GetNumGuildMembers", "GetGuildRosterInfo",
   "SendChatMessage", "GetTime",
   "UnitIsInMyGuild", "UnitIsAFK", "GetNumGroupMembers", "IsInRaid",
+  "IsInInstance", "GetInstanceInfo", "UnitAffectingCombat", "GetBattlefieldWinner",
 }
 
 function M.install()
@@ -190,6 +191,15 @@ function M.install()
   M.playerInGuild = true
   M.playerAfk = false
 
+  -- Instance model for the co-play tracker: where the player is, whether they are
+  -- fighting, and whether a battleground has locked in a winner.
+  M.inInstance = false
+  M.instanceType = "none"
+  M.instanceId = nil
+  M.playerInCombat = false
+  M.battlefieldWinner = nil
+  M.tickers = {}
+
   UIParent = newWidget("Frame", "UIParent", nil)
   Minimap = newWidget("Frame", "Minimap", nil)
   UISpecialFrames = {}
@@ -214,6 +224,14 @@ function M.install()
 
   C_Timer = {
     After = function(_seconds, fn) M.timers[#M.timers + 1] = fn end,
+    -- Tickers are recorded rather than run: suites drive ticker.fn() themselves and
+    -- assert that an idle tracker cancelled its timer.
+    NewTicker = function(seconds, fn)
+      local ticker = { seconds = seconds, fn = fn, cancelled = false }
+      ticker.Cancel = function(self) self.cancelled = true end
+      M.tickers[#M.tickers + 1] = ticker
+      return ticker
+    end,
   }
 
   GetGuildInfo = function(_unit)
@@ -246,6 +264,22 @@ function M.install()
     local member = M.group[unit]
     return (member and member.afk) and true or false
   end
+
+  UnitAffectingCombat = function(unit)
+    if unit == "player" then return M.playerInCombat and true or false end
+    local member = M.group[unit]
+    return (member and member.inCombat) and true or false
+  end
+
+  IsInInstance = function() return M.inInstance and true or false, M.instanceType end
+
+  -- Only the 8th return (instanceID) is read by the tracker; the rest matches the
+  -- shape of the real call so a positional unpack behaves the same.
+  GetInstanceInfo = function()
+    return "Test Instance", M.instanceType, 0, "", 0, 0, false, M.instanceId
+  end
+
+  GetBattlefieldWinner = function() return M.battlefieldWinner end
 
   GetNumGroupMembers = function() return M.groupSize end
 

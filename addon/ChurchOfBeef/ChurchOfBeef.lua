@@ -20,6 +20,9 @@ function COB:OnLogin()
   if COB.Sync and COB.Sync.OnLogin then
     COB.Sync:OnLogin()
   end
+  if COB.Instance and COB.Instance.Init then
+    COB.Instance:Init()
+  end
 end
 
 function COB:OnLogout()
