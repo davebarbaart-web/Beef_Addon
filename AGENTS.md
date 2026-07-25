@@ -44,14 +44,15 @@ Plan paths (`addon/…`, `tests/…`) are relative to that checkout root.
 ## How to run
 
 ```bash
+./scripts/run-tests.sh                 # from workspace root (resolves worktree if needed)
+# or:
 cd .worktrees/feat-church-of-beef-v1   # addon checkout
 lua tests/run.lua                      # exit 0 required for Core/Data changes
 ```
 
 In-game: set `WOW_ADDONS_DIR`, install `addon/ChurchOfBeef/` → `Interface/AddOns/ChurchOfBeef/`, `/reload`, `/beef`. Details: the skill above.
 
-Do **not** invent npm/make/CI commands — none are established yet. See `OPTIMIZATIONS.md` for proposed tooling (needs human approval).
-
+CI: `.github/workflows/lua-tests.yml` runs the harness when `tests/run.lua` is on the branch; on `main` (docs-only) it skips with a clear log. Remaining tooling ideas: `OPTIMIZATIONS.md`.
 ## Rules at a glance
 
 | Mode | Files |

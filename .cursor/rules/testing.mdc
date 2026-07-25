@@ -17,17 +17,18 @@ alwaysApply: false
 
 ## Infra
 
-- Desktop Lua harness under `tests/` — no tox, pytest, Makefile, or CI yet
+- Desktop Lua harness under `tests/` — local runner `scripts/run-tests.sh`; GHA `.github/workflows/lua-tests.yml` when `tests/` exists on the branch
 - Suites today: `test_ranks`, `test_ladder`. Runner may list more; missing modules are ignored until created
 - Scope: pure Core / Data only
 
 ```bash
+./scripts/run-tests.sh                 # from Beef_Addon root (resolves worktree)
+# or:
 cd .worktrees/feat-church-of-beef-v1   # addon checkout root
 lua tests/run.lua                      # Lua 5.1 preferred; 5.4 OK for pure logic
 ```
 
 Healthy: `Tests finished: N passed, 0 failed`.
-
 ## Extending tests
 
 1. Add `tests/test_<area>.lua` using `assert_eq` / `assert_true` from the runner
@@ -48,5 +49,5 @@ L:ResetForTests()
 
 ## Do not
 
-- Invent CI / busted / luacheck until they exist in-repo
+- Invent busted / luacheck / extra CI matrices until approved in `OPTIMIZATIONS.md`
 - Pull Ace/LibStub into Core just to test it

@@ -36,6 +36,8 @@ All following commands: `cd "$ADDON_ROOT"` (parent of `addon/` and `tests/`).
 
 ## 1. Offline tests (every Core/Data/harness change)
 
+From the Beef_Addon workspace root you can also run `./scripts/run-tests.sh` (resolves the worktree). GHA runs the same path when `tests/run.lua` is on the branch.
+
 ```bash
 cd "$ADDON_ROOT"
 lua -v                 # 5.1 preferred; 5.4 OK for pure logic
@@ -122,4 +124,4 @@ Zip root must be `ChurchOfBeef/`, not the monorepo root. No packager upload with
 ## Do not duplicate
 
 Canon numbers, layer rules, and packaging constraints stay in `.cursor/rules/`.
-Further tooling ideas (hooks, CI, MCP) live in `OPTIMIZATIONS.md` — need human approval.
+Further tooling ideas (pre-commit hooks, packager tokens, MCP) live in `OPTIMIZATIONS.md` — need human approval.
