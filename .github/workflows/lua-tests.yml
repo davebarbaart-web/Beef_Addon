@@ -1,0 +1,38 @@
+name: Lua tests
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  offline-harness:
+    name: Offline Core/Data harness
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Detect tests
+        id: detect
+        run: |
+          if [[ -f tests/run.lua ]]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+            echo "Found tests/run.lua — will run harness."
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "No tests/run.lua on this branch."
+            echo "Addon harness currently lives on feat/church-of-beef-v1 (or a local worktree)."
+            echo "Skipping honestly — merge/rebase that branch (or land tests here) for a real CI gate."
+          fi
+
+      - name: Install Lua 5.1
+        if: steps.detect.outputs.present == 'true'
+        uses: leafo/gh-actions-lua@v13
+        with:
+          luaVersion: "5.1.5"
+
+      - name: Run tests
+        if: steps.detect.outputs.present == 'true'
+        env:
+          REQUIRE_TESTS: "1"
+        run: bash scripts/run-tests.sh

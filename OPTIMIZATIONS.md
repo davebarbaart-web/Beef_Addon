@@ -1,6 +1,6 @@
 # Agent / DevEx optimizations
 
-## Done (shipped locally — use freely)
+## Done (shipped — use freely)
 
 | Item | Path | Notes |
 |------|------|-------|
@@ -9,8 +9,10 @@
 | Cursor rules (consolidated + polished) | `.cursor/rules/*.mdc` | **2** always-on (`architecture-overview`, `verification`) + file-scoped domain/style rules; YAML-list `globs:` |
 | Agent map | `AGENTS.md` | Short index; workspace-root + worktree guidance |
 | Index hygiene | `.cursorignore` | Excludes `.firecrawl/`, `**/.raw/`, bulky media |
+| Local test runner | `scripts/run-tests.sh` | Finds `tests/run.lua` on this checkout or `.worktrees/feat-church-of-beef-v1`; skips cleanly if absent |
+| GitHub Actions Lua harness | `.github/workflows/lua-tests.yml` | Runs Lua 5.1 + `scripts/run-tests.sh` when `tests/` exists; **skips with a clear message on main** until addon/tests land on the branch |
 
-Do **not** treat research scrapes or inventing CI as “done” — those remain backlog below.
+**Cursor hooks** (`.cursor/hooks/`) were deferred: change-detection for “only when addon/tests edit” is easy to get noisy/wrong; use the script + GHA for now.
 
 ---
 
@@ -20,13 +22,13 @@ Do **not** implement these until someone opts in — they touch CI secrets, hook
 
 ### Hooks (Cursor / git) — audit P1
 
-- [ ] **Pre-commit / Cursor hook:** run `lua tests/run.lua` from the addon checkout before commit when `addon/**` or `tests/**` change. Approve command allowlist first.
+- [ ] **Pre-commit / Cursor hook:** run `scripts/run-tests.sh` (or `lua tests/run.lua`) before commit when `addon/**` or `tests/**` change. Approve command allowlist first.
 - [ ] **TOC drift check:** fail if `ChurchOfBeef.toc` lists a missing file or omits a new `addon/ChurchOfBeef/**/*.lua` (except intentional).
 - [ ] **Secret scan:** block `CF_API_KEY`, Wago/WoWI tokens, and accidental commit of `.firecrawl/` or research `.raw/`.
 
 ### CI / packaging — audit P1
 
-- [ ] **GitHub Actions:** offline `lua tests/run.lua` on PR (Lua 5.1 container or `leafo/gh-actions-lua`).
+- [x] **GitHub Actions:** offline harness when `tests/run.lua` exists (`leafo/gh-actions-lua` 5.1). Meaningful once the feature branch (or merge) has `tests/` + this workflow.
 - [ ] **BigWigs packager@v2** with `-t addon/ChurchOfBeef`; untagged → alpha only. Requires CurseForge/Wago tokens in repo secrets — never in tree.
 - [ ] **Release checklist job:** Interface version note + zip artifact; no auto-publish until officers agree.
 
