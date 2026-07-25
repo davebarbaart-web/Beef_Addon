@@ -162,6 +162,7 @@ local GLOBALS = {
   "CreateFrame", "UIParent", "Minimap", "UISpecialFrames",
   "GameTooltip", "C_Timer", "GetGuildInfo", "UnitName", "IsInGuild",
   "SendChatMessage", "GetTime",
+  "UnitIsInMyGuild", "UnitIsAFK", "GetNumGroupMembers", "IsInRaid",
 }
 
 function M.install()
@@ -174,6 +175,15 @@ function M.install()
   M.inGuild = true
   M.chat = {}
   M.now = 0
+
+  -- Group model for the ceremony sampler: M.group is keyed by unit id
+  -- (M.group.party1 = { name = "Steakina", inGuild = true, afk = false }) and
+  -- M.groupSize is what GetNumGroupMembers reports.
+  M.group = {}
+  M.groupSize = 0
+  M.inRaid = false
+  M.playerInGuild = true
+  M.playerAfk = false
 
   UIParent = newWidget("Frame", "UIParent", nil)
   Minimap = newWidget("Frame", "Minimap", nil)
@@ -208,8 +218,25 @@ function M.install()
 
   UnitName = function(unit)
     if unit == "player" then return M.playerName end
-    return nil
+    local member = M.group[unit]
+    return member and member.name or nil
   end
+
+  UnitIsInMyGuild = function(unit)
+    if unit == "player" then return M.playerInGuild and true or false end
+    local member = M.group[unit]
+    return (member and member.inGuild ~= false) and true or false
+  end
+
+  UnitIsAFK = function(unit)
+    if unit == "player" then return M.playerAfk and true or false end
+    local member = M.group[unit]
+    return (member and member.afk) and true or false
+  end
+
+  GetNumGroupMembers = function() return M.groupSize end
+
+  IsInRaid = function() return M.inRaid and true or false end
 
   IsInGuild = function()
     return M.inGuild and true or false

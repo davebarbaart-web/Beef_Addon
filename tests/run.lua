@@ -32,6 +32,7 @@ local suites = {
   "test_net_validate",
   "test_ui",
   "test_officer_ui",
+  "test_gora_ceremony",
 }
 
 for _, name in ipairs(suites) do
