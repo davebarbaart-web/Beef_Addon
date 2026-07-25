@@ -32,6 +32,9 @@ local suites = {
 }
 
 for _, name in ipairs(suites) do
+  -- Force the flag before every suite load so an earlier suite flipping it
+  -- (then raising before it restores) can never poison a later suite.
+  ChurchOfBeef._IN_TEST = true
   local ok, err = pcall(function() require(name) end)
   if not ok then
     -- Suites appear as tasks land; missing suite is OK until created.

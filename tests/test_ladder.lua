@@ -277,11 +277,21 @@ assert_eq(L:GetRecord("Copy").rankId, 2, "GetRecord hands out a copy, not live s
 --------------------------------------------------------------------------------
 -- ResetForTests is inert outside the test harness
 --------------------------------------------------------------------------------
+-- The flag flip lives inside pcall with a guaranteed restore: if anything in
+-- the probe raises, ChurchOfBeef._IN_TEST must still come back to true so a
+-- later suite never inherits a false flag (the runner also re-forces it
+-- before every suite as a second line of defense).
 ChurchOfBeef._IN_TEST = false
-L:SetStanding("Survivor", 10)
-assert_eq(L:ResetForTests(), false, "ResetForTests refuses to run outside tests")
-assert_eq(L:GetRecord("Survivor").standing, 10, "records survive a gated reset")
-
+local probeOk, probeErr = pcall(function()
+  L:SetStanding("Survivor", 10)
+  assert_eq(L:ResetForTests(), false, "ResetForTests refuses to run outside tests")
+  assert_eq(L:GetRecord("Survivor").standing, 10, "records survive a gated reset")
+end)
 ChurchOfBeef._IN_TEST = true
+if not probeOk then
+  failed = failed + 1
+  print("FAIL: _IN_TEST=false probe raised: " .. tostring(probeErr))
+end
+
 assert_eq(L:ResetForTests(), true, "ResetForTests runs under COB._IN_TEST")
 assert_eq(#L:GetLadderView(), 0, "the ungated reset cleared the ladder")
