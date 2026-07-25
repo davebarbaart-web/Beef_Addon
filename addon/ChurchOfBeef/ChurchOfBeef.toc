@@ -1,0 +1,8 @@
+## Interface: 20506
+## Title: Church of Beef
+## Notes: Social rank ladder and guild spectacle for the Church of Beef.
+## Author: Church of Beef
+## Version: 0.1.0
+## SavedVariablesPerCharacter: ChurchOfBeefDB
+
+ChurchOfBeef.lua
