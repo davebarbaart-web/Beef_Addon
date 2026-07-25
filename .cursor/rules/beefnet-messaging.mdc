@@ -1,0 +1,52 @@
+---
+description: BeefNet addon messaging — prefix, GUILD channel, size, trust, sync
+globs:
+  - "**/addon/**/Net/**/*.lua"
+alwaysApply: false
+---
+
+# BeefNet (domain)
+
+## Non-negotiables
+
+- Prefix `COB`; channel **`GUILD`** always (default is PARTY)
+- Never apply `RANK_COMMIT` without verifying sender Officer+ via roster `rankIndex`
+- If roster not loaded: queue or drop — **never** apply unverified
+- Net validates shape then calls Core — Net does not invent ranks
+- Custom `CHANNEL` addon chat is **forbidden** on Classic
+
+## Wire defaults
+
+| Field | Value |
+|-------|-------|
+| Prefix | `COB` (≤16 chars; register once) |
+| Channel | `GUILD` — pass explicitly |
+| Body | ≤ **255** chars; colon-delimited / small packed strings |
+| Pacing | ChatThrottleLib-class (or AceComm wrapping CTL) |
+
+Do not use `RAID`/`PARTY` for ladder state.
+
+## Message types (V1)
+
+| Type | Who emits | Receiver duty |
+|------|-----------|---------------|
+| `HELLO` | Anyone | Soft version warn; no ladder mutate |
+| `RANK_COMMIT` | Officer+ only | Roster rank-index gate, then Core apply |
+| `SUGGESTION` | Member | Officers filter; never auto-promote |
+| `SCORE_EVENT` | Prefer local | Off-wire by default; never high-frequency |
+| `SYNC_REQUEST` | Login/reload | Once per settle + backoff |
+| `SYNC_STATE` | Prefer one peer (officer first) | Chunk + suppress duplicates |
+
+## Trust & sync
+
+- `CHAT_MSG_ADDON` sender names are server-supplied — trustworthy identity
+- Major protocol mismatch → soft warn; discard incompatible commits
+- Sync on login settle (`COB.Sync:OnLogin`), not at `ADDON_LOADED` / file scope
+
+## Anti-spam
+
+- ~10 msgs/prefix regenerating ~1/s — CTL must prevent `AddonMessageThrottle`
+- Login sync: random reply delay + suppress if another peer already answered `reqId`
+- Prefer revision diffs / chunks over dumping the whole guild in one frame
+- Guild spectacle: **one** throttled line from the approving officer’s client only
+- Do not broadcast every score tick — official path is officer Commit (+ sync types)

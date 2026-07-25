@@ -1,0 +1,45 @@
+---
+description: Officer+ gate via guild roster rank index — Classic API edges
+globs:
+  - "**/Core/Officer*.lua"
+  - "**/Net/**/*.lua"
+  - "**/UI/Officer*.lua"
+alwaysApply: false
+---
+
+# Officer / guild roster (domain)
+
+## Non-negotiables
+
+- Officer+ = roster `rankIndex ≤ COB.Ranks.OfficerRankIndexMax` (default `1` → GM + top officer)
+- `rankIndex` is **0-based** (`0` = Guild Master)
+- **Never** gate on `rankName` strings
+- Receivers re-check the **sender’s** rank index — UI “I am officer” is not enough on the wire
+
+## Gate implementation
+
+```lua
+-- ✅ configurable index after roster lookup
+local _, _, rankIndex = GetGuildRosterInfo(i) -- or GetGuildInfo for local
+return type(rankIndex) == "number" and rankIndex <= COB.Ranks.OfficerRankIndexMax
+```
+
+**Not** Officer+ substitutes: `CanGuildInvite`, `CanEditOfficerNote`, opaque `IsGuildOfficer()` alone.
+
+## Roster timing
+
+- Prefer `C_GuildInfo.GuildRoster()` on Anniversary; do not call it per incoming message
+- Client ignores GuildRoster if last request was < **10 seconds** ago — validate against cache when fresh
+- On login / `PLAYER_GUILD_UPDATE` / stale cache: request, then wait for `GUILD_ROSTER_UPDATE`
+- Until local `guildRankIndex` known: treat as **not** Officer+ (hide Officer tab; approve no-ops)
+- Do **not** flip `SetGuildRosterShowOffline` as a side effect of validation
+
+## Names and realms
+
+- Roster names often include realm (`Name-Realm`) — normalize consistently with BeefNet sender matching
+- Each guild is an **independent** ladder — no cross-realm church state
+- Not in a guild → empty ladder UI; pause scoring and BeefNet sends
+
+## Commit path
+
+Only Officer+ clicks create official state (`RANK_COMMIT`).

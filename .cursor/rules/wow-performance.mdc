@@ -1,0 +1,55 @@
+---
+description: Classic addon performance — events vs OnUpdate, SV size, combat idle
+globs:
+  - "**/addon/ChurchOfBeef/**/*.lua"
+  - "**/addon/ChurchOfBeef/**/*.xml"
+alwaysApply: false
+---
+
+# Performance constraints (social addon)
+
+## Non-negotiables
+
+- UI closed → effectively idle (events only)
+- No permanent `OnUpdate` for business logic
+- In combat: no full ladder rebuild storms
+- Prefer ≪ 1 MB SavedVariables
+
+## Budget
+
+| Phase | Expectation |
+|-------|-------------|
+| UI closed | Events only |
+| UI open | Interaction + ≤10 Hz dirty coalesce |
+| In combat | No permanent OnUpdate |
+| Login sync | Bursty then quiet |
+
+Bar: invisible next to WA/Details/nameplates.
+
+## Do / don’t
+
+| Do | Don’t |
+|----|-------|
+| Event-driven scoring + roster | Per-frame proximity / combat scans |
+| Dirty-flag UI; refresh ≤10 Hz when open | Rebuild full ladder per BeefNet message |
+| Cap/rotate local event logs in SV | Unbounded SavedVariables growth |
+| Cache roster lookups | Full guild rescan every suggestion |
+| `C_Timer` / throttled ticks for buckets | Permanent `OnUpdate` for scoring/net |
+
+```lua
+-- ✅ GOOD — disable when idle
+frame:SetScript("OnUpdate", nil)
+
+-- ❌ BAD — scoring or net parse every frame
+frame:SetScript("OnUpdate", function(_, elapsed) COB.Scoring:Tick(elapsed) end)
+```
+
+## Cross-cutting throttle
+
+- BeefNet: CTL pacing; sync reply suppression (`beefnet-messaging.mdc`)
+- Guild announce: one officer-origin line per promotion
+- Instance drip: events + **low-rate** ticker; anti-AFK requires combat in the bucket
+
+## SV size
+
+Cache official ladder + revisions; treat My Standing logs as lossy/capped.

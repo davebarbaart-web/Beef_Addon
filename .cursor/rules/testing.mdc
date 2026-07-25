@@ -1,0 +1,52 @@
+---
+description: Offline Lua test harness — how agents run and extend tests
+globs:
+  - "**/tests/**"
+  - "**/Core/**/*.lua"
+  - "**/Data/**/*.lua"
+alwaysApply: false
+---
+
+# Testing (Church of Beef)
+
+## Non-negotiables
+
+- Run from checkout that has `tests/run.lua` (often `.worktrees/feat-church-of-beef-v1/`)
+- Exit `0` required for Core/Data/harness changes
+- Green harness ≠ V1 sign-off (UI / Net / spectacle need the client — `verification.mdc`)
+
+## Infra
+
+- Desktop Lua harness under `tests/` — no tox, pytest, Makefile, or CI yet
+- Suites today: `test_ranks`, `test_ladder`. Runner may list more; missing modules are ignored until created
+- Scope: pure Core / Data only
+
+```bash
+cd .worktrees/feat-church-of-beef-v1   # addon checkout root
+lua tests/run.lua                      # Lua 5.1 preferred; 5.4 OK for pure logic
+```
+
+Healthy: `Tests finished: N passed, 0 failed`.
+
+## Extending tests
+
+1. Add `tests/test_<area>.lua` using `assert_eq` / `assert_true` from the runner
+2. Register the suite name in `suites` inside `tests/run.lua`
+3. Load chunks with `dofile` (not `require`):
+
+```lua
+ChurchOfBeef = ChurchOfBeef or {}
+dofile("addon/ChurchOfBeef/Data/Ranks.lua")
+dofile("addon/ChurchOfBeef/Core/Ladder.lua")
+local L = ChurchOfBeef.Ladder
+L:ResetForTests()
+```
+
+4. Runner sets `ChurchOfBeef._IN_TEST = true` first — production must refuse `ResetForTests` without that flag
+5. Assert threshold `0` explicitly (`Threshold(1) == 0`) — Lua treats `0` as truthy
+6. Getters return copies; mutating `GetRecord` must not change live state
+
+## Do not
+
+- Invent CI / busted / luacheck until they exist in-repo
+- Pull Ace/LibStub into Core just to test it

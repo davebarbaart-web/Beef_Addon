@@ -1,0 +1,51 @@
+{
+  "files.exclude": {
+    "**/.firecrawl": true,
+    "**/.raw": true
+  },
+  "search.exclude": {
+    "**/.firecrawl": true,
+    "**/.raw": true,
+    "**/.worktrees": false
+  },
+  "files.watcherExclude": {
+    "**/.firecrawl/**": true,
+    "**/.raw/**": true
+  },
+  "Lua.runtime.version": "Lua 5.1",
+  "Lua.diagnostics.globals": [
+    "ChurchOfBeef",
+    "CreateFrame",
+    "DEFAULT_CHAT_FRAME",
+    "SlashCmdList",
+    "C_ChatInfo",
+    "UnitName",
+    "UnitFactionGroup",
+    "GetGuildInfo",
+    "GetNumGuildMembers",
+    "GetGuildRosterInfo",
+    "IsInGuild",
+    "GetTime",
+    "time",
+    "date",
+    "wipe",
+    "CopyTable",
+    "strsplit",
+    "strjoin",
+    "tinsert",
+    "tremove",
+    "unpack",
+    "assert_eq",
+    "assert_true"
+  ],
+  "Lua.workspace.checkThirdParty": false,
+  "Lua.workspace.ignoreDir": [
+    ".firecrawl",
+    ".raw",
+    "docs/research"
+  ],
+  "[lua]": {
+    "editor.insertSpaces": true,
+    "editor.tabSize": 2
+  }
+}

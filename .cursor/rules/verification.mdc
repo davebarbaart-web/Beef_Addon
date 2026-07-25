@@ -1,0 +1,39 @@
+---
+description: What “done” means and safe verification / destructive-op rules
+alwaysApply: true
+---
+
+# Verification & safety
+
+## Done means (per change)
+
+1. **Offline:** From addon checkout root, `lua tests/run.lua` exits `0` when Core/Data/harness changed. Often: `.worktrees/feat-church-of-beef-v1/`. Details: `testing.mdc`.
+2. **TOC truth:** `ChurchOfBeef.toc` lists only existing files; Interface stays `20506` unless intentionally bumping.
+3. **Safety:** no bots, injection, protected-action bypass, or Retail-only APIs.
+4. **In-game** (UI / Net / SV / slash touched): install → `/console scriptErrors 1` → `/reload` → exercise path. Prefer BugGrabber + BugSack. Loop: `.cursor/skills/church-of-beef-dev/SKILL.md`.
+5. **Guild/net** (BeefNet / officer / sync): two clients minimum (Officer+ and Member).
+6. **Do not claim V1 complete** until `docs/phases/v1-checklist.md` is filled and walked.
+
+## Manual path (safest today)
+
+```bash
+cd .worktrees/feat-church-of-beef-v1   # if addon/ missing on main
+lua tests/run.lua                      # exit 0
+# install addon/ChurchOfBeef → Interface/AddOns/ChurchOfBeef
+# in-game: /console scriptErrors 1 → /reload → /beef
+```
+
+Guild-chat spectacle on promote is a product pass — unit tests cannot prove it.
+
+## Agents must not
+
+- Delete/overwrite player `WTF/**/ChurchOfBeefDB.lua` without explicit ask
+- `git clean`, force-push, hard reset, or wipe `Interface/AddOns` / the WoW install
+- Packager **upload** or publish CurseForge/Wago/WoWI without approval
+- Combat automation, external process control, or scrape chat/combat logs for “support dumps”
+- Call `ResetForTests` / clear ladder state outside the harness (`ChurchOfBeef._IN_TEST`)
+- Commit secrets, `.firecrawl/`, or research `.raw/` dumps
+
+## Research vs code
+
+`docs/research/` is guidance — not a substitute for a green harness or client smoke. Tooling backlog: `OPTIMIZATIONS.md` (needs human approval).

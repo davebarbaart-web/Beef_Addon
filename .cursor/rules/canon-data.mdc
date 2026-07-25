@@ -1,0 +1,34 @@
+---
+description: Machine canon vs prose lore — single source of truth for ranks
+globs:
+  - "**/Data/**/*.lua"
+  - "docs/canon/**"
+alwaysApply: false
+---
+
+# Canon data vs lore docs
+
+## Non-negotiables
+
+- Numeric rank policy lives **only** in `addon/ChurchOfBeef/Data/Ranks.lua` → `COB.Ranks`
+- `docs/canon/` is flavor prose — if a number appears, delete it and point at `Data/Ranks.lua`
+- Do not invent a top-level `canon/` Lua package (TOC loads only inside the addon folder)
+
+## Machine canon owns
+
+Rank `id` / `title` / `threshold` / `kind`, `CouncilSeats`, `ProphetUnique`, `OfficerRankIndexMax`, helpers (`Threshold`, `IsPointDriven`, `Title`).
+
+```lua
+-- ✅
+local title = COB.Ranks.Title(rankId)
+local need = COB.Ranks.Threshold(2)
+
+-- ❌ hardcoding policy in UI/Core
+local need = 50
+```
+
+Kinds: `points` (1–5), `council`, `prophet`. Seat/uniqueness via `kind` (see `Core/Ladder.lua`).
+
+## SavedVariables are not canon
+
+`ChurchOfBeefDB` (`Core/DB.lua`) caches official records, suggestions, prefs, local standing. Standing is advisory testimony; official ranks require officer **Commit** + revision merge.

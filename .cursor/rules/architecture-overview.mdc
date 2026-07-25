@@ -1,0 +1,62 @@
+---
+description: Repo map, layers, safety, and architecture invariants for Church of Beef
+alwaysApply: true
+---
+
+# Architecture overview
+
+**Church of Beef** — social guild ladder for **TBC Classic Anniversary** (`## Interface: 20506`). Plain global `ChurchOfBeef` / `COB` — no AceAddon in V1. Not raid/combat tooling.
+
+## Non-negotiables
+
+- Announce / track / sync only — no bots, injection, protected-action bypass, or gameplay automation
+- No Retail / Dragonflight-only APIs
+- Layers: UI→Core→Data and Net→Core→Data only; never Core→UI
+- UI never awards points; Net never invents ranks; Core never `CreateFrame`; Data never reads SV
+
+## Repo map
+
+```
+.worktrees/feat-church-of-beef-v1/   # addon checkout when absent on main
+  addon/ChurchOfBeef/                # → Interface/AddOns/ChurchOfBeef/
+    Data/                            # Machine canon (Ranks.lua)
+    Core/                            # Ladder, scoring, officer gate
+    Net/                             # BeefNet + Sync
+    UI/                              # Frames, tabs, toasts, minimap
+    ChurchOfBeef.toc                 # Load order = dependency graph
+    ChurchOfBeef.lua                 # Bootstrap: events, /beef, Init
+  tests/                             # Desktop Lua Core harness
+docs/superpowers/                    # Spec + plan (product law)
+docs/canon/                          # Lore prose only (no numbers)
+docs/phases/                         # Roadmap / V1 checklist
+```
+
+Keep the Cursor workspace on **Beef_Addon** (this repo) so `.cursor/rules` apply. Edit worktree Lua from the parent workspace — see `AGENTS.md`.
+
+## Authority
+
+| Truth | Location |
+|-------|----------|
+| Rank ids, titles, thresholds, seats, officer index | `addon/ChurchOfBeef/Data/Ranks.lua` only |
+| Product decisions | `docs/superpowers/specs/2026-07-25-church-of-beef-design.md` |
+| Task / file layout | `docs/superpowers/plans/2026-07-25-church-of-beef-v1.md` |
+| Lore prose | `docs/canon/` — never duplicate numeric thresholds |
+
+## Entry points
+
+`Data → Core → Net + UI → ChurchOfBeef.lua` (bootstrap last).
+
+| Phase | Runs |
+|-------|------|
+| `ADDON_LOADED` (`ChurchOfBeef`) | `COB.DB:Init()` |
+| `PLAYER_LOGIN` | `COB.UI:Init()`, `COB.Net:Init()`, `COB.Sync:OnLogin()` |
+| `/beef` | `COB.UI:Toggle()` |
+
+SV = per-character `ChurchOfBeefDB`. BeefNet prefix `COB` / channel `GUILD`.
+
+## Edit preferences
+
+- Extend planned modules (`Core/Ladder.lua`, `Net/BeefNet.lua`, …) over new top-level files
+- Expand TOC only when the file exists; never list missing files
+- Keep `ChurchOfBeef*.lua` casing consistent (case-sensitive packaging)
+- Prefer `docs/superpowers/` + `Data/Ranks.lua` over inventing policy from `docs/research/`

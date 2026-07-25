@@ -1,0 +1,49 @@
+---
+description: Standing sources, anti-AFK caps, suggestion eligibility (not auto-promote)
+globs:
+  - "**/Core/Scoring*.lua"
+  - "**/Core/Instance*.lua"
+  - "**/Core/Gora*.lua"
+  - "**/Core/Ceremony*.lua"
+alwaysApply: false
+---
+
+# Scoring / co-play (domain)
+
+## Non-negotiables
+
+- Crossing a threshold creates a **pending suggestion**, never an auto-promote
+- Council / Prophet are never suggestion targets from points
+- Threshold numbers live only in `Data/Ranks.lua`
+- Cities / open-world loops grant **nothing**
+
+## Sources (V1)
+
+| Source | Counts when | Intent |
+|--------|-------------|--------|
+| Shared instance | Dungeon / raid / BG with ≥1 **guildmate** in party/raid | Capped drip + completion bonus |
+| Ceremony | Officer starts; credit on clean close | Medium flat grant |
+| Beef Gora | Challenge → recorded win/loss/draw | Win > draw > loss; **losses still pay** |
+
+Guildmates need not run the addon for local co-play credit.
+
+## Anti-abuse (locked intent)
+
+- **Anti-AFK:** instance bucket pays only if the player entered combat in that bucket
+- Per-day caps per source (especially instance drip)
+- Completion bonus is best-effort — Classic dungeon-complete signals can be flaky
+- Officer manual adjust/wipe remains the correction tool
+
+## Suggestion boundary
+
+```text
+points accrue locally → MaybeSuggest (next point-driven rank only)
+                     → officer Approve/Reject
+                     → Commit / RANK_COMMIT
+```
+
+Reject clears suggestion; standing remains unless officer corrects.
+
+## Pacing
+
+A new member’s first full dungeon night with guildmates should be able to earn Fresh → Cooked eligibility.

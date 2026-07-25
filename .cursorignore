@@ -1,0 +1,19 @@
+# Local scrape / crawler caches (not product truth)
+.firecrawl/
+
+# Research provenance dumps — large HTML/JSON extracts; use track READMEs + synthesis md
+**/.raw/
+
+# Git worktree parent is already in .gitignore; keep SDD review diffs out of the index
+**/.superpowers/sdd/*.diff
+
+# Future / common WoW media binaries (keep Lua/XML/md indexed)
+**/*.blp
+**/*.tga
+**/*.ogg
+**/*.mp3
+**/*.wav
+
+# Generic bulky trees if they appear
+**/node_modules/
+**/.DS_Store
