@@ -54,11 +54,10 @@ local function unitEntry(unit)
   if type(UnitIsInMyGuild) == "function" then
     inGuild = UnitIsInMyGuild(unit) and true or false
   end
-  local afk = false
-  if type(UnitIsAFK) == "function" then
-    afk = UnitIsAFK(unit) and true or false
-  end
-  return { name = name, inGuild = inGuild, afk = afk }
+  -- No AFK read: glossary 51 rejects UnitIsAFK as a pay wall. The flag is weak (it
+  -- survives a single keypress and lies about people who are watching), and standing
+  -- present through a whole rite is what a ceremony is asking for.
+  return { name = name, inGuild = inGuild }
 end
 
 -- Party or raid plus the officiant. Raid unit ids include the player, so the
@@ -87,7 +86,7 @@ local function liveRoster()
 end
 
 -- roster may be nil (sample the live group), a function returning a list, or a
--- list of names / { name, inGuild, afk } tables. Tests inject; the client does not.
+-- list of names / { name, inGuild } tables. Tests inject; the client does not.
 local function sampleRoster(roster)
   if type(roster) == "function" then roster = roster() end
   if roster == nil then roster = liveRoster() end
@@ -99,9 +98,9 @@ local function sampleRoster(roster)
     if type(entry) == "string" then entry = { name = entry } end
     if type(entry) == "table" then
       local name = normalizeName(entry.name)
-      -- Non-guildmates never earn church standing, and an AFK flag at the
-      -- moment of sampling is the ceremony's answer to standing in the back.
-      if name and entry.inGuild ~= false and not entry.afk and not seen[name] then
+      -- Non-guildmates never earn church standing. Attendance is the only other
+      -- test: tracked at Start (or Mark) and still there at Close.
+      if name and entry.inGuild ~= false and not seen[name] then
         seen[name] = true
         out[#out + 1] = name
       end

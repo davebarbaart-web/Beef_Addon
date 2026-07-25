@@ -10,6 +10,31 @@ function COB:OnLoad()
   COB.loaded = true
 end
 
+-- Core/Instance.lua decides *when* co-play buckets close; frames are not its job, so
+-- the client events it needs are registered here and routed straight into it.
+-- RegisterEvent raises on an event a host does not know, so each registration is
+-- pcall'd: losing one costs responsiveness (the 60s tick re-checks qualification
+-- anyway), never the whole tracker.
+function COB:WireInstanceEvents()
+  local instance = COB.Instance
+  if not instance then return nil end
+  if COB.instanceFrame then return COB.instanceFrame end
+  if type(CreateFrame) ~= "function" then return nil end
+
+  local frame = CreateFrame("Frame")
+  COB.instanceFrame = frame
+
+  for event in pairs(instance.Events or {}) do
+    pcall(function() frame:RegisterEvent(event) end)
+  end
+
+  frame:SetScript("OnEvent", function(_, event)
+    instance:OnEvent(event)
+  end)
+
+  return frame
+end
+
 function COB:OnLogin()
   if COB.UI and COB.UI.Init then
     COB.UI:Init()
@@ -20,6 +45,7 @@ function COB:OnLogin()
   if COB.Sync and COB.Sync.OnLogin then
     COB.Sync:OnLogin()
   end
+  COB:WireInstanceEvents()
   if COB.Instance and COB.Instance.Init then
     COB.Instance:Init()
   end

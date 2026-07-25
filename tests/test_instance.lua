@@ -11,6 +11,8 @@ dofile("addon/ChurchOfBeef/Data/Ranks.lua")
 dofile("addon/ChurchOfBeef/Core/Ladder.lua")
 dofile("addon/ChurchOfBeef/Core/Scoring.lua")
 dofile("addon/ChurchOfBeef/Core/Instance.lua")
+-- The bootstrap is where the tracker's client events are registered now.
+dofile("addon/ChurchOfBeef/ChurchOfBeef.lua")
 
 local COB = ChurchOfBeef
 local I = COB.Instance
@@ -207,8 +209,11 @@ stub.group = { party1 = { name = "Steakina" } }
 --------------------------------------------------------------------------------
 reset()
 stub.playerInCombat = false
-local frame = I:Init()
-assert_true(frame ~= nil, "the tracker owns an event frame")
+-- Core owns no frames (addon-module-layers): the bootstrap registers the events and
+-- routes them into the tracker, so that is what has to be exercised here.
+local frame = COB:WireInstanceEvents()
+assert_true(frame ~= nil, "the bootstrap owns the tracker's event frame")
+assert_eq(I.frame, nil, "and Core/Instance.lua holds no frame of its own")
 assert_eq(frame._events["PLAYER_ENTERING_WORLD"], true, "zone-in is watched")
 assert_eq(frame._events["ZONE_CHANGED_NEW_AREA"], true, "zone changes are watched")
 assert_eq(frame._events["GROUP_ROSTER_UPDATE"], true, "group changes are watched")

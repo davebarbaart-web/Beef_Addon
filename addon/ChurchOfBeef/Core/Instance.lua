@@ -11,7 +11,7 @@ local COB = ChurchOfBeef
 -- listed below, so a host that renames one degrades to "never qualifies" instead of
 -- erroring on a timer.
 --   IsInInstance, GetInstanceInfo, UnitAffectingCombat, UnitName, UnitIsInMyGuild,
---   GetNumGroupMembers, IsInRaid, GetBattlefieldWinner, C_Timer, CreateFrame
+--   GetNumGroupMembers, IsInRaid, GetBattlefieldWinner, C_Timer
 local Instance = {
   -- Bucket length in seconds. One grant per closed bucket, never per tick.
   BucketSeconds = 60,
@@ -314,45 +314,31 @@ end
 -- Wiring
 --------------------------------------------------------------------------------
 
+-- Core owns no frames: the bootstrap registers the client events (see
+-- ChurchOfBeef.lua, Events) and routes each one into the methods above. This is the
+-- one entry point it needs — reconcile tracking with the world as it is right now.
 function Instance:Init()
-  if self.frame then
-    self:Update()
-    return self.frame
-  end
-  if type(CreateFrame) ~= "function" then return nil end
-
-  local frame = CreateFrame("Frame")
-  self.frame = frame
-
-  -- GROUP_ROSTER_UPDATE is the Anniversary-era name for a party/raid change.
-  -- RegisterEvent raises on an event a host does not know, so each registration is
-  -- pcall'd: losing one costs responsiveness (the 60s tick re-checks qualification
-  -- anyway), never the whole tracker.
-  local events = {
-    "PLAYER_ENTERING_WORLD",
-    "ZONE_CHANGED_NEW_AREA",
-    "GROUP_ROSTER_UPDATE",
-    "PLAYER_REGEN_DISABLED",
-    "UPDATE_BATTLEFIELD_STATUS",
-  }
-  for i = 1, #events do
-    pcall(function() frame:RegisterEvent(events[i]) end)
-  end
-
-  frame:SetScript("OnEvent", function(_, event)
-    if event == "PLAYER_REGEN_DISABLED" then
-      Instance:NoteCombat()
-      return
-    end
-    if event == "UPDATE_BATTLEFIELD_STATUS" then
-      Instance:CheckBattlegroundEnd()
-      return
-    end
-    Instance:Update()
-  end)
-
   self:Update()
-  return frame
+  return true
+end
+
+-- The events the bootstrap must deliver, and which method each one feeds.
+-- GROUP_ROSTER_UPDATE is the Anniversary-era name for a party/raid change.
+Instance.Events = {
+  PLAYER_ENTERING_WORLD = "Update",
+  ZONE_CHANGED_NEW_AREA = "Update",
+  GROUP_ROSTER_UPDATE = "Update",
+  PLAYER_REGEN_DISABLED = "NoteCombat",
+  UPDATE_BATTLEFIELD_STATUS = "CheckBattlegroundEnd",
+}
+
+-- Single dispatch point so the bootstrap frame stays a wire and nothing else.
+-- An event this module does not claim is ignored rather than treated as a zone change.
+function Instance:OnEvent(event)
+  local method = self.Events[event]
+  if not method then return false end
+  self[method](self)
+  return true
 end
 
 function Instance:ResetForTests()

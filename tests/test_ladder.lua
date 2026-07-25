@@ -193,6 +193,65 @@ assert_eq(L:ApplyRemoteCommit({
 }), false, "nameless remote commit rejected")
 assert_eq(L:GetRecord("Away").rankId, 3, "malformed remote commits changed nothing")
 
+--------------------------------------------------------------------------------
+-- Rank-only remote commits: the member keeps the standing they earned
+--------------------------------------------------------------------------------
+L:ResetForTests()
+L:SetStanding("Keeper", 300)
+assert_eq(L:ApplyRemoteCommit({
+  name = "Keeper", rankId = 3, revision = 2, updatedAt = 10, updatedBy = "Pope",
+}), true, "a commit with no standing field applies")
+assert_eq(L:GetRecord("Keeper").rankId, 3, "the rank moves")
+assert_eq(L:GetRecord("Keeper").standing, 300,
+  "and an elevation does not wipe the standing that earned it")
+
+assert_eq(L:ApplyRemoteCommit({
+  name = "Keeper", rankId = 3, standing = 0, revision = 3, updatedAt = 11, updatedBy = "Pope",
+}), true, "an explicit standing still applies")
+assert_eq(L:GetRecord("Keeper").standing, 0, "an officer wipe is a real decision and lands")
+
+assert_eq(L:ApplyRemoteCommit({
+  name = "Stranger", rankId = 2, revision = 1, updatedAt = 1, updatedBy = "Pope",
+}), true, "a rank-only commit for an unknown member applies")
+assert_eq(L:GetRecord("Stranger").standing, 0, "who starts from no standing at all")
+
+--------------------------------------------------------------------------------
+-- Imported petitions: the target rank comes from our ladder, not the sender
+--------------------------------------------------------------------------------
+L:ResetForTests()
+local imported, importedIsNew = L:ImportSuggestion({ name = "Petitioner", toRankId = 2, standing = 120 })
+assert_true(imported ~= nil, "a well-aimed petition is queued")
+assert_eq(importedIsNew, true, "and reports as new")
+assert_eq(imported.fromRankId, 1, "the current rank comes from our own record")
+assert_eq(imported.toRankId, 2, "the target is the next rank")
+assert_eq(imported.threshold, ChurchOfBeef.Ranks.Threshold(2),
+  "the threshold is canon, not the sender's claim")
+assert_eq(imported.standing, 120, "the claimed standing rides along as evidence")
+assert_eq(L:HasOfficialRecord("Petitioner"), false, "hearing a petition seats nobody")
+
+local repeated, repeatedIsNew = L:ImportSuggestion({ name = "Petitioner", toRankId = 2, standing = 140 })
+assert_eq(repeatedIsNew, false, "a repeat petition does not queue twice")
+assert_eq(repeated.standing, 140, "but it does refresh the evidence")
+assert_eq(#L:GetSuggestions(), 1, "still one petition")
+
+-- Approve commits the queued target verbatim, so a petition aimed anywhere else is
+-- refused: a forged one must not become a one-click bestowal.
+assert_eq(select(1, L:ImportSuggestion({ name = "Climber", toRankId = 7, standing = 99999 })), nil,
+  "a petition for the Prophet's seat is refused")
+assert_eq(select(1, L:ImportSuggestion({ name = "Climber", toRankId = 5, standing = 99999 })), nil,
+  "so is one that skips ranks")
+assert_eq(select(1, L:ImportSuggestion({ name = "", toRankId = 2 })), nil, "a nameless petition is refused")
+assert_eq(select(1, L:ImportSuggestion("Climber")), nil, "a non-table petition is refused")
+assert_eq(#L:GetSuggestions(), 1, "none of those queued anything an officer could approve")
+
+L:ResetForTests()
+L:BestowProphet("Anointed", "Pope", 1)
+assert_eq(select(1, L:ImportSuggestion({ name = "Anointed", toRankId = 7 })), nil,
+  "the Prophet has no next rank to petition for")
+L:Commit("Topped", 5, 1000, "Pope", 1)
+assert_eq(select(1, L:ImportSuggestion({ name = "Topped" })), nil,
+  "and the top point rank cannot petition into the Council")
+
 -- A commit that lands while a local suggestion is pending clears the stale suggestion.
 L:ResetForTests()
 L:SetStanding("Absent", 50)

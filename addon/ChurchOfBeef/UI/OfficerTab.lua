@@ -134,8 +134,14 @@ end
 -- Hands Core's committed record to the wire. Best effort by design: a client with no
 -- BeefNet (or no guild) still made a real local commit, and login sync will carry it
 -- to the peers who missed the broadcast.
-local function broadcast(committed)
-  if COB.Net and COB.Net.SendRankCommit then COB.Net:SendRankCommit(committed) end
+--
+-- includeStanding is off for every rite but a standing correction. An elevation is
+-- about rank; shipping this officer's copy of an advisory point total with it would
+-- land on the member's own client and erase the standing they just earned.
+local function broadcast(committed, includeStanding)
+  if COB.Net and COB.Net.SendRankCommit then
+    COB.Net:SendRankCommit(committed, includeStanding and true or false)
+  end
 end
 
 -- RefreshLadder already dirties the officer queue alongside ladder and standing;
@@ -212,7 +218,9 @@ function OfficerTab:_Rite(name, commitFn, verb, announceFn)
     return false
   end
 
-  broadcast(committed)
+  -- Rank-only: Approve, Demote, Council and Prophet all pass nil standing to Commit,
+  -- so the replica must not carry a standing field either.
+  broadcast(committed, false)
   local rankTitle = title(committed.rankId)
   if announceFn then announceFn(committed.name, rankTitle) end
 
@@ -319,7 +327,8 @@ function OfficerTab:CorrectStanding(name, delta)
     return false
   end
 
-  broadcast(committed)
+  -- The one rite that means to move points, so the one broadcast that carries them.
+  broadcast(committed, true)
   self:_Status(string.format("Corrected: %s now holds %d standing.", name, committed.standing))
   self:_Remember(string.format("Corrected %s %d → %d", name, current.standing, committed.standing))
   toast(string.format("%s: %d standing", name, committed.standing))

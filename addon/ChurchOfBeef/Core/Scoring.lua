@@ -152,10 +152,19 @@ function Scoring:Grant(name, source, amount, now)
   local standing = record and record.standing or 0
   ladder:SetStanding(key, standing + payout)
   -- Suggest, never promote: crossing a threshold only queues officer work.
-  ladder:MaybeSuggest(key)
+  local suggestion, isNew = ladder:MaybeSuggest(key)
 
   self:_remember(key, source, payout, at)
   persist()
+
+  -- A petition nobody hears about is no petition at all: the officers who can act on
+  -- it are usually on other clients. Net owns what that means on the wire and on
+  -- screen, so Core neither sends nor draws. Fires once, on the crossing itself.
+  if isNew and suggestion then
+    local net = COB.Net
+    if net and net.OnLocalSuggestion then net:OnLocalSuggestion(suggestion) end
+  end
+
   return payout
 end
 

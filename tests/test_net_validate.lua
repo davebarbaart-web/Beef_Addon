@@ -283,9 +283,26 @@ assert_eq(N.sentCount, 0, "the answer waits for the jitter")
 assert_eq(S:OnSyncRequest("peerReq", "Steakina"), false, "a duplicate request does not double-schedule")
 
 -- Another peer answers while our jitter is still running.
-S:OnSyncState("peerReq", "", "Cardinal")
+local officerAnswer = S:Chunks({
+  { name = "Roastina", rankId = 2, standing = 60, revision = 4, updatedAt = 1800, updatedBy = "Pope" },
+})[1]
+S:OnSyncState("peerReq", officerAnswer, "Cardinal")
 stub.flushTimers()
 assert_eq(N.sentCount, 0, "our answer is suppressed once a peer has answered")
+
+-- Suppression has to cost something to claim: an empty or unsigned SYNC_STATE would
+-- otherwise be a one-message mute button for every login sync in the guild.
+reset()
+S.rand = function(low) return low end
+L:Commit("Beefina", 2, 60, "Pope", 1700)
+assert_true(S:OnSyncRequest("quietReq", "Steakina"), "a peer request schedules an answer")
+assert_eq(S:OnSyncState("quietReq", "", "Pleb"), 0, "an empty answer merges nothing")
+local forgedAnswer = S:Chunks({
+  { name = "Pleb", rankId = 5, standing = 9999, revision = 40, updatedAt = 9999, updatedBy = "Pleb" },
+})[1]
+assert_eq(S:OnSyncState("quietReq", forgedAnswer, "Pleb"), 0, "a member-signed answer merges nothing")
+stub.flushTimers()
+assert_eq(N.sentCount, 1, "neither one suppressed the answer a real peer was owed")
 
 reset()
 S.rand = function(low) return low end
@@ -390,6 +407,133 @@ L:ResetForTests()
 stub.fire(N.frame, "OnEvent", "CHAT_MSG_ADDON", N.Prefix,
   commit("Beefina", 5, 1200, 3, 1700, "Pope"), N.Channel, "Pope")
 assert_eq(L:GetRecord("Beefina").rankId, 5, "an officer commit off the event handler reaches the ladder")
+
+--------------------------------------------------------------------------------
+-- A rank-only commit crosses the wire without a standing field
+--------------------------------------------------------------------------------
+reset()
+L:SetStanding("Beefina", 480) -- local testimony; SetStanding bumps no revision
+
+assert_eq(deliver(N:Encode("RANK_COMMIT", "Beefina", 3, "", 4, 1700, "Pope")), true,
+  "an empty standing field is a legal rank-only commit")
+assert_eq(L:GetRecord("Beefina").rankId, 3, "the elevation lands")
+assert_eq(L:GetRecord("Beefina").standing, 480,
+  "and the standing the member earned survives their own promotion")
+
+assert_eq(deliver(commit("Beefina", 3, 0, 5, 1800, "Pope")), true, "a wipe still crosses the wire")
+assert_eq(L:GetRecord("Beefina").standing, 0, "and an officer correction still lands")
+
+-- What the Officer tab actually sends: rites are rank-only, corrections are not.
+reset()
+local clock = 0
+N.clock = function() return clock end
+local committed = L:Commit("Beefina", 2, nil, "Pope", 1700)
+assert_true(N:SendRankCommit(committed), "a rite replicates")
+assert_true(N.lastSent:find("Beefina:2::1:", 1, true) ~= nil,
+  "with the standing field left empty so no peer overwrites it")
+clock = 10
+assert_true(N:SendRankCommit(committed, true), "a standing correction replicates")
+assert_true(N.lastSent:find("Beefina:2:0:1:", 1, true) ~= nil, "carrying the number it means to set")
+
+--------------------------------------------------------------------------------
+-- SYNC_STATE authority: a bulk answer is still a set of officer decisions
+--------------------------------------------------------------------------------
+reset()
+local function anointment(officer)
+  return S:Chunks({
+    { name = "Pleb", rankId = 7, standing = 0, revision = 30, updatedAt = 9000, updatedBy = officer },
+  })[1]
+end
+
+S.pendingRequest = "anointReq"
+assert_eq(S:OnSyncState("anointReq", anointment("Pleb"), "Pleb"), 0,
+  "a member cannot anoint themselves inside a sync answer")
+assert_eq(L:HasOfficialRecord("Pleb"), false, "and the forged record never reached the ladder")
+assert_eq(S.answered["anointReq"], nil, "a refused answer does not silence the peers who could answer")
+
+assert_eq(S:OnSyncState("anointReq", anointment("Pope"), "Pleb"), 1,
+  "the same record signed by an officer applies")
+assert_eq(L:GetRecord("Pleb").rankId, 7,
+  "who relayed it does not matter; the officer inside the record does")
+assert_eq(S.answered["anointReq"], true, "a real answer suppresses further replies")
+
+-- Roster unread: hold and retry, exactly like a live commit.
+reset()
+N.rosterLookup = nil
+O:ResetForTests()
+GetNumGuildMembers = function() return 0 end
+
+S.pendingRequest = "holdReq"
+assert_eq(S:OnSyncState("holdReq", anointment("Pope"), "Cardinal"), 0,
+  "an answer arriving before the roster is not merged")
+assert_eq(#S.heldStates, 1, "it is held rather than trusted")
+assert_eq(L:HasOfficialRecord("Pleb"), false, "nothing unverified reached the ladder")
+
+GetNumGuildMembers = function() return #guild end
+N:OnRosterUpdate()
+assert_eq(#S.heldStates, 0, "the hold queue empties once the roster arrives")
+assert_eq(L:GetRecord("Pleb").rankId, 7, "and the held answer is merged then")
+
+--------------------------------------------------------------------------------
+-- Suggestion fanout: a crossing reaches the officers who can act on it
+--------------------------------------------------------------------------------
+dofile("addon/ChurchOfBeef/Core/Scoring.lua")
+
+local realToasts = COB.Toasts
+local toasts = {}
+COB.Toasts = { Show = function(_, text) toasts[#toasts + 1] = text return true end }
+
+reset()
+COB.Scoring:ResetForTests()
+stub.guildRankIndex = 5 -- the earner is a plain member
+
+COB.Scoring:GrantGora("Beefina", "win")
+assert_eq(#L:GetSuggestions(), 0, "one win is short of the threshold")
+assert_eq(#toasts, 0, "and says nothing")
+
+COB.Scoring:GrantGora("Beefina", "win")
+assert_eq(#L:GetSuggestions(), 1, "crossing the threshold queues the petition locally")
+assert_eq(#toasts, 1, "and tells the earner once")
+assert_eq(toasts[1], "Standing recognized \226\128\148 Cooked Beef suggested.",
+  "COB_TOAST_SUGGEST names the rank that is now within reach")
+
+local petition = N.lastSent
+assert_true(petition ~= nil and petition:find("SUGGESTION", 1, true) ~= nil,
+  "the petition also goes out on the wire")
+
+COB.Scoring:GrantGora("Beefina", "win")
+assert_eq(#toasts, 1, "more standing on the same petition does not announce it again")
+
+-- The officer's client: the petition has to land in the queue Approve reads from.
+reset()
+stub.guildRankIndex = 0
+assert_eq(#L:GetSuggestions(), 0, "the officer's queue starts empty")
+assert_eq(deliver(petition, "Beefina"), true, "a member's petition is accepted")
+
+local queued = L:GetSuggestions()
+assert_eq(#queued, 1, "and the officer can see it")
+assert_eq(queued[1].name, "Beefina", "the petitioner is named")
+assert_eq(queued[1].toRankId, 2, "aimed at the next rank")
+assert_eq(L:HasOfficialRecord("Beefina"), false, "hearing the petition seated nobody")
+
+-- What Approve does with it.
+local elevated = L:Commit(queued[1].name, queued[1].toRankId, nil, "Pope")
+assert_true(elevated ~= nil, "the queued petition is committable")
+assert_eq(elevated.rankId, 2, "at the rank the petition asked for")
+assert_eq(#L:GetSuggestions(), 0, "and the queue drains")
+
+reset()
+stub.guildRankIndex = 0
+assert_eq(deliver(N:Encode("SUGGESTION", "Pleb", 6, 7, 99999, 0), "Pleb"), false,
+  "a petition aimed at the Prophet's seat is refused")
+assert_eq(#L:GetSuggestions(), 0, "and queues nothing an officer could click")
+
+stub.guildRankIndex = 5
+assert_eq(deliver(petition, "Beefina"), false, "a member has no use for someone else's petition")
+assert_eq(#L:GetSuggestions(), 0, "so nothing is queued on a member's client")
+
+COB.Toasts = realToasts
+stub.guildRankIndex = nil
 
 reset()
 COB.DB = realDB

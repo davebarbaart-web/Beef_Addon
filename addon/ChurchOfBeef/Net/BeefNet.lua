@@ -87,6 +87,17 @@ local function chat(text)
   end
 end
 
+-- Net reports outcomes to the private toast and asks the open window to redraw; it
+-- never builds a frame or writes a widget itself.
+local function refreshUI()
+  if not COB.UI then return end
+  if COB.UI.RefreshLadder then COB.UI:RefreshLadder() end
+end
+
+local function toast(text)
+  if COB.Toasts and COB.Toasts.Show then COB.Toasts:Show(text) end
+end
+
 -- Injectable clock so the outbound throttle is provable offline. GetTime is the
 -- monotonic client clock; a system-time change must not open the throttle gate.
 local function now(self, given)
@@ -137,6 +148,8 @@ end
 --------------------------------------------------------------------------------
 
 -- Order is load-bearing: name, rankId, standing, revision, updatedAt, updatedBy.
+-- An absent standing is encoded as an empty field, which every receiver reads as
+-- "rank only, keep your own standing".
 function Net:EncodeRecordFields(record)
   return record.name, record.rankId, record.standing, record.revision,
     record.updatedAt or 0, record.updatedBy or ""
@@ -154,8 +167,14 @@ function Net:ParseRecord(fields)
   local ranks = COB.Ranks
   if not rankId or not ranks or not ranks.ById[rankId] then return nil, "invalid rank id" end
 
-  local standing = finite(fields[3])
-  if not standing or standing < 0 then return nil, "invalid standing" end
+  -- Empty standing field: a rank-only rite. Nil travels through to Core, which
+  -- then leaves the member's advisory standing alone. A present-but-nonsense
+  -- standing is still a refusal — silence and garbage are different claims.
+  local standing = nil
+  if trim(tostring(fields[3] == nil and "" or fields[3])) ~= nil then
+    standing = finite(fields[3])
+    if not standing or standing < 0 then return nil, "invalid standing" end
+  end
 
   local revision = finite(fields[4])
   if not revision or revision < 1 then return nil, "invalid revision" end
@@ -307,9 +326,15 @@ end
 
 -- Called by the Officer tab after Ladder:Commit has already written official state.
 -- The UI never forges a record here: it forwards what Core returned.
-function Net:SendRankCommit(record)
+--
+-- includeStanding must be asked for. Elevations, demotions and appointments are
+-- rank-only rites, and shipping the officer's copy of an advisory point total with
+-- them would overwrite the standing the member actually earned. Only a deliberate
+-- standing correction sets the flag.
+function Net:SendRankCommit(record, includeStanding)
   if type(record) ~= "table" then return false, "no record" end
-  local parsed = self:ParseRecord({ record.name, record.rankId, record.standing,
+  local standing = includeStanding and record.standing or nil
+  local parsed = self:ParseRecord({ record.name, record.rankId, standing,
     record.revision, record.updatedAt, record.updatedBy })
   if not parsed then return false, "record is not committable" end
   return self:Send(self:Encode("RANK_COMMIT", self:EncodeRecordFields(parsed)))
@@ -326,6 +351,25 @@ function Net:SendSuggestion(suggestion)
     suggestion.standing or 0, suggestion.threshold or 0))
 end
 
+-- The local client just crossed a threshold. One place decides what that means on
+-- the wire and on screen, so Core only has to say "this happened" and stays free of
+-- both SendAddonMessage and the UI.
+function Net:OnLocalSuggestion(suggestion)
+  if type(suggestion) ~= "table" then return false, "no suggestion" end
+
+  local title = COB.Ranks and COB.Ranks.Title(suggestion.toRankId) or nil
+  if title then
+    -- COB_TOAST_SUGGEST (copy guidelines): the earner learns their standing was
+    -- recognized, and that a petition — not a promotion — now exists.
+    toast(string.format("Standing recognized \226\128\148 %s suggested.", title))
+  end
+
+  -- Best effort: a guildless or Net-less client still queued the petition locally,
+  -- and the officer will see it at the next login sync or the next grant.
+  local sent = self:SendSuggestion(suggestion) and true or false
+  return sent
+end
+
 function Net:SendSyncRequest(reqId)
   if not trim(reqId) then return false, "no request id" end
   return self:Send(self:Encode("SYNC_REQUEST", reqId))
@@ -339,15 +383,6 @@ end
 --------------------------------------------------------------------------------
 -- Inbound
 --------------------------------------------------------------------------------
-
-local function refreshUI()
-  if not COB.UI then return end
-  if COB.UI.RefreshLadder then COB.UI:RefreshLadder() end
-end
-
-local function toast(text)
-  if COB.Toasts and COB.Toasts.Show then COB.Toasts:Show(text) end
-end
 
 function Net:_WarnVersion(version)
   if self.warnedVersion then return false end
@@ -435,17 +470,30 @@ function Net:HandleHello(message, sender)
   return true
 end
 
+-- A member's petition. Never a promotion and never an official record: it lands in
+-- the local pending queue so the officer tab has something to approve, and Core
+-- re-derives the target rank from our own ladder rather than trusting the wire.
+--
+-- Members drop these on the floor: only the client that can act on a petition has
+-- any reason to keep one.
 function Net:HandleSuggestion(message, sender)
   if not self:IsCompatible(message.version) then return false, "protocol mismatch" end
   local name = trim(message.fields[1])
   local toRankId = finite(message.fields[3])
   if not name or not toRankId then return false, "malformed suggestion" end
-  -- Never a promotion, never a ladder write: officers still approve locally, and a
-  -- non-officer hearing this has nothing to do with it.
   if not (COB.Officer and COB.Officer:LocalIsOfficer()) then return false, "not an officer" end
+  if not (COB.Ladder and COB.Ladder.ImportSuggestion) then return false, "ladder unavailable" end
 
-  local title = COB.Ranks and COB.Ranks.Title(toRankId) or "?"
-  toast(string.format("%s petitions for %s.", name, title))
+  local suggestion, err = COB.Ladder:ImportSuggestion({
+    name = name,
+    toRankId = toRankId,
+    standing = finite(message.fields[4]),
+  })
+  if not suggestion then return false, err end
+
+  local title = COB.Ranks and COB.Ranks.Title(suggestion.toRankId) or "?"
+  toast(string.format("%s petitions for %s.", suggestion.name, title))
+  refreshUI()
   return true
 end
 
@@ -480,7 +528,11 @@ end
 
 function Net:OnRosterUpdate()
   if COB.Officer and COB.Officer.RefreshRosterCache then COB.Officer:RefreshRosterCache() end
-  return self:ReleaseHeld()
+  local applied = self:ReleaseHeld()
+  -- A login sync answer that beat the roster in is held by Sync for the same reason
+  -- a commit is: the officer who signed each record cannot be checked yet.
+  if COB.Sync and COB.Sync.ReleaseHeldStates then COB.Sync:ReleaseHeldStates() end
+  return applied
 end
 
 --------------------------------------------------------------------------------

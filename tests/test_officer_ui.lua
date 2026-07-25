@@ -38,7 +38,7 @@ stub.playerName = "Popeina"
 -- to answer to a roster entry. Steakina carries a realm suffix on purpose.
 stub.guildRoster = {
   "Popeina", "Beefina", "Steakina-Nightslayer", "Chuckina", "Fifthina",
-  "Prophetina", "Falseina", "Brisketina", "Rumpina",
+  "Prophetina", "Falseina", "Brisketina", "Rumpina", "Remotina",
 }
 
 local function chatCount() return #stub.chat end
@@ -83,6 +83,8 @@ assert_eq(Tab.announceLabel:GetText(), "Announce promotions to guild chat",
 --------------------------------------------------------------------------------
 crossThreshold("Beefina")
 assert_eq(#COB.Ladder:GetSuggestions(), 1, "crossing a threshold queues one petition")
+assert_eq(COB.Toasts.frame.text:GetText(), "Standing recognized \226\128\148 Cooked Beef suggested.",
+  "COB_TOAST_SUGGEST tells the earner their standing was recognized")
 
 assert_eq(Tab:Approve("Beefina"), false, "non-officer approve refused")
 assert_eq(rankOf("Beefina"), 1, "refused approve committed nothing")
@@ -118,6 +120,9 @@ assert_eq(Tab.approve:GetText(), "Approve: Cooked Beef", "approve names the dest
 local realNet = COB.Net
 COB.Net = nil
 assert_eq(COB.Net, nil, "approve must tolerate a missing Net")
+-- The petition toast is still on screen; clear it so the next assertion reads the
+-- approval line rather than the one the threshold raised.
+COB.Toasts:HideAll()
 assert_true(stub.fire(Tab.approve, "OnClick"), "approve button wired")
 
 assert_eq(rankOf("Beefina"), 2, "approve commits the suggested rank")
@@ -352,6 +357,22 @@ assert_eq(Tab.overflow:GetText(), "STALE", "a hidden officer tab stays idle")
 assert_eq(COB.UI:ShowTab("officer"), "officer", "and comes back to the front")
 assert_true(Tab.overflow:GetText() ~= "STALE", "returning to a tab redraws it")
 assert_eq(#COB.Ladder:GetSuggestions(), 2, "both petitions are queued")
+
+--------------------------------------------------------------------------------
+-- A petition that arrived over BeefNet is approvable like one earned in front of us
+--------------------------------------------------------------------------------
+local remote, remoteIsNew = COB.Ladder:ImportSuggestion({
+  name = "Remotina", toRankId = 2, standing = 120,
+})
+assert_true(remote ~= nil, "a replicated petition enters the local queue")
+assert_eq(remoteIsNew, true, "and reports as new")
+
+COB.UI:RefreshLadder()
+Tab.selected = "Remotina"
+assert_eq(Tab:Approve("Remotina"), true, "an officer can approve a petition they never watched being earned")
+assert_eq(rankOf("Remotina"), 2, "the approval commits the petitioned rank")
+assert_eq(lastChat(), "The Church recognizes Remotina, elevated to Cooked Beef.",
+  "and the guild hears about it like any other elevation")
 
 --------------------------------------------------------------------------------
 -- Announce refusals in their own right

@@ -171,7 +171,8 @@ COB.Ceremony:Start("Vigil", {
 }, 1)
 
 local active = COB.Ceremony:GetActive()
-assert_eq(#active.tracked, 3, "non-guildmates and AFK flesh are never tracked")
+-- Glossary 51: the AFK flag is not a pay wall, so only the pug is turned away.
+assert_eq(#active.tracked, 4, "non-guildmates are never tracked; an AFK flag is not a gate")
 assert_eq(standingOf("Pugina"), 0, "starting a ceremony grants nothing by itself")
 
 closed = COB.Ceremony:Close({
@@ -181,10 +182,11 @@ closed = COB.Ceremony:Close({
   { name = "Latina" },
 }, 2)
 
-assert_eq(#closed.attendees, 1, "only the attendee who stayed and was awake is credited")
+assert_eq(#closed.attendees, 2, "the attendees who stayed are credited")
 assert_eq(closed.attendees[1].name, "Beefina", "the credited attendee is the one who stayed")
 assert_eq(standingOf("Beefina"), Points.Ceremony, "the faithful attendee is paid")
-assert_eq(standingOf("Steakina"), 0, "going AFK before the close forfeits the credit")
+assert_eq(standingOf("Steakina"), Points.Ceremony,
+  "an AFK flag at the close is not a pay wall (glossary 51)")
 assert_eq(standingOf("Leaverina"), 0, "leaving before the close forfeits the credit")
 assert_eq(standingOf("Pugina"), 0, "a non-guildmate never earns church standing")
 assert_eq(standingOf("Latina"), 0, "arriving only for the closing second earns nothing")
@@ -234,12 +236,14 @@ stub.group = {
 }
 
 started = COB.Ceremony:Start("Party rite", nil, 1)
-assert_eq(#started.tracked, 2, "the live sampler keeps the officiant and the awake guildmate")
-assert_eq(started.tracked[1], "Popeina", "the officiant attends their own ceremony")
-assert_eq(started.tracked[2], "Steakina", "the guildmate in the party attends")
+-- Tracked names come back sorted: Nappina, Popeina, Steakina.
+assert_eq(#started.tracked, 3, "the live sampler keeps the officiant and both guildmates")
+assert_eq(started.tracked[2], "Popeina", "the officiant attends their own ceremony")
+assert_eq(started.tracked[3], "Steakina", "the guildmate in the party attends")
 COB.Ceremony:Close(nil, 2)
 assert_eq(standingOf("Popeina"), Points.Ceremony, "the officiant is credited")
 assert_eq(standingOf("Steakina"), Points.Ceremony, "the party guildmate is credited")
+assert_eq(standingOf("Nappina"), Points.Ceremony, "so is the guildmate the client flagged AFK")
 assert_eq(standingOf("Pugina"), 0, "the pug is not")
 
 -- Raid unit ids include the player, so the sampler must not pay them twice.

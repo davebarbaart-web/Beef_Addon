@@ -225,6 +225,58 @@ function Ladder:MaybeSuggest(name)
   return copySuggestion(suggestion), true
 end
 
+-- A petition that arrived over BeefNet. Returns suggestion, isNew like MaybeSuggest.
+--
+-- Suggestions are not authority — an officer still approves — but Approve commits the
+-- queued target rank verbatim, so the target is derived from *our* official record
+-- instead of being trusted from the wire. Otherwise a forged petition claiming
+-- "Pleb is one step from Beef Prophet" would hand an officer a one-click bestowal.
+function Ladder:ImportSuggestion(suggestion)
+  if type(suggestion) ~= "table" then return nil, "no suggestion" end
+  local key = normalizeName(suggestion.name)
+  if not key then return nil, "invalid name" end
+
+  local ranks = COB.Ranks
+  if not ranks then return nil, "no rank canon" end
+
+  -- An unknown petitioner reads as Fresh Beef without being written into the ladder:
+  -- hearing about someone must not seat them.
+  local record = self.records[key] or newRecord(key)
+  local fromRankId = record.rankId
+  if ranks.IsPointDriven(fromRankId) ~= true then return nil, "rank is not point-driven" end
+
+  local toRankId = fromRankId + 1
+  if ranks.IsPointDriven(toRankId) ~= true then return nil, "next rank is not point-driven" end
+  -- A petition aimed anywhere but the next rank disagrees with our ladder; the
+  -- safe reading is that one of the two clients is stale, not that we should jump.
+  if suggestion.toRankId ~= nil and suggestion.toRankId ~= toRankId then
+    return nil, "petition does not match the local record"
+  end
+
+  local threshold = ranks.Threshold(toRankId)
+  -- Standing is the petitioner's own testimony; the threshold is canon, never theirs.
+  local claimed = isValidStanding(suggestion.standing) and suggestion.standing or 0
+
+  local pending = self.suggestions[key]
+  if pending and pending.toRankId == toRankId then
+    if claimed > (pending.standing or 0) then pending.standing = claimed end
+    return copySuggestion(pending), false
+  end
+
+  self.suggestions[key] = {
+    name = key,
+    fromRankId = fromRankId,
+    toRankId = toRankId,
+    standing = claimed,
+    threshold = type(threshold) == "number" and threshold or 0,
+    -- Receipt time, not the sender's clock: the officer queue drains oldest first,
+    -- and a backdated petition must not be able to jump it.
+    createdAt = resolveTime(nil),
+  }
+  persist()
+  return copySuggestion(self.suggestions[key]), true
+end
+
 function Ladder:GetSuggestions()
   local out = {}
   for _, suggestion in pairs(self.suggestions) do
@@ -311,13 +363,18 @@ end
 
 -- Seat and uniqueness limits are deliberately not re-checked here. A replicated commit
 -- is already-decided history; rejecting it would leave clients permanently disagreeing.
+--
+-- A nil standing means the sender replicated a rite that did not touch points, so the
+-- local advisory standing is kept. That matters most on the promoted member's own
+-- client: their earned points live only there, and an officer's copy of them is
+-- usually zero, so applying it would wipe the very testimony that was just rewarded.
 function Ladder:ApplyRemoteCommit(record)
   if type(record) ~= "table" then return false end
 
   local key = normalizeName(record.name)
   if not key then return false end
   if not isValidRankId(record.rankId) then return false end
-  if not isValidStanding(record.standing) then return false end
+  if record.standing ~= nil and not isValidStanding(record.standing) then return false end
   if type(record.revision) ~= "number" or record.revision < 1 then return false end
 
   local updatedAt = type(record.updatedAt) == "number" and record.updatedAt or 0
@@ -330,7 +387,7 @@ function Ladder:ApplyRemoteCommit(record)
 
   local target = self:_ensure(key)
   target.rankId = record.rankId
-  target.standing = record.standing
+  if record.standing ~= nil then target.standing = record.standing end
   target.revision = record.revision
   target.updatedAt = updatedAt
   target.updatedBy = updatedBy
