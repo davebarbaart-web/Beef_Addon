@@ -1,0 +1,54 @@
+package.path = package.path .. ";./tests/?.lua;./addon/ChurchOfBeef/?.lua;./addon/ChurchOfBeef/?/?.lua"
+
+require("wow_stub")
+
+-- Suites need the test-only escape hatches (ResetForTests); the addon never sets this.
+ChurchOfBeef = ChurchOfBeef or {}
+ChurchOfBeef._IN_TEST = true
+
+local failed = 0
+local passed = 0
+
+function assert_eq(a, b, msg)
+  if a ~= b then
+    failed = failed + 1
+    print("FAIL: " .. (msg or "") .. " expected " .. tostring(b) .. " got " .. tostring(a))
+  else
+    passed = passed + 1
+  end
+end
+
+function assert_true(v, msg)
+  assert_eq(not not v, true, msg)
+end
+
+-- Individual suites register themselves by calling their file when required.
+local suites = {
+  "test_ranks",
+  "test_ladder",
+  "test_scoring",
+  "test_officer",
+  "test_db",
+  "test_net_validate",
+  "test_ui",
+  "test_officer_ui",
+  "test_gora_ceremony",
+  "test_instance",
+}
+
+for _, name in ipairs(suites) do
+  -- Force the flag before every suite load so an earlier suite flipping it
+  -- (then raising before it restores) can never poison a later suite.
+  ChurchOfBeef._IN_TEST = true
+  local ok, err = pcall(function() require(name) end)
+  if not ok then
+    -- Suites appear as tasks land; missing suite is OK until created.
+    if not tostring(err):find("module '" .. name .. "' not found") then
+      failed = failed + 1
+      print("FAIL suite " .. name .. ": " .. tostring(err))
+    end
+  end
+end
+
+print(string.format("Tests finished: %d passed, %d failed", passed, failed))
+if failed > 0 then os.exit(1) end
