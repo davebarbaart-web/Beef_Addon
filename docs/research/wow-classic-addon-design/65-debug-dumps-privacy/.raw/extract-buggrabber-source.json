@@ -1,0 +1,16 @@
+{
+  "extract_id": "extract_366011db14951f35a8ae4723ae4e5725",
+  "session_id": "session_366011db14951f35a8ae4723ae4e5725",
+  "status": "ok",
+  "results": [],
+  "errors": [
+    {
+      "url": "https://github.com/funkydude/BugGrabber/blob/master/BugGrabber.lua",
+      "error_type": "http_error",
+      "http_status_code": 404,
+      "content": null
+    }
+  ],
+  "usage": [],
+  "warnings": []
+}

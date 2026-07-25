@@ -1,0 +1,63 @@
+{
+  "extract_id": "extract_9081066acbac824977528a0109ab6b96",
+  "session_id": "session_9081066acbac824977528a0109ab6b96",
+  "status": "ok",
+  "results": [
+    {
+      "url": "https://warcraft.wiki.gg/wiki/API_debugprofilestop",
+      "title": "debugprofilestop - Warcraft Wiki - Your wiki guide to the World of Warcraft",
+      "publish_date": "2005-10-22",
+      "excerpts": [
+        "# debugprofilestop\nFrom Warcraft Wiki\nJump to navigation Jump to search\n| Main Menu |\n| * WoW API |\n* Lua API\n* FrameXML API\n* Widget API\n* Widget scripts\n* XML schema\n* Events\n* CVars\n\n...\n\n* [](https://mrbuds.github.io/wow-api-web/?search=api:function:debugprofilestop:FrameScript) [/api addon](https://mrbuds.github.io/wow-api-web/?search=api:function:debugprofilestop:FrameScript)\n* [](https://wowprogramming.com/docs/api/debugprofilestop.html) [Wowprogramming](https://wowprogramming.com/docs/api/debugprofilestop.html) |\n|Patch |\n|Added in 1.7.0 / 1.13.2 |\n\u2191 _World of Warcraft API_\nReturns the time in milliseconds since the last debugprofilestart call.\n```\nelapsedMilliseconds = debugprofilestop()\n```\n\n## Returns\n```\nelapsedMilliseconds\nnumber \\- Time since profiling was started in milliseconds.\n```\n\n## Details\n* Debug profiling provides a high-precision timer that can be used to profile code.\n* Calling this function, despite its name, does NOT stop the timer. It simply returns the time since the previous debugprofilestart() call!\n* Note that if you are simply using this to profile your own code, it is preferable to NOT keep re-starting the timer since it will interfere with other addons doing the same. Instead, do this:\n```\n local beginTime = debugprofilestop()\n -- do lots of stuff\n -- that takes lots of time\n \n local timeUsed = debugprofilestop()  -beginTime\n print(\"I used \"..timeUsed..\" milliseconds!\")\n```\n\n## See also\n* debugprofilestart\nRetrieved from \" [https://warcraft.wiki.gg/wiki/API_debugprofilestop?oldid=6341369](https://warcraft.wiki.gg/wiki/API_debugprofilestop?oldid=6341369) \"\nCategories :\n* API systems/FrameScript\n* API functions\n[Report bad advertisement](https://www.wiki.gg/t/bad-ad)"
+      ]
+    },
+    {
+      "url": "https://warcraft.wiki.gg/wiki/API_GetAddOnMemoryUsage",
+      "title": "GetAddOnMemoryUsage - Warcraft Wiki - Your wiki guide to the World of Warcraft",
+      "publish_date": "2022-07-31",
+      "excerpts": [
+        "# GetAddOnMemoryUsage\nFrom Warcraft Wiki\nJump to navigation Jump to search\n| Main Menu |\n| * WoW API |\n* Lua API\n* FrameXML API\n* ScriptObject API\n* Widget scripts\n* XML schema\n* Events\n* CVars\n\n...\n\n* [Wowprogramming.png](https://wowprogramming.com/docs/api/GetAddOnMemoryUsage.html) [Wowprogramming](https://wowprogramming.com/docs/api/GetAddOnMemoryUsage.html) |\n|Patch |\n|Added in 2.1.0 / 1.13.2 |\n\u2191 _World of Warcraft API_\nReturns the memory used for an addon.\n```\nmem = GetAddOnMemoryUsage ( name )\n```\n\n## Arguments\n```\nname\nuiAddon : string | number \\- The name of the addon to be queried, or an index from 1 to GetNumAddOns . The state of Blizzard addons can only be queried by name.\n```\n\n## Returns\n```\nmem\nnumber \\- Memory usage of the addon in kilobytes.\n```\n\n## Details\n* This function returns a cached value calculated by UpdateAddOnMemoryUsage ()\n* This function will raise an error if a secure Blizzard addon is queried.\n\n## Example\nPrints the memory usage for all addons.\n```\nUpdateAddOnMemoryUsage () \n for i = 1 , GetNumAddOns () do \n local name = GetAddOnInfo ( i ) \n print ( GetAddOnMemoryUsage ( i ), name ) \n end\n```\n\n## Patch changes\n* Dragonflight **Patch 10.1.0 (2023-05-02):** Will now raise an error if a secure addon is queried.\nRetrieved from \" [https://warcraft.wiki.gg/wiki/API_GetAddOnMemoryUsage?oldid=6587531](https://warcraft.wiki.gg/wiki/API_GetAddOnMemoryUsage?oldid=6587531) \"\nCategories :\n* API systems/PerformanceScript\n* API functions"
+      ]
+    },
+    {
+      "url": "https://warcraft.wiki.gg/wiki/API_UpdateAddOnCPUUsage",
+      "title": "UpdateAddOnCPUUsage - Warcraft Wiki - Your wiki guide to the World of Warcraft",
+      "publish_date": "2024-03-23",
+      "excerpts": [
+        "# UpdateAddOnCPUUsage\nFrom Warcraft Wiki\nJump to navigation Jump to search\n| Main Menu |\n| * WoW API |\n* Lua API\n* FrameXML API\n* ScriptObject API\n* Widget scripts\n* XML schema\n* Events\n* CVars\n\n...\n\nDoc+NOT+path:data/impl+NOT+path:wow-api.lua+NOT+path:wow-widget-api.lua+NOT+path:textentry.lua+NOT+owner:papa-smurf+NOT+owner:Bhahlou+NOT+owner:nwpark+NOT+owner:turulix+NOT+path:luaserver.lua+NOT+repo:QartemisT/WoW.luadoc+NOT+owner:92Garfield+NOT+owner:BreakBB+NOT+owner:Logonz+NOT+owner:Subwaytime+NOT+owner:ZenonWow+NOT\n\n...\n\nsearch](https://github.com/search?type=code&q=/(?-i)UpdateAddOnCPUUsage/+language:Lua+NOT+is:fork+NOT+path:Interface+NOT+path:FrameXML+NOT+path:GlueXML+NOT+path:SharedXML+NOT+path:AddOns+NOT+repo:BigWigsMods/WoWUI+NOT+owner:Ketho+NOT+path:.luacheckrc+NOT+repo:Resike/BlizzardInterfaceResources+NOT+repo:mrbuds/wow-api-web\n\n...\n\nOT+path:data/impl+NOT+path:wow-api.lua+NOT+path:wow-widget-api.lua+NOT+path:textentry.lua+NOT+owner:papa-smurf+NOT+owner:Bhahlou+NOT+owner:nwpark+NOT+owner:turulix+NOT+path:luaserver.lua+NOT+repo:QartemisT/WoW.luadoc+NOT+owner:92Garfield+NOT+owner:BreakBB+NOT+owner:Logonz+NOT+owner:Subwaytime+NOT+owner:ZenonWow+NOT+path\n\n...\n\n* [Blizz.gif](https://github.com/search?q=repo:Ketho/wow-ui-source-midnight-ptr+%22UpdateAddOnCPUUsage%22+path:/%5EInterface/AddOns/Blizzard_APIDocumentationGenerated//&type=code) [Blizzard\nDocs](https://github.com/search?q=repo:Ketho/wow-ui-source-midnight-ptr+%22UpdateAddOnCPUUsage%22+path:/%5EInterface/AddOns/Blizzard_APIDocumentationGenerated//&type=code)\n* [Wowprogramming.png](https://wowprogramming.com/docs/api/UpdateAddOnCPUUsage.html) [Wowprogramming](https://wowprogramming.com/docs/api/UpdateAddOnCPUUsage.html) |\n|Patch |\n|Added in 2.1.0 / 1.13.2 |\n\u2191 _World of Warcraft API_\n```\nUpdateAddOnCPUUsage ()\n```\nRetrieved from \" [https://warcraft.wiki.gg/wiki/API_UpdateAddOnCPUUsage?oldid=6588941](https://warcraft.wiki.gg/wiki/API_UpdateAddOnCPUUsage?oldid=6588941) \"\nCategories :\n* API systems/PerformanceScript\n* API functions"
+      ]
+    },
+    {
+      "url": "https://warcraft.wiki.gg/wiki/API_GetAddOnCPUUsage",
+      "title": "GetAddOnCPUUsage - Warcraft Wiki - Your wiki guide to the World of Warcraft",
+      "publish_date": "2007-12-13",
+      "excerpts": [
+        "# GetAddOnCPUUsage\n* [Wowprogramming.png](https://wowprogramming.com/docs/api/GetAddOnCPUUsage.html) [Wowprogramming](https://wowprogramming.com/docs/api/GetAddOnCPUUsage.html) |\n|Patch |\n|Added in 2.1.0 / 1.13.2 |\n\u2191 _World of Warcraft API_\nReturns the total time used for an addon.\n```\ntime = GetAddOnCPUUsage ( name )\n```\n\n## Arguments\n```\nname\nuiAddon : string | number \\- The name of the addon to be queried, or an index from 1 to GetNumAddOns . The state of Blizzard addons can only be queried by name.\n```\n\n## Returns\n```\ntime\nnumber \\- The total time used by the specified AddOn, in milliseconds.\n```\n\n## Details\n* This function will raise an error if a secure Blizzard addon is queried.\n* This function returns a cached value calculated by UpdateAddOnCPUUsage(). The time is the sum of GetFunctionCPUUsage(f, false) for all functions f created on behalf of the AddOn.\nThese functions include both functions created directly by the AddOn itself, as well as functions created by external functions that where called by the AddOn. That means even though an external function does not belong to an AddOn, functions created by that external function are attributed to the calling AddOn.\n* Notably, the time used does NOT include calls into the WoW API.\nRunning this code will show the addon using 300-350ms CPU time:\n```\n e=debugprofilestop()+500; while debugprofilestop()<e do end\n -- we're spending a lot of time simply calling the API!\n```\n```\nBut running THIS code will show the addon using much closer to 500ms CPU time:\n```\n```\n e=debugprofilestop()+500; while debugprofilestop()<e do \n   for i=1,1000 do end\n end\n```\n```\nHowever, in both cases, :GetFrameCPUUsage() on the addon's frame will report 500ms used.\n```\n\n## Patch changes\n* Dragonflight **Patch 10.1.0 (2023-05-02):** Will now raise an error if a secure addon is queried.\nRetrieved from \" [https://warcraft.wiki.gg/wiki/API_GetAddOnCPUUsage?oldid=6587527](https://warcraft.wiki.gg/wiki/API_GetAddOnCPUUsage?oldid=6587527) \"\nCategories :\n* API systems/PerformanceScript\n* API functions"
+      ]
+    },
+    {
+      "url": "https://warcraft.wiki.gg/wiki/API_UpdateAddOnMemoryUsage",
+      "title": "UpdateAddOnMemoryUsage - Warcraft Wiki - Your wiki guide to the World of Warcraft",
+      "publish_date": "2024-03-23",
+      "excerpts": [
+        "# UpdateAddOnMemoryUsage\nFrom Warcraft Wiki\nJump to navigation Jump to search\n| Main Menu |\n| * WoW API |\n* Lua API\n* FrameXML API\n* ScriptObject API\n* Widget scripts\n* XML schema\n* Events\n* CVars\n* Macro commands\n* Combat Log\n* Escape sequences\n* Hyperlinks\n* API changes\n* HOWTOs\n* [Discord logo.png](https://discord.gg/txUg39Vhc6) [wowuidev](https://discord.gg/txUg39Vhc6) |\n\n...\n\nwow-api-web+NOT+owner:arkanoid1+NOT+owner:refaim+NOT+owner:clicketz+NOT+owner:Zetaprime82+NOT+owner:biroistv+NOT+owner:liquidbase+NOT+owner:Falkicon+NOT+repo:Ellypse/IntelliJ-IDEA-Lua-IDE-WoW-API+NOT+repo:ChrisKader/wowapi+NOT+repo:nebularg/wow-selene-parser+NOT+repo:Resike/LuaLSP+NOT+owner:MrMartin92+NOT+repo:ketho-\nwow/KethoDoc+NOT+path:data/impl+NOT+path:wow-api.lua+NOT+path:wow-widget-api.lua+NOT+path:textentry.lua+NOT+owner:papa-smurf+NOT+owner:Bhahlou+NOT+owner:nwpark+NOT+owner:turulix+NOT+path:luaserver.lua+NOT+repo:QartemisT/WoW.luadoc+NOT+owner:92Garfield+NOT+owner:BreakBB+NOT+owner:Logonz+NOT+owner:Subwaytime+NOT+owner:\n\n...\n\nethoDoc+NOT+path:data/impl+NOT+path:wow-api.lua+NOT+path:wow-widget-api.lua+NOT+path:textentry.lua+NOT+owner:papa-smurf+NOT+owner:Bhahlou+NOT+owner:nwpark+NOT+owner:turulix+NOT+path:luaserver.lua+NOT+repo:QartemisT/WoW.luadoc+NOT+owner:92Garfield+NOT+owner:BreakBB+NOT+owner:Logonz+NOT+owner:Subwaytime+NOT+owner:Zenon\n\n...\n\n* [Blizz.gif](https://github.com/search?q=repo:Ketho/wow-ui-source-midnight-ptr+%22UpdateAddOnMemoryUsage%22+path:/%5EInterface/AddOns/Blizzard_APIDocumentationGenerated//&type=code) [Blizzard\nDocs](https://github.com/search?q=repo:Ketho/wow-ui-source-midnight-ptr+%22UpdateAddOnMemoryUsage%22+path:/%5EInterface/AddOns/Blizzard_APIDocumentationGenerated//&type=code)\n* [Wowprogramming.png](https://wowprogramming.com/docs/api/UpdateAddOnMemoryUsage.html) [Wowprogramming](https://wowprogramming.com/docs/api/UpdateAddOnMemoryUsage.html) |\n|Patch |\n|Added in 2.1.0 / 1.13.2 |\n\u2191 _World of Warcraft API_\n```\nUpdateAddOnMemoryUsage ()\n```\nRetrieved from \" [https://warcraft.wiki.gg/wiki/API_UpdateAddOnMemoryUsage?oldid=6588942](https://warcraft.wiki.gg/wiki/API_UpdateAddOnMemoryUsage?oldid=6588942) \"\nCategories :\n* API systems/PerformanceScript\n* API functions"
+      ]
+    },
+    {
+      "url": "https://wowpedia.fandom.com/wiki/Useful_AddOns_for_debugging/profiling",
+      "title": "Client Challenge",
+      "publish_date": null,
+      "excerpts": [
+        "A required part of this site couldn\u2019t load. This may be due to a browser\nextension, network issues, or browser settings. Please check your\nconnection, disable any ad blockers, or try using a different browser."
+      ]
+    }
+  ],
+  "errors": [],
+  "usage": [
+    {
+      "name": "sku_extract_excerpts",
+      "count": 6
+    }
+  ],
+  "warnings": []
+}

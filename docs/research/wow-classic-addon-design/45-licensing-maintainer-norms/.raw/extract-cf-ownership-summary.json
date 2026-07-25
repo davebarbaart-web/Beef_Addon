@@ -1,0 +1,23 @@
+{
+  "extract_id": "extract_18756d59de9f7c061ee4db1d6d0ff007",
+  "session_id": "session_18756d59de9f7c061ee4db1d6d0ff007",
+  "status": "ok",
+  "results": [
+    {
+      "url": "https://legalclarity.org/who-owns-curseforge-from-twitch-to-overwolf/",
+      "title": "Who Owns CurseForge: From Twitch to Overwolf - LegalClarity",
+      "publish_date": "2026-06-12",
+      "excerpts": [
+        "# Who Owns CurseForge: From Twitch to Overwolf\n## How Creators Earn Money on CurseForge\n### Tax Reporting for Mod Authors\nregardless of whether they receive the form. \u2078 Internal Revenue Service. [Understanding Your Form 1099-K](https://www.irs.gov/businesses/understanding-your-form-1099-k)\n\n## Intellectual Property Rights for Mod Authors\nMod authors keep ownership of their work when they upload to CurseForge. The platform does not claim title to your mods.\nHowever, by submitting a mod, you grant Overwolf a broad, worldwide, [royalty-free license](https://legalclarity.org/what-does-royalty-free-mean-and-how-does-it-work/) to use, store, reproduce, distribute, modify, and create [derivative\nworks](https://legalclarity.org/what-is-a-derivative-work-under-copyright-law/) from it. \u2079 Overwolf. [Mod Authors Terms](https://legal.overwolf.com/docs/curseforge/mod-authors-terms/)\nTwo parts of that license are exclusive to Overwolf: the right to market, advertise, and distribute your mod through the platform, and the right to use and share data about how players interact with it. The mod author also appoints Overwolf as their agent for these purposes.\nThis means that while you still own your creation, Overwolf holds [exclusive distribution rights](https://legalclarity.org/what-are-distribution-rights-and-how-do-they-work/) on its platform and controls the analytics around your mod\u2019s usage. \u2079 Overwolf.\n[Mod Authors Terms](https://legal.overwolf.com/docs/curseforge/mod-authors-terms/)\nThe author bears sole responsibility for making sure a mod works properly with the game it\u2019s designed for, including after game updates.\n\n...\n\n## Founding by Hubert Thieblot\n[Understanding Your Form 1099-K](https://www.irs.gov/businesses/understanding-your-form-1099-k)\n* 9\nOverwolf. [Mod Authors Terms](https://legal.overwolf.com/docs/curseforge/mod-authors-terms/)\n* 10\nTechCrunch."
+      ]
+    }
+  ],
+  "errors": [],
+  "usage": [
+    {
+      "name": "sku_extract_excerpts",
+      "count": 1
+    }
+  ],
+  "warnings": []
+}

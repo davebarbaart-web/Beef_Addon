@@ -1,0 +1,23 @@
+{
+  "extract_id": "extract_e8ee96eef874555fbfc354ff9993676c",
+  "session_id": "session_e8ee96eef874555fbfc354ff9993676c",
+  "status": "ok",
+  "results": [
+    {
+      "url": "https://raw.githubusercontent.com/DeadlyBossMods/DeadlyBossMods/master/LICENSE",
+      "title": "",
+      "publish_date": null,
+      "excerpts": [
+        "All Rights Reserved\nCopyright (c) 2021 Deadly Boss Mods\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\nFITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE\nAUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER\nLIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,\nOUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN\nTHE SOFTWARE."
+      ]
+    }
+  ],
+  "errors": [],
+  "usage": [
+    {
+      "name": "sku_extract_excerpts",
+      "count": 1
+    }
+  ],
+  "warnings": []
+}

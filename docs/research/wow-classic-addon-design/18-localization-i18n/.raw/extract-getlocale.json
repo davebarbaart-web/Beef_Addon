@@ -1,0 +1,23 @@
+{
+  "extract_id": "extract_a30755714a7049f749ce06ed0203ad54",
+  "session_id": "session_a30755714a7049f749ce06ed0203ad54",
+  "status": "ok",
+  "results": [
+    {
+      "url": "https://warcraft.wiki.gg/wiki/API_GetLocale",
+      "title": "GetLocale - Warcraft Wiki - Your wiki guide to the World of Warcraft",
+      "publish_date": "2005-02-17",
+      "excerpts": [
+        "# GetLocale\nSince `2026-07-23T06:08:00Z` , ETA: at least multiple days |\n| --- | --- |\nReturns the game client locale.\n```\nlocale = GetLocale ()\n```\n\n## Returns\n```\nlocale\nstring\n```\n\n## Example\n```\nif GetLocale () == \"frFR\" then \n print ( \"bonjour\" ) \n else \n print ( \"hello\" ) \n end\n```\nCopy\n\n## Values\n| localeId | localeName | Description |\n| 1 | enUS | English (United States) |\n| _enGB clients return enUS_ |  |  |\n| 2 | koKR | Korean (Korea) |\n| 3 | frFR | French (France) |\n| 4 | deDE | German (Germany) |\n| 5 | zhCN | Chinese (Simplified, PRC) |\n| 6 | esES | Spanish (Spain) |\n| 7 | zhTW | Chinese (Traditional, Taiwan) |\n| 8 | esMX | Spanish (Mexico) |\n| 9 | ruRU | Russian (Russia) |\n| 10 | ptBR | Portuguese (Brazil) |\n| 11 | itIT | Italian (Italy) |\nCollapse\nLocales\n|Collapse\nGlobal API |\n| --- | --- |\n| |\n| |* GetLocale\n\n...\n\n* UI escape sequences |\n| Tutorials | * Localizing an addon |\nRetrieved from \" [https://warcraft.wiki.gg/wiki/API_GetLocale?oldid=6587809](https://warcraft.wiki.gg/wiki/API_GetLocale?oldid=6587809) \"\nCategories :\n* API systems/Locale\n* API functions"
+      ]
+    }
+  ],
+  "errors": [],
+  "usage": [
+    {
+      "name": "sku_extract_excerpts",
+      "count": 1
+    }
+  ],
+  "warnings": []
+}

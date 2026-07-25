@@ -1,0 +1,78 @@
+{
+  "search_id": "search_571c3628e61a41f0a51ff7ec2d72fbe9",
+  "session_id": "session_571c3628e61a41f0a51ff7ec2d72fbe9",
+  "status": "ok",
+  "results": [
+    {
+      "url": "https://www.wowace.com/projects/libqtip-1-0",
+      "title": "Overview - LibQTip-1.0 - Addons - Projects - WowAce ",
+      "publish_date": null,
+      "excerpts": [
+        "CurseForge  \n\n### LibQTip-1.0\n\nLibQTip is designed replace GameTooltip - but with added functionality, such as multiple columns - from a minimalist design perspective.\n\n## Features\n\n* Ability to display and handle multiple tooltips at the same time,\n* Unlimited number of columns and lines,\n* Column default and per cell justification,\n* Tooltip default and per cell font setting,\n* Colspans,\n* Possibility to add custom cells,\n* Optional scrollbar,\n* Optional scripts for lines, columns, or cells,\n* Optional automatic hiding,\n* Frames and tables recycling to reduce resource footprint.\n\n## Caveats\n\nLook [here](http://www.wowace.com/projects/libqtip-1-0/pages/getting-started/) for information on embedding the latest beta/release.\n\n**In order to achieve effective frame recycling, tooltips must be released.** Holding a tooltip leads to the creation of a full set of frames for every AddOn which does not follow this practice. Moreover, releasing a tooltip has a very little overhead compared to its benefits.\n\n## Known issues\n\n* Alignment may be altered when using :SetScale after filling the tooltip.\n\n## Documentation\n\n* [Getting started guide](http://www.wowace.com/projects/libqtip-1-0/pages/getting-started) .\n* [How to add custom cells](http://www.wowace.com/projects/libqtip-1-0/pages/how-to-add-custom-cells) .\n* [API reference](http://www.wowace.com/projects/libqtip-1-0/pages/api-reference) .\n* [Official Forum](http://forums.wowace.com/showthread.php?t=14987) .\n\n### About This Project\n\n* Project ID\n  \n  15487\n* Created\n  \n  Oct 15, 2008\n* Last Released File\n  \n  Mar 29, 2023\n* Total Downloads\n  \n  533,825\n* License\n  \n  All Rights Reserved\n\n* [View on CurseForge](https://legacy.curseforge.com/wow/addons/libqtip-1-0)\n* Report Project\n\n### Categories\n\n* \n* \n\n### Members\n\n* View Torhal's Profile\n  \n  Torhal Owner\n* View Adirelle's Profile\n  \n  Adirelle Author\n* View Elkano's Profile\n  \n  Elkano Author\n\n### Recent Files\n\n#### [WoW Retail](https://www.wowace.com/projects/libqtip-1-0/files?filter-game-version=1738749986%3a517)\n\n* \n  \n  10\\.0.7.1\n  \n  Mar 29, 2023\n* \n  \n  r106\n  \n  May 31, 2009\n* \n  \n  9\\.0.1.1-1-g5f30759-alpha\n  \n  Oct 25, 2020\n\nOverwolf 2025\n\n* [](https://discord.gg/YwHjmfe \"Discord\")\n* [](https://www.reddit.com/r/Overwolf/ \"Reddit\")\n* [](https://www.facebook.com/Overwolf/ \"Facebook\")\n* [](https://www.linkedin.com/company/overwolf.com/ \"LinkedIn\")\n* [](https://twitter.com/TheOverwolf \"Twitter\")\n\n*[Mar 29, 2023]: 03 29 2023 16:04:23 (CDT) (UTC-5:00)\n*[May 31, 2009]: 05 31 2009 20:15:55 (CDT) (UTC-5:00)\n*[Oct 15, 2008]: 10 15 2008 22:52:27 (CDT) (UTC-5:00)\n*[Oct 25, 2020]: 10 25 2020 17:33:31 (CDT) (UTC-5:00)"
+      ]
+    },
+    {
+      "url": "https://wowclassicdb.com/tools/tooltip",
+      "title": "Tooltip - WoW Classic DB",
+      "publish_date": null,
+      "excerpts": [
+        "Loading...\n\nAll rights reserved\n\nNavigation\n\n* Privacy\n* Terms\n* Contact Us\n\nOur Communities\n\n* [Warcraft Tavern](https://www.warcrafttavern.com/)\n* [EIP Gaming](https://eip.gg/)\n* [Diablo Tavern](https://www.diablotavern.com/)\n* [RiotWatch](https://riotwatch.gg/)\n* [WoW Classic BiS](https://www.wowclassicbis.com/)\n* [Beyond Hogwarts](https://beyondhogwarts.com/)\n* [Warcraft DB](https://www.warcraftdb.com/)\n\n[Lexicon Logo](https://lexicon.gg/)"
+      ]
+    },
+    {
+      "url": "https://warcraft.wiki.gg/wiki/UIOBJECT_GameTooltip",
+      "title": "GameTooltip - Warcraft Wiki - Your wiki guide to the World of Warcraft",
+      "publish_date": "2026-03-25",
+      "excerpts": [
+        "GameTooltip (inherits from Frame) formats a tooltip. There is one named _G[&quot;GameTooltip&quot;], but others are created with CreateFrame(&quot;GameTooltip&quot;) or GameTooltip. Custom tooltips made in Lua must inherit a virtual XML template: SharedTooltipTemplate - Includes base font strings and textures."
+      ]
+    },
+    {
+      "url": "https://www.wowace.com/projects/libqtip-1-0/pages/getting-started",
+      "title": "Getting started - Pages - LibQTip-1.0 - Addons - Projects - WowAce",
+      "publish_date": null,
+      "excerpts": [
+        "Download the latest beta or release package and copy LibStub.lua and LibQTip-1.0.lua into your addon folder. Then references them in the .toc file: ... Provided you have an existing anchor frame in your FooBarAddon, here is how to add a simple tooltip:"
+      ]
+    },
+    {
+      "url": "https://addonswow.com/libqtip-10",
+      "title": "WoW LibQTip-1.0 addon Dragonflight/Wrath of the Lich King Classic 2025",
+      "publish_date": "2021-11-05",
+      "excerpts": [
+        "Download World of Warcraft addon LibQTip-1.0 for versions 1.14.3 / 10.0.7, Dragonflight, WotLK Classic, 2025"
+      ]
+    },
+    {
+      "url": "https://www.curseforge.com/wow/addons/libqtip-1-0/files/3092746",
+      "title": "LibQTip-1.0 - 9.0.1.1 - World of Warcraft Addons - CurseForge",
+      "publish_date": null,
+      "excerpts": [
+        "Library providing multi-column tooltips. Download LibQTip-1.0 by Torhal, with over 523.2K+ downloads on CurseForge"
+      ]
+    },
+    {
+      "url": "https://www.curseforge.com/wow/addons/libqtip-1-0",
+      "title": "LibQTip-1.0 - World of Warcraft Addons - CurseForge",
+      "publish_date": "2023-03-29",
+      "excerpts": [
+        "Discover [Browse All](https://www.curseforge.com/wow/search?page=1&pageSize=20&sortBy=relevancy)\n\n* World of Warcraft\n* [Addons](https://www.curseforge.com/wow/search?class=addons&page=1&pageSize=20&sortBy=relevancy)\n\nLibQTip-1.0 logo\n\n# LibQTip-1.0\n\n* By\n  \n  Torhal Torhal GrandArtisan tier icon\n\nLibrary providing multi-column tooltips.\n\nTotal Downloads\n    534\\.5K\n\nLast Update\n    Mar 29, 2023\n\nMore Details\n\n* * *\n\nLibQTip-1.0\n\nDownload\n\n* * *\n\n### Details\n\nDownloads\n    534,520\nCreated\n    1 decade ago\nUpdated\n    3 years ago\nProject ID\n    15487\nLicense\n    All Rights Reserved\n\n* * *\n\n### Flavors\n\n* [Retail](https://www.curseforge.com/wow/addons/libqtip-1-0/files/all?page=1&pageSize=20&gameVersionTypeId=517&showAlphaFiles=hide)\n\n* * *\n\n### Class & Categories\n\n* [Addons](https://www.curseforge.com/wow/search?class=addons&page=1&pageSize=20&sortBy=relevancy)\n* \n* [Libraries](https://www.curseforge.com/wow/search?class=addons&page=1&pageSize=20&sortBy=relevancy&categories=libraries)\n* [Tooltip](https://www.curseforge.com/wow/search?class=addons&page=1&pageSize=20&sortBy=relevancy&categories=tooltip)\n\n* * *\n\n[informative placeholder](https://links.curseforge.com/wowcontest-winners)\n\n* * *\n\n### Game Versions\n\n[10\\.0.7](https://www.curseforge.com/wow/addons/libqtip-1-0/files/all?page=1&pageSize=20&version=10.0.7&showAlphaFiles=hide) [9\\.1.5](https://www.curseforge.com/wow/addons/libqtip-1-0/files/all?page=1&pageSize=20&version=9.1.5&showAlphaFiles=hide) [9\\.0.1](https://www.curseforge.com/wow/addons/libqtip-1-0/files/all?page=1&pageSize=20&version=9.0.1&showAlphaFiles=hide) [8\\.3.0](https://www.curseforge.com/wow/addons/libqtip-1-0/files/all?page=1&pageSize=20&version=8.3.0&showAlphaFiles=hide) [8\\.0.1](https://www.curseforge.com/wow/addons/libqtip-1-0/files/all?page=1&pageSize=20&version=8.0.1&showAlphaFiles=hide) [\\+ 22 Versions](https://www.curseforge.com/wow/addons/libqtip-1-0/files/all?page=1&pageSize=20&showAlphaFiles=hide)\n\n* * *\n\n### Links\n\nSource\n\n* * *\n\n### Main File\n\n#### 10\\.0.7\n\n10\\.0.7.1 Latest release * R * Retail * Mar 29, 2023\n\n* * *\n\n### Recent Files [View all](https://www.curseforge.com/wow/addons/libqtip-1-0/files/all?page=1&pageSize=20&showAlphaFiles=hide&sortBy=dateCreated&sortOrder=desc)\n\n#### WoW Retail\n\n10\\.0.7.1 Latest release * R * Retail * Mar 29, 2023\n\n* * *\n\nReport\n\nDownload\n\n* Description\n* [Files](https://www.curseforge.com/wow/addons/libqtip-1-0/files?page=1&pageSize=20&showAlphaFiles=hide)\n* Gallery\n* Relations\n* [Issues](https://github.com/Torhal/LibQTip-1.0/issues)\n\nLibQTip is designed replace GameTooltip - but with added functionality, such as multiple columns - from a minimalist design perspective.\n\n## Features\n\n* Ability to display and handle multiple tooltips at the same time,\n* Unlimited number of columns and lines,\n* Column default and per cell justification,\n* Tooltip default and per cell font setting,\n* Colspans,\n* Possibility to add custom cells,\n* Optional scrollbar,\n* Optional scripts for lines, columns, or cells,\n* Optional automatic hiding,\n* Frames and tables recycling to reduce resource footprint.\n\n## Caveats\n\nLook [here](http://www.wowace.com/projects/libqtip-1-0/pages/getting-started/) for information on embedding the latest beta/release.\n\n**In order to achieve effective frame recycling, tooltips must be released.** Holding a tooltip leads to the creation of a full set of frames for every AddOn which does not follow this practice. Moreover, releasing a tooltip has a very little overhead compared to its benefits.\n\n## Known issues\n\n* Alignment may be altered when using :SetScale after filling the tooltip.\n\n## Documentation\n\n* [Getting started guide](http://www.wowace.com/projects/libqtip-1-0/pages/getting-started) .\n* [How to add custom cells](http://www.wowace.com/projects/libqtip-1-0/pages/how-to-add-custom-cells) .\n* [API reference](http://www.wowace.com/projects/libqtip-1-0/pages/api-reference) .\n* [Official Forum](http://forums.wowace.com/showthread.php?t=14987) .\n\n## The LibQTip-1.0 Team\n\nGrandArtisan tier frame profile avatar\n\nTorhal\n\nOwner\n\nGrandArtisan tier icon\n\n* 35\n  \n  Followers\n* 48\n  \n  Projects\n* 128\\.5M\n  \n  Downloads\n\nUnfollow\n\n### Members\n\n* profile avatar Elkano GrandArtisan tier icon Author * profile avatar Adirelle GrandArtisan tier icon Author\n\n## More from Torhal View all\n\n* WoWDB Profiler project image\n  \n  \n  \n  ### WoWDB Profiler\n  \n  By chaud\n  \n    + 2\\.7M\n    + [Addons](https://www.curseforge.com/wow/search?class=addons&page=1&pageSize=20&sortBy=relevancy)\n  \n  WoW datamining tool.\n  \n    + 2\\.7M\n    + June 17, 2026\n  \n  \n    + [Addons](https://www.curseforge.com/wow/search?class=addons&page=1&pageSize=20&sortBy=relevancy)\n    + \n  \n  View\n  \n  Install\n* LibQTip-2.0 project image\n  \n  \n  \n  ### LibQTip-2.0\n  \n  By Torhal\n  \n    + 152\n    + [Addons](https://www.curseforge.com/wow/search?class=addons&page=1&pageSize=20&sortBy=relevancy)\n  \n  Library that provides robust multi-column tooltips.\n  \n    + 152\n    + May 28, 2026\n  \n  \n    + [Addons](https://www.curseforge.com/wow/search?class=addons&page=1&pageSize=20&sortBy=relevancy)\n    + \n    + \\+1\n  \n  View\n  \n  Install\n* Frenemy project image\n  \n  \n  \n  ### Frenemy\n  \n  By Torhal\n  \n    + 61\\.4K\n    + [Addons](https://www.curseforge.com/wow/search?class=addons&page=1&pageSize=20&sortBy=relevancy)\n  \n  A customizable view of friends and guildmates.\n  \n    + 61\\.4K\n    + February 1, 2026\n  \n  \n    + [Addons](https://www.curseforge.com/wow/search?class=addons&page=1&pageSize=20&sortBy=relevancy)\n    + \n    + \\+1\n  \n  View\n  \n  Install\n* MailMinder project image\n  \n  \n  \n  ### MailMinder\n  \n  By Torhal\n  \n    + 12\\.9K\n    + [Addons](https://www.curseforge.com/wow/search?class=addons&page=1&pageSize=20&sortBy=relevancy)\n  \n  Records mail when visiting the mailbox to make keeping track of mail and expiration dates easy.\n  \n    + 12\\.9K\n    + January 25, 2026\n  \n  \n    + [Addons](https://www.curseforge.com/wow/search?class=addons&page=1&pageSize=20&sortBy=relevancy)\n    + \n    + \\+1\n  \n  View\n  \n  Install\n\n* WoWDB Profiler project image\n  \n  \n  \n  ### WoWDB Profiler\n  \n  By chaud\n  \n    + 2\\.7M\n    + [Addons](https://www.curseforge.com/wow/search?class=addons&page=1&pageSize=20&sortBy=relevancy)\n  \n  WoW datamining tool.\n  \n    + 2\\.7M\n    + June 17, 2026\n  \n  \n    + [Addons](https://www.curseforge.com/wow/search?class=addons&page=1&pageSize=20&sortBy=relevancy)\n    + \n  \n  View\n  \n  Install\n* LibQTip-2.0 project image\n  \n  \n  \n  ### LibQTip-2.0\n  \n  By Torhal\n  \n    + 152\n    + [Addons](https://www.curseforge.com/wow/search?class=addons&page=1&pageSize=20&sortBy=relevancy)\n  \n  Library that provides robust multi-column tooltips.\n  \n    + 152\n    + May 28, 2026\n  \n  \n    + [Addons](https://www.curseforge.com/wow/search?class=addons&page=1&pageSize=20&sortBy=relevancy)\n    + \n    + \\+1\n  \n  View\n  \n  Install\n* Frenemy project image\n  \n  \n  \n  ### Frenemy\n  \n  By Torhal\n  \n    + 61\\.4K\n    + [Addons](https://www.curseforge.com/wow/search?class=addons&page=1&pageSize=20&sortBy=relevancy)\n  \n  A customizable view of friends and guildmates.\n  \n    + 61\\.4K\n    + February 1, 2026\n  \n  \n    + [Addons](https://www.curseforge.com/wow/search?class=addons&page=1&pageSize=20&sortBy=relevancy)\n    + \n    + \\+1\n  \n  View\n  \n  Install\n* MailMinder project image\n  \n  \n  \n  ### MailMinder\n  \n  By Torhal\n  \n    + 12\\.9K\n    + [Addons](https://www.curseforge.com/wow/search?class=addons&page=1&pageSize=20&sortBy=relevancy)\n  \n  Records mail when visiting the mailbox to make keeping track of mail and expiration dates easy.\n  \n    + 12\\.9K\n    + January 25, 2026\n  \n  \n    + [Addons](https://www.curseforge.com/wow/search?class=addons&page=1&pageSize=20&sortBy=relevancy)\n    + \n    + \\+1\n  \n  View\n  \n  Install\n\nWorld of Warcraft Discover [Browse](https://www.curseforge.com/wow/search?page=1&pageSize=20&sortBy=relevancy) Search\n\nCurseForge - a world of endless gaming possibilities for modders and gamers alike.  \nDownload the best mods and addons!\n\n* [](https://www.instagram.com/curseforgeofficial \"Instagram\")\n* [](https://www.tiktok.com/@curseforge \"TikTok\")\n* [](https://www.youtube.com/@CurseForge \"YouTube\")\n* [](https://discord.gg/curseforge \"Discord\")\n* [](https://x.com/CurseForge \"Twitter / X\")\n* [](https://www.reddit.com/r/CurseForge \"Reddit\")\n\n* [Terms of Service](https://legal.overwolf.com/docs/overwolf/platform/platform-terms-of-use)\n* [Privacy Policy](https://legal.overwolf.com/docs/overwolf/platform/platform-privacy-policy)\n* Licenses\n* [Mod Author Terms](https://legal.overwolf.com/docs/curseforge/mod-authors-terms)\n*"
+      ]
+    },
+    {
+      "url": "https://github.com/Torhal/LibQTip-1.0",
+      "title": "GitHub - Torhal/LibQTip-1.0: LibQTip is designed replace GameTooltip - but with added functionality, such as multiple columns",
+      "publish_date": null,
+      "excerpts": [
+        "LibQTip is designed replace GameTooltip - but with added functionality, such as multiple columns - from a minimalist design perspective. Ability to display and handle multiple tooltips at the same time,"
+      ]
+    }
+  ],
+  "usage": [
+    {
+      "name": "sku_search",
+      "count": 1
+    }
+  ],
+  "warnings": []
+}

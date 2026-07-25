@@ -1,0 +1,16 @@
+{
+  "extract_id": "extract_e66e381e63e35c5f54a58c87114e4191",
+  "session_id": "session_e66e381e63e35c5f54a58c87114e4191",
+  "status": "ok",
+  "results": [],
+  "errors": [
+    {
+      "url": "https://wowpedia.fandom.com/wiki/SavedVariables",
+      "error_type": "network_error",
+      "http_status_code": null,
+      "content": null
+    }
+  ],
+  "usage": [],
+  "warnings": []
+}

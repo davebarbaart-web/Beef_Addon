@@ -1,0 +1,23 @@
+{
+  "extract_id": "extract_bfd46b4895d6323c82aa952db0d967d6",
+  "session_id": "session_bfd46b4895d6323c82aa952db0d967d6",
+  "status": "ok",
+  "results": [
+    {
+      "url": "https://us.forums.blizzard.com/en/wow/t/help-with-addon/219481?page=2",
+      "title": "Help with Addon - Guides / UI and Macro - World of Warcraft Forums",
+      "publish_date": "2019-07-11",
+      "excerpts": [
+        "# Help with Addon\n## post by Fizzlemizz-3415 on Jul 11, 2019\nThe information is a but buried at the bottom of the page under \u201cCombat Log Event Changes\u201d. The documentation is player generated so some things take a while and some things take longer to reflect changes. GamePedia tends to be my goto site."
+      ]
+    }
+  ],
+  "errors": [],
+  "usage": [
+    {
+      "name": "sku_extract_excerpts",
+      "count": 1
+    }
+  ],
+  "warnings": []
+}

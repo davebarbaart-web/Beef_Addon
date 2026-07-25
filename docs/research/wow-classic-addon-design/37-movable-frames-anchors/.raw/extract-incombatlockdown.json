@@ -1,0 +1,23 @@
+{
+  "extract_id": "extract_7ea4fb269d23f3f45f7be41319f73fa8",
+  "session_id": "session_7ea4fb269d23f3f45f7be41319f73fa8",
+  "status": "ok",
+  "results": [
+    {
+      "url": "https://warcraft.wiki.gg/wiki/API_InCombatLockdown",
+      "title": "InCombatLockdown - Warcraft Wiki - Your wiki guide to the World of Warcraft",
+      "publish_date": "2007-01-04",
+      "excerpts": [
+        "# InCombatLockdown\n## Details\n### Restrictions\n* Programatic modification of macros or bindings is not allowed.\n* Some things can't be done on \"Protected\" frames, their parents, or any frame they are anchored to. These include, but are not restricted to:\n+ Hiding the frame using Hide widget method.\n+ Showing the frame using Show widget method.\n+ Changing the frame's attributes (custom attributes are used by Blizzard secure templates to set up their behavior).\n+ Moving the frame by resetting frame's points or anchors (movements initiated by user are still allowed while in combat)."
+      ]
+    }
+  ],
+  "errors": [],
+  "usage": [
+    {
+      "name": "sku_extract_excerpts",
+      "count": 1
+    }
+  ],
+  "warnings": []
+}

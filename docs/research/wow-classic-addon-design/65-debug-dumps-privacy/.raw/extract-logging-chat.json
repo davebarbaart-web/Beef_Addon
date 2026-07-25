@@ -1,0 +1,16 @@
+{
+  "extract_id": "extract_db996a1153fe4d13d1cd85d80480c2a4",
+  "session_id": "session_db996a1153fe4d13d1cd85d80480c2a4",
+  "status": "ok",
+  "results": [],
+  "errors": [
+    {
+      "url": "https://warcraft.wiki.gg/wiki/Logging_Chat_and_Combat",
+      "error_type": "network_error",
+      "http_status_code": null,
+      "content": null
+    }
+  ],
+  "usage": [],
+  "warnings": []
+}

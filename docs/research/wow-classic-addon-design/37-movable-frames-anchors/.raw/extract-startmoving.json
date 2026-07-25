@@ -1,0 +1,23 @@
+{
+  "extract_id": "extract_21e166611b78e31b9c33436a4bc57714",
+  "session_id": "session_21e166611b78e31b9c33436a4bc57714",
+  "status": "ok",
+  "results": [
+    {
+      "url": "https://warcraft.wiki.gg/wiki/API_StartMoving",
+      "title": "Frame:StartMoving - Warcraft Wiki - Your wiki guide to the World of Warcraft",
+      "publish_date": "2004-12-10",
+      "excerpts": [
+        "# Frame:StartMoving\n* Macro commands\n* Combat Log\n* Escape sequences\n* Hyperlinks\n* API changes\n* HOWTOs\n* [](https://discord.gg/txUg39Vhc6) [wowuidev](https://discord.gg/txUg39Vhc6) |\n\u2191 _Widget API_\n| |**This function is restricted .**\n**``** - This cannot be called on secure frames during combat; see SecureStateDriver . |\n| --- | --- |\nBegins repositioning the frame via mouse movement.\n```\nFrame :StartMoving([alwaysStartFromMouse])\n```\n\n## Arguments\n```\nalwaysStartFromMouse\nboolean ? `= false`\n```\n\n## Details\n* This function triggers an error _\"Frame:StartMoving(): Frame is not movable\"_ if called on a non-movable widget.\n* This function automatically flags the widget as user-positioned .\nThe position of named, movable, user-positioned frames created before PLAYER_LOGIN is automatically restored by the client from the layout cache when the player logs in. If you'd like to avoid this behavior, call `Frame:SetUserPlaced (false)` immediately after calling this function.\n* Any existing anchors on the widget are cleared.\nWhen the frame stops moving (either because Frame:StopMovingOrSizing () was called or because the frame or one of its ancestors was hidden), it will be anchored to the nearest corner of the screen."
+      ]
+    }
+  ],
+  "errors": [],
+  "usage": [
+    {
+      "name": "sku_extract_excerpts",
+      "count": 1
+    }
+  ],
+  "warnings": []
+}

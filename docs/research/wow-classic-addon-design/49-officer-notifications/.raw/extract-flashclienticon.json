@@ -1,0 +1,23 @@
+{
+  "extract_id": "extract_450029bf446de12bd708d8c099e7ba72",
+  "session_id": "session_450029bf446de12bd708d8c099e7ba72",
+  "status": "ok",
+  "results": [
+    {
+      "url": "https://warcraft.wiki.gg/wiki/API_FlashClientIcon",
+      "title": "FlashClientIcon - Warcraft Wiki - Your wiki guide to the World of Warcraft",
+      "publish_date": null,
+      "excerpts": [
+        "# FlashClientIcon\nFrom Warcraft Wiki\nJump to navigation Jump to search\n| Main Menu |\n| * WoW API |\n* Lua API\n* FrameXML\n* Widget API\n* Widget scripts\n* XML schema\n* Events\n* CVars\n* Macro commands\n* Combat Log\n* Escape sequences\n* Hyperlinks\n* API changes\n* HOWTOs\n* [<img src='/images/thumb/Discord_logo.png/12px-Discord_logo.png?4d7bc2' alt='Discord logo.png' width='12' height='9' />](https://discord.gg/txUg39Vhc6) [wowuidev](https://discord.gg/txUg39Vhc6) |\n\n...\n\nOT+path:wow-api.lua+NOT+path:wow-widget-api.lua+NOT+path:textentry.lua+NOT+owner:papa-smurf+NOT+owner:Bhahlou+NOT+owner:nwpark+NOT+owner:turulix+NOT+path:luaserver.lua+NOT+repo:QartemisT/WoW.luadoc+NOT+owner:92Garfield+NOT+owner:BreakBB+NOT+owner:Logonz+NOT+owner:Subwaytime+NOT+owner:ZenonWow+NOT+path:WeakAuras+NOT+path:Elv\n\n...\n\npl+NOT+path:wow-api.lua+NOT+path:wow-widget-api.lua+NOT+path:textentry.lua+NOT+owner:papa-smurf+NOT+owner:Bhahlou+NOT+owner:nwpark+NOT+owner:turulix+NOT+path:luaserver.lua+NOT+repo:QartemisT/WoW.luadoc+NOT+owner:92Garfield+NOT+owner:BreakBB+NOT+owner:Logonz+NOT+owner:Subwaytime+NOT+owner:ZenonWow+NOT+path:WeakAuras+NOT+path\n\n...\n\nDocs](https://github.com/search?q=repo:Gethe/wow-ui-source+%5C%22FlashClientIcon%5C%22+path:/%5EInterface%5C/AddOns%5C/Blizzard_APIDocumentationGenerated%5C//&type=code)\n* [<img src='/images/thumb/ProfIcons_engineering.png/16px-ProfIcons_engineering.png?4717ae' alt='ProfIcons engineering.png' width='16' height='16' />](https://mrbuds.github.io/wow-api-web/?search=api:function:FlashClientIcon:Client) [/api\naddon](https://mrbuds.github.io/wow-api-web/?search=api:function:FlashClientIcon:Client) |\n| Patch |\n| Added in 6.2.0 / 1.13.2 |\nFlashes the game client icon in the Operating System.\n```\nFlashClientIcon([briefly])\n```\n\n## Arguments\n```\nbriefly\n    boolean ? `= false`\n```\n\n## Example\n* Flashes the client icon after 5 seconds.\n```\n/run C_Timer.After(5, function() FlashClientIcon() end)\n```\n* Prevents flashing the client icon by NOP'ing it.\n```\nFlashClientIcon = function () end\n```\n\n## Patch changes\n* <img src='/images/thumb/TheWarWithin-Petopia-Logo.png/45px-TheWarWithin-Petopia-Logo.png?c7c8d5' alt='TheWarWithin-Petopia-Logo.png' width='45' height='24' /> **Patch 11.1.5 (2025-04-22):** Added `briefly` argument.\n* <img src='/images/WoD-Logo-Small.png?be5b60' alt='WoD-Logo-Small.png' width='46' height='14' /> **Patch 6.2.0 (2015-06-23):** Added.\nRetrieved from \" [https://warcraft.wiki.gg/wiki/API_FlashClientIcon?oldid=6262637](https://warcraft.wiki.gg/wiki/API_FlashClientIcon?oldid=6262637) \"\nCategories :\n* API systems/Client\n* API functions\nHidden categories:\n* Added in patch 11.1.5\n* Potentially out-of-date content"
+      ]
+    }
+  ],
+  "errors": [],
+  "usage": [
+    {
+      "name": "sku_extract_excerpts",
+      "count": 1
+    }
+  ],
+  "warnings": []
+}

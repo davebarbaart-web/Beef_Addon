@@ -1,0 +1,63 @@
+{
+  "extract_id": "extract_38b20ba18b7a57335cd222d95607e9d3",
+  "session_id": "session_38b20ba18b7a57335cd222d95607e9d3",
+  "status": "ok",
+  "results": [
+    {
+      "url": "https://wowpedia.fandom.com/wiki/ENCOUNTER_END",
+      "title": "ENCOUNTER_END - Wowpedia - Your wiki guide to the World of Warcraft",
+      "publish_date": null,
+      "excerpts": [
+        "# ENCOUNTER_END\n* [History](https://wowpedia.fandom.com/wiki/ENCOUNTER_END?action=history)\n* [Purge](https://wowpedia.fandom.com/wiki/ENCOUNTER_END?action=purge)\n* [Talk (0)](https://wowpedia.fandom.com/wiki/Talk:ENCOUNTER_END?action=edit&redlink=1)\n| Main Menu |\n| * WoW API |\n* Lua API\n* FrameXML util\n\n...\n\n|  | Automated updating of API pages at this location, to reflect patch changes, has ceased from 10.1.7 onwards. |\nFires at the end of an instanced encounter.\n```\nENCOUNTER_END: encounterID, encounterName, difficultyID, groupSize, success\n```\n```\nencounterID\nnumber \\- ID for the specific encounter that ended. (Does not match the encounterIDs used in the Encounter Journal)\n```\nencounterName\nstring - Name of the encounter that ended\ndifficultyID\nnumber - ID representing the difficulty of the encounter\ngroupSize\nnumber - Group size for the encounter. For example, 5 for a Dungeon encounter, 20 for a Mythic raid. The number of raiders participating is reflected in \"flex\" raids.\nsuccess\nnumber - 1 for a successful kill. 0 for a wipe\n**Patch 5.4.7 (2014-02-18):** Added.\nCategories\n* Categories :\n* API events\n* API namespaces/C EncounterInfo\nCommunity content is available under [CC BY-SA 3.0](https://www.fandom.com/licensing) unless otherwise noted.\nMore Fandoms"
+      ]
+    },
+    {
+      "url": "https://wowpedia.fandom.com/wiki/ZONE_CHANGED_NEW_AREA",
+      "title": "ZONE_CHANGED_NEW_AREA - Wowpedia - Your wiki guide to the World of Warcraft",
+      "publish_date": null,
+      "excerpts": [
+        "in: API events , API namespaces/C Map\n\n...\n\n# ZONE_CHANGED_NEW_AREA\n|  | Automated updating of API pages at this location, to reflect patch changes, has ceased from 10.1.7 onwards. |\nFires when the player enters a new zone.\n```\nZONE_CHANGED_NEW_AREA\n```\nNone\n* For example this fires when moving from Duskwood to Stranglethorn Vale or Durotar into Orgrimmar.\n* In interface terms, this is anytime you get a new set of channels.\n|Related API |GetChannelList\nC_Map.GetMapInfo\nGetZoneText \u2022 GetRealZoneText |\n| --- | --- |\n|Related Events |ZONE_CHANGED |\n\n...\n\n```\n> \"ZONE_CHANGED_NEW_AREA\" , \"Stormwind City\" , \"Stormwind City\" \n > \"ZONE_CHANGED_NEW_AREA\" , \"Elwynn Forest\" , \"Elwynn Forest\n```\nCategories\n* Categories :\n* API events\n* API namespaces/C Map\nCommunity content is available under [CC BY-SA 3.0](https://www.fandom.com/licensing) unless otherwise noted.\nMore Fandoms"
+      ]
+    },
+    {
+      "url": "https://wowpedia.fandom.com/wiki/BOSS_KILL",
+      "title": "BOSS_KILL - Wowpedia - Your wiki guide to the World of Warcraft",
+      "publish_date": null,
+      "excerpts": [
+        "in: API events , API namespaces/C EncounterInfo\n\n...\n\n# BOSS_KILL\n|  | Automated updating of API pages at this location, to reflect patch changes, has ceased from 10.1.7 onwards. |\nFired when a (raid) boss has been killed.\n```\nBOSS_KILL: encounterID, encounterName\n```\n```\nencounterID\nnumber\n```\nencounterName\nstring\n**Patch 6.1.0 (2015-02-24):** Added.\nCategories\n* Categories :\n* API events\n* API namespaces/C EncounterInfo\nCommunity content is available under [CC BY-SA 3.0](https://www.fandom.com/licensing) unless otherwise noted.\nMore Fandoms\n* [Fantasy](https://www.fandom.com/fancentral/fantasy)\n* [World of Warcraft](https://www.fandom.com/universe/world-of-warcraft)\nAdvertisement"
+      ]
+    },
+    {
+      "url": "https://wowpedia.fandom.com/wiki/UPDATE_INSTANCE_INFO",
+      "title": "UPDATE_INSTANCE_INFO - Wowpedia - Your wiki guide to the World of Warcraft",
+      "publish_date": "2026-06-25",
+      "excerpts": [
+        "in: API events , API namespaces/C EncounterInfo\n\n...\n\n# UPDATE_INSTANCE_INFO\n| Huhgollum | Automated updating of API pages at this location, to reflect patch changes, has ceased from 10.1.7 onwards. |\nFired when data from RequestRaidInfo is available.\n```\nUPDATE_INSTANCE_INFO\n```\n\n## Payload [ [](https://auth.fandom.com/signin?redirect=https%3A%2F%2Fwowpedia.fandom.com%2Fwiki%2FUPDATE_INSTANCE_INFO%3Faction%3Dedit%26section%3D1&uselang=en&metadata=article-registration-edit-article-section \"Sign in to edit\") ]\nNone\nCategories\n* Categories :\n* API events\n* API namespaces/C EncounterInfo"
+      ]
+    },
+    {
+      "url": "https://wowpedia.fandom.com/wiki/API_GetSavedInstanceInfo",
+      "title": "GetSavedInstanceInfo - Wowpedia - Your wiki guide to the World of Warcraft",
+      "publish_date": "2026-06-23",
+      "excerpts": [
+        "# GetSavedInstanceInfo\n| Mikuno | Automated updating of API pages at this location, to reflect patch changes, has ceased from 10.1.7 onwards. |\nReturns instance lock info.\n```\nname, lockoutId, reset, difficultyId, locked, extended, instanceIDMostSig, isRaid, maxPlayers, difficultyName, numEncounters, encounterProgress, extendDisabled, instanceId = GetSavedInstanceInfo(index)\n```\n\n...\n\n## Patch changes [ [](https://auth.fandom.com/signin?redirect=https%3A%2F%2Fwowpedia.fandom.com%2Fwiki%2FAPI_GetSavedInstanceInfo%3Faction%3Dedit%26section%3D3&uselang=en&metadata=article-registration-edit-article-section \"Sign in to edit\") ]\nWoW Icon update **Patch 1.11.0 (2006-06-19):** Added."
+      ]
+    },
+    {
+      "url": "https://wowpedia.fandom.com/wiki/API_RequestRaidInfo",
+      "title": "RequestRaidInfo - Wowpedia - Your wiki guide to the World of Warcraft",
+      "publish_date": null,
+      "excerpts": [
+        "  ```\n        * [Classic (2021)](https://wowpedia.fandom.com/wiki/World_of_Warcraft:_Burning_Crusade_Classic)\n        * [Original (2007)](https://wowpedia.fandom.com/wiki/World_of_Warcraft:_The_Burning_Crusade)\n    - Classic Era\n              \n  ```\n\n...\n\n+ [UI & Macros](https://wowpedia.fandom.com/wiki/Wowpedia:Interface_customization)\n- [Global API](https://wowpedia.fandom.com/wiki/World_of_Warcraft_API)\n- [Widget API](https://wowpedia.fandom.com/wiki/Widget_API)\n- [Events](https://wowpedia.fandom.com/wiki/Events)\n- [CVars](https://wowpedia.fandom.com/wiki/Console_variables)\n\n...\n\n  ```\n        * [Classic (2021)](https://wowpedia.fandom.com/wiki/World_of_Warcraft:_Burning_Crusade_Classic)\n        * [Original (2007)](https://wowpedia.fandom.com/wiki/World_of_Warcraft:_The_Burning_Crusade)\n    - Classic Era\n              \n  ```\n\n...\n\n+ [UI & Macros](https://wowpedia.fandom.com/wiki/Wowpedia:Interface_customization)\n- [Global API](https://wowpedia.fandom.com/wiki/World_of_Warcraft_API)\n- [Widget API](https://wowpedia.fandom.com/wiki/Widget_API)\n- [Events](https://wowpedia.fandom.com/wiki/Events)\n- [CVars](https://wowpedia.fandom.com/wiki/Console_variables)\n\n...\n\n# RequestRaidInfo\n* [History](https://wowpedia.fandom.com/wiki/API_RequestRaidInfo?action=history)\n* [Purge](https://wowpedia.fandom.com/wiki/API_RequestRaidInfo?action=purge)\n* [Talk (0)](https://wowpedia.fandom.com/wiki/Talk:API_RequestRaidInfo?action=edit&redlink=1)\n| Main Menu |\n| * WoW API |\n* Lua API\n* FrameXML util\n* Widget API\n* Widget scripts\n* XML schema\n* Events\n* CVars\n* Macro commands\n* Combat Log\n* Escape sequences\n* Hyperlinks\n* API changes\n* HOWTOs\n* [](https://discord.gg/txUg39Vhc6) [wowuidev](https://discord.gg/txUg39Vhc6) |\n|  | Automated updating of API pages at this location, to reflect patch changes, has ceased from 10.1.7 onwards. |\nRequests which instances the player is saved to.\n```\nRequestRaidInfo()\n```\n```\nUPDATE\\_INSTANCE\\_INFO\nWhen your query has finished processing on the server and the raid info is available.\n```\nCategories\n* Categories :\n* API functions\nCommunity content is available under [CC BY-SA 3.0](https://www.fandom.com/licensing) unless otherwise noted.\nMore Fandoms\n* [Fantasy](https://www.fandom.com/fancentral/fantasy)\n* [World of Warcraft](https://www.fandom.com/universe/world-of-warcraft)\nAdvertisement"
+      ]
+    }
+  ],
+  "errors": [],
+  "usage": [
+    {
+      "name": "sku_extract_excerpts",
+      "count": 6
+    }
+  ],
+  "warnings": []
+}

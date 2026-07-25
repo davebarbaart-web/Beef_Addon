@@ -1,0 +1,23 @@
+{
+  "extract_id": "extract_06a07f1f51aa4977e9fc7dcbc79ded40",
+  "session_id": "session_06a07f1f51aa4977e9fc7dcbc79ded40",
+  "status": "ok",
+  "results": [
+    {
+      "url": "https://warcraft.wiki.gg/wiki/API_ScriptRegionResizing_SetPoint",
+      "title": "ScriptRegionResizing:SetPoint - Warcraft Wiki - Your wiki guide to the World of Warcraft",
+      "publish_date": null,
+      "excerpts": [
+        "# ScriptRegionResizing:SetPoint\nFrom Warcraft Wiki\nJump to navigation Jump to search\n| Properties |\n| IsProtectedFunction |\n\n...\n\n[<img src='/images/thumb/Wowprogramming.png/20px-Wowprogramming.png?9c6ab1' alt='Wowprogramming.png' width='20' height='20' />](https://wowprogramming.com/docs/widgets/Region/SetAllPoints.html) | `ScriptRegionResizing:SetAllPoints` |  |\n\n...\n\n`ScriptRegionResizing:ClearPoint` |  |\n\n...\n\n/>](https://wowprogramming.com/docs/widgets/Region/ClearAllPoints.html) | `ScriptRegionResizing:ClearAllPoints` |  |\n\n...\n\n| <img src='/images/Icon-addon-48x48.png?9b3b13' alt='Icon-addon-48x48.png' width='48' height='48' /> | **This function is restricted .**\n**``** - Frames that are anchored to a [restricted frame](https://us.forums.blizzard.com/en/wow/t/ui-changes-in-rise-of-azshara/202487) can only have their other anchors set to frames within that same anchor hierarchy. ( Object security ) |\nSets an anchor point for the region.\n```\nScriptRegionResizing :SetPoint(point [, relativeTo [, relativePoint]] [, offsetX, offsetY])\n```\n\n## Arguments\n<img src='/images/thumb/FramePoint_01.png/320px-FramePoint_01.png?ce2341' width='320' height='337' />\nFrame points\n```\npoint\n    string : FramePoint - The point of this region.\n\n        `TOPLEFT, TOPRIGHT, BOTTOMLEFT, BOTTOMRIGHT`\n        `TOP, BOTTOM, LEFT, RIGHT, CENTER`\n\nrelativeTo\n    ScriptRegion | string ? \\- The reference or name of the other region. For example `UIParent` or `\"UIParent\"` .\n\n        If omitted, anchors to the parent region if applicable, otherwise to the screen dimensions. Exceptions to this rule are frames managed by Edit Mode. [[1]](https://github.com/Gethe/wow-ui-source/blob/0bf77498d2d224990501671254c2e867272abe2e/Interface/FrameXML/EditModeSystemTemplates.lua)\n        If explicitly passed `nil` , anchors relative to the screen dimensions.\n\nrelativePoint\n    string ? : FramePoint - The point of the other region to anchor to. If omitted, defaults to `point` .\noffsetX\n    number ? `= 0` \\- Offset right (negative for left). Requires `offsetY` to be specified.\noffsetY\n    number ? `= 0` \\- Offset up (negative for down). Requires `offsetX` to be specified.\n```\n\n## Example\nRepositions the PlayerFrame.\n<img src='/images/Icon-information-22x22.png?81245f' alt='Note' width='22' height='22' />\n**Note:** This is not a permanent solution, especially with Edit Mode involved.\n```\nPlayerFrame : ClearAllPoints ()\nPlayerFrame : SetPoint ( \"CENTER\" , UIParent )\n```\n\n...\n\n```\nlocal f = CreateFrame ( \"Frame\" , nil , UIParent ) -- UIParent is the parent\nf : SetPoint ( \"BOTTOMLEFT\" )\nf : SetPoint ( \"BOTTOMLEFT\" , 0 , 0 )\nf : SetPoint ( \"BOTTOMLEFT\" , UIParent )\nf : SetPoint ( \"BOTTOMLEFT\" , UIParent , 0 , 0 )\nf : SetPoint ( \"BOTTOMLEFT\" , UIParent , \"BOTTOMLEFT\" )\nf : SetPoint ( \"BOTTOMLEFT\" , \"UIParent\" , \"BOTTOMLEFT\" )\nf : SetPoint ( \"BOTTOMLEFT\" , UIParent , \"BOTTOMLEFT\" , 0 , 0 )\n```\n\n## Details\n* UI scaling affects the distances for _offsetX_ and _offsetY_ ; increasing the Region's scale will increase the offset.\n* Protected frames may silently ignore calls to this function if the relative frame is a FontString .\n\n...\n\n### Anchor family\n```\n-- anchors between UIParent and the screen dimensions\n-- this usually happens when something no longer exists and addons inadvertently anchor to the screen dimensions\nlocal f = CreateFrame ( \"Frame\" )\nf : SetPoint ( \"TOPLEFT\" , UIParent )\nf : SetPoint ( \"BOTTOMRIGHT\" ) -- Error: Action[SetPoint] failed because[SetPoint would result in anchor family connection]: attempted from: Frame:SetPoint.\n```\n```\n-- connecting nameplates is expressly not allowed\nlocal f = CreateFrame ( \"Frame\" )\nf : SetPoint ( \"LEFT\" , NamePlate1 )\nf : SetPoint ( \"RIGHT\" , NamePlate2 ) -- Error\n```\n\n## Patch changes\n* <img src='/images/thumb/BattleForAzeroth-Logo-Small.png/48px-BattleForAzeroth-Logo-Small.png?25e36c' alt='BattleForAzeroth-Logo-Small.png' width='48' height='17' /> **Patch 8.2.0 (2019-06-25):** Frames anchored to restricted frames can only be anchored within the same anchor family."
+      ]
+    }
+  ],
+  "errors": [],
+  "usage": [
+    {
+      "name": "sku_extract_excerpts",
+      "count": 1
+    }
+  ],
+  "warnings": []
+}

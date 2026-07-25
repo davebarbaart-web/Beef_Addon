@@ -1,0 +1,76 @@
+{
+  "search_id": "search_87163ccc4783d50344c5d1d942cfdaa0",
+  "session_id": "session_87163ccc4783d50344c5d1d942cfdaa0",
+  "status": "ok",
+  "results": [
+    {
+      "url": "https://www.wowinterface.com/downloads/info24113-TotalRP3.html",
+      "title": "Total RP 3 : RolePlay, Music Mods  : World of Warcraft AddOns",
+      "publish_date": null,
+      "excerpts": [
+        "0 or later).  \nA customizable target frame, allowing you to easily reach useful actions about your roleplay target.  \nChat frame features, likes OOC and emote detection and coloration, using full roleplay names in the chat  \nFull Mary Sue Protocol implementation : Total RP 3 can communicate with MyRolePlay, XRP, Total RP 2 and other MSP add-ons so you can view other players information even if they are using another roleplaying add-on.  \nA customizable toolbar with useful actions like switching from switching from one profile to another, switching from IC to OOC, from AFK to DND, showing or not your character's helmet and cloak  \nImport your existing profiles from Total RP 2, MyRolePlay, XRP, flagRSP2 and flagRSP(MoP).  \n  \nWe will add more features in future versions, bringing back some missing features from Total RP 2\n\nChangelog version 3.3.7  \n  \nAdded  \n* Added 71 icons and 12 musics from patch 12.0.7.\n\n  \nChanged"
+      ]
+    },
+    {
+      "url": "https://github.com/Total-RP/Total-RP-3/wiki/Mary-Sue-Protocol",
+      "title": "Mary Sue Protocol \u00b7 Total-RP/Total-RP-3 Wiki \u00b7 GitHub",
+      "publish_date": null,
+      "excerpts": [
+        "com/Total-RP/Total-RP-3/pulls)\n* [Discussions](https://github.com/Total-RP/Total-RP-3/discussions)\n* Actions\n* Wiki\n* Security\n* Insights\n\n# Mary Sue Protocol\n\nJump to bottom\n\nBen edited this page Aug 19, 2022 \u00b7 3 revisions\n\n## Description\n\nThe Mary Sue Protocol built-in module for Total RP 3 contains the implementation for the [Mary Sue Protocol](https://moonshyne.org/msp/) , a protocol used by all major roleplaying add-ons to exchange profile data in a standardized way, allowing a compatibility with (Total RP 2, XRP, MyRoleplay, FlagRSP, etc.)\n\n## Mary Sue Protocol fields and implementations in Total RP 3\n\n* \n  `AE` : Eye color. ( `blue` ) **Total RP 3 allows users to indicate a specific color for their eyes, to be more explicit. The value will contain a color code (also known as [UI\\_escape\\_sequences](https://wowpedia.fandom.com/wiki/UI_escape_sequences) ) starting with `|cffxxxxxx` and will end with a closing tag `|r` .\n\n...\n\n( `Medecin` ) **Total RP 3 allows users to use a different color than the default class based one for their class. The value will contain a color code (also known as [UI\\_escape\\_sequences](https://wowpedia.fandom.com/wiki/UI_escape_sequences) ) starting with `|cffxxxxxx` and will end with a closing tag `|r` . If you do not want colors in your add-on, please escape the tags correctly ( see below ).**\n* \n  `TT` : Tooltip fields.\n* \n  `VA` : Addon versions. Semicolon-separated list of add-ons/version pairs. `totalRP/1.0.0;GHI/2.1.14`\n* \n  `VP` : Protocol version. `1`\n\n## List of known add-ons using the Mary Sue Protocol\n\n* [Total RP 2](http://www.curseforge.com/wow/addons/totalrp2)\n* [XRP](http://www.curseforge.com/wow/addons/xrp)\n* [FlagRSP MoP](http://www.curseforge.com/wow/addons/flagrsp)\n* [GnomTEC Badge](http://www.curseforge.com/wow/addons/gnomtec_badge)\n* [MyRolePlay](http://www.curseforge.com/wow/addons/my-role-play)\n\n## Correctly escaping color codes\n\n...\n\n[[FR] Comment sauvegarder et synchroniser vos param\u00e8tres d'addons avec un service de cloud](/Total-RP/Total-RP-3/wiki/%5BFR%5D-Comment-sauvegarder-et-synchroniser-vos-param%C3%A8tres-d'addons-avec-un-service-de-cloud)\n  \n  \n  \n  ### Uh oh!\n  \n  \n  \n  There was an error while loading. .\n* \n  Loading\n  \n  About Private Servers\n  \n  \n  \n  ### Uh oh!\n  \n  \n  \n  There was an error while loading. .\n* \n  Loading\n  \n  Analytics in Total RP 3\n  \n  \n  \n  ### Uh oh!\n  \n  \n  \n  There was an error while loading. .\n* \n  Loading\n  \n  Chat formatting in Total RP 3\n  \n  \n  \n  ### Uh oh!\n  \n  \n  \n  There was an error while loading. .\n* \n  Loading\n  \n  Communication system\n  \n  \n  \n  ### Uh oh!\n  \n  \n  \n  There was an error while loading. .\n* \n  Loading\n  \n  createProfile\n  \n  \n  \n  ### Uh oh!\n  \n  \n  \n  There was an error while loading. .\n* \n  Loading\n  \n  deleteProfile\n  \n  \n  \n  ### Uh oh!\n  \n  \n  \n  There was an error while loading. .\n* \n  Loading\n  \n  displayMessage\n  \n  \n  \n  ### Uh oh!\n\n...\n\nMary Sue Protocol\n  \n  \n      + Description\n      + Mary Sue Protocol fields and implementations in Total RP 3\n      + List of known add-ons using the Mary Sue Protocol\n      + Correctly escaping color codes\n      + External links\n* \n  Loading\n  \n  profile\n  \n  \n  \n  ### Uh oh!\n  \n  \n  \n  There was an error while loading. .\n* \n  Loading\n  \n  profileAbout\n  \n  \n  \n  ### Uh oh!\n  \n  \n  \n  There was an error while loading. .\n* \n  Loading\n  \n  profileCharacter\n  \n  \n  \n  ### Uh oh!\n  \n  \n  \n  There was an error while loading. .\n* \n  Loading\n  \n  profileCharacteristics\n  \n  \n  \n  ### Uh oh!\n  \n  \n  \n  There was an error while loading. .\n* \n  Loading\n  \n  profileInventory\n  \n  \n  \n  ### Uh oh!\n  \n  \n  \n  There was an error while loading. .\n* \n  Loading\n  \n  profileMisc\n  \n  \n  \n  ### Uh oh!\n  \n  \n  \n  There was an error while loading. .\n* \n  Loading\n  \n  profileNotes\n  \n  \n  \n  ### Uh oh!\n  \n  \n  \n  There was an error while loading. .\n* \n  Loading\n  \n  profileRelation\n\n...\n\nTRP3\\_API.r.sendQuery(unitID)\n  \n  \n  \n  ### Uh oh!\n  \n  \n  \n  There was an error while loading. .\n* \n  Loading\n  \n  unregisterCommand\n  \n  \n  \n  ### Uh oh!\n  \n  \n  \n  There was an error while loading. .\n* \n  Loading\n  \n  Utils API\n  \n  \n  \n  ### Uh oh!\n  \n  \n  \n  There was an error while loading. .\n* Show 81 more pages\u2026\n\n* **Home**\n* Interesting Links\n* Help\n      + Frequently Asked Questions\n      + Troubleshooting Common Issues\n      + About Private Servers\n      + Reporting profiles\n      + Importing profiles into Total RP 3\n* How to backup and synchronize your addons settings using a cloud service\n* Chat formatting in Total RP 3\n* Technical Design\n      + Communication system\n      + Total RP Peer to Peer Model\n      + Roleplay Broadcast Protocol"
+      ]
+    },
+    {
+      "url": "https://www.curseforge.com/wow/addons/total-rp-3?page=42",
+      "title": "Total RP 3 - Addons - World of Warcraft - CurseForge",
+      "publish_date": "2021-08-31",
+      "excerpts": [
+        "Total RP 3 <strong>implements the Mary Sue Protocol, which is also used by roleplay addons like MyRoleplay, XRP or even Total RP 2.</strong>"
+      ]
+    },
+    {
+      "url": "https://github.com/Ellypse/Total-RP-3/wiki/Mary-Sue-Protocol",
+      "title": "GitHub - Ellypse/Total-RP-3: The best roleplaying add-on for World of Warcraft. \u00b7 GitHub",
+      "publish_date": "2018-07-09",
+      "excerpts": [
+        "Total RP 3 <strong>implements the Mary Sue Protocol, which is also used by roleplay addons like MyRoleplay, XRP or even Total RP 2.</strong>"
+      ]
+    },
+    {
+      "url": "https://totalrp3.info/documentation/technical_design/mary_sue_protocol",
+      "title": "Total RP 3 Documentation \u2013 Mary Sue Protocol",
+      "publish_date": "2018-07-09",
+      "excerpts": [
+        "The Mary Sue Protocol built-in module for Total RP 3 contains the implementation for the Mary Sue Protocol, <strong>a protocol used by all major roleplaying add-ons to exchange profile data in a standardized way</strong>, allowing a compatibility with (Total RP 2, XRP, MyRoleplay, FlagRSP, etc.)"
+      ]
+    },
+    {
+      "url": "https://addons.wago.io/addons/attune",
+      "title": "Attune - Wago Addons",
+      "publish_date": null,
+      "excerpts": [
+        "It gives you a clear visual representation of the quest chains that make up the attunements and shows you who else is on those steps.\n\nThe addon also allows you to upload that information to the WarcraftRatings website where you can display/edit/share your attunement progress with others/guildies and then use that data in Discord.\nThe uploaded profiles can be found at <https://warcraftratings.com/attune>\n\nThis addon works for both Classic Era, Season of Mastery and The Burning Crusade where attunements are plentiful\n\nConsolidation of guild progress in the Guild summary tab:\n\nQuest tooltips, including recommended group size:\n\nSee who's on the attunement step\n\nSee who's completed the attunements\n\n**Toon Profiles:**\n\nYou can now specify what your status/role is to help with raid organisation\n\n**Raid Planner:**\n\nBased on the information on attuned toons in your guild, the addon now lets you plan your raids and see who is ready to go\n\nType  /attune raid    to start using the raid planner\n\n...\n\nIf you are playing on a client that is not in a language listed below, and are able and willing to help translate the addon in that language,\n\nplease contact me on my Development Discord and look for the \"how to translate\" channel.\n\n* English: Delivered\n* French: Delivered\n* German: Delivered - Thanks Sumaya @ Razorfen DE!\n* Russian: Delivered - Thanks to the \"\u0421\u0435\u0440\u044b\u0439 \u041c\u0430\u0440\u0448\" guild on Flamegor RU!\n* Spanish: Delivered -  Thanks to Coyu @ Pyrewood Village EU!\n* Chinese: Delivered - Thanks to ly395842562 and IcyBlade !\n* Korean: Delivered - Thanks to Drix @ Azshara KR!\n\n**INSTALLATION:**\n\n* Copy the \"Attune\" folder into your Wow Classic \\\\Interface\\\\AddOns\\\\ folder\n* Restart World of Warcraft Classic\n\n**HOW TO ACTIVATE:**\n\nJust type /attune in chat to display your progress. \nIf you want to share this progress with the community, click the \"export\" button. \nThis will open a window with an encoded string you can copy to your clipboard\nThe data can then be uploaded at [https://warcraftratings.com/attune/upload for sharing/updating/etc](https://warcraftratings.com/attune/upload%C2%A0for%C2%A0sharing/updating/etc)\n\nTo survey the progress of your guild, click the \"survey\" button to collect the information.\nYou will then receive progress data from any guild member with the addon.\nOnce you have enough information, click the \"export\" button to upload the guild progress on the website.\nThe survey information is also captured in the Guild summary page, accessible via the \"Guild\" button\n(For this to work, guildies will need the addon too)\n\n**CONTACT:**\n\nJoin the discord server to have a say in the direction of the addon\nSubmit bugs/suggestions/comments here: <https://discord.gg/MpfDeBZ>\n\nDeveloping our addons and websites takes time and effort, and in our case is a one-person job.\nIf you feel like participating in some way, you can donate to the cause :-)\n\n[](https://www.paypal.com/donate?"
+      ]
+    },
+    {
+      "url": "https://www.curseforge.com/wow/addons/attune",
+      "title": "Attune - World of Warcraft Addons - CurseForge",
+      "publish_date": "2026-02-25",
+      "excerpts": [
+        "Updated\n    5 months ago\nProject ID\n    414434\nLicense\n    All Rights Reserved\n\n* * *\n\n### Flavors\n\n* [Retail](https://www.curseforge.com/wow/addons/attune/files/all?page=1&pageSize=20&gameVersionTypeId=517&showAlphaFiles=hide)\n* [MoP Classic](https://www.curseforge.com/wow/addons/attune/files/all?page=1&pageSize=20&gameVersionTypeId=79434&showAlphaFiles=hide)\n* [Classic](https://www.curseforge.com/wow/addons/attune/files/all?page=1&pageSize=20&gameVersionTypeId=67408&showAlphaFiles=hide)\n* [Classic TBC](https://www.curseforge.com/wow/addons/attune/files/all?page=1&pageSize=20&gameVersionTypeId=73246&showAlphaFiles=hide)\n\n* * *\n\n### Class & Categories\n\n* [Addons](https://www.curseforge.com/wow/search?class=addons&page=1&pageSize=20&sortBy=relevancy)\n* \n* [Data Export](https://www.curseforge.com/wow/search?class=addons&page=1&pageSize=20&sortBy=relevancy&categories=data-export)\n* [Quests & Leveling](https://www.curseforge.com/wow/search?\n\n...\n\n* * *\n\n### Recent Files [View all](https://www.curseforge.com/wow/addons/attune/files/all?page=1&pageSize=20&showAlphaFiles=hide&sortBy=dateCreated&sortOrder=desc)\n\n#### WoW Retail\n\nAttune-PS-255243001.zip Latest release * R * Retail * Mar 21, 2023\n\n#### WoW Mists of Pandaria Classic\n\nAttune-MoP-502.zip Latest release * R * MoP Classic * May 16, 2025\n\n#### WoW Classic\n\nAttune-Era-Anniversary-261.zip Latest release * R * Classic + 1 * May 24, 2025\n\n#### WoW Burning Crusade Classic\n\nAttune-BCC-268.zip Latest release * R * Classic TBC * Feb 25, 2026\n\n* * *\n\nReport\n\nDownload\n\n* Description\n* Comments (392)\n* [Files](https://www.curseforge.com/wow/addons/attune/files?page=1&pageSize=20&showAlphaFiles=hide)\n* Gallery (10)\n* Relations\n\nitem image\n\nSummary of the latest updates\n\nSummary of the latest updates\n\nitem image\n\nitem image\n\nitem image\n\nitem image\n\nitem image\n\nitem image\n\nitem image\n\nitem image\n\n* screenshot thumbnail\n* Thumbnail Summary of the latest updates\n* screenshot thumbnail\n\n...\n\n\\- Copy the \"Attune\" folder into your Wow Classic \\\\Interface\\\\AddOns\\\\ folder  \n\\- Restart World of Warcraft Classic  \n  \n  \n**HOW TO ACTIVATE:**  \nJust type /attune in chat to display your progress.  \nTo survey the progress of your guild, click the \"survey\" button to collect the information.  \nYou will then receive progress data from any guild member with the addon.  \n(For this to work, guildies will need the addon too)  \n  \n  \n**CONTACT:**  \nJoin the discord server to have a say in the direction of the addon  \nSubmit bugs/suggestions/comments here: <https://discord.gg/MpfDeBZ>\n\nDeveloping our addons and websites takes time and effort, and is a single-person job.  \nIf you feel like participating in some way, you can donate to the cause :-)  \n  \n  \nHuge thanks for downloading and using our addons, that's the best reward.\n\nGood luck, have fun, and may the Earth Mother protect you all.  \n[WarcraftRatings Website](https://www.curseforge.com/linkout?"
+      ]
+    },
+    {
+      "url": "https://addons.wago.io/addons/rclootcouncil-classic/versions?stability=stable",
+      "title": "RCLootCouncil Classic - Wago Addons",
+      "publish_date": null,
+      "excerpts": []
+    }
+  ],
+  "usage": [
+    {
+      "name": "sku_search",
+      "count": 1
+    }
+  ],
+  "warnings": []
+}

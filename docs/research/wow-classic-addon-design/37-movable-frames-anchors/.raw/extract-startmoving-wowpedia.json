@@ -1,0 +1,23 @@
+{
+  "extract_id": "extract_2817b9df281c4731408c82a8523c09b5",
+  "session_id": "session_2817b9df281c4731408c82a8523c09b5",
+  "status": "ok",
+  "results": [
+    {
+      "url": "https://wowpedia.fandom.com/wiki/API_Frame_StartMoving",
+      "title": "Frame:StartMoving - Wowpedia - Your wiki guide to the World of Warcraft",
+      "publish_date": "2025-10-10",
+      "excerpts": [
+        "  ```\n        * [Classic (2021)](https://wowpedia.fandom.com/wiki/World_of_Warcraft:_Burning_Crusade_Classic)\n        * [Original (2007)](https://wowpedia.fandom.com/wiki/World_of_Warcraft:_The_Burning_Crusade)\n    - Classic Era\n              \n  ```\n\n...\n\n  ```\n        * [Classic (2021)](https://wowpedia.fandom.com/wiki/World_of_Warcraft:_Burning_Crusade_Classic)\n        * [Original (2007)](https://wowpedia.fandom.com/wiki/World_of_Warcraft:_The_Burning_Crusade)\n    - Classic Era\n              \n  ```\n\n...\n\n# Frame:StartMoving\nBegins repositioning the frame via mouse movement.\n```\nFrame :StartMoving([alwaysStartFromMouse])\n```\n```\nalwaysStartFromMouse\nboolean ? `= false`\n```\n* This function triggers an error _\"Frame:StartMoving(): Frame is not movable\"_ if called on a non-movable widget.\n* This function automatically flags the widget as user-positioned .\nThe position of named, movable, user-positioned frames created before PLAYER_LOGIN is automatically restored by the client from the layout cache when the player logs in. If you'd like to avoid this behavior, call `Frame:SetUserPlaced (false)` immediately after calling this function.\n* Any existing anchors on the widget are cleared. When the frame stops moving (either because Frame:StopMovingOrSizing () was called or because the frame or one of its ancestors was hidden), it will be anchored to the nearest corner of the screen.\n* Frame:StopMovingOrSizing\n* Making draggable frames"
+      ]
+    }
+  ],
+  "errors": [],
+  "usage": [
+    {
+      "name": "sku_extract_excerpts",
+      "count": 1
+    }
+  ],
+  "warnings": []
+}

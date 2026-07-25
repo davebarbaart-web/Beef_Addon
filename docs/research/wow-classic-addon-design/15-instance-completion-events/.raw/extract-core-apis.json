@@ -1,0 +1,74 @@
+{
+  "extract_id": "extract_9314844eb0bcd7a545cc2444751b72a1",
+  "session_id": "session_9314844eb0bcd7a545cc2444751b72a1",
+  "status": "ok",
+  "results": [
+    {
+      "url": "https://warcraft.wiki.gg/wiki/API_GetInstanceInfo",
+      "title": "GetInstanceInfo - Warcraft Wiki - Your wiki guide to the World of Warcraft",
+      "publish_date": "2009-08-05",
+      "excerpts": [
+        "# Navigation menu\n## Namespaces\n### World of Warcraft\n* Midnight\n* MoP Classic\n* BC Classic\n* Season of Discovery\n* Interface customization\n\n...\n\n# GetInstanceInfo\n## Returns\n2. instanceType\nstring - \"none\" if the player is not in an instance, \"scenario\" for scenarios, \"party\" for dungeons, \"raid\" for raids, \"arena\" for arenas, and \"pvp\" for battlegrounds. Many of the following return values will be nil or otherwise useless in the case of \"none\".\n3. difficultyID\n\n...\n\n## Patch changes\n* **Patch 8.0.1 (2018-07-17):** Now returns a LfgDungeonID, in addition to the previous returns. (Unsure when this was added, guessing 8.0.1 but could have been way earlier.)\n* **Patch 5.4.0 (2013-09-10):** Now returns an instanceGroupSize. Also added a new possible difficultyID (14) for Flexible Raids."
+      ]
+    },
+    {
+      "url": "https://warcraft.wiki.gg/wiki/BOSS_KILL",
+      "title": "BOSS_KILL - Warcraft Wiki - Your wiki guide to the World of Warcraft",
+      "publish_date": "2015-02-02",
+      "excerpts": [
+        "# BOSS_KILL\n\u2191 _Events_\nFired when an instance or open-world boss is killed.\n```\nBOSS_KILL : encounterID , encounterName\n```\n\n## Payload\n```\nencounterID\nnumber\n```\nencounterName\nstring"
+      ]
+    },
+    {
+      "url": "https://warcraft.wiki.gg/wiki/PLAYER_ENTERING_WORLD",
+      "title": "PLAYER_ENTERING_WORLD - Warcraft Wiki - Your wiki guide to the World of Warcraft",
+      "publish_date": "2013-10-21",
+      "excerpts": [
+        "# Navigation menu\n## Namespaces\n### World of Warcraft\n* Midnight\n* The War Within\n* MoP Classic\n* Season of Discovery\n* Interface customization\n\n...\n\n# PLAYER_ENTERING_WORLD\n\u2191 _Events_\nFires when the player logs in, /reloads the UI or zones between map instances. Basically whenever the loading screen appears.\n```\nPLAYER_ENTERING_WORLD: isInitialLogin, isReloadingUi\n```\n\n## Payload\n```\nisInitialLogin\nboolean \\- True whenever the character logs in. This includes logging out to character select and then logging in again.\n```\nisReloadingUi\nboolean"
+      ]
+    },
+    {
+      "url": "https://warcraft.wiki.gg/wiki/ENCOUNTER_START",
+      "title": "ENCOUNTER_START - Warcraft Wiki - Your wiki guide to the World of Warcraft",
+      "publish_date": "2018-05-16",
+      "excerpts": [
+        "# Navigation menu\n## Namespaces\n### World of Warcraft\n* Midnight\n* MoP Classic\n* BC Classic\n* Season of Discovery\n* Interface customization\n\n...\n\n# ENCOUNTER_START\n\u2191 _Events_\nFires at the start of an instanced encounter.\n```\nENCOUNTER_START : encounterID , encounterName , difficultyID , groupSize\n```\n\n## Payload\n```\nencounterID\nnumber \\- ID for the specific encounter started.\n```\nencounterName\nstring - Name of the encounter started\ndifficultyID\nnumber - ID representing the difficulty of the encounter\ngroupSize\nnumber - Group size for the encounter. For example, 5 for a Dungeon encounter, 20 for a Mythic raid. The number of raiders participating is reflected in \"flex\" raids."
+      ]
+    },
+    {
+      "url": "https://warcraft.wiki.gg/wiki/API_IsInInstance",
+      "title": "IsInInstance - Warcraft Wiki - Your wiki guide to the World of Warcraft",
+      "publish_date": "2006-12-20",
+      "excerpts": [
+        "# IsInInstance\n## Returns\n```\ninInstance\nboolean \\- Whether the player is in an instance; nil otherwise.\n```\ninstanceType\nstring - The instance type:\n* \"none\" when outside an instance\n* \"pvp\" when in a battleground\n* \"arena\" when in an arena\n* \"party\" when in a 5-man instance\n* \"raid\" when in a raid instance\n* \"scenario\" when in a scenario"
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "url": "https://warcraft.wiki.gg/wiki/ENCOUNTER_END",
+      "error_type": "network_error",
+      "http_status_code": null,
+      "content": null
+    },
+    {
+      "url": "https://warcraft.wiki.gg/wiki/UPDATE_INSTANCE_INFO",
+      "error_type": "http_error",
+      "http_status_code": 403,
+      "content": null
+    },
+    {
+      "url": "https://warcraft.wiki.gg/wiki/API_GetSavedInstanceInfo",
+      "error_type": "network_error",
+      "http_status_code": null,
+      "content": null
+    }
+  ],
+  "usage": [
+    {
+      "name": "sku_extract_excerpts",
+      "count": 5
+    }
+  ],
+  "warnings": []
+}

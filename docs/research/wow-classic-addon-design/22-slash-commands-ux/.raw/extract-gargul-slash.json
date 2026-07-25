@@ -1,0 +1,23 @@
+{
+  "extract_id": "extract_ca780efbe77dce924c74f00e514f3a6d",
+  "session_id": "session_ca780efbe77dce924c74f00e514f3a6d",
+  "status": "ok",
+  "results": [
+    {
+      "url": "https://addonswow.com/gargul",
+      "title": "This page is blocked by service provider.",
+      "publish_date": "2000-06-08",
+      "excerpts": [
+        "# Are you the website maintainer?\nA letter concerning circumstances of this has been sent to your contact email automatically.\nYou can also get\nin touch with out support team using your Control Panel \"Help and Support\" section or in any other convenient\nway.\n\n## Is the problem solved? Try to reset the cache\n* Clear the cache automatically\n* Reload the page by pressing\n* Clear the cache from your browser settings\n  If it does not help - you can contact our technical support service using the \"Feedback\" section in the\n  hosting management panel or in any way convenient for you.\n\n## Support\nMail: support@beget.com\nSupport:\nsupport@beget.com\nManagement:\nmanager@beget.com"
+      ]
+    }
+  ],
+  "errors": [],
+  "usage": [
+    {
+      "name": "sku_extract_excerpts",
+      "count": 1
+    }
+  ],
+  "warnings": []
+}

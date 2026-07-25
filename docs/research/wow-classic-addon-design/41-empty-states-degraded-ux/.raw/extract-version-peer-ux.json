@@ -1,0 +1,46 @@
+{
+  "extract_id": "extract_c6db710ffd850bf2e12246a258b359c6",
+  "session_id": "session_c6db710ffd850bf2e12246a258b359c6",
+  "status": "ok",
+  "results": [
+    {
+      "url": "https://github.com/evil-morfar/RCLootCouncil2/wiki/Version-Checker",
+      "title": "Version Checker \u00b7 evil-morfar/RCLootCouncil2 Wiki \u00b7 GitHub",
+      "publish_date": "2020-01-15",
+      "excerpts": [
+        "# evil-morfar/RCLootCouncil2 wiki: Version Checker\n- Page: GitHub wiki page\n- URL: https://github.com/evil-morfar/RCLootCouncil2/wiki/Version-Checker\n- Repository: evil-morfar/RCLootCouncil2\nAccess:\n* `/rc version` or `/rc ver` or `/rc v`\n* or through the [options menu](https://github.com/evil-morfar/RCLootCouncil2/wiki/Options) .\nA module to keep track of which version of **RCLootCouncil** each group or guild member has installed. It also keeps track of modules and their version.\nversion-checker\n1. **Guild Button**\nQuery a version check for every online guild member.\n2. **Group Button**\nQuery a version check for everyone in your group.\n3. **Close Button**\nCloses the version checker.\n4. **Entry row**\nEach queued member has their own row with the following information:\n1. Class icon.\n2. Name.\n3. Guild rank\n4. Version. Mouseover this field to see module information.\nEach of these columns can be sorted by clicking the header.\nQuerying either your group or guild sends out a version request to everyone in the selected category, and populates the table with names, classes and guild ranks.\nInitially the version frame shows `\"Waiting for response\"` for everyone, but that should change pretty fast as the versions responses are coming in. If no response is received within 5 seconds, that usually means **RCLootCouncil** is not installed, and the version column is marked as such.\nThe newest detected version is always colored green, while any version older than that are red. If anyone is running a test version (usually alpha or beta releases) those are shown in yellow. Other informative text is shown in grey.\nNote: The rows are by default sorted by version number followed by name. Sorting occurs every time new information is received, so the rows might change a lot the first few seconds after asking for versions.\nOnly players online at the time of the query are added - press the button again to reinitiate the query."
+      ]
+    },
+    {
+      "url": "https://addons.wago.io/addons/attune",
+      "title": "Attune - Wago Addons",
+      "publish_date": "2026-02-25",
+      "excerpts": [
+        "# Attune\nTrack your Attunement progression\nSelect a tab About Releases Gallery\n[About](https://addons.wago.io/addons/attune) [Releases](https://addons.wago.io/addons/attune/versions) [Gallery](https://addons.wago.io/addons/attune/gallery)\nProject ID: rkGrpn6y\nLast updated: Feb 25, 2026\n215,364 Downloads\n1 Likes\n\n...\n\n## DEVELOPERS\n### **Attune**\nThe addon can be localized, meaning it can be translated in any of the languages the WoW Client comes in.\nIf you are playing on a client that is not in a language listed below, and are able and willing to help translate the addon in that language,\n\n...\n\n**INSTALLATION:**\n* Copy the \"Attune\" folder into your Wow Classic \\Interface\\AddOns\\ folder\n* Restart World of Warcraft Classic\n**HOW TO ACTIVATE:**\n\n...\n\nTo survey the progress of your guild, click the \"survey\" button to collect the information.\nYou will then receive progress data from any guild member with the addon.\nOnce you have enough information, click the \"export\" button to upload the guild progress on the website.\nThe survey information is also captured in the Guild summary page, accessible via the \"Guild\" button\n(For this to work, guildies will need the addon too)\n**CONTACT:**\nJoin the discord server to have a say in the direction of the addon\nSubmit bugs/suggestions/comments here: https://discord.gg/MpfDeBZ\nDeveloping our addons and websites takes time and effort, and in our case is a one-person job.\nIf you feel like participating in some way, you can donate to the cause :-)"
+      ]
+    },
+    {
+      "url": "https://github.com/papa-smurf/Gargul/wiki",
+      "title": "Home \u00b7 papa-smurf/Gargul Wiki \u00b7 GitHub",
+      "publish_date": null,
+      "excerpts": [
+        "# papa-smurf/Gargul wiki: Home\n## Raid Leading\n[Sort Groups & Tanks](https://github.com/papa-smurf/Gargul/wiki/Sort-Groups-&-Tanks)\nCheck Who's Missing (WIP)\nChecking Buffs (WIP)\nChecking Items (WIP)\n\n## Miscellaneous\n[Version Check](https://github.com/papa-smurf/Gargul/wiki/Version-Check)\n[Settings](https://github.com/papa-smurf/Gargul/wiki/Settings)\n\n...\n\n## Wiki pages\n- [Sort Groups & Tanks](https://github.com/papa-smurf/Gargul/wiki/Sort-Groups-&-Tanks)\n- [Version Check](https://github.com/papa-smurf/Gargul/wiki/Version-Check)"
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "url": "https://warcraft.wiki.gg/wiki/API_IsInGuild",
+      "error_type": "network_error",
+      "http_status_code": null,
+      "content": null
+    }
+  ],
+  "usage": [
+    {
+      "name": "sku_extract_excerpts",
+      "count": 3
+    }
+  ],
+  "warnings": []
+}

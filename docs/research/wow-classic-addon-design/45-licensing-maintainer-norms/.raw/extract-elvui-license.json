@@ -1,0 +1,23 @@
+{
+  "extract_id": "extract_8a40eb7de5fd6d7b1c78e2c62c905136",
+  "session_id": "session_8a40eb7de5fd6d7b1c78e2c62c905136",
+  "status": "ok",
+  "results": [
+    {
+      "url": "https://tukui.org/elvui",
+      "title": "Tukui Community",
+      "publish_date": "2026-07-07",
+      "excerpts": [
+        "# ElvUI\ncopyrighted to their authors with all rights reserved.\nThis addon is free to use and the authors hereby grant you the following rights:\n* You may make modifications to this addon for private use only, you\nmay not publicize any portion of this addon. The only exception being you may\nupload to the GitHub website.\n* Do not modify the name of this addon, including the addon folders.\n* This copyright notice shall be included in all copies or substantial\n\n...\n\nAll rights not explicitly addressed in this license are reserved by\nthe copyright holders.\n_You can contact us on our Discord server for reporting abuse._\nDownload Elvui 15.18\nThe current version of Elvui is **15.18** and was updated on **2026-07-07** .\n\n...\n\n## Version 15.18 [ July 7th 2026 ]\n### Version 10.53 [ June 12th 2017 ]\n+ Various skin tweaks.\n+ Simplified skinning of chat bubbles with new API.\n+ Disabled ElvUI modifications to the WoW error frame until it can be re-coded to work with patch 7.2.5 changes.\n+ Added callback system for ElvUI modules in order to preserve stack trace when an error occurs."
+      ]
+    }
+  ],
+  "errors": [],
+  "usage": [
+    {
+      "name": "sku_extract_excerpts",
+      "count": 1
+    }
+  ],
+  "warnings": []
+}

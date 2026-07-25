@@ -1,0 +1,39 @@
+{
+  "extract_id": "extract_4a3522e71c7514ea98cbfe5096a938ea",
+  "session_id": "session_4a3522e71c7514ea98cbfe5096a938ea",
+  "status": "ok",
+  "results": [
+    {
+      "url": "https://github.com/teelolws/EditModeExpanded",
+      "title": "GitHub - teelolws/EditModeExpanded \u00b7 GitHub",
+      "publish_date": "2022-10-31",
+      "excerpts": [
+        "# teelolws/EditModeExpanded\n## README.md\nExpands Blizzard's Edit Mode to allow other frames to be moved, too.\nThere are two parts to this addon:\n1. EditModeExpanded: The addon itsself, which currently supports moving various parts of the base UI not already supported by Edit Mode, and adds resize and hide support to parts of the base UI that don't already have that option\n2.\nEditModeExpanded-1.0: The library, which can be imported by other addons, to allow the other addon to make itsself movable in Edit Mode\nCurrently supports:\n1. Moving custom frames around during Edit Mode (Anything you'd like to move around that Blizzard didn't already highlight in Blue during Edit Mode!)\n2. Saving the location of custom frames moved during Edit Mode, and restoring that location during login\n3.\nSplits the Menu Bar from the Backpack Bar so they can be moved separately\n4. Resize custom frames, save and reload the custom size\n5. Save settings per Edit Mode profile\n6. Option to change the menu buttons back to either the Shadowlands versions or the Black and White ones from early Dragonflight\n7. Option to add back a recreation of the Dragonriding Vigor Bar, with the Algari Stormrider variant\n\n...\n\nLicense: The Library portion of this Project may be included, used, and distributed in your addon, provided you credit me as the author of the work.\nhttps://www.patreon.com/tldrmissions"
+      ]
+    },
+    {
+      "url": "https://www.warcrafttavern.com/wow-classic/news/user-interface-update-coming-to-wow-classic-era-sod-hardcore/",
+      "title": "User Interface Update Coming to WoW Classic Era, SoD & Hardcore - WoW Classic - Warcraft Tavern",
+      "publish_date": "2026-07-10",
+      "excerpts": [
+        "# User Interface Update Coming to WoW Classic Era, SoD & Hardcore\nTBC Anniversary Edition recieved an update to its UI this week, bringing Nameplate and Raid Frame options from WoW: Midnight into the Classic game mode. Blizzard has announced their plans to add these features to Classic WoW within the next couple of weeks.\nThey\u2019ll also be implementing Edit Mode, which has already made its way into other versions of Classic.\nThe update will bring all Classic Era, Season of Discovery, and Hardcore modes into Patch 1.15.9. Many addons will need to be updated to accomodate the new features.\n\n...\n\n## References\nAlthough this patch was almost entirely to support critical service systems, it also included changes to nameplates and raid frames. We\u2019d like to tell you about these changes, highlight options you have to edit some of the user interface (UI), and look forward to patch 1.15.9 coming to WoW Classic soon.\n**UI Using Shared Code**\n\n...\n\nSince we released patch 2.5.6, we\u2019ve been listening to community feedback, and we recognize that players are looking for ways to modify their nameplates and raid frames that were updated. In addition to the settings that exist in the Options menu, players can use the following chat commands for further customization:\n`/script C_CVar.SetCVar(\"nameplateShowClassColor\", 1);`\n`/script C_CVar.SetCVar(\"nameplateShowFriendlyClassColor\", 1);`\n`/script C_CVar.SetCVar(\"raidFramesDispelIndicatorOverlay\", 0);`\nWe\u2019re currently working on surfacing these settings in the Options menu itself, so that players will have access to them there, in addition to the option to use chat commands. We expect to implement this next week.\n**Upcoming WoW Classic Patch 1.15.9 \u2013 Week of July 19**\n\n...\n\nAs with the Burning Crusade Classic Anniversary patch, this patch will bring in Edit Mode and changes to players\u2019 nameplates and raid frames to the WoW Classic games.\nSome third-party addons may experience errors until they are updated by their authors.\nAs all versions of World of Warcraft share most of their UI code, the addon API in 1.15.9 very closely matches the addon API from 2.5.6. For addon authors, we encourage you to use 2.5.6 as an environment for updating addons to be compatible with 1.15.9.\nWe will continue to refine our updates in the future, so that we\u2019re providing additional options for players to modify settings wherever possible.\nThank you, as always, for your passion and feedback.\n+ Nameplate Class Color (Enemy Units):\n+ Nameplate Class Color (Friendly Units):\n+ Disabling Raid Frame Dispel Highlights:\n\n...\n\n## Author\n### Zygor Leveling Guides\n#### [RSS](https://blue-tracker.warcrafttavern.com/rss/all) [Recent Blue Posts](https://www.warcrafttavern.com/blue-tracker)\n* [WoW Weekly: Classic Anniversary Edition, Decor Duels, WoW Portal Room, and More!](https://news.blizzard.com/en-us/article/24293051/wow-weekly-classic-anniversary-edition-decor-duels-wow-portal-room-and-more)"
+      ]
+    },
+    {
+      "url": "https://us.forums.blizzard.com/en/wow/t/the-burning-crusade-classic-anniversary-ptr-development-notes/2201610",
+      "title": "The Burning Crusade Classic Anniversary PTR Development Notes - In Development / The Burning Crusade Classic Anniversary PTR - World of Warcraft Forums",
+      "publish_date": "2025-11-18",
+      "excerpts": [
+        "# The Burning Crusade Classic Anniversary PTR Development Notes\n## General\n* Heroism/Bloodlust is now raid-wide with a 10-minute Sated/Exhaustion debuff.\n  + This specific ability/debuff will only to reset on boss kill and wipe.\n* Terocone\u2019s respawn rate is increased and additional Terocone nodes have been added.\n* Edit Mode added as a quality-of-life option for players\u2019 user interfaces.\n\n## Heroic Dungeons\nEvery player\u2019s first character will be required to become fully attuned (hitting Revered reputation level), but upon doing so for each dungeon, players can then purchase a Bag which contains a Bind-on-Battle.net-Account key to send to alts.\n\n...\n\n## Arenas\nWith BCC Anniversary Edition, we\u2019re interested in bringing that \u201cteams\u201d feeling back by encouraging players to participate in the system more than ever before.\n\n...\n\n## Realm-Type Transfers and Feature Updates\nIn the case of the Group Finder tool, we consider it to be a true quality-of-life update, bringing players an additional and intuitive way to connect with each other.A similar quality-of-life update is Edit Mode, allowing players to edit their user interfaces, which we are adding as a new change to\nBCC Anniversary Edition.\nQuality-of-life user interface options like Edit Mode could eventually make their way to Classic Era as well, and we look forward to the community\u2019s thoughts on optional user interface quality-of-life additions such as this.The choice to bring Dual Spec to Classic Era similarly received a\n\n...\n\n* [WoW\u00ae: Burning Crusade Classic Anniversary Edition Pre-Patch Arrives January 13](https://us.forums.blizzard.com/en/wow/t/wow%C2%AE-burning-crusade-classic-anniversary-edition-pre-patch-arrives-january-13/2201588/93)"
+      ]
+    }
+  ],
+  "errors": [],
+  "usage": [
+    {
+      "name": "sku_extract_excerpts",
+      "count": 3
+    }
+  ],
+  "warnings": []
+}

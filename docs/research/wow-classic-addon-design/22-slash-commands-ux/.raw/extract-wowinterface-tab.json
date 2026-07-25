@@ -1,0 +1,23 @@
+{
+  "extract_id": "extract_bc89e3ed011d7397fb783232ba25239a",
+  "session_id": "session_bc89e3ed011d7397fb783232ba25239a",
+  "status": "ok",
+  "results": [
+    {
+      "url": "https://wowinterface.com/forums/archive/index.php/t-48783.html",
+      "title": "I have never realised this... (slash commands) [Archive]  - WoWInterface",
+      "publish_date": "2001-09-14",
+      "excerpts": [
+        "So apparently, if you type a slash in the chat edit box, and then press tab, it will try to auto complete the slash command for you. For example, if you type /a and then press tab, if will suggest /afk. If you press tab again, it will suggest more commands beginning with a. If you just type a slash, you can tab through all available slash commands."
+      ]
+    }
+  ],
+  "errors": [],
+  "usage": [
+    {
+      "name": "sku_extract_excerpts",
+      "count": 1
+    }
+  ],
+  "warnings": []
+}

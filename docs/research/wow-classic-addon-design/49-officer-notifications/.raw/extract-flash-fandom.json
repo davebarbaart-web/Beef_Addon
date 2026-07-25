@@ -1,0 +1,16 @@
+{
+  "extract_id": "extract_78d10b635911771ed9c0b04ed9415b60",
+  "session_id": "session_78d10b635911771ed9c0b04ed9415b60",
+  "status": "ok",
+  "results": [],
+  "errors": [
+    {
+      "url": "https://wowpedia.fandom.com/wiki/API_FlashClientIcon",
+      "error_type": "network_error",
+      "http_status_code": null,
+      "content": null
+    }
+  ],
+  "usage": [],
+  "warnings": []
+}

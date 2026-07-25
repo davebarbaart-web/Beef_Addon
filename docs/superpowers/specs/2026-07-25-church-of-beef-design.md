@@ -292,11 +292,18 @@ Live broadcasts only reach players who are **online with the addon running**. Wi
 - **Thin stubs:** Gora “record result,” Ceremony “start/close” — enough to feed scores
 - Toasts on: suggestion created, rank approved, Gora/ceremony credit
 - **Guild-chat announcement on promotion/demotion** (plain text, visible to members *without* the addon): one throttled line, e.g. “The Church recognizes Beefina, elevated to Beef Knight.” Sent by the approving officer's client only (no duplicate spam); per-officer opt-out. This is the cheapest stream-friendly spectacle in V1 — a rank change nobody sees isn't a spectacle.
+- **Announce opt-out UX (locked):** Officer+ checkbox on the Officer tab labeled **“Announce promotions to guild chat”** (procedural, not meme); mirrors `ChurchOfBeefDB.ui.announce`; **default ON**. Optional duplicate later under a minimal settings strip — slash-only is not sufficient.
+- **V1 settings budget (locked):** frame position (always), minimap show/hide, announce opt-out. Toast mute only if playtest proves noise. No UI-scale override, strata picker, or per-event announce filters in V1.
+- **My Standing progress (locked for Task 8):** text thresholds only (standing + next title / appointed-only copy). Thin track for ranks 1–5 is a post-playtest option, not a V1 requirement. No meter-dashboard breakdown chrome.
+- **Streamer privacy:** no dedicated Streamer Mode in V1 code — document that third-party StreamerMode does not mask `/beef`. V1.1 may add an SV preset (mask flock names and/or quieter toasts); privacy must never silently disable officer guild announce.
+- **Brand chrome colors:** V1 ships template-native Blizzard chrome + GameFont defaults. Provisional research hex is not law until an Anniversary screenshot pass. Custom brand accents beyond class-colored names and dual-encoded state colors wait on that lock.
+- **Faction look:** one shared Scarlet/church brand for both guilds — no Alliance/Horde panel skins. Optional tiny faction chip is post-V1 only if streamers ask.
+- **SFX:** V1 is silent. Optional cleared one-shots may arrive with a later spectacle pass, **default off**; never redistribute ripped Blizzard audio.
 - One-line scripture/footer placeholder allowed; not a full lore system
 - Missing fonts/textures must fall back to default UI fonts; addon still loads
 - Frame must always be created on load or first `/beef` (fix for prior “command works, nothing appears” failure mode)
 
-V1 may use plain Classic frames; dark-iron theatrical chrome is a later visual pass.
+V1 may use plain Classic frames; dark-iron theatrical chrome / commissioned heraldry is a later visual pass (commission package may accept seal shape language when funded; until then words-only brand is correct).
 
 ---
 
@@ -374,19 +381,31 @@ V1 succeeds when:
 | Advancement | Hybrid: suggest → Officer+ approve |
 | Approvers | Real WoW guild Officer+ (roster rank-index check, configurable threshold) |
 | Suggestion fuel | Gora + ceremonies + shared instance presence |
-| Co-play definition | Dungeon / raid / BG with other Beef (guild) members, with anti-AFK combat requirement |
-| Platform | TBC Classic Anniversary first |
+| Co-play definition | Qualifying instance (dungeon/raid/BG) ∧ connected guildmate in the correct group category; combat-gated buckets for anti-AFK; no proximity / CLEU (research tracks 59, 63) |
+| Platform | TBC Classic Anniversary first (`## Interface: 20506`, `_anniversary_` tree) |
 | Classic+ | Future port, not V1 |
 | Ladder | Fresh Beef → Cooked Beef → Beef Knight → Beef Lord → Beef Butcher → Beef Council → Beef Prophet |
 | Rank tiers | Ranks 1–5 point-driven; Beef Council seat-limited appointed; Beef Prophet bestowed, unique |
 | Demotion | No automatic decay in V1; manual officer demotion is first-class |
 | Anti-cheat stance | Standings are self-reported advisory testimony; officer approval is the real gate |
 | Sync ordering | Per-record revision numbers; login sync reconciliation; replay-safe |
-| Promotion visibility | Throttled guild-chat announcement from approving officer's client |
+| Promotion visibility | Throttled guild-chat announcement from approving officer's client only (`GUILD`, not `/o`) |
+| Announce opt-out UX | Officer-tab checkbox “Announce promotions to guild chat”; `ChurchOfBeefDB.ui.announce`; default ON; procedural label |
+| V1 settings budget | Position + minimap hide + announce opt-out; toast mute only if playtest demands; no scale/strata/per-event announce filters |
+| My Standing progress | Text thresholds only for Task 8; thin 1–5 track optional post-playtest; no meter-dashboard chrome |
+| Streamer Mode | Not in V1 code; coexistence note only; V1.1 SV preset later; must not kill guild announce |
+| Brand hex / chrome tint | Template-native V1; lock research hex only after Anniversary screenshot pass |
+| Faction chrome | Shared church brand only; no Alliance/Horde skins; optional chip post-V1 if asked |
+| SFX | V1 silent; later spectacle SFX default off; no ripped Blizzard audio |
+| Post-V1 heraldry brief | Accept seal shape language (flock escalation + Council/Prophet break) when commissioning; delay art until shell works |
+| Suggestion inbox | Local-persist + live fanout only; soft-expire ~14 days; no shared BeefNet suggestion store in V1 (track 67); officer pull-on-login = V1.1 flag |
+| Combat log | Do not register CLEU for V1 scoring (track 63) |
+| Dependencies | No AceAddon / hard `Dependencies` in V1; plain `COB` namespace; embed CTL/LibDBIcon only when triggered (tracks 34, 42) |
 | Machine canon location | `addon/ChurchOfBeef/Data/Ranks.lua` (inside addon folder; TOC constraint) |
 | Cross-realm | None; each guild (Dreamscythe Alliance, Doomhowl Horde) runs an independent ladder |
 | Repo approach | Knowledge-first + light canon/engine split |
-| SavedVariables | Per-character `ChurchOfBeefDB` |
+| SavedVariables | Per-character `ChurchOfBeefDB` (cache of officer commits + local testimony) |
+| Implementer index | Research glossary: `docs/research/wow-classic-addon-design/74-v1-decision-glossary/` |
 
 ---
 
@@ -397,6 +416,6 @@ Tracked here so they don't silently become assumptions:
 1. **Alt policy.** V1 is strictly per-character. Should a future version let officers link alts to a main's rank, or is "the flesh must prove itself anew" permanent doctrine?
 2. **Council seat count.** Default 4 — needs a real decision from guild leadership before the first appointment.
 3. **Standing decay.** Off in V1. If the ladder saturates (everyone at Beef Butcher), revisit seasonal resets or decay — a "Lent" season reset is an on-brand option.
-4. **Instance completion detection.** Dungeon-complete signals vary in reliability on Classic-era clients; if detection proves flaky, fall back to combat-active time buckets only and drop the completion bonus.
-5. **Suggestion queue sharing.** V1 may keep suggestions visible only to officers who received the `SUGGESTION` message while online. If officers complain about missed suggestions, extend login sync to cover the pending queue.
-6. **Threshold tuning.** All numbers in §4.2 are placeholders until one real guild night of data exists.
+4. **Instance completion detection.** No reliable Classic “dungeon complete” event (track 15). Ship combat-gated drip as primary; treat completion bonus / BG winner / encounter IDs as optional—drop if flaky in Anniversary playtest.
+5. **Suggestion queue sharing.** **Closed for V1** (see §15): local-persist + live fanout; no shared store. Reopen as V1.1 only if officers miss petitions in playtests.
+6. **Threshold tuning.** All numbers in §4.2 are placeholders until one instrumented guild night (research track 51 playbook).

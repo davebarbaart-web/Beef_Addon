@@ -1,0 +1,16 @@
+{
+  "extract_id": "extract_973e3713b23754e63695be3ffe867b28",
+  "session_id": "session_973e3713b23754e63695be3ffe867b28",
+  "status": "ok",
+  "results": [],
+  "errors": [
+    {
+      "url": "https://warcraft.wiki.gg/wiki/API_SendChatMessage",
+      "error_type": "network_error",
+      "http_status_code": null,
+      "content": null
+    }
+  ],
+  "usage": [],
+  "warnings": []
+}

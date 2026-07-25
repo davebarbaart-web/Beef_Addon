@@ -1,0 +1,23 @@
+{
+  "extract_id": "extract_1a03773d6ad1a1aa970063cbc87cce9b",
+  "session_id": "session_1a03773d6ad1a1aa970063cbc87cce9b",
+  "status": "ok",
+  "results": [
+    {
+      "url": "https://warcraft.wiki.gg/wiki/MACRO_chatlog",
+      "title": "MACRO chatlog - Warcraft Wiki - Your wiki guide to the World of Warcraft",
+      "publish_date": "2009-01-01",
+      "excerpts": [
+        "# MACRO chatlog\nFrom Warcraft Wiki\nJump to navigation Jump to search\n| Macros |\n| General guides |\n| Macros Beginners Guide |\n| Making a macro |\n| Macro conditionals |\n| Macro commands |\n| Category:Macros |\n| Useful macros by class |\n| Useful macros for death knights Useful macros for demon hunters Useful macros for druids Useful macros for hunters Useful macros for mages Useful macros for monks |\n| Useful macros for paladins Useful macros for priests Useful macros for rogues Useful macros for shamans Useful macros for warlocks Useful macros for warriors |\n| Main Menu |\n| * WoW API |\n* Lua API\n* Widget API\n* XML schema\n* FrameXML\n* Events\n* CVars\n* Combat Log\n* Escape sequences\n* API changes\n* HOWTOs\n* Discord logo.png [wowuidev](https://discord.gg/txUg39Vhc6) |\nEnables logging of chat messages.\n```\n/chatlog\n```\n\n## Notes\n* Logs are written to World of Warcraft\\Logs\\WoWChatLog.txt\nRetrieved from \" [https://warcraft.wiki.gg/wiki/MACRO_chatlog?oldid=4873243](https://warcraft.wiki.gg/wiki/MACRO_chatlog?oldid=4873243) \"\nCategory :\n* Macro API\n[](https://app.wiki.gg/showcase/go?utm_campaign=epg_an&utm_medium=mrecmiddle&utm_source=warcraft.wiki.gg&location=desktop)\n[Report bad advertisement](https://www.wiki.gg/t/bad-ad)\n[](https://app.wiki.gg/showcase/go?utm_campaign=epg_an&utm_medium=bannerfooter&utm_source=warcraft.wiki.gg&location=desktop)\nCookies help us deliver our services. By using our services, you agree to our use of cookies.\n[More information](https://www.indie.io/privacy-policy) OK\n\n...\n\n* [Creative Commons Attribution-ShareAlike 4.0 License Creative Commons Attribution-ShareAlike 4.0 License](https://creativecommons.org/licenses/by-sa/4.0)\n* [Powered by MediaWiki Powered by MediaWiki](https://www.mediawiki.org/)\n* [Part of wiki.gg Part of wiki.gg](https://wiki.gg)"
+      ]
+    }
+  ],
+  "errors": [],
+  "usage": [
+    {
+      "name": "sku_extract_excerpts",
+      "count": 1
+    }
+  ],
+  "warnings": []
+}

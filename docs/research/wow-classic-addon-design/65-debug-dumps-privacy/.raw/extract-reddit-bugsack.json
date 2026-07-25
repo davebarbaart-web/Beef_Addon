@@ -1,0 +1,23 @@
+{
+  "extract_id": "extract_2600d78ee856f8adb1dfac14bd380aa5",
+  "session_id": "session_2600d78ee856f8adb1dfac14bd380aa5",
+  "status": "ok",
+  "results": [
+    {
+      "url": "https://www.reddit.com/r/classicwow/comments/1q8eg6k/some_addons_are_gonna_break_in_tbc_here_is_the/",
+      "title": "Reddit - The heart of the internet",
+      "publish_date": "2026-01-09",
+      "excerpts": [
+        "# Some add-ons are gonna break in TBC. Here is the best way to help get them fixed ASAP.\nThat's where BugGrabber and BugSack come in.\n\n...\n\nBugSack stores those errors in a neat little minimap button so you can deal with them when it's a good time for you.\nIf you want to report a bug, you just click the sack icon, hit copy, and paste that into the dev\u2019s bug reporting tools on Discord, GitHub, or CurseForge.\nIt takes just as much time as writing a comment, but turns a frustrated \"pls fix\" into an actionable report for the developer.\nThe easier we make it for them, the faster we all get our tools back.\n* BugGrabber:\n  https://www.curseforge.com/wow/addons/bug-grabber\n* BugSack:\n  https://www.curseforge.com/wow/addons/bugsack\n  Share"
+      ]
+    }
+  ],
+  "errors": [],
+  "usage": [
+    {
+      "name": "sku_extract_excerpts",
+      "count": 1
+    }
+  ],
+  "warnings": []
+}

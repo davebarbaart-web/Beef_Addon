@@ -1,0 +1,16 @@
+{
+  "extract_id": "extract_f716688f872eb44a1381780a86f9ec33",
+  "session_id": "session_f716688f872eb44a1381780a86f9ec33",
+  "status": "ok",
+  "results": [],
+  "errors": [
+    {
+      "url": "https://wowpedia.fandom.com/wiki/API_RaidNotice_AddMessage",
+      "error_type": "network_error",
+      "http_status_code": null,
+      "content": null
+    }
+  ],
+  "usage": [],
+  "warnings": []
+}

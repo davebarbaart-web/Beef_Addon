@@ -1,0 +1,23 @@
+{
+  "extract_id": "extract_42f3ffeb935861550a944524d04a35c8",
+  "session_id": "session_42f3ffeb935861550a944524d04a35c8",
+  "status": "ok",
+  "results": [
+    {
+      "url": "https://wowpedia.fandom.com/wiki/Ignore",
+      "title": "Ignore - Wowpedia - Your wiki guide to the World of Warcraft",
+      "publish_date": null,
+      "excerpts": [
+        "# Ignore\n**Ignore** is a function used by players to prevent seeing chat messages (including emotes) from another player . You can use the Ignore Player button in the Socials window to add a player character to your ignore list , or use the slash command /ignore <name>.\nChat messages from ignored characters will not be displayed. This includes /say and /yell messages, as well as those in channels such as /trade, /guild and /party. Whispers from ignored characters also will not be displayed, and the ignored player will receive a message informing them that you are ignoring them.\n\n...\n\nCharacters can be removed from the ignore list as easily as they are added, through the ignore list or using the slash command /unignore <name>.\nNote that only individual characters can be placed on the ignore list ; it will not affect interaction with any other characters owned by that player.\n\n...\n\nThe ignore list can only store 50 names maximum. This can be expanded via AddOns (like IgnoreMore), but new ignores may not have the same functionality.\n\n...\n\n## Patch changes [ [](https://auth.fandom.com/signin?redirect=https%3A%2F%2Fwowpedia.fandom.com%2Fwiki%2FIgnore%3Faction%3Dedit%26section%3D3&uselang=en&metadata=article-registration-edit-article-section \"Sign in to edit\") ]\nWrath-Logo-Small **Patch 3.3.0 (2009-12-08):** The amount of characters a person can ignore has been increased to 50.\nIn addition, players on other realms can be placed on the Ignore list."
+      ]
+    }
+  ],
+  "errors": [],
+  "usage": [
+    {
+      "name": "sku_extract_excerpts",
+      "count": 1
+    }
+  ],
+  "warnings": []
+}

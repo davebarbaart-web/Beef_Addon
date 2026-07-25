@@ -1,0 +1,16 @@
+{
+  "extract_id": "extract_6b2b79e26f995e29117c271562d06bc3",
+  "session_id": "session_6b2b79e26f995e29117c271562d06bc3",
+  "status": "ok",
+  "results": [],
+  "errors": [
+    {
+      "url": "https://warcraft.wiki.gg/wiki/Creating_a_slash_command",
+      "error_type": "network_error",
+      "http_status_code": null,
+      "content": null
+    }
+  ],
+  "usage": [],
+  "warnings": []
+}

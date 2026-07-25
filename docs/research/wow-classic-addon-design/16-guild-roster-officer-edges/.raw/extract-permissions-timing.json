@@ -1,0 +1,74 @@
+{
+  "extract_id": "extract_b6c554ee63cc86d4cd06d8778f1ec47c",
+  "session_id": "session_b6c554ee63cc86d4cd06d8778f1ec47c",
+  "status": "ok",
+  "results": [
+    {
+      "url": "https://warcraft.wiki.gg/wiki/API_GetGuildInfo",
+      "title": "GetGuildInfo - Warcraft Wiki - Your wiki guide to the World of Warcraft",
+      "publish_date": "2005-03-15",
+      "excerpts": [
+        "# GetGuildInfo\nFrom Warcraft Wiki\nJump to navigation Jump to search\n| Main Menu |\n| * WoW API |\n* Lua API\n* Widget API\n* XML schema\n* FrameXML\n* Events\n* CVars\n* Combat Log\n* Escape sequences\n* API changes\n* HOWTOs\n* Discord logo.png [wowuidev](https://discord.gg/txUg39Vhc6) |\n**Lua error in Module:Wowapi/category at line 21: bad argument #2 to 'format' (string expected, got nil).**\n|Fat cat yearns for the mines |The API wiki is under maintenance\nSince `2026-07-23T06:08:00Z` , ETA: at least multiple days |\n| --- | --- |\nReturns guild info for a player unit.\n```\nguildName , guildRankName , guildRankIndex , realm = GetGuildInfo ( unit )\n```\n\n## Arguments\n```\nunit\nstring : UnitId \\- The unit whose guild information you wish to query.\n```\n\n## Returns\n```\nguildName\nstring \\- The name of the guild the unit is in (or nil?).\n```\nguildRankName\nstring - unit's rank in unit's guild.\nguildRankIndex\nnumber - unit's rank (index). - zero based index (0 is Guild Master, 1 and above are lower ranks)\nrealm\nstring ? - The name of the realm the guild is in, or nil if the guild's realm is the same as your current one\n\n## Details\n* This function only works in close proximity to the unit you are trying to get info from. It is the same distance that the character portrait loads if you are in party with them. It will abandon the data shortly after you leave the area, even if the portrait is remembered.\n* If using with UnitId \"player\" on loading it happens that this value is nil even if the player is in a guild. Here's a little function which checks in the GUILD_ROSTER_UPDATE and PLAYER_GUILD_UPDATE events, if guild name is available. As long as it is not, no actions are fired by my guild event handling.\n```\nlocal function IsPlayerInGuild()\n    return IsInGuild () and GetGuildInfo(\"player\")\nend\n```\nRetrieved from \" [https://warcraft.wiki.gg/wiki/API_GetGuildInfo?oldid=6587731](https://warcraft.wiki.gg/wiki/API_GetGuildInfo?oldid=6587731) \"\nHidden category:\n* Pages with script errors"
+      ]
+    },
+    {
+      "url": "https://warcraft.wiki.gg/wiki/API_C_GuildInfo.IsGuildOfficer",
+      "title": "C_GuildInfo.IsGuildOfficer - Warcraft Wiki - Your wiki guide to the World of Warcraft",
+      "publish_date": "2019-10-11",
+      "excerpts": [
+        "# C_GuildInfo.IsGuildOfficer\nFrom Warcraft Wiki\nJump to navigation Jump to search\n| Main Menu |\n| * WoW API |\n* Lua API\n* Widget API\n* XML schema\n* FrameXML\n* Events\n* CVars\n* Combat Log\n* Escape sequences\n* API changes\n* HOWTOs\n* Discord logo.png [wowuidev](https://discord.gg/txUg39Vhc6) |\n|Fat cat yearns for the mines |The API wiki is under maintenance\nSince `2026-07-23T06:08:00Z` , ETA: at least multiple days |\n| --- | --- |\n```\nisOfficer = C_GuildInfo . IsGuildOfficer ()\n```\n\n## Returns\n```\nisOfficer\nboolean\n```\n\n## Patch changes\n* Battle for Azeroth **Patch 8.2.5 (2019-09-24):** Added.\nRetrieved from \" [https://warcraft.wiki.gg/wiki/API_C_GuildInfo.IsGuildOfficer?oldid=6584485](https://warcraft.wiki.gg/wiki/API_C_GuildInfo.IsGuildOfficer?oldid=6584485) \"\nCategories :\n* API systems/GuildInfo\n* API functions"
+      ]
+    },
+    {
+      "url": "https://wowpedia.fandom.com/wiki/API_GuildRoster",
+      "title": "GuildRoster - Wowpedia - Your wiki guide to the World of Warcraft",
+      "publish_date": null,
+      "excerpts": [
+        "in: API functions\n\n...\n\n# GuildRoster\n* [History](https://wowpedia.fandom.com/wiki/API_GuildRoster?action=history)\n* [Purge](https://wowpedia.fandom.com/wiki/API_GuildRoster?action=purge)\n* Talk (1)\n| Main Menu |\n| * WoW API |\n* Lua API\n* FrameXML util\n* Widget API\n* Widget scripts\n* XML schema\n* Events\n* CVars\n* Macro commands\n* Combat Log\n* Escape sequences\n* Hyperlinks\n* API changes\n* HOWTOs\n* [Discord logo](https://discord.gg/txUg39Vhc6) [wowuidev](https://discord.gg/txUg39Vhc6) |\n| AquaDed | Automated updating of API pages at this location, to reflect patch changes, has ceased from 10.1.7 onwards. |\nRequests updated guild roster information from the server.\n```\nGuildRoster()\n```\n\n## Triggers events [ [](https://auth.fandom.com/signin?redirect=https%3A%2F%2Fwowpedia.fandom.com%2Fwiki%2FAPI_GuildRoster%3Faction%3Dedit%26section%3D1&uselang=en&metadata=article-registration-edit-article-section \"Sign in to edit\") ]\n* GUILD_ROSTER_UPDATE fires when updated (but not necessarily altered) information is received from the\n\n...\n\n## Details [ [](https://auth.fandom.com/signin?redirect=https%3A%2F%2Fwowpedia.fandom.com%2Fwiki%2FAPI_GuildRoster%3Faction%3Dedit%26section%3D2&uselang=en&metadata=article-registration-edit-article-section \"Sign in to edit\") ]\n* The call will be ignored completely if the last GuildRoster() call was less than 10 seconds ago (most likely to\nlimit the traffic caused by frequent opening/closing of the guild tab).\n\n## See also [ [](https://auth.fandom.com/signin?redirect=https%3A%2F%2Fwowpedia.fandom.com%2Fwiki%2FAPI_GuildRoster%3Faction%3Dedit%26section%3D3&uselang=en&metadata=article-registration-edit-article-section \"Sign in to edit\") ]\n* GetGuildRosterInfo\nCategories\n* Categories :\n* API functions"
+      ]
+    },
+    {
+      "url": "https://warcraft.wiki.gg/wiki/GUILD_ROSTER_UPDATE",
+      "title": "GUILD_ROSTER_UPDATE - Warcraft Wiki - Your wiki guide to the World of Warcraft",
+      "publish_date": "2013-10-21",
+      "excerpts": [
+        "# Navigation menu\n## Namespaces\n### World of Warcraft\n* Midnight\n* The War Within\n* MoP Classic\n* Season of Discovery\n* Interface customization\n* Classes\n* Races\n* Factions\n* Reputation\n* Professions\n* Equipment\n\n...\n\n# GUILD_ROSTER_UPDATE\nFrom Warcraft Wiki\nJump to navigation Jump to search\n| Main Menu |\n| * WoW API |\n* Lua API\n* FrameXML API\n* Widget API\n* Widget scripts\n* XML schema\n* Events\n* CVars\n* Macro commands\n* Combat Log\n* Escape sequences\n* Hyperlinks\n* API changes\n* HOWTOs\n* [](https://discord.gg/txUg39Vhc6) [wowuidev](https://discord.gg/txUg39Vhc6) |\n\n...\n\ndata/impl+NOT+path:wow-api.lua+NOT+path:wow-widget-api.lua+NOT+path:textentry.lua+NOT+owner:papa-smurf+NOT+owner:Bhahlou+NOT+owner:nwpark+NOT+owner:turulix+NOT+path:luaserver.lua+NOT+repo:QartemisT/WoW.luadoc+NOT+owner:92Garfield+NOT+owner:BreakBB+NOT+owner:Logonz+NOT+owner:Subwaytime+NOT+owner:ZenonWow+NOT+path:WeakAur\n\n...\n\npath:data/impl+NOT+path:wow-api.lua+NOT+path:wow-widget-api.lua+NOT+path:textentry.lua+NOT+owner:papa-smurf+NOT+owner:Bhahlou+NOT+owner:nwpark+NOT+owner:turulix+NOT+path:luaserver.lua+NOT+repo:QartemisT/WoW.luadoc+NOT+owner:92Garfield+NOT+owner:BreakBB+NOT+owner:Logonz+NOT+owner:Subwaytime+NOT+owner:ZenonWow+NOT+path:We\n\n...\n\nDocs](https://github.com/search?q=repo:Ketho/wow-ui-source-midnight+%22GUILD_ROSTER_UPDATE%22+path:/%5EInterface/AddOns/Blizzard_APIDocumentationGenerated//&type=code)\n* [](https://mrbuds.github.io/wow-api-web/?search=api:event:GuildRosterUpdate:GuildInfo) [/api addon](https://mrbuds.github.io/wow-api-web/?search=api:event:GuildRosterUpdate:GuildInfo)\n* [](https://wowprogramming.com/docs/events/GUILD_ROSTER_UPDATE.html) [Wowprogramming](https://wowprogramming.com/docs/events/GUILD_ROSTER_UPDATE.html) |\n|Patch |\n|Added in 1.0.0 / 1.13.2 |\n\u2191 _Events_\nFired when the client's guild info cache has been updated after a call to GuildRoster or after any data change in any of the guild's data, excluding the Guild Information window.\n```\nGUILD_ROSTER_UPDATE: canRequestRosterUpdate\n```\n\n## Payload\n```\ncanRequestRosterUpdate\nboolean\n```\n\n## Details\n| Related API | C_GuildInfo.GuildRoster \u2022 GetGuildRosterInfo |\nRetrieved from \" [https://warcraft.wiki.gg/wiki/GUILD_ROSTER_UPDATE?oldid=3303651](https://warcraft.wiki.gg/wiki/GUILD_ROSTER_UPDATE?oldid=3303651) \"\nCategories :\n* API systems/GuildInfo\n* API events\n[Report bad advertisement](https://www.wiki.gg/t/bad-ad)\n\n...\n\n* This page was last edited on 9 September 2022, at 23:02.\n* Pages that were created prior to October 2023 are adapted from the Fandom Wowpedia Wiki.\nPage content is under [Creative Commons Attribution-ShareAlike 4.0 License](https://creativecommons.org/licenses/by-sa/4.0) unless otherwise noted."
+      ]
+    },
+    {
+      "url": "https://warcraft.wiki.gg/wiki/API_GetNumGuildMembers",
+      "title": "GetNumGuildMembers - Warcraft Wiki - Your wiki guide to the World of Warcraft",
+      "publish_date": "2004-12-20",
+      "excerpts": [
+        "# GetNumGuildMembers\nras+NOT+path:ElvUI+NOT+path:DataStore)\n* [](https://www.townlong-yak.com/globe/wut/:GetNumGuildMembers) [Globe](https://www.townlong-yak.com/globe/wut/:GetNumGuildMembers)\n* [](https://wowprogramming.com/docs/api/GetNumGuildMembers.html) [Wowprogramming](https://wowprogramming.com/docs/api/GetNumGuildMembers.html) |\n\n...\n\n\u2191 _World of Warcraft API_\nReturns the number of total and online guild members.\n```\nnumTotal , numOnline = GetNumGuildMembers ()\n```\n\n## Returns\n```\nnumTotal\nnumber \\- Total number of players in the guild, or 0 if not in a guild.\n```\nnumOnline\nnumber - Number of players currently online, or 0 if not in a guild.\n\n## Example\nShows the total headcount of your guild and the number of online and offline people.\n```\nlocal numTotal , numOnline = GetNumGuildMembers () \n print ( format ( \"%d guild members: %d online, %d offline\" , numTotal , numOnline , numTotal - numOnline ))\n```\n\n## Details\n* You may need to call C_GuildInfo.GuildRoster() first in order to obtain correct data. May return wrong values immediately after quitting a guild. Maximum returned value is 500.\n* This returns values of this API seem to be no longer affected by SetGuildRosterShowOffline )()\n\n## Patch changes\n* **Patch 10.2.0 (2023-11-07):** Removed `numOnlineAndMobileMembers` return value.\nRetrieved from \" [https://warcraft.wiki.gg/wiki/API_GetNumGuildMembers?oldid=6587893](https://warcraft.wiki.gg/wiki/API_GetNumGuildMembers?oldid=6587893) \"\nCategory :\n* API functions"
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "url": "https://warcraft.wiki.gg/wiki/API_GuildControlGetRankFlags",
+      "error_type": "network_error",
+      "http_status_code": null,
+      "content": null
+    },
+    {
+      "url": "https://warcraft.wiki.gg/wiki/API_CanGuildInvite",
+      "error_type": "network_error",
+      "http_status_code": null,
+      "content": null
+    },
+    {
+      "url": "https://warcraft.wiki.gg/wiki/API_CanEditOfficerNote",
+      "error_type": "network_error",
+      "http_status_code": null,
+      "content": null
+    }
+  ],
+  "usage": [
+    {
+      "name": "sku_extract_excerpts",
+      "count": 5
+    }
+  ],
+  "warnings": []
+}

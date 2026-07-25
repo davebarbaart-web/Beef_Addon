@@ -1,0 +1,78 @@
+{
+  "search_id": "search_4891fda487373e81ec326d87f97cadbe",
+  "session_id": "session_4891fda487373e81ec326d87f97cadbe",
+  "status": "ok",
+  "results": [
+    {
+      "url": "https://warcraft.wiki.gg/wiki/ENCOUNTER_END",
+      "title": "ENCOUNTER_END - Warcraft Wiki - Your wiki guide to the World of Warcraft",
+      "publish_date": null,
+      "excerpts": [
+        "<strong>Fires at the end of an instanced encounter</strong>. ENCOUNTER_END: encounterID, encounterName, difficultyID, groupSize, success encounterID number - ID for the specific encounter that ended. (Does not match the encounterIDs used in the Encounter Journal) encounterName string - Name of the encounter"
+      ]
+    },
+    {
+      "url": "https://wowpedia.fandom.com/wiki/ENCOUNTER_END",
+      "title": "ENCOUNTER_END - Wowpedia - Your wiki guide to the World of Warcraft",
+      "publish_date": null,
+      "excerpts": [
+        "We have moved to Warcraft Wiki. Click here for information and the new URL. ... <strong>Fires at the end of an instanced encounter</strong>."
+      ]
+    },
+    {
+      "url": "https://warcraft.wiki.gg/wiki/Events",
+      "title": "Events - Warcraft Wiki - Your wiki guide to the World of Warcraft",
+      "publish_date": "2004-11-13",
+      "excerpts": [
+        "* \n* \n\nToggle personal tools menu\n\n* \n* \n\n# Events\n\nFrom Warcraft Wiki\n\nJump to navigation Jump to search\n\n_For events in Azeroth such as World Events and Holidays, see Event ._\n    _For  Classic events, see Events/Classic ._\n    _For EventRegistry callback events, see EventRegistry ._\n\n**Frame Events** are messages sent by the WoW client to UI code (via OnEvent script handlers), mostly in reaction to things occurring in the game world. For a general tutorial on setting up event handling in your addon, see Handling events and the Frame:RegisterEvent () method.\n\n**Event Trace**\n\n    The Event Trace window for debugging events can be opened via the `/etrace` slash command.\n\n**Example**\n\n    Shows when a chat channel message appears and when you start/stop moving.\n\n```\nlocal function OnEvent ( self , event , ...) \n print ( event , ...) \n end \n\n local f = CreateFrame ( \"Frame\" ) \n f : RegisterEvent ( \"CHAT_MSG_CHANNEL\" ) \n f : RegisterEvent ( \"PLAYER_STARTED_MOVING\" )"
+      ]
+    },
+    {
+      "url": "https://us.forums.blizzard.com/en/wow/t/encounterend-payload-issue/439290",
+      "title": "ENCOUNTER_END Payload Issue - WoW Classic Bug Report - World of Warcraft Forums",
+      "publish_date": "2020-02-10",
+      "excerpts": [
+        "World of Warcraft Forums\n\n# ENCOUNTER\\_END Payload Issue\n\nWoW Classic WoW Classic Bug Report\n\n[Rylak-3034442](https://us.forums.blizzard.com/en/wow/u/Rylak-3034442) (Rylak) February 10, 2020, 8:05am 1\n\nI maintain and develop an addon for which part of the functionality requires detection of boss kills. I\u2019ve noticed that with the ENCOUNTER\\_END event on non-English clients, part of the payload appears to be missing information.  \nWhile troubleshooting an issue where a boss kill was not detected with a player using a zhCN client, I examined their etrace and found the ENCOUNTER\\_END entry. I found that arg 2 returned \"\\* instead of the boss name.  \nThis issue doesn\u2019t appear to be occurring on enUS or enGB clients but I suspect that it is occurring on ruRU clients as I have had users reporting the exact same behaviour on that locale.\n\n* Home\n* Categories\n* Guidelines\n* Terms of Service\n* Privacy Policy\n\nPowered by [Discourse](https://www.discourse.org) , best viewed with JavaScript enabled"
+      ]
+    },
+    {
+      "url": "https://wowwiki.fandom.com/wiki/Events/Names",
+      "title": "Events - Wowpedia - Your wiki guide to the World of Warcraft",
+      "publish_date": "2026-07-24",
+      "excerpts": [
+        "PLAYER_GUILD_UPDATE: unitTarget \u00b7 REQUIRED_GUILD_RENAME_RESULT: success \u00b7 TABARD_CANSAVE_CHANGED \u00b7 TABARD_SAVE_PENDING \u00b7 HEIRLOOM_UPGRADE_TARGETING_CHANGED: pendingHeirloomUpgradeSpellcast \u00b7 HEIRLOOMS_UPDATED: itemID, updateReason, hideUntilLearned \u00b7 INSTANCE_ENCOUNTER_ADD_TIMER: timeRemaining \u00b7 INSTANCE_ENCOUNTER_ENGAGE_UNIT \u00b7"
+      ]
+    },
+    {
+      "url": "https://wowpedia.fandom.com/wiki/INSTANCE_ENCOUNTER_ENGAGE_UNIT",
+      "title": "INSTANCE_ENCOUNTER_ENGAGE_UNIT - Wowpedia - Your wiki guide to the World of Warcraft",
+      "publish_date": null,
+      "excerpts": [
+        "INSTANCE_ENCOUNTER_ENGAGE_UNIT \u00b7 None \u00b7 Categories \u00b7 Community content is available under CC BY-SA 3.0 unless otherwise noted. More Fandoms \u00b7 Fantasy \u00b7 World of Warcraft \u00b7 Advertisement \u00b7 Advertisement \u00b7"
+      ]
+    },
+    {
+      "url": "https://addonswow.com/iencountereventtracker",
+      "title": "WoW iEncounterEventTracker addon Dragonflight/Wrath of the Lich King Classic 2025",
+      "publish_date": "2023-03-07",
+      "excerpts": [
+        "32/UNIT_TARGET \u00b7 33/INSTANCE_ENCOUNTER_ENGAGE_UNIT/IEEU \u00b7 34/UNIT_POWER_UPDATE/UNIT_POWER_U \u00b7 35/PLAYER_REGEN_DISABLED/COMBAT_START \u00b7 36/PLAYER_REGEN_ENABLED/COMBAT_END \u00b7 37/MANUAL_LOGGING_START/MANUAL_START \u00b7 38/MANUAL_LOGGING_END/MANUAL_END \u00b7 39/UNIT_SPELLCAST_START/USC_START \u00b7"
+      ]
+    },
+    {
+      "url": "https://www.reddit.com/r/wowaddons/comments/7xefah/whats_the_best_way_to_detect_when_the_player/",
+      "title": "r/wowaddons on Reddit: What's the best way to detect when the player party engaged a dungeon boss fight?",
+      "publish_date": "2018-02-14",
+      "excerpts": [
+        "Looks like a tossup between checking several events; INSTANCE_ENCOUNTER_ENGAGE_UNIT , PLAYER_REGEN_DISABLED; boolean checks of IsEncounterInProgress, InCombatLockdown, IsEncounterInProgress; nil checks and a bunch of logic for them; or a table with every boss ID listed and checked against an event; or parsing the dungeon journal; or a combination of the above."
+      ]
+    }
+  ],
+  "usage": [
+    {
+      "name": "sku_search",
+      "count": 1
+    }
+  ],
+  "warnings": []
+}

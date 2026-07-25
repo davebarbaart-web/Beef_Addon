@@ -1,0 +1,72 @@
+{
+  "extract_id": "extract_e1db9258835065060cfdd87d57e967de",
+  "session_id": "session_e1db9258835065060cfdd87d57e967de",
+  "status": "ok",
+  "results": [
+    {
+      "url": "https://warcraft.wiki.gg/wiki/API_ResetInstances",
+      "title": "ResetInstances - Warcraft Wiki - Your wiki guide to the World of Warcraft",
+      "publish_date": "2007-03-02",
+      "excerpts": [
+        "# Navigation menu\n## Namespaces\n### Useful pages\n* Trading Post\n* Playable races\n* Classes\n* Factions\n* Professions\n* Seasons\n* Zone storylines\n* Events\n* Instances\n* Player vs. Player\n\n...\n\n### Tools\n* What links here\n* Related changes\n* New page\n* Special pages\n* Printable version\n* [Page information](https://warcraft.wiki.gg/wiki/API_ResetInstances?action=info \"More information about this page\")\n* [Database data](https://warcraft.wiki.gg/wiki/API_ResetInstances?action=dbdata)\n\n...\n\n# ResetInstances\nFrom Warcraft Wiki\nJump to navigation Jump to search\n| Main Menu |\n| * WoW API |\n* Lua API\n* FrameXML API\n* Widget API\n* Widget scripts\n* XML schema\n* Events\n* CVars\n* Macro commands\n* Combat Log\n* Escape sequences\n* Hyperlinks\n* API changes\n* HOWTOs\n* [](https://discord.gg/txUg39Vhc6) [wowuidev](https://discord.gg/txUg39Vhc6) |\n\n...\n\n* [](https://mrbuds.github.io/wow-api-web/?search=api:function:ResetInstances:Instance) [/api addon](https://mrbuds.github.io/wow-api-web/?search=api:function:ResetInstances:Instance)\n* [](https://wowprogramming.com/docs/api/ResetInstances.html) [Wowprogramming](https://wowprogramming.com/docs/api/ResetInstances.html) |\n\n...\n\n\u2191 _World of Warcraft API_\nResets all instances for the character.\n```\nResetInstances ()\n```\nRetrieved from \" [https://warcraft.wiki.gg/wiki/API_ResetInstances?oldid=6588536](https://warcraft.wiki.gg/wiki/API_ResetInstances?oldid=6588536) \"\nCategories :\n* API systems/Instance\n* API functions"
+      ]
+    },
+    {
+      "url": "https://warcraft.wiki.gg/wiki/CHAT_MSG_SYSTEM",
+      "title": "CHAT_MSG_SYSTEM - Warcraft Wiki - Your wiki guide to the World of Warcraft",
+      "publish_date": null,
+      "excerpts": [
+        "# Navigation menu\n## Namespaces\n### Tools\n* What links here\n* Related changes\n* New page\n* Special pages\n* Printable version\n* [Page information](https://warcraft.wiki.gg/wiki/CHAT_MSG_SYSTEM?action=info \"More information about this page\")\n* [Database data](https://warcraft.wiki.gg/wiki/CHAT_MSG_SYSTEM?action=dbdata)\n\n...\n\n# CHAT_MSG_SYSTEM\nFrom Warcraft Wiki\nJump to navigation Jump to search\n| Main Menu |\n| * WoW API |\n* Lua API\n* FrameXML API\n* Widget API\n* Widget scripts\n* XML schema\n* Events\n* CVars\n* Macro commands\n* Combat Log\n* Escape sequences\n* Hyperlinks\n* API changes\n* HOWTOs\n* [<img src='/images/thumb/Discord_logo.png/12px-Discord_logo.png?4d7bc2' alt='Discord logo.png' width='12' height='9' />](https://discord.gg/txUg39Vhc6) [wowuidev](https://discord.gg/txUg39Vhc6) |\n\n...\n\nrkanoid1+NOT+owner:refaim+NOT+owner:clicketz+NOT+owner:Zetaprime82+NOT+owner:biroistv+NOT+owner:liquidbase+NOT+owner:3kage+NOT+repo:Ellypse/IntelliJ-IDEA-Lua-IDE-WoW-API+NOT+repo:ChrisKader/wowapi+NOT+repo:nebularg/wow-selene-parser+NOT+repo:Resike/LuaLSP+NOT+owner:MrMartin92+NOT+repo:ketho-wow/KethoDoc+NOT+path:data/impl+N\nOT+path:wow-api.lua+NOT+path:wow-widget-api.lua+NOT+path:textentry.lua+NOT+owner:papa-smurf+NOT+owner:Bhahlou+NOT+owner:nwpark+NOT+owner:turulix+NOT+path:luaserver.lua+NOT+repo:QartemisT/WoW.luadoc+NOT+owner:92Garfield+NOT+owner:BreakBB+NOT+owner:Logonz+NOT+owner:Subwaytime+NOT+owner:ZenonWow+NOT+path:WeakAuras+NOT+path:Elv\n\n...\n\ner:arkanoid1+NOT+owner:refaim+NOT+owner:clicketz+NOT+owner:Zetaprime82+NOT+owner:biroistv+NOT+owner:liquidbase+NOT+owner:3kage+NOT+repo:Ellypse/IntelliJ-IDEA-Lua-IDE-WoW-API+NOT+repo:ChrisKader/wowapi+NOT+repo:nebularg/wow-selene-parser+NOT+repo:Resike/LuaLSP+NOT+owner:MrMartin92+NOT+repo:ketho-wow/KethoDoc+NOT+path:data/im\npl+NOT+path:wow-api.lua+NOT+path:wow-widget-api.lua+NOT+path:textentry.lua+NOT+owner:papa-smurf+NOT+owner:Bhahlou+NOT+owner:nwpark+NOT+owner:turulix+NOT+path:luaserver.lua+NOT+repo:QartemisT/WoW.luadoc+NOT+owner:92Garfield+NOT+owner:BreakBB+NOT+owner:Logonz+NOT+owner:Subwaytime+NOT+owner:ZenonWow+NOT+path:WeakAuras+NOT+path\n\n...\n\n* [<img src='/images/thumb/ProfIcons_engineering.png/16px-ProfIcons_engineering.png?4717ae' alt='ProfIcons engineering.png' width='16' height='16' />](https://mrbuds.github.io/wow-api-web/?search=api:event:ChatMsgSystem:ChatInfo) [/api addon](https://mrbuds.github.io/wow-api-web/?search=api:event:ChatMsgSystem:ChatInfo)\n\n...\n\n## Payload\nstring - User flags if applicable, possible values are: `\"GM\", \"DEV\", \"AFK\", \"DND\", \"COM\"` [[ 2 ]]() [[ 3 ]]()\n7. zoneChannelID\nnumber - The static ID of the zone channel, e.g. `1` for General, `2` for Trade and `22` for LocalDefense. [[ 4 ]]()\n8. channelIndex"
+      ]
+    },
+    {
+      "url": "https://warcraft.wiki.gg/wiki/PLAYER_REGEN_DISABLED",
+      "title": "PLAYER_REGEN_DISABLED - Warcraft Wiki - Your wiki guide to the World of Warcraft",
+      "publish_date": "2013-10-21",
+      "excerpts": [
+        "# Navigation menu\n## Namespaces\n### Useful pages\n* Trading Post\n* Playable races\n* Classes\n* Factions\n* Professions\n* Seasons\n* Zone storylines\n* Events\n* Instances\n* Player vs. Player\n\n...\n\n### Tools\n* What links here\n* Related changes\n* New page\n* Special pages\n* Printable version\n* [Page information](https://warcraft.wiki.gg/wiki/PLAYER_REGEN_DISABLED?action=info \"More information about this page\")\n* [Database data](https://warcraft.wiki.gg/wiki/PLAYER_REGEN_DISABLED?action=dbdata)\n\n...\n\n# PLAYER_REGEN_DISABLED\nFrom Warcraft Wiki\nJump to navigation Jump to search\n| Main Menu |\n| * WoW API |\n* Lua API\n* FrameXML API\n* Widget API\n* Widget scripts\n* XML schema\n* Events\n* CVars\n* Macro commands\n* Combat Log\n* Escape sequences\n* Hyperlinks\n* API changes\n* HOWTOs\n* [](https://discord.gg/txUg39Vhc6) [wowuidev](https://discord.gg/txUg39Vhc6) |\n| Predicates |\n| SynchronousEvent |\n| Game Types |\n| * [](https://github.com/search?q=repo:Gethe/wow-ui-source+PLAYER_REGEN_DISABLED&type=code \"12.0.1 (65617)\") [mainline](https://github.com/search?q=repo:Gethe/wow-ui-source+PLAYER_REGEN_DISABLED&type=code) |\n\n...\n\nNOT+owner:arkanoid1+NOT+owner:refaim+NOT+owner:clicketz+NOT+owner:Zetaprime82+NOT+owner:biroistv+NOT+owner:liquidbase+NOT+owner:3kage+NOT+repo:Ellypse/IntelliJ-IDEA-Lua-IDE-WoW-API+NOT+repo:ChrisKader/wowapi+NOT+repo:nebularg/wow-selene-parser+NOT+repo:Resike/LuaLSP+NOT+owner:MrMartin92+NOT+repo:ketho-wow/KethoDoc+NOT\n+path:data/impl+NOT+path:wow-api.lua+NOT+path:wow-widget-api.lua+NOT+path:textentry.lua+NOT+owner:papa-smurf+NOT+owner:Bhahlou+NOT+owner:nwpark+NOT+owner:turulix+NOT+path:luaserver.lua+NOT+repo:QartemisT/WoW.luadoc+NOT+owner:92Garfield+NOT+owner:BreakBB+NOT+owner:Logonz+NOT+owner:Subwaytime+NOT+owner:ZenonWow+NOT+path\n\n...\n\n-web+NOT+owner:arkanoid1+NOT+owner:refaim+NOT+owner:clicketz+NOT+owner:Zetaprime82+NOT+owner:biroistv+NOT+owner:liquidbase+NOT+owner:3kage+NOT+repo:Ellypse/IntelliJ-IDEA-Lua-IDE-WoW-API+NOT+repo:ChrisKader/wowapi+NOT+repo:nebularg/wow-selene-parser+NOT+repo:Resike/LuaLSP+NOT+owner:MrMartin92+NOT+repo:ketho-wow/KethoDo\nc+NOT+path:data/impl+NOT+path:wow-api.lua+NOT+path:wow-widget-api.lua+NOT+path:textentry.lua+NOT+owner:papa-smurf+NOT+owner:Bhahlou+NOT+owner:nwpark+NOT+owner:turulix+NOT+path:luaserver.lua+NOT+repo:QartemisT/WoW.luadoc+NOT+owner:92Garfield+NOT+owner:BreakBB+NOT+owner:Logonz+NOT+owner:Subwaytime+NOT+owner:ZenonWow+NOT\n\n...\n\n* [](https://mrbuds.github.io/wow-api-web/?search=api:event:PlayerRegenDisabled:Unit) [/api addon](https://mrbuds.github.io/wow-api-web/?search=api:event:PlayerRegenDisabled:Unit)\n\n...\n\n\u2191 _Events_\nFired whenever you enter combat, as normal regen rates are disabled during combat. This means that either you are in the hate list of a NPC or that you've been taking part in a pvp action (either as attacker or victim).\n```\nPLAYER_REGEN_DISABLED\n```"
+      ]
+    },
+    {
+      "url": "https://warcraft.wiki.gg/wiki/API_GetBattlefieldWinner",
+      "title": "GetBattlefieldWinner - Warcraft Wiki - Your wiki guide to the World of Warcraft",
+      "publish_date": "2006-06-05",
+      "excerpts": [
+        "# Navigation menu\n## Namespaces\n### Useful pages\n* Trading Post\n* Playable races\n* Classes\n* Factions\n* Professions\n* Seasons\n* Zone storylines\n* Events\n* Instances\n* Player vs. Player\n\n...\n\n# GetBattlefieldWinner\nFrom Warcraft Wiki\nJump to navigation Jump to search\n| Main Menu |\n| * WoW API |\n* Lua API\n* FrameXML API\n* Widget API\n* Widget scripts\n* XML schema\n* Events\n* CVars\n* Macro commands\n* Combat Log\n* Escape sequences\n* Hyperlinks\n* API changes\n* HOWTOs\n* [](https://discord.gg/txUg39Vhc6) [wowuidev](https://discord.gg/txUg39Vhc6) |\n\n...\n\n\u2191 _World of Warcraft API_\nReturns the winner of the battlefield that the player is currently in.\n```\nwinner = GetBattlefieldWinner ()\n```\n\n## Returns\n```\nwinner\nnumber ? \\- Faction/team that has won the battlefield. Results are: nil if nobody has won, 0 for Horde, 1 for Alliance and 255 for a draw in a battleground, 0 for Green Team and 1 for Yellow in an arena.\n```"
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "url": "https://warcraft.wiki.gg/wiki/ZONE_CHANGED_NEW_AREA",
+      "error_type": "network_error",
+      "http_status_code": null,
+      "content": null
+    },
+    {
+      "url": "https://warcraft.wiki.gg/wiki/API_RequestRaidInfo",
+      "error_type": "network_error",
+      "http_status_code": null,
+      "content": null
+    },
+    {
+      "url": "https://warcraft.wiki.gg/wiki/UPDATE_BATTLEFIELD_STATUS",
+      "error_type": "network_error",
+      "http_status_code": null,
+      "content": null
+    },
+    {
+      "url": "https://warcraft.wiki.gg/wiki/UPDATE_BATTLEFIELD_SCORE",
+      "error_type": "network_error",
+      "http_status_code": null,
+      "content": null
+    }
+  ],
+  "usage": [
+    {
+      "name": "sku_extract_excerpts",
+      "count": 4
+    }
+  ],
+  "warnings": []
+}

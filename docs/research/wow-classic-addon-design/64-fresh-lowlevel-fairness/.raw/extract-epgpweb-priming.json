@@ -1,0 +1,23 @@
+{
+  "extract_id": "extract_e69d2bf1527c5041cbfbd3b6686374a3",
+  "session_id": "session_e69d2bf1527c5041cbfbd3b6686374a3",
+  "status": "ok",
+  "results": [
+    {
+      "url": "http://www.epgpweb.com/help/system",
+      "title": "EPGPWeb \nThe System\n",
+      "publish_date": "2009-01-01",
+      "excerpts": [
+        "# The System\n## Decay\nIn order to award recent effort more than past effort, which in\neffect avoids PR hoarding for veterans and enables new coming and\ndedicated members of a guild to be awarded properly, EPGP supports a\ndecay mechanism. Decay simply removes a chunk of EP and GP from the\ntotals, effectively leaving PR unchanged.\nFor example with a decay of\n10% applied each week, for each 7 days that pass your effort's\nrewards get diminished by 10%. The effort you put 10 weeks ago will\nonly be worth 34.8% of what it did when you received it (\n(1-0.1) \u00b9\u2070 ).\n\n## Priming the system\nA loot system should behave reasonably not only in its\nsteady state but also when new members join a guild and the\nguild's efforts. For this reason some extra parameters need to be\nsetup.\n\n### Base GP\nBase GP adds a certain GP to each member of a guild. This means the\nfinal GP of each member is: GP = BaseGP + RealGP. All PR computations\nhappen on GP not BaseGP or RealGP. Decay also applies to GP as a whole\nbut it only diminishes RealGP. As such GP can never be lower than\nBaseGP. For example, say we have BaseGP = 100 and RealGP =\n10. Applying a 10% decay will result in RealGP = 0 for a total of 100\nGP.\nBase GP prevents new recruits or long time inactive members from\ntrumping your dedicated members just because their GP is 0 and thus\ntheir PR infinite.\n\n### Min EP\nMin EP puts a limit, which members should exceed in order to have\nany loot priority. This is more or less an attendance check and a road\nblock for new members to reach a point after which they can need on\nloot. Anyone below MinEP has in effect lower PR then everyone above\nMinEP even if their effective PR is higher.\nFor example MinEP = 10000\nand member A has 20000 EP and 4000 GP for 5 PR and member B has 1000\nEP and 100 GP for 10 PR. In this case member A has higher priority for\nloot since he/she is above the MinEP threshold even though his/her PR\nis lower than member B."
+      ]
+    }
+  ],
+  "errors": [],
+  "usage": [
+    {
+      "name": "sku_extract_excerpts",
+      "count": 1
+    }
+  ],
+  "warnings": []
+}

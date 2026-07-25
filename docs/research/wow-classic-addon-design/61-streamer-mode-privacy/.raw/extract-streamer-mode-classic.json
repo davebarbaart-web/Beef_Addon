@@ -1,0 +1,23 @@
+{
+  "extract_id": "extract_a5c1e6a47d18806f36dcae81d4fd497c",
+  "session_id": "session_a5c1e6a47d18806f36dcae81d4fd497c",
+  "status": "ok",
+  "results": [
+    {
+      "url": "https://www.curseforge.com/wow/addons/streamer-mode",
+      "title": "",
+      "publish_date": "2024-02-05",
+      "excerpts": [
+        "# Streamer Mode\n* By\n  DnB_Junkee DnB_Junkee HighCrafter tier icon\nObfuscates player names in default interface to prevent being sniped\nTotal Downloads\n163\nLast Update\nFeb 5, 2024\nMore Details\nStreamer Mode\nDownload\n\n...\n\nThis addon is mainly targeted at streamers to prevent being sniped in open world pvp.\nIt will obfuscate or hide player names in the default blizzard interface:\n* TargetFrame and Target of Target names are replaced with class names\n* nameplate player names are replaced with class names\n* Tooltip when mouseover a player is replaced with class names\n* Names above ANY unit (npc or player) is obfuscated and each letter is replaced with the \u03a9-Symbol (Omega)\nThanks to Hydra this addon was developed, as he was being sniped a lot."
+      ]
+    }
+  ],
+  "errors": [],
+  "usage": [
+    {
+      "name": "sku_extract_excerpts",
+      "count": 1
+    }
+  ],
+  "warnings": []
+}

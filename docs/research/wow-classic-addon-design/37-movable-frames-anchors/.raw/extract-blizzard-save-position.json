@@ -1,0 +1,23 @@
+{
+  "extract_id": "extract_7eae9c89eb87f549d3acb74fa682ab76",
+  "session_id": "session_7eae9c89eb87f549d3acb74fa682ab76",
+  "status": "ok",
+  "results": [
+    {
+      "url": "https://us.forums.blizzard.com/en/wow/t/saving-addon-position/1201232",
+      "title": "Saving addon position - Guides / UI and Macro - World of Warcraft Forums",
+      "publish_date": "2022-03-15",
+      "excerpts": [
+        "# Saving addon position\n## post by Gello-89115 on Mar 15, 2022\nGello <Underhill>\n468 posts\n40 Gnome Priest 21415\nMar 2022\nCarnacki:\n> from what I understand it should be positioning the top-left corner of the addon frame based on the top-left corner of the UI (basically the whole screen)\nframe:GetTop() gets the top relative to the BOTTOMLEFT of UIParent.\nAre you saving position per user? Why not let the system handle it naturally? When you StopMovingOrSizing, it will set UserPlaced and remember that position, unless you force a position on login.\nAlso, you can also set the top and left while you do the StopMovingOrSizing too. You don\u2019t need to wait until PLAYER_LOGOUT.\n1 \u200b\n\u200b\n\n## post by Carnacki-3161358 on Mar 15, 2022\nCarnacki <Syndicate of the Chosen>\n420 posts\n90 Tauren Druid 36300\n2\nMar 2022\nGello:\n> frame:GetTop() gets the top relative to the BOTTOMLEFT of UIParent.\nDoh, ok. The Wiki only has an entry for \u201cGetBottom\u201d and that\u2019s what it said. So naturally (incorrectly) I assumed that GetTop would be from the TOPLEFT. Switching my anchorpoint should fix that then.\n\n...\n\nedit: Ok, changed to:\n```\nCarnMainFrame: SetPoint ( \"TOPLEFT\" , UIParent,  \"BOTTOMLEFT\" , CarnSettings.Left, CarnSettings.Top)\n```\nAnd it\u2019s positioning properly now. The value it was incrementing by was (in hindsight) obviously the height of the frame. And now that I\u2019ve got it saving correctly I\u2019ll also update the variable on stop moving (didn\u2019t want to muddy the waters by adding more changes to the variable).\n\n...\n\n## post by Gello-89115 on Mar 15, 2022\nThis is super dependent on implementation and what you want. If you want your settings to appear in the same position relative to its parent window, you can record the difference and reanchor to the parent based on the difference.\n\u200b\n\u200b"
+      ]
+    }
+  ],
+  "errors": [],
+  "usage": [
+    {
+      "name": "sku_extract_excerpts",
+      "count": 1
+    }
+  ],
+  "warnings": []
+}

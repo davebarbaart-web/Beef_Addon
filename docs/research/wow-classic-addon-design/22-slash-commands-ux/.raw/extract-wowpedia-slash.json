@@ -1,0 +1,23 @@
+{
+  "extract_id": "extract_ade54389768b46a55fdee5ce95a8f437",
+  "session_id": "session_ade54389768b46a55fdee5ce95a8f437",
+  "status": "ok",
+  "results": [
+    {
+      "url": "https://wowpedia.fandom.com/wiki/Creating_a_slash_command",
+      "title": "Creating a slash command - Wowpedia - Your wiki guide to the World of Warcraft",
+      "publish_date": "2026-06-23",
+      "excerpts": [
+        "# Creating a slash command\nSummary: assign a handler function to `SlashCmdList[ _key_ ]` , and create `SLASH_ _key_ 1` , ..., `SLASH_ _key_ n` global constants containing the desired command names, where _key_ is some unique command-specific string.\n\n...\n\n## Strategy [ [](https://auth.fandom.com/signin?redirect=https%3A%2F%2Fwowpedia.fandom.com%2Fwiki%2FCreating_a_slash_command%3Faction%3Dedit%26section%3D2&uselang=en&metadata=article-registration-edit-article-section \"Sign in to edit\") ]\n1. Pick a unique identifier for the slash command: e.g. MYFANCYADDON\n\n...\n\n  ```\n  mmand, or ADDONNAME\\_COMMANDNAME if you have multiple (where A\n  ```\n\n...\n\n```\nSLASH_HELLOWORLD1, SLASH_HELLOWORLD2 = '/hiw', '/hellow'; -- 3.\n```\n\n...\n\n## Parsing Arguments [ [](https://auth.fandom.com/signin?redirect=https%3A%2F%2Fwowpedia.fandom.com%2Fwiki%2FCreating_a_slash_command%3Faction%3Dedit%26section%3D3&uselang=en&metadata=article-registration-edit-article-section \"Sign in to edit\") ]\nIf the user types **/yourcmd someargs** into chat, the function handling **/yourcmd** is passed\n\"someargs\" as the first argument (the second being the edit box widget into which the slash\ncommand was typed). Your handler function can then choose to act on that argument string.\nFor simple slash commands, comparisons to pre-determined strings may be sufficient: suppose we\n\n...\n\n```\nSLASH_HELLOWORLD1, SLASH_HELLOWORLD2 = '/hiw', '/hellow';\n```\n\n...\n\n```\nSlashCmdList[\"HELLOWORLD\"] = handler; -- Also a valid assignment strategy\n```\nMore complex slash commands may wish to use Pattern matching to parse the arguments string:\n\n...\n\n```\n    local command, rest = msg:match(\"^(%S*)%s*(.-)$\")\n    -- Any leading non-whitespace is captured into command\n    -- the rest (minus leading whitespace) is captured into rest.\n```\n\n...\n\n```\n        -- If not handled above, display some sort of help message\n        print(\"Syntax: /yourcmd (add|remove) someIdentifier\")\n    end\nend\n```\n\n## Notes [ [](https://auth.fandom.com/signin?redirect=https%3A%2F%2Fwowpedia.fandom.com%2Fwiki%2FCreating_a_slash_command%3Faction%3Dedit%26section%3D4&uselang=en&metadata=article-registration-edit-article-section \"Sign in to edit\") ]\n* Default UI commands often have precedence over addon-created slash commands.\nThere is no defined precedence order for addon-created commands, so conflicts caused by multiple addons\n\n...\n\n+ If the unique command identifier (the key in SlashCmdList) conflicts between multiple addons, the addon\n\n...\n\n```\nSLASH_BLAH1 = \"/blah\"\nSlashCmdList[\"BLAH\"] = function(msg, editBox)\n```\n\n...\n\n```\nfunction SomeObject:SlashHandler(msg, editBox)\n    -- do stuff\nend\nSLASH_BLAH1 = \"/blah\"\nSlashCmdList[\"BLAH\"] = function(msg, editBox)\n    SomeObject:SlashHandler(msg, editBox)\nend\n```"
+      ]
+    }
+  ],
+  "errors": [],
+  "usage": [
+    {
+      "name": "sku_extract_excerpts",
+      "count": 1
+    }
+  ],
+  "warnings": []
+}

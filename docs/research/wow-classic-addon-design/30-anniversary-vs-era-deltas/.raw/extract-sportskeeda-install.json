@@ -1,0 +1,23 @@
+{
+  "extract_id": "extract_954fd657027a3c3ffb7d2a77003a16a4",
+  "session_id": "session_954fd657027a3c3ffb7d2a77003a16a4",
+  "status": "ok",
+  "results": [
+    {
+      "url": "https://www.sportskeeda.com/mmo/best-wow-tbc-anniversary-addons-set",
+      "title": "Best WoW TBC Anniversary addons and how to set them up",
+      "publish_date": "2026-01-15",
+      "excerpts": [
+        "# Best WoW TBC Anniversary addons and how to set them up\n## How to get and install WoW TBC Anniversary addons\nThe easiest way to install addons for WoW TBC Anniversary is to use **[CurseForge](https://www.curseforge.com/download/app)** . However, when I went to install addons for Classic, there wasn\u2019t a specific \u201cAnniversary Tab\u201d at first.\nAd\nTrending\nSimply updating CurseForge may work as well, or logging in and out of the Anniversary server, but I just dropped an addon in the proper folder, and that was good enough (Image via Blizzard Entertainment || Curseforge) Simply updating CurseForge may work as well, or logging in and out of\nthe Anniversary server, but I just dropped an addon in the proper folder, and that was good enough (Image via Blizzard Entertainment || Curseforge)\nWhen you open up CurseForge and don\u2019t see a **BCC Anniversary** tab in the app, follow these steps (it\u2019s what I did):\nAd\n* Go to your WoW Folder on your PC.\n* Go to your Classic or Classic Era folder, and copy/paste one of the addons (Details, or Questie, for example) into your **Anniversary** folder (Anniversary -> Interface -> Addons).\n* Reload CurseForge."
+      ]
+    }
+  ],
+  "errors": [],
+  "usage": [
+    {
+      "name": "sku_extract_excerpts",
+      "count": 1
+    }
+  ],
+  "warnings": []
+}

@@ -1,0 +1,78 @@
+{
+  "search_id": "search_04341e096ebdfee2e717cbfe2706ccea",
+  "session_id": "session_04341e096ebdfee2e717cbfe2706ccea",
+  "status": "ok",
+  "results": [
+    {
+      "url": "https://warcraft.wiki.gg/wiki/API_GetServerTime",
+      "title": "GetServerTime - Warcraft Wiki - Your wiki guide to the World of Warcraft",
+      "publish_date": "2016-03-27",
+      "excerpts": [
+        "-- unix time time() -- 1596157547 GetServerTime() -- 1596157549 -- local time, same as `date(nil, time())` date() -- &quot;Fri Jul 31 03:05:47 2020&quot; -- realm time GetGameTime() -- 20, 4 C_DateAndTime.GetCurrentCalendarTime() -- hour:20, minute:4 C_DateAndTime.GetServerTimeLocal() -- 1596139440 unix time offset by the server&#x27;s time zone (e.g. UTC minus 5 hours) Patch 6.2.0 (2015-06-23): Added. GetTime() - local machine uptime. ^ https://github.com/Stanzilla/WoWUIBugs/issues/533 \u00b7 Retrieved from &quot;https://warcraft.wiki.gg/wiki/API_GetServerTime?oldid=6588058&quot;"
+      ]
+    },
+    {
+      "url": "https://warcraft.wiki.gg/wiki/API_GetGameTime",
+      "title": "GetGameTime - Warcraft Wiki - Your wiki guide to the World of Warcraft",
+      "publish_date": "2026-01-03",
+      "excerpts": [
+        "-- unix time time() -- 1596157547 GetServerTime() -- 1596157549 -- local time, same as `date(nil, time())` date() -- &quot;Fri Jul 31 03:05:47 2020&quot; -- realm time GetGameTime() -- 20, 4 C_DateAndTime.GetCurrentCalendarTime() -- hour:20, minute:4 C_DateAndTime.GetServerTimeLocal() -- 1596139440 unix time offset by the server&#x27;s time zone (e.g. UTC minus 5 hours) time() GetTime() Retrieved from &quot;https://warcraft.wiki.gg/wiki/API_GetGameTime?oldid=6587710&quot; Categories: API systems/SystemTime \u00b7 API functions \u00b7 Report bad advertisement \u00b7"
+      ]
+    },
+    {
+      "url": "https://wowpedia.fandom.com/wiki/API_GetServerTime",
+      "title": "GetServerTime - Wowpedia - Your wiki guide to the World of Warcraft",
+      "publish_date": null,
+      "excerpts": [
+        "-- unix time time() -- 1596157547 ... -- 1596139440 unix time offset by the server&#x27;s time zone (e.g. UTC minus 5 hours) <strong>Patch 6.</strong>2.0 (2015-06-23): Added."
+      ]
+    },
+    {
+      "url": "https://wowpedia.fandom.com/wiki/API_C_DateAndTime.GetServerTimeLocal",
+      "title": "C_DateAndTime.GetServerTimeLocal - Wowpedia - Your wiki guide to the World of Warcraft",
+      "publish_date": "2026-06-26",
+      "excerpts": [
+        "A required part of this site couldn\u2019t load. This may be due to a browser\nextension, network issues, or browser settings. Please check your\nconnection, disable any ad blockers, or try using a different browser."
+      ]
+    },
+    {
+      "url": "https://breezewiki.com/wowpedia/wiki/API_C_DateAndTime.GetSecondsUntilWeeklyReset",
+      "title": "API C DateAndTime.GetSecondsUntilWeeklyReset | Unknown+BreezeWiki",
+      "publish_date": null,
+      "excerpts": [
+        "<strong>Returns the number of seconds until the weekly reset</strong> \u00b7 Patch 9.0.1 (2020-10-13): Added"
+      ]
+    },
+    {
+      "url": "https://en.wikipedia.org/wiki/Warcraft",
+      "title": "Warcraft - Wikipedia",
+      "publish_date": "2026-06-01",
+      "excerpts": [
+        "|1994 |_**Warcraft: Orcs & Humans**_ |\n| --- | --- |\n|1995 |_**Warcraft II: Tides of Darkness**_ |\n|1996 |_Warcraft II: Beyond the Dark Portal_ |\n|1997\u20131998 |\n|1999 |_Warcraft II: Battle.net Edition_ |\n|2000\u20132001 |\n|2002 |_**Warcraft III: Reign of Chaos**_ |\n|2003 |_Warcraft III: The Frozen Throne_ |\n|2004 |_**World of Warcraft**_ |\n|2005\u20132006 |\n|2007 |_World of Warcraft: The Burning Crusade_ |\n|2008 |_World of Warcraft: Wrath of the Lich King_ |\n|2009 |\n|2010 |_World of Warcraft: Cataclysm_ |\n|2011 |\n|2012 |_World of Warcraft: Mists of Pandaria_ |\n|2013 |\n|2014 |_**Hearthstone**_ |\n|_World of Warcraft: Warlords of Draenor_ |\n|2015 |\n|2016 |_World of Warcraft: Legion_ |\n|2017 |\n|2018 |_World of Warcraft: Battle for Azeroth_ |\n|2019 |_**World of Warcraft Classic**_ |\n|2020 |_**Warcraft III: Reforged**_ |\n|_World of Warcraft: Shadowlands_ |\n|2021 |_World of Warcraft: Burning Crusade Classic_ |\n|2022 |_World of Warcraft: Wrath of the Lich King Classic_ |\n\n...\n\nIn 2004, Blizzard Entertainment moved the series away from the real-time strategy genre and released _World of Warcraft_ , a massively multiplayer online role-playing game (MMORPG). Requiring a subscription fee to be paid to play, it also introduced regular additional content to the series in the form of patches. _World of Warcraft_ gained popularity worldwide, becoming the world's largest subscription-based MMORPG in 2008. [[ 10 ]]() The game reached a peak 12 million subscribers worldwide in October 2010. [[ 11 ]]() _World of Warcraft_ has had ten expansions as of 2024, with two more announced. During the production of _StarCraft II: Wings of Liberty_ , Blizzard co-founder Frank Pearce\") stated that \"If there's a team that's passionate about doing another _Warcraft_ [real-time strategy], then that's definitely something we would consider.\n\n...\n\nEvents influenced by N'Zoth and his followers lead to the discovery of the continents of Nazjatar, the underwater kingdom of Azshara, and Mechagon, an island inhabited by the Mechagnomes. The final patch of _Battle for Azeroth_ takes players back to the Vale of Eternal Blossoms and Uldum to cure them of the corruption of N'Zoth, and ultimately face the Old God himself in his empire of Ny'alotha. The story of _Battle for Azeroth_ is also the first time players are given choices that can have a significant impact on their own adventures. One significant choice is whether to join the orc Varrok Saurfang in his rebellion against the Horde Warchief Sylvanas Windrunner. Another choice that players are given is whether to become a servant of N'Zoth. Both choices lead to unique dialogue, cinematics, and quests, depending on the choices made.\n\n...\n\nPolygon. June 4, 2018. [Archived](https://web.archive.org/web/20180716053920/https://www.polygon.com/2018/6/4/17424102/heroes-of-the-storm-echoes-of-alterac-event-yrel-alterac-pass) from the original on July 16, 2018 . Retrieved July 16, 2018 .\n36. **^** Prell, Sam (June 12, 2018). [\"Heroes of the Storm's Echoes of Alterac event may not be Warcraft 4, but it's the next best thing\"](https://www.gamesradar.com/heroes-of-the-storms-echoes-of-alterac-event-may-not-be-warcraft-4-but-its-the-next-best-thing/) . _gamesradar_ . Retrieved November 11, 2021 .\n37. **^** [\"Blizzard Music\"](https://www.blizzard.com/en-us/games/music/) . _www.blizzard.com_ . [Archived](https://web.archive.org/web/20191008232703/https://www.blizzard.com/en-us/games/music/) from the original on October 8, 2019 . Retrieved September 21, 2019 .\n38. **^** [\"WoW: Dragonflight Articles\"](https://skycoach.gg/blog/wow/articles/gold-farming-guide) . Retrieved June 26, 2024 .\n39.\n\n...\n\ncom/2010/05/22/know-your-lore-current-alliance-politics-the-gnomes/) on September 26, 2011 . Retrieved March 21, 2022 .\n45. **^** [World of Warcraft Official Page - Draenei](http://us.battle.net/wow/en/game/race/draenei)\n46. ^ _**a**_ _**b**_ [MMO-Champion - Mists of Pandaria Press Tour](http://www.mmo-champion.com/content/2687-Mists-of-Pandaria-Press-Tour)\n47. **^** Aaron Rosenburg; Christie Golden (2008). [_Beyond the Dark Portal_](https://archive.org/details/worldofwarcraft00aaro) . Pocket Books. ISBN\") 978-1-4165-5086-0 .\n48. **^** Rosenburg, Aaron (August 28, 2007). _Tides of Darkness_ . Pocket Books. ISBN\") 978-1-4165-3990-2 .\n49. **^** [World of Warcraft Official Site - Forsaken](http://us.battle.net/wow/en/game/race/forsaken) Blizzard Entertainment, accessed April 18, 2011\n50. **^** [\"Warcraft III: Reign of Chaos\"](https://www.gamespot.com/games/warcraft-iii-reign-of-chaos/) . GameSpot . Retrieved January 1, 2024 .\n51. **^** Blizzard Entertainment (2016).\n_World of Warcraft: Chronicle Volume 1_ . Dark Horse Comics. ISBN\") 978-1616558451 .\n52. **^** [\"Burning Crusade Classic: The Story So Far\"](https://news.blizzard.com/en-gb/article/23679744/burning-crusade-classic-the-story-so-far) . Blizzard Entertainment. May 27, 2021 . Retrieved January 1, 2024 .\n53. **^** [\"Burning Crusade Classic: The Story So Far\"](https://news.blizzard.com/en-gb/article/23679744/burning-crusade-classic-the-story-so-far) . Blizzard Entertainment. May 27, 2021 . Retrieved January 1, 2024 .\n54. **^** \"Top 50 Games of All Time\". _Next Generation\")_ . No. 50. Imagine Media . February 1999. p. 76.\n55. **^** Chronis, George (December 1, 2004). [\"Nintendo Handheld selling briskly\"](https://web.archive.org/web/20061108080611/http://www.videobusiness.com/article/CA612567.html?industryid=43294&industry=Videogames) . _Video Business_ . Archived from [the original](http://www.videobusiness.com/article/CA612567.html?industryid=43294&industry=Videogames) on November 8, 2006 .\n\n...\n\n* [Official _World of Warcraft_ community site (US)](http://us.battle.net/wow/en/)\n* [Official _World of Warcraft_ community site (EU)](http://eu.battle.net/wow/en/)\n* [Warcraft](https://warcraft.wiki.gg/index.php?title=Warcraft) on the Warcraft Wiki\n\nPortal :\n\n* Video games\n\n|Authority control databases [Edit this at Wikidata](https://www.wikidata.org/wiki/Q815739 \"Edit this at Wikidata\") |* [MusicBrainz series](https://musicbrainz.org/series/c7145fa0-7616-4edc-a743-9671154ba3a6) |\n| --- | --- |"
+      ]
+    },
+    {
+      "url": "https://www.facebook.com/warcraftwiki",
+      "title": "WarcraftWiki | Facebook",
+      "publish_date": null,
+      "excerpts": [
+        "[](https://www.facebook.com/photo/?fbid=504669504991784&set=a.504669481658453)\n\n[](https://www.facebook.com/photo/?fbid=827882509337147&set=a.504669484991786&__tn__=%3C)\n\n# WarcraftWiki\n\n[**4\\.3K** followers](https://www.facebook.com/warcraftwiki/followers/) \u2022 [**7** following](https://www.facebook.com/warcraftwiki/following/)\n\nPosts\n\nAbout\n\nPhotos\n\nMore\n\nPosts [About](https://www.facebook.com/warcraftwiki/about) [Photos](https://www.facebook.com/warcraftwiki/photos)\n\n[WarcraftWiki](https://www.facebook.com/warcraftwiki)\n\n## Intro\n\nWarcraft Wiki is your wiki guide to the World of Warcraft!\n\n**Page** \u00b7 Entertainment website\n\n[warcraft\\_wiki](https://l.facebook.com/l.php?u=https%3A%2F%2Fx.com%2Fwarcraft_wiki&h=AUC1NawBWLesWes1Tvkil7TVabPJI-Cnwjp3bJNBHlBMZcCRBOdms6x9CbN0YgCfgDt34ccHjqhDxDbYomsPdfN5IojklYFvPLJD4yKh7_p2LKOVMGSpj-GG2EMuzZS5qT1x7XU_iWCtWPraG5v4)\n\n[warcraft.wiki.gg](https://l.facebook.com/l.php?u=https%3A%2F%2Fwarcraft.wiki.\ngg%2F&h=AUClEZC3bAJSnUQC46ASM_em5Cmf6ZMZhhzWoknV7nS6zHPnDyeWrUkMXXG-gf7mR4nV1Siy4OkFHjxhUjymVPgCedSU7-vydPsFFUu08jEaw9uOp3osBBXBBAkeJxojFSo9uzHypUdmC1FLUvxhuQ)\n\n## [Photos](https://www.facebook.com/warcraftwiki/photos)\n\n[See all photos](https://www.facebook.com/warcraftwiki/photos)\n\n* [Privacy](https://www.facebook.com/privacy/policy/?entry_point=comet_dropdown) \u00b7\n* Consumer Health Privacy \u00b7\n* [Terms](https://www.facebook.com/policies?ref=pf) \u00b7\n* Advertising \u00b7\n* Ad Choices \u00b7\n* Cookies \u00b7\n* More\n\n[](https://www.facebook.com/warcraftwiki?__cft__\\[0\\]=AZYsqR0MmnKJ5GHpx7bKyxYqJA-GWFL3axmf7Cj_Sp8aI13XwrR_sh2hrU2TEpAttuJNQ3Xptne4HxKmZZxdLbn83sDxjnH_fTouMIMrj8VLWiZ567OoX2MTPiH0S3dOoJGgnz6KVLct6wyM2PL8wLQnr-GtMf2mxwZuDgWYVGTkv2M6nTAyhZwHxmKjOCApQ3o&__tn__=%3C%3C%2CP-R)\n\n## [**WarcraftWiki**](https://www.facebook.com/warcraftwiki?\n__cft__\\[0\\]=AZYsqR0MmnKJ5GHpx7bKyxYqJA-GWFL3axmf7Cj_Sp8aI13XwrR_sh2hrU2TEpAttuJNQ3Xptne4HxKmZZxdLbn83sDxjnH_fTouMIMrj8VLWiZ567OoX2MTPiH0S3dOoJGgnz6KVLct6wyM2PL8wLQnr-GtMf2mxwZuDgWYVGTkv2M6nTAyhZwHxmKjOCApQ3o&__tn__=-UC%2CP-R)\n\n[October 12, 2023](https://www.facebook.com/warcraftwiki/posts/pfbid0JLyH9zcdAQwJfHwEHLCyfTpU2XppRMmb3Sr2so6gEPRGqdSLt6d758tEJwJqUuGjl?__cft__\\[0\\]=AZYsqR0MmnKJ5GHpx7bKyxYqJA-GWFL3axmf7Cj_Sp8aI13XwrR_sh2hrU2TEpAttuJNQ3Xptne4HxKmZZxdLbn83sDxjnH_fTouMIMrj8VLWiZ567OoX2MTPiH0S3dOoJGgnz6KVLct6wyM2PL8wLQnr-GtMf2mxwZuDgWYVGTkv2M6nTAyhZwHxmKjOCApQ3o&__tn__=%2CO%2CP-R) \u00b7\n\nWowpedia is now WarcraftWiki. We've escaped (again) from Fandom. Find us at\n\nWarcraft Wiki\n\nwarcraft.wiki.gg\n\nWarcraft Wiki\n\nThe Warcraft Wiki is an officially-recognized wiki dedicated to cataloging Blizzard Entertainment's Warcraft universe (with a focus on World of Warcraft), covering the entire Warcraft series of games, strategy guides, novels, comics, reference books, and other sources.\n[](https://l.facebook.com/l.php?u=https%3A%2F%2Fwarcraft.wiki.gg%2F&h=AUCnYk2EIex9KCXQfEeRK1aNjqVWjvoJsX40DhTxE63CPszRRXhBIerZe14nRFd6F7_7zO5n8IF-6Txxc89F3amGf9VSFNgw1x5hldDjLMHawv15dYcMsl6d42COO5ShbnEB9mTx7azmAdRdG5ovx5-H_jqcUFUO&__tn__=H-R&c\\[0\\]=AUBbi83c55KQwtcv3jiPlO6oZczbjMdr14qeckIDe_iQtWp1fORrOCJM0YQNdRgpXcIZ0iqpMHHKtFczf3UagIRE45RxO_IwXtzmA0VnHAwft9Q_H5b2WjYrqyXSiscy6W3r_M1ffYzYlybV-gzHwsQBFsaTnT1GHN77MgLLN5b7VLHoyAFNnLXouFSacwTN0Ay6OJp3KLnLy7pSlbhLbg0V)\n\nAll reactions:\n\n12\n\n1\n\nLike\n\nComment\n\nShare\n\n[](https://www.facebook.com/AernathGN?comment_id=Y29tbWVudDo4Mjc4ODQ4MjI2NzAyNDlfMTc2NTM2ODYyMTY1MjQ5&__cft__\\[0\\]=AZYsqR0MmnKJ5GHpx7bKyxYqJA-GWFL3axmf7Cj_Sp8aI13XwrR_sh2hrU2TEpAttuJNQ3Xptne4HxKmZZxdLbn83sDxjnH_fTouMIMrj8VLWiZ567OoX2MTPiH0S3dOoJGgnz6KVLct6wyM2PL8wLQnr-GtMf2mxwZuDgWYVGTkv2M6nTAyhZwHxmKjOCApQ3o&__tn__=R-R)\n\n[Aernath](https://www.facebook.com/AernathGN?"
+      ]
+    },
+    {
+      "url": "https://wowreset.com/",
+      "title": "WoW servers weekly and daily reset time",
+      "publish_date": "2026-07-07",
+      "excerpts": [
+        "For European servers the World of Warcraft weekly reset occurs on <strong>Wednesdays at 04:00 UTC</strong>."
+      ]
+    }
+  ],
+  "usage": [
+    {
+      "name": "sku_search",
+      "count": 1
+    }
+  ],
+  "warnings": []
+}

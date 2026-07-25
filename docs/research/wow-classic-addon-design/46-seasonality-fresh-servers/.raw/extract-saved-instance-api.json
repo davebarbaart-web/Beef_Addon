@@ -1,0 +1,36 @@
+{
+  "extract_id": "extract_a4a0c222037242f8d430aaa7bb8640a5",
+  "session_id": "session_a4a0c222037242f8d430aaa7bb8640a5",
+  "status": "ok",
+  "results": [
+    {
+      "url": "https://warcraft.wiki.gg/wiki/API_GetSavedInstanceInfo",
+      "title": "GetSavedInstanceInfo - Warcraft Wiki - Your wiki guide to the World of Warcraft",
+      "publish_date": "2006-06-22",
+      "excerpts": [
+        "wiki.gg logo\n\nToggle personal tools menu\n\n* \n* \n\n[](https://app.wiki.gg/showcase/go?utm_campaign=wfi_an&utm_medium=bannerheader&utm_source=warcraft.wiki.gg&location=desktop)\n\n# GetSavedInstanceInfo\n\nFrom Warcraft Wiki\n\nJump to navigation Jump to search\n\n|Main Menu |\n| --- |\n|* WoW API\n* Lua API\n* Widget API\n* XML schema\n* FrameXML\n* Events\n* CVars\n\n* * *\n\n* Combat Log\n* Escape sequences\n* API changes\n* HOWTOs\n* Discord logo.png [wowuidev](https://discord.gg/txUg39Vhc6) |\n\n**Lua error in Module:Wowapi/category at line 21: bad argument #2 to 'format' (string expected, got nil).**\n\n|Fat cat yearns for the mines |The API wiki is under maintenance\n\nSince `2026-07-23T06:08:00Z` , ETA: at least multiple days |\n| --- | --- |\n\nReturns instance lock info.\n\n```\nname , lockoutId , reset , difficultyId , locked , extended , instanceIDMostSig , isRaid , maxPlayers , difficultyName , numEncounters , encounterProgress , extendDisabled , instanceId = GetSavedInstanceInfo ( index )\n```\n\n## Contents\n\n* 1 Arguments\n* 2 Returns\n* 3 Patch changes\n* 4 See also\n\n## Arguments\n\n    index\n    number \\- index of the saved instance, from 1 to GetNumSavedInstances ()\n\n## Returns\n\n    1\\. name\n    string \\- the name of the instance\n2\\. lockoutId\n    number \\- the ID of the instance lockout\n3\\. reset\n    number \\- the number of seconds remaining until the instance resets\n4\\. difficultyId\n    number : DifficultyID\n5\\. locked\n    boolean \\- true if the instance is currently locked, false for a historic entry\n6\\. extended\n    boolean \\- shows true if the ID has been extended\n7\\. instanceIDMostSig\n    number \\- unknown\n8\\. isRaid\n    boolean \\- shows true if it is a raid\n9\\. maxPlayers\n    number \\- shows the max players\n10\\. difficultyName\n    string \\- shows a localized string i.e. 10 Player (Heroic)\n11\\. numEncounters\n    number \\- number of boss encounters in this instance\n12\\. encounterProgress\n    number \\- farthest boss encounter in this instance for player\n13\\. extendDisabled\n    boolean \\- returns whether this instance cannot be disabled\n14\\. instanceId\n    number : InstanceID\n\n## Patch changes\n\n* Dragonflight **Patch 10.0.5 (2023-01-24):** Added `instanceId` return value.\n* Cataclysm **Patch 4.0.1 (2010-10-12):** Added `numEncounters, encounterProgress` return values.\n* Wrath of the Lich King **Patch 3.2.0 (2009-08-04):** Added `locked, extended, instanceIDMostSig, isRaid, maxPlayers, difficultyName` return values.\n* Wrath of the Lich King **Patch 3.0.2 (2008-10-14):** Added `difficultyId` return value.\n* World of Warcraft **Patch 1.11.0 (2006-06-19):** Added.\n\n## See also\n\n* GetInstanceLockTimeRemaining \\- Older, more limited version of this function\n* GetNumSavedInstances \\- Counts number of instances this function applies to\n* GetSavedInstanceEncounterInfo \\- A more specific function; this lets you check up on the individual encounters within a given saved instance\n* GetSavedWorldBossInfo \\- A similar function to this, except for the player's saved world boss lockout data\n* GetLFGDungeonInfo \\- A moderately similar function to this function, except it works off of dungeon IDs instead of saved instance indexes. It can also return Raid Finder instance info, unlike this function.\n* GetRFDungeonInfo \\- Nearly identical to GetLFGDungeonInfo , except it uses Raid Finder indexes instead of dungeon IDs\n\nRetrieved from \" [https://warcraft.wiki.gg/wiki/API\\_GetSavedInstanceInfo?oldid=6588039](https://warcraft.wiki.gg/wiki/API_GetSavedInstanceInfo?oldid=6588039) \"\n\nHidden category:\n\n* Pages with script errors\n\n[](https://app.wiki.gg/showcase/go?utm_campaign=wfi_an&utm_medium=mrecmiddle&utm_source=warcraft.wiki.gg&location=desktop)\n\n[Report bad advertisement](https://www.wiki.gg/t/bad-ad)\n\n[](https://app.wiki.gg/showcase/go?utm_campaign=wfi_an&utm_medium=bannerfooter&utm_source=warcraft.wiki.gg&location=desktop)\n\nCookies help us deliver our services. By using our services, you agree to our use of cookies.\n\n[More information](https://www.indie.io/privacy-policy) OK\n\n* This page was last edited on 3 January 2026, at 06:04.\n* Pages that were created prior to October 2023 are adapted from the Fandom Wowpedia Wiki.  \n  Page content is under [Creative Commons Attribution-ShareAlike 4.0 License](https://creativecommons.org/licenses/by-sa/4.0) unless otherwise noted.\n\n* [Terms of Service](https://www.indie.io/terms-of-service)\n* [Privacy policy](https://www.indie.io/privacy-policy)\n* [Support Wiki](https://support.wiki.gg)\n* [Send a ticket to wiki.gg](https://wiki.gg/go/servicedesk)\n* [Status page](https://wikiggstatus.com)\n* Manage US Privacy Settings\n\n* [Creative Commons Attribution-ShareAlike 4.0 License Creative Commons Attribution-ShareAlike 4.0 License](https://creativecommons.org/licenses/by-sa/4.0)\n* [Powered by MediaWiki Powered by MediaWiki](https://www.mediawiki.org/)\n* [Part of wiki.gg Part of wiki.gg](https://wiki.gg)"
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "url": "https://warcraft.wiki.gg/wiki/API_GetNumSavedInstances",
+      "error_type": "network_error",
+      "http_status_code": null,
+      "content": null
+    }
+  ],
+  "usage": [
+    {
+      "name": "sku_extract_excerpts",
+      "count": 1
+    }
+  ],
+  "warnings": [
+    {
+      "type": "warning",
+      "message": "Neither objective nor search_queries were provided, provide at least one to increase the relevance of excerpts.",
+      "detail": null
+    }
+  ]
+}

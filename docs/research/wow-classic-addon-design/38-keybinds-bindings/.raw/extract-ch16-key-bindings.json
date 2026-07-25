@@ -1,0 +1,23 @@
+{
+  "extract_id": "extract_edf2afe80a53348331552c2008c2799c",
+  "session_id": "session_edf2afe80a53348331552c2008c2799c",
+  "status": "ok",
+  "results": [
+    {
+      "url": "https://github.com/NeticSoul/wow-335a-addon-wiki/blob/main/chapters/ch16-key-bindings.md",
+      "title": "wow-335a-addon-wiki/chapters/ch16-key-bindings.md at main \u00b7 NeticSoul/wow-335a-addon-wiki \u00b7 GitHub",
+      "publish_date": "2026-04-15",
+      "excerpts": [
+        "# Ch 16 \u2014 Binding Keys and Clicks to Addon Code\n## Overview\nCovers the key binding system \u2014 how to bind keyboard and mouse input to addon commands. Keys and commands have a many-to-one relationship (many keys \u2192 one command).\n\n...\n\n## Key Concepts\n### Bindings.xml\nAddon-specific key bindings defined in `Bindings.xml` at the addon root:\n```xml\n<Bindings>\n    <Binding name=\"MYADDON_TOGGLE\" header=\"MYADDON_HEADER\">\n        MyAddon_Toggle()\n    </Binding>\n</Bindings>\n```\n- `name` attribute = command identifier\n- Display label from global `BINDING_NAME_<name>` string\n- Code inside tag executes when bound key is pressed\n- `header` creates a section header in the bindings UI\n\n### API Functions\n| Function | Purpose |\n| `SetBinding(\"KEY\", \"COMMAND\")` | Bind a key to a command |\n| `SetBindingClick(\"KEY\", \"ButtonName\")` | Bind key to button click |\n| `SetBindingSpell(\"KEY\", \"Spell\")` | Bind key to cast spell |\n| `SetBindingMacro(\"KEY\", \"MacroIdx\")` | Bind key to macro |\n| `GetBindingKey(\"COMMAND\")` | Get keys bound to command |\n| `GetBindingAction(\"KEY\")` | Get command bound to key |\n| `SaveBindings(type)` | Save (1=account, 2=character) |\n| `LoadBindings(type)` | Reload bindings |\n\n### Override Bindings\nFrame-specific bindings that take priority over global ones:\n```lua\nSetOverrideBindingClick(frame, isPriority, \"KEY\", \"ButtonName\")\nClearOverrideBindings(frame)\n```\n- `isPriority` = true means it overrides even other override bindings\n- Override bindings are cleared when the owning frame is hidden\n\n### Binding Stacking\nBindings have a priority order:\n1. Override bindings (highest)\n2. Custom key bindings\n3. Default key bindings (lowest)\n\n### Click Bindings\n`SetBindingClick()` simulates clicking a named button frame when the key is pressed. This is the bridge between key input and the secure template system."
+      ]
+    }
+  ],
+  "errors": [],
+  "usage": [
+    {
+      "name": "sku_extract_excerpts",
+      "count": 1
+    }
+  ],
+  "warnings": []
+}

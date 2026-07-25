@@ -1,0 +1,23 @@
+{
+  "extract_id": "extract_107f500292b7863726bcdf3dfef45814",
+  "session_id": "session_107f500292b7863726bcdf3dfef45814",
+  "status": "ok",
+  "results": [
+    {
+      "url": "https://warcraft.wiki.gg/wiki/Patch_2.5.6/API_changes",
+      "title": "Patch 2.5.6/API changes - Warcraft Wiki - Your wiki guide to the World of Warcraft",
+      "publish_date": "2026-07-10",
+      "excerpts": [
+        "# Patch 2.5.6/API changes\n## Resources\n* TOC: `20506`\n* Diffs: [wow-ui-source](https://github.com/Gethe/wow-ui-source/compare/2.5.5..2.5.6) , [BlizzardInterfaceResources](https://github.com/Ketho/BlizzardInterfaceResources/compare/2.5.5...2.5.6)\n\n...\n\n## Blue posts\nWe\u2019d like to tell you about these changes, highlight options you have to edit some of the user interface (UI), and look forward to patch 1.15.9 coming to WoW Classic soon.\n**UI Using Shared Code**\nAll versions of WoW Classic share code with modern World of Warcraft. The games gain significant benefits from this, including the support of modern hardware, additional options for graphics and accessibility, widescreen support, and the ability to integrate with Battle.net services in the first place.\nThis shared code also allows the introduction of UI elements to fill gaps in the original World of Warcraft UI. For instance, the original Burning Crusade only supported the \u201cdrag out\u201d raid group UI from the Raid Frame.\n\n...\n\nSome third-party addons may experience errors until they are updated by their authors. As all versions of World of Warcraft share most of their UI code, the addon API in 1.15.9 very closely matches the addon API from 2.5.6.\nFor addon authors, we encourage you to use 2.5.6 as an environment for updating addons to be compatible with 1.15.9.\nWe will continue to refine our updates in the future, so that we\u2019re providing additional options for players to modify settings wherever possible.\nThank you, as always, for your passion and feedback.\n[View original post](https://us.forums.blizzard.com/en/wow/t/user-interface-updates-in-classic/2325408)"
+      ]
+    }
+  ],
+  "errors": [],
+  "usage": [
+    {
+      "name": "sku_extract_excerpts",
+      "count": 1
+    }
+  ],
+  "warnings": []
+}

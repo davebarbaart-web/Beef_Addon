@@ -1,0 +1,38 @@
+{
+  "extract_id": "extract_3fd3ed014baae39e024ef4236fb07b18",
+  "session_id": "session_3fd3ed014baae39e024ef4236fb07b18",
+  "status": "ok",
+  "results": [
+    {
+      "url": "https://addonstudio.org/wiki/WoW:Creating_simple_pop-up_dialog_boxes",
+      "title": "WoW:Creating simple pop-up dialog boxes - AddOn Studio",
+      "publish_date": "2023-08-15",
+      "excerpts": [
+        "# WoW : Creating simple pop-up dialog boxes\n## Basic setup\nNew dialogs are created by adding an entry to the global StaticPopupDialogs table, and populating the entry with required and optional information. Here is a simple two-button entry:\n```\nStaticPopupDialogs[\"EXAMPLE_HELLOWORLD\"] = {\n  text = \"Do you want to greet the world today?\",\n  button1 = \"Yes\",\n  button2 = \"No\",\n  OnAccept = function()\n      GreetTheWorld()\n  end,\n  timeout = 0,\n  whileDead = true,\n  hideOnEscape = true,\n  preferredIndex = 3,  -- avoid some UI taint, see <http://www.wowace.com/announcements/how-to-avoid-some-ui-taint/> \n}\n```\n\n...\n\n* _text_ - This is the text inside the dialog box. For example, \"Looting this item will bind it to you.\"\n* _button1_ - This is the text on the left-hand \"yes\" button. Clicking this button will call the OnAccept function in the entry. In a popup with only one button, it is this one.\n\n...\n\n* _OnAccept_ - This points to a function; it can be as complicated as you like and is typically a local \"anonymous\"-style function defined on the spot as shown above. You do not need to explicitly hide the popup frame; it will be hidden for you.\n* _timeout_ - After this many seconds, the dialog will go away.\nIf the entry has an OnCancel function, it will be called with \"timeout\" as the reason. Dialogs which do not expire should set this to zero.\n* _whileDead_ - Set to true if this dialog can be shown while the player is a ghost. You probably want to do this.\n\n...\n\n## Advanced setup\n* _OnAccept_ - This function can take up to two arguments, both optional. They are for passing arbitrary data around the callbacks. In general this is used with dialogs that have an editable text field, to pass the entered text back to the function; also for chaining dialog boxes together.\nFor details, see \"Passing arguments to local functions\" below.\n* _OnCancel_ - This function can take up to two arguments, both optional. The first is used the same way as the first parameter in OnAccept (whatever that may actually be).\nThe second is a string describing the reason the popup was cancelled; the game will pass this as required:\n+ \"override\" - Another popup cancelled this one, or is set to 'exclusive' (see below), or the player is dead or logging out.\n+ \"timeout\" - The popup's entry specified a nonzero timeout field, and the time expired.\n\n...\n\n### Editable text fields\nTo add a editbox in the popup set the _hasEditBox_ option field to true. The EditBox gets the name \"$parentEditBox\", relative to the Popup, and is also available in the popup's _.editBox_ field.\n\n...\n\n```\nOnShow = function (self, data)\n    self.editBox:SetText(\"Some text goes here\")\nend,\nOnAccept = function (self, data, data2)\n    local text = self.editBox:GetText()\n    -- do whatever you want with it\nend,\nhasEditBox = true\n```\n\n...\n\n## Optional features\n* _sound_ - Play this sound when the dialog is displayed. For example, \"igPlayerInvite\".\n* _hasMoneyFrame_ - This is for things like the money-in-mail confirmation. See the Lua file for more.\n* _showAlert_ - Set this to true if you also want the OH NO SOMETHING BAD icon to be displayed in the popup.\n\n...\n\nAs an example, consider the Ready Check from [CT_RaidAssist](http://ctmod.net/) , which pops up a two-button dialog box with a 30-second timeout. The CT authors implemented everything from scratch: 107 lines of XML specifying window, field, and button sizes, plus a couple lines of Lua here and there.\n\n...\n\n```\nStaticPopupDialogs[\"EXAMPLE_CTRA_READY\"] = {\n  text = \"%s has performed a ready check.  Are you ready?\",\n  button1 = \"Yes\",\n  button2 = \"No\",\n  OnAccept = function()\n      CT_RA_SendReady()\n  end,\n  OnCancel = function (_,reason)\n      if reason == \"timeout\" or reason == \"clicked\" then\n          CT_RA_SendNotReady()\n      else\n          -- \"override\" ...?\n      end;\n  end,\n  sound = \"levelup2\",\n  timeout = 30,\n  whileDead = true,\n  hideOnEscape = true,\n}\n```\n\n...\n\n## Passing arguments to local functions\nIt is possible, though not immediately obvious how, to pass arbitrary user data to the local functions (e.g. OnAccept, OnCancel). Write your local function like this:\n```\n OnAccept = function (self, data, data2)\n     DoSomethingWith(data)\n end\n```\nAnd make the call like this:\n```\n varName  = \"Some value\"                           -- This is the data you want to use in OnAccept\n varName2 = \"Some other value\"                     -- This is the data you want to use in OnAccept\n local dialog = StaticPopup_Show(\"YOUR_POPUP\")     -- dialog contains the frame object\n```\n\n...\n\nThe dialog's fields \"data\" and \"data2\" are passed as additional arguments to OnAccept. The \"data\" field is passed to OnCancel and OnAlt (the function called if button3 is set), but not \"data2\". They are also accessible through the dialog itself, as _self.data_ and _self.data2_ .\n\n...\n\n## Notes and observations\nAlso note that you can prevent the popup from hiding after clicking the \"Accept\" button: just make the OnAccept function return \"true\" (or anything different from \"nil\" and \"false\", it will work just as well)."
+      ]
+    },
+    {
+      "url": "https://warcraft.wiki.gg/wiki/API_StaticPopup_Show",
+      "title": "StaticPopup:Show() - Warcraft Wiki - Your wiki guide to the World of Warcraft",
+      "publish_date": "2016-12-28",
+      "excerpts": [
+        "# StaticPopup:Show()\n```\n        _This function is implemented in_ `[:Show FrameXML/StaticPopup.lua](https://www.townlong-yak.com/framexml/go/StaticPopup)` _._\n```\nShows a StaticPopup dialog.\n```\nsuccess = StaticPopup_Show(which [, text_arg1, text_arg2, data, insertedFrame])\n```\n\n## Arguments\nwhich\nstring - Member of `StaticPopupDialogs` to show.\ntext_arg1, text_arg2\nstring ? Optional. Could be nil . - Formats `StaticPopupDialogs[which].text` using FontString:SetFormattedText .\ndata\ntable ? Optional. Could be nil . - Data shared with the dialog, if applicable.\ninsertedFrame\nFrame ? Optional. Could be nil .\n\n...\n\n## Details\n* The data argument is used to display item info (data.useLinkForItemInfo must be set in this case) or to set up OnCancel options"
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "url": "https://warcraft.wiki.gg/wiki/Creating_simple_pop-up_dialog_boxes",
+      "error_type": "network_error",
+      "http_status_code": null,
+      "content": null
+    }
+  ],
+  "usage": [
+    {
+      "name": "sku_extract_excerpts",
+      "count": 2
+    }
+  ],
+  "warnings": []
+}

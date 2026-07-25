@@ -1,0 +1,40 @@
+{
+  "extract_id": "extract_56768bfe7041330fd376b2bad62d5d47",
+  "session_id": "session_56768bfe7041330fd376b2bad62d5d47",
+  "status": "ok",
+  "results": [],
+  "errors": [
+    {
+      "url": "https://warcraft.wiki.gg/wiki/ENCOUNTER_END",
+      "error_type": "network_error",
+      "http_status_code": null,
+      "content": null
+    },
+    {
+      "url": "https://warcraft.wiki.gg/wiki/API_GetSavedInstanceInfo",
+      "error_type": "http_error",
+      "http_status_code": 403,
+      "content": null
+    },
+    {
+      "url": "https://warcraft.wiki.gg/wiki/API_RequestRaidInfo",
+      "error_type": "http_error",
+      "http_status_code": 403,
+      "content": null
+    },
+    {
+      "url": "https://warcraft.wiki.gg/wiki/ZONE_CHANGED_NEW_AREA",
+      "error_type": "network_error",
+      "http_status_code": null,
+      "content": null
+    },
+    {
+      "url": "https://warcraft.wiki.gg/wiki/UPDATE_BATTLEFIELD_STATUS",
+      "error_type": "network_error",
+      "http_status_code": null,
+      "content": null
+    }
+  ],
+  "usage": [],
+  "warnings": []
+}

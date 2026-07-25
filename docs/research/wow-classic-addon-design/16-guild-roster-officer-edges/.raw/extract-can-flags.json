@@ -1,0 +1,66 @@
+{
+  "extract_id": "extract_78bfb728e5ca0191641afb2e1f25f218",
+  "session_id": "session_78bfb728e5ca0191641afb2e1f25f218",
+  "status": "ok",
+  "results": [
+    {
+      "url": "https://wowwiki-archive.fandom.com/wiki/API_GuildControlGetRankFlags",
+      "title": "API GuildControlGetRankFlags | WoWWiki | Fandom",
+      "publish_date": null,
+      "excerpts": [
+        "- [Events](https://wowwiki-archive.fandom.com/wiki/Events_(API))\n- [Widget API](https://wowwiki-archive.fandom.com/wiki/Widget_API)\n+ [Other](https://wowwiki-archive.fandom.com/wiki/Other)\n- [Achievements](https://wowwiki-archive.fandom.com/wiki/Achievement)\n- [Instances](https://wowwiki-archive.fandom.com/wiki/Instances_by_level)\n\n...\n\n- [What are addons?](https://wowwiki-archive.fandom.com/wiki/AddOns)\n- [World of Warcraft API](https://wowwiki-archive.fandom.com/wiki/World_of_Warcraft_API)\n- [UI beginner's guide](https://wowwiki-archive.fandom.com/wiki/UI_beginner%27s_guide)\n- [UI FAQ](https://wowwiki-archive.fandom.com/wiki/UI_FAQ)\n\n...\n\n[](https://auth.fandom.com/signin?redirect=https%3A%2F%2Fwowwiki-archive.fandom.com%2Fwiki%2FAPI_GuildControlGetRankFlags%3Fveaction%3Dedit&uselang=en)\nin: World of Warcraft API\nEnglish\n* [\u0420\u0443\u0441\u0441\u043a\u0438\u0439](https://wowwiki.fandom.com/ru/wiki/%D0%A8%D0%B0%D0%B1%D0%BB%D0%BE%D0%BD:WoWAPI)\n\n# API GuildControlGetRankFlags\n* [History](https://wowwiki-archive.fandom.com/wiki/API_GuildControlGetRankFlags?action=history)\n* [Purge](https://wowwiki-archive.fandom.com/wiki/API_GuildControlGetRankFlags?action=purge)\n* [Talk (0)](https://wowwiki-archive.fandom.com/wiki/Talk:API_GuildControlGetRankFlags?action=edit&redlink=1)\n|Reference\n| [e](https://wowwiki-archive.fandom.com/wiki/Template:Apinav?action=edit) |\n| AddOns |\n| WoW API |\n| Widget API |\n| XML UI |\n| Event API |\n| WoW Lua |\n| Macro API |\n| CVars |\n| Changes |\nB attle.net API\nHOWTOs\nSnippets\nUI tech.\nCategories |\n\u2192 WoW API\n\n## Contents\n* 1 Parameters\n  + 1.1 Returns\n* 2 Example\n\u2190 WoW API < GuildControlGetRankFlags\nReturns information about the current selected guild rank. If no rank has been selected and the guild frame hasn't been opened the function will return nil for all flags.\n```\nguildchat_listen, guildchat_speak, officerchat_listen, officerchat_speak, promote, demote,  \n invite_member, remove_member, set_motd, edit_public_note, view_officer_note, edit_officer_note,  \n modify_guild_info, _, withdraw_repair, withdraw_gold, create_guild_event = GuildControlGetRankFlags();\n```\n\n## Parameters [ ]\n### Returns [ ]\n```\nguildchat\\_listen\nBoolean - 1 if players of the rank can listen to guild chat, nil otherwise.\n```\nguildchat_speak\nBoolean - 1 if players of the rank can speak in guild chat, nil otherwise.\nofficerchat_listen\nBoolean - 1 if players of the rank can listen to officer chat, nil otherwise.\nofficerchat_speak\nBoolean - 1 if players of the rank can speak in officer chat, nil otherwise.\npromote\nBoolean - 1 if players of the rank promote lower ranked players, nil otherwise.\ndemote\nBoolean - 1 if players of the rank demote lower ranked players, nil otherwise.\ninvite_member\nBoolean - 1 if players of the rank invite new players to the guild, nil otherwise.\nremove_member\nBoolean - 1 if players of the rank remove players from the guild, nil otherwise.\nset_motd\nBoolean - 1 if players of the rank can edit guild message of the day, nil otherwise.\nedit_public_note\nBoolean - 1 if players of the rank can edit public notes, nil otherwise.\nview_officer_note\nBoolean - 1 if players of the rank can view officer notes, nil otherwise.\nedit_officer_note\nBoolean - 1 if players of the rank can edit officer notes, nil otherwise.\nmodify_guild_info\nBoolean - 1 if players of the rank modify guild information, nil otherwise.\nwithdraw_repair\nBoolean - 1 if players of the rank are allowed to repair using guild bank, nil otherwise.\nwithdraw_gold\nBoolean - 1 if players of the rank are allowed to withdraw gold from the guild bank, nil otherwise.\ncreate_guild_event\nBoolean - 1 if players of the rank can create guild events on the calendar, nil otherwise.\n\n## Example [ ]\n```\nlocal _,_,playerrank = GetGuildInfo(\"player\");\nGuildControlSetRank(playerrank + 1);\nlocal guildchat_listen,guildchat_speak,officerchat_listen,officerchat_speak,... = GuildControlGetRankFlags();\n```\nCategories\n* Categories :\n* World of Warcraft API\nLanguages\n[\u0420\u0443\u0441\u0441\u043a\u0438\u0439](https://wowwiki.fandom.com/ru/wiki/%D0%A8%D0%B0%D0%B1%D0%BB%D0%BE%D0%BD:WoWAPI)\nCommunity content is available under [CC-BY-SA](https://www.fandom.com/licensing) unless otherwise noted.\nMore Fandoms"
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "url": "https://wowwiki-archive.fandom.com/wiki/API_CanGuildInvite",
+      "error_type": "network_error",
+      "http_status_code": null,
+      "content": null
+    },
+    {
+      "url": "https://wowwiki-archive.fandom.com/wiki/API_CanEditOfficerNote",
+      "error_type": "http_error",
+      "http_status_code": 403,
+      "content": null
+    },
+    {
+      "url": "https://wowpedia.fandom.com/wiki/API_CanEditOfficerNote",
+      "error_type": "network_error",
+      "http_status_code": null,
+      "content": null
+    },
+    {
+      "url": "https://wowpedia.fandom.com/wiki/API_CanGuildInvite",
+      "error_type": "network_error",
+      "http_status_code": null,
+      "content": null
+    },
+    {
+      "url": "https://warcraft.wiki.gg/wiki/API_SetGuildRosterShowOffline",
+      "error_type": "network_error",
+      "http_status_code": null,
+      "content": null
+    },
+    {
+      "url": "https://warcraft.wiki.gg/wiki/API_IsInGuild",
+      "error_type": "network_error",
+      "http_status_code": null,
+      "content": null
+    },
+    {
+      "url": "https://warcraft.wiki.gg/wiki/PLAYER_GUILD_UPDATE",
+      "error_type": "network_error",
+      "http_status_code": null,
+      "content": null
+    }
+  ],
+  "usage": [
+    {
+      "name": "sku_extract_excerpts",
+      "count": 1
+    }
+  ],
+  "warnings": []
+}

@@ -1,0 +1,23 @@
+{
+  "extract_id": "extract_6a30c63def6969d460bf675fecb69430",
+  "session_id": "session_6a30c63def6969d460bf675fecb69430",
+  "status": "ok",
+  "results": [
+    {
+      "url": "https://openhub.net/licenses/AceStyleBSD",
+      "title": "Ace Style Limited BSD - Open Hub",
+      "publish_date": null,
+      "excerpts": [
+        "# License : [Ace Style Limited BSD](https://openhub.net/licenses/AceStyleBSD \"Ace Style Limited BSD\")\nRedistribution and use in source and binary forms, with or without\nmodification, are permitted provided that the following conditions are met:\n* Redistributions of source code must retain the above copyright notice,\nthis list of conditions and the following disclaimer.\n* Redistributions in binary form must reproduce the above copyright notice,\nthis list of conditions and the following disclaimer in the documentation\nand/or other materials provided with the distribution.\n* Redistribution of a stand alone version is strictly prohibited without\nprior written authorization from the <OWNER>.\n* Neither the name of the<OWNER> nor the names of its contributors\nmay be used to endorse or promote products derived from this software without\nspecific prior written permission.\n\n...\n\nABOUT OPEN HUB\n[Forums](https://community.blackduck.com/s/black-duck-open-hub)\n[Terms](https://community.blackduck.com/s/article/Black-Duck-Open-Hub-Terms-of-Use)"
+      ]
+    }
+  ],
+  "errors": [],
+  "usage": [
+    {
+      "name": "sku_extract_excerpts",
+      "count": 1
+    }
+  ],
+  "warnings": []
+}

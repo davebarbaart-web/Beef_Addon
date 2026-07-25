@@ -1,0 +1,36 @@
+{
+  "extract_id": "extract_961899a7a39034fccee948b57b81f6d0",
+  "session_id": "session_961899a7a39034fccee948b57b81f6d0",
+  "status": "ok",
+  "results": [
+    {
+      "url": "https://wowpedia.fandom.com/wiki/API_CreateFrame",
+      "title": "CreateFrame - Wowpedia - Your wiki guide to the World of Warcraft",
+      "publish_date": null,
+      "excerpts": [
+        "# CreateFrame\n| Swogstun | Automated updating of API pages at this location, to reflect patch changes, has ceased from 10.1.7 onwards. |\nCreates a Frame object.\n```\nframe = CreateFrame(frameType [, name, parent, template, id])\n```\n\n## Arguments [ [](https://auth.fandom.com/signin?redirect=https%3A%2F%2Fwowpedia.fandom.com%2Fwiki%2FAPI_CreateFrame%3Faction%3Dedit%26section%3D1&uselang=en&metadata=article-registration-edit-article-section \"Sign in to edit\") ]\n```\nframeType\nstring \\- Type of the frame; e.g. \"Frame\" or \"Button\".\n```\n\n...\n\n\ud83d\udd17 - Parent object to assign to the frame, or `nil` to be parentless; cannot be a string.\nCan also be set with Region:SetParent ()\ntemplate\nstring ?\n- Comma-delimited list of virtual XML templates to inherit; see also a [complete\nlist](https://github.com/Ketho/BlizzardInterfaceResources/blob/mainline/Resources/Templates.lua) of FrameXML\ntemplates.\nid\nnumber ? - ID to assign to the frame. Can also be set with Frame:SetID ()\n\n...\n\n## Details [ [](https://auth.fandom.com/signin?redirect=https%3A%2F%2Fwowpedia.fandom.com%2Fwiki%2FAPI_CreateFrame%3Faction%3Dedit%26section%3D4&uselang=en&metadata=article-registration-edit-article-section \"Sign in to edit\") ]\n* Fires the frame's OnLoad script, if it has one from an inherited template.\n\n...\n\n## Example [ [](https://auth.fandom.com/signin?redirect=https%3A%2F%2Fwowpedia.fandom.com%2Fwiki%2FAPI_CreateFrame%3Faction%3Dedit%26section%3D5&uselang=en&metadata=article-registration-edit-article-section \"Sign in to edit\") ]\n```\nlocal f = CreateFrame ( \"Frame\" , nil , UIParent ) \n f : SetPoint ( \"CENTER\" ) \n f : SetSize ( 64 , 64 ) \n\n```\n\n...\n\n[UIPanelButtonTemplate](https://www.townlong-yak.com/framexml/go/UIPanelButtonTemplate)\n\n...\n\n```\nlocal btn = CreateFrame ( \"Button\" , nil , UIParent , \"UIPanelButtonTemplate\" ) \n```\n\n...\n\n## Patch changes [ [](https://auth.fandom.com/signin?redirect=https%3A%2F%2Fwowpedia.fandom.com%2Fwiki%2FAPI_CreateFrame%3Faction%3Dedit%26section%3D6&uselang=en&metadata=article-registration-edit-article-section \"Sign in to edit\") ]\nBc icon **Patch 2.0.1 (2006-12-05):** The fourth argument, _inheritFrame_ , now accepts comma-separated\nvalues.\nWoW Icon update **Patch 1.11.0 (2006-06-19):** Added fourth argument, _inheritFrame_ . [[ 1 ]]()"
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "url": "https://wowpedia.fandom.com/wiki/XML/LayoutFrame",
+      "error_type": "network_error",
+      "http_status_code": null,
+      "content": null
+    },
+    {
+      "url": "https://warcraft.wiki.gg/wiki/Viewing_Blizzard%27s_interface_code",
+      "error_type": "network_error",
+      "http_status_code": null,
+      "content": null
+    }
+  ],
+  "usage": [
+    {
+      "name": "sku_extract_excerpts",
+      "count": 1
+    }
+  ],
+  "warnings": []
+}

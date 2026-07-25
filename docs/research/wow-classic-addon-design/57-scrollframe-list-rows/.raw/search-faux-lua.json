@@ -1,0 +1,154 @@
+Help on ScrollFrame with LUA
+  URL: https://www.wowinterface.com/forums/showthread.php?t=45810&highlight=discokugel
+  Hi all, I'd like to add a simple scrollframe to my addons to show a list of items (names). The two book I have explain the scrollframe with ...
+
+Making a scrollable list using FauxScrollFrameTemplate
+  URL: https://wowwiki-archive.fandom.com/wiki/Making_a_scrollable_list_using_FauxScrollFrameTemplate
+  # Making a scrollable list using FauxScrollFrameTemplate
+## How to do it[]
+In UIPanelTemplates.lua, the function is documented as:
+
+```
+ function MyModScrollBar_Update()
+   FauxScrollFrame_Update(MyModScrollBar,50,5,16);
+   -- 50 is max entries, 5 is number of lines, 16 is pixel height of each line
+   DEFAULT_CHAT_FRAME:AddMessage("We're at "..FauxScrollFrame_GetOffset(MyModScrollBar));
+ end
+```
+
+## Completed example[]
+### MyModScrollBar.lua[]
+```
+MyModData = {}
+
+function MyMod_OnLoad()
+  for i=1,50 do
+    MyModData[i] = "Test "..math.random(100)
+  end
+  MyModScrollBar:Show()
+end
+
+function MyModScrollBar_Update()
+  local line; -- 1 through 5 of our window to scroll
+  local lineplusoffset; -- an index into our data calculated from the scroll offset
+  FauxScrollFrame_Update(MyModScrollBar,50,5,16);
+  for line=1,5 do
+    lineplusoffset = line + FauxScrollFrame_GetOffset(MyModScrollBar);
+    if lineplusoffset <= 50 then
+      getglobal("MyModEntry"..line):SetText(MyModData[lineplusoffset]);
+      getglobal("MyModEntry"..line):Show();
+    else
+      getglobal("MyModEntry"..line):Hide();
+    end
+  end
+end
+```
+
+### MyModScrollBar.xml[]
+```
+<Ui>
+  <Script file="MyModScrollBar.lua"/>
+  <Button name = "MyModEntryTemplate" virtual="true">
+    <Size>
+      <AbsDimension x="150" y="16" />
+    </Size>
+    <NormalFont style="GameFontHighlightLeft"/>
+  </Button>
+
+  <Frame name="MyMod" parent="UIParent" enableMouse="true" movable="true">
+    <Size>
+      <AbsDimension x="196" y="96"/>
+    </Size>
+    <Anchors>
+      <Anchor point="CENTER"/>
+    </Anchors>
+    <Scripts>
+      <OnLoad>
+        MyMod_OnLoad()
+      </OnLoad>
+    </Scripts>
+    <Backdrop bgFile="Interface\DialogFrame\UI-DialogBox-Background" edgeFile="Interface\Tooltips\UI-Tooltip-Border" tile="true">
+      <BackgroundInsets>
+        <AbsInset left="4" right="4" top="4" bottom="4" />
+      </BackgroundInsets>
+      <TileSize>
+        <AbsValue val="16" />
+      </TileSize>
+      <EdgeSize>
+        <AbsValue val="16" />
+      </EdgeSize>
+    </Backdrop>
+    <Frames>
+      <ScrollFrame name="MyModScrollBar" inherits="FauxScrollFrameTemplate" hidden="true">
+        <Anchors>
+          <Anchor point="TOPLEFT">
+            <Offset>
+              <AbsDimension x="0" y="-8"/>
+            </Offset>
+          </Anchor>
+          <Anchor point="BOTTOMRIGHT">
+            <Offset>
+              <AbsDimension x="-30" y="8"/>
+            </Offset>
+          </Anchor>
+        </Anchors>
+        <Scripts>
+          <OnVerticalScroll>
+            FauxScrollFrame_OnVerticalScroll(self, offset, 16, MyModScrollBar_Update);
+          </OnVerticalScroll>
+          <OnShow>
+            MyModScrollBar_Update()
+          </OnShow>
+        </Scripts>
+      </ScrollFrame>
+
+      <Button name="MyModEntry1" inherits="MyModEntryTemplate">
+        <Anchors>
+          <Anchor point="TOPLEFT" relativeTo="MyModScrollBar" relativePoint="TOPLEFT">
+            <Offset>
+              <AbsDimension x="8" y="0"/>
+            </Offset>
+           </Anchor>
+        </Anchors>
+      </Button>
+      <Button name="MyModEntry2" inherits="MyModEntryTemplate">
+        <Anchors>
+          <Anchor point="TOPLEFT" relativeTo="MyModEntry1" relativePoint="BOTTOMLEFT"/>
+        </Anchors>
+      </Button>
+      <Button name="MyModEntry3" inherits="MyModEntryTemplate">
+        <Anchors>
+          <Anchor point="TOPLEFT" relativeTo="MyModEntry2" relativePoint="BOTTOMLEFT"/>
+        </Anchors>
+      </Button>
+      <Button name="MyModEntry4" inherits="MyModEntryTemplate">
+        <Anchors>
+          <Anchor point="TOPLEFT" relativeTo="MyModEntry3" relativePoint="BOTTOMLEFT"/>
+        </Anchors>
+      </Button>
+      <Button name="MyModEntry5" inherits="MyModEntryTemplate">
+        <Anchors>
+          <Anchor point="TOPLEFT" relativeTo="MyModEntry4" relativePoint="BOTTOMLEFT"/>
+        </Anchors>
+      </Button>
+
+    </Frames>
+  </Frame>
+</Ui>
+```
+
+CreateFrame - Warcraft Wiki - Your wiki guide to the World of Warcraft
+  URL: https://warcraft.wiki.gg/wiki/API_CreateFrame
+  Possible frame types are available from the XML schema (UI.xsd) from an inherited template. Frames cannot be deleted or garbage collected, so ...
+
+Creating WoW AddOns - Episode 8 - Scroll Frames and More XML
+  URL: https://www.youtube.com/watch?v=1CQHKo1Pt2Q
+  This is a series which teaches you to write your own World of Warcraft AddOns using Lua programming and some XML. Scroll Frames and More XML
+
+Simple Frame XML Help - UI and Macro
+  URL: https://us.forums.blizzard.com/en/wow/t/simple-frame-xml-help/1918334
+  I'm trying to figure out the Lua code and cannot get it to show on the screen no matter what I try. Can someone help me with some simple code that shows a ...
+
+Lua error help : r/classicwow
+  URL: https://www.reddit.com/r/classicwow/comments/1diblpo/lua_error_help/
+  I keep getting this Lua error and I know nothing of errors myself, it pops up so much in and out of combat. I tried to play smart and just uninstalled the game.

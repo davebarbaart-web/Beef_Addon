@@ -1,0 +1,58 @@
+{
+  "extract_id": "extract_2f12ab767eb6d8b03559a2a6bce3f231",
+  "session_id": "session_2f12ab767eb6d8b03559a2a6bce3f231",
+  "status": "ok",
+  "results": [
+    {
+      "url": "https://www.wowinterface.com/downloads/info7362-AddonUsage.html",
+      "title": "AddonUsage : Utility Mods  : World of Warcraft AddOns",
+      "publish_date": "2011-01-05",
+      "excerpts": [
+        "# AddonUsage Popular! (More than 5000 hits)\nVersion: 3.2.6\nby: [**Gello**](https://www.wowinterface.com/forums/member.php?s=039c4c3b51cf5353bce037e1bb8b8f18&action=getinfo&userid=2953) [ [More](https://www.wowinterface.com/downloads/author-2953.html) ]\nThis is an addon to compare the memory and CPU usage of your addons.\nHow to Use\nTo summon or dismiss the window:\n* /addonusage\n* or set up a key binding in the default key binding interface\nA window will list each loaded addon alongside its memory usage, and CPU usage if enabled.\n* Column headers across the top can be clicked to sort by that column.\n* The total memory and CPU usage will be displayed at the bottom of their respective columns.\n* The window can be resized by the grip in the lower right corner.\nIn the lower left is a \"CPU Usage\" checkbox. Enabling this will turn on CPU profiling and display CPU times for each addon alongside their memory usage.\nBeside the checkbox are three buttons, from left to right:\n* Reset: This will clean up memory and reset CPU usage tracking.\n* Update: This will update usage information.\n* Continuous Update: This acts as a Pause/Play button to automatically update usage every second.\nWhy to Use\n\n...\n\nIf you watch closely you'll see the addons' memory usage reset back after a while. WoW's Lua implementation does this over time in a low-impact cleanup.\nInstead you'll want to focus on the CPU usage of your addons. Everything your addons do, everything, happens between the frames rendered on your screen. The more work your addons are doing, the longer the game waits to render your next frame and your fps drops.\nThe best way to troubleshoot fps issues is to turn on CPU monitoring and go out and play. You can forget about it until later in the session. Bring up the window and see how they all behaved.\n\n...\n\nThe reason CPU monitoring isn't on by default is because the act of monitoring how much work your addons are doing causes a bit more work that will slow you down even more unless you're on a high end system or have few addons. You should only have CPU monitoring enabled when you're testing.\n\n...\n\nIf you notice in this situation a map addon taking up an abnormally huge share of CPU time, then that's something to investigate.\n* CPU usage is measured in milliseconds per second.\nThe milliseconds of CPU time that the addon has accumulated divided by how long since CPU usage was last reset, or just after login if there has been no reset.\n* CPU usage per addon is taken from the in-game API and does not represent the whole story.\nIt's possible for an addon to get some of its work blamed on another if libraries are involved, or it may get a lot of work to go unnoticed. Use these numbers as a guide only.\n* Remember to turn off CPU monitoring when you're done testing!\n\n...\n\n01/12/2017 version 3.0.0\n- New resizable UI.\n- Sort choices persists across sessions.\n- CPU time is now displayed (as milliseconds per second).\n- The 'Realtime updates' checkbox is now a Play/Pause toggle button at the bottom of the window.\n- Support for addons that are named a number.\n\n...\n\n```\n<Binding name=\"CLICK TestButton:LeftButton\" header=\"TEST\">\n\tprint(GetTime(),\"?\")\n</Binding>\n```\n\n...\n\n| Super late reply and I know I'm not the poster you were responding to but I just had the same issue (because I lost all my settings last week). Turns out in my case, it was an addon called GarbageCollector which defaults to intercepting addon usage calls & disables them (to save cpu time).\nAfter turning that option off in that addon, the addon mem profiling started working again in your addon (and TitanPanel Performance, where I first noticed the problem). |\n\n...\n\n0.0 0%\nI have not tried the \"CPU Usage\" checkbox as I don't want to slow down my WoW as it says it does. I have tried the Reset, Update and Continuous Update buttons, but this does not change the memory field at all.\n\n...\n\n| Cheers! |\nVery curious!\nIf you mouseover the game menu button, does it report memory usage of a few addons? It's the button circled in red here:\nIf other memory-profiling addons are not working, I suspect the default UI is not going to register anything either. Some addon may be interfering with the whole process. In your shoes I would try disabling all addons, then confirm the default one is working again.\n\n...\n\nIf the default memory usage _isn't_ working after disabling all addons (you can disable them from the AddOns screen; no need to play with any files or delete anything), then there is a deeper problem. I would perhaps try to repair the client from the launcher.\n\n...\n\nSuper late reply and I know I'm not the poster you were responding to but I just had the same issue (because I lost all my settings last week). Turns out in my case, it was an addon called GarbageCollector which defaults to intercepting addon usage calls & disables them (to save cpu time).\nAfter turning that option off in that addon, the addon mem profiling started working again in your addon (and TitanPanel Performance, where I first noticed the problem).\n\n...\n\n0.0 0%\nI have not tried the \"CPU Usage\" checkbox as I don't want to slow down my WoW as it says it does. I have tried the Reset, Update and Continuous Update buttons, but this does not change the memory field at all.\n\n...\n\nIf other memory-profiling addons are not working, I suspect the default UI is not going to register anything either. Some addon may be interfering with the whole process. In your shoes I would try disabling all addons, then confirm the default one is working again.\n\n...\n\nIf the default memory usage _isn't_ working after disabling all addons (you can disable them from the AddOns screen; no need to play with any files or delete anything), then there is a deeper problem. I would perhaps try to repair the client from the launcher.\n\n...\n\n0.0 0%\nI have not tried the \"CPU Usage\" checkbox as I don't want to slow down my WoW as it says it does. I have tried the Reset, Update and Continuous Update buttons, but this does not change the memory field at all."
+      ]
+    },
+    {
+      "url": "https://us.forums.blizzard.com/en/wow/t/optimizing-cpu-usage/1366572",
+      "title": "Optimizing CPU usage - Guides / UI and Macro - World of Warcraft Forums",
+      "publish_date": "2022-10-12",
+      "excerpts": [
+        "# Optimizing CPU usage\n## post by L\u00e2dytiny-area-52 on Oct 12, 2022\nI was hoping to find some kind of debugging / profiling tools or commands or something I could use to track down and find my worst offenders \u2013 I don\u2019t know which of my functions is draining so much performance. Any suggestions?\n\n...\n\n## post by Gello-89115 on Oct 12, 2022\nGello <Underhill>\n468 posts\n40 Gnome Priest 21415\nOct 2022\nFor profiling during development I use debugprofilestop() a lot to get a rough measure of the time it takes something to run.\n[Wowpedia](https://wowpedia.fandom.com/wiki/API_debugprofilestop)\n\n### [API debugprofilestop](https://wowpedia.fandom.com/wiki/API_debugprofilestop)\nReturns the time in milliseconds since the last call to debugprofilestart().\n```\nlocal  t = debugprofilestop()\n--  do  something computationally expensive maybe\n print (debugprofilestop()-t)\n```\n\n...\n\n```\nlocal  t = debugprofilestop()\n for  i=1,10000  do \n  --  do  something\nend\n print (debugprofilestop()-t)\n```\nHowever, what you should be watching for also is how often your code runs.\nSome developers might register for ZONE_CHANGED (or one of those events), confirm it works, and then not realize this event can potentially fire _hundreds of times_ when crossing the middle of a zone.\n(Or it did during MoP when I was horrified to realize just how freakishly often this event fired.)\nIt\u2019s a good idea to put a print(event) in your event handler just to get an idea of how often something runs.\n\n...\n\n## post by L\u00e2dytiny-area-52 on Oct 12, 2022\nL\u00e2dytiny\n3 posts\n<Barrens Brewing Co>\n60 Blood Elf Warrior 10335\nOct 2022\nThis is SO helpful, thank you! This is exactly what I was looking for. Time to get to work :smiley:\n\u200b\n\u200b\nReply\n\n...\n\n### New & Unread Topics\nUI and Macro |0 |45 |14d |\n|PSA if you want to import your Unhalted profile to a new addon, you can!\nUI and Macro |0 |42 |8d |"
+      ]
+    },
+    {
+      "url": "https://warcraft.wiki.gg/wiki/Console_variables",
+      "title": "Console variables - Warcraft Wiki - Your wiki guide to the World of Warcraft",
+      "publish_date": "2006-06-15",
+      "excerpts": [
+        "# Console variables\n## List of Console Variables\n| 10.0.0 |  |  | [GxAllowCachelessShaderMode](https://warcraft.wiki.gg/wiki/CVar_GxAllowCachelessShaderMode?action=edit&redlink=1 \"CVar GxAllowCachelessShaderMode (page does not exist)\") | `0` | Graphics |  | CPU memory saving mode, if supported by backend.\n\n...\n\nexist)\") | `1` |  |  | Allows GPU work submission on a secondary thread while the rest of the CPU threads continue on to the next frame |\n\n...\n\n| 6.0.2 |  |  | [preloadPlayerModels](https://warcraft.wiki.gg/wiki/CVar_preloadPlayerModels?action=edit&redlink=1 \"CVar preloadPlayerModels (page does not exist)\") | `1` | Game |  | Preload all local racial models into memory |\n\n...\n\n| 2.x | [GitHub Octocat.png](https://github.com/search?q=repo:Gethe/wow-ui-source+scriptErrors&type=code) |  | scriptErrors | `0` | Game | Account | Whether or not the UI shows Lua errors |\n| 2.x |  |  | scriptProfile | `0` | Debug |  | Whether or not script profiling is enabled |\n\n...\n\nsickness control for how much effects can shake the camera |\n\n...\n\n| 6.2.0 |  |  | [SoundPerf_VariationCap](https://warcraft.wiki.gg/wiki/CVar_SoundPerf_VariationCap?action=edit&redlink=1 \"CVar SoundPerf VariationCap (page does not exist)\") | `32` | Sound |  | Limit sound kit variations to cut down on memory usage and disk thrashing on 32-bit machines |\n\n...\n\n| 11.0.7 |  |  | [SuppressCpuMicrocodeChecks](https://warcraft.wiki.gg/wiki/CVar_SuppressCpuMicrocodeChecks?action=edit&redlink=1 \"CVar SuppressCpuMicrocodeChecks (page does not exist)\") | `0` |  |  | Disables CPU Microcode checks |\n| 3.x |  |  | synchronizeBindings | `1` |  |  |  |\n\n...\n\n## List of Console Commands\n| PTR client.png [memTypeUsage](https://warcraft.wiki.gg/wiki/CVar_memTypeUsage?action=edit&redlink=1 \"CVar memTypeUsage (page does not exist)\") | Console | Shows memory usage by category |"
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "url": "https://warcraft.wiki.gg/wiki/CVar_scriptProfile",
+      "error_type": "network_error",
+      "http_status_code": null,
+      "content": null
+    },
+    {
+      "url": "https://warcraft.wiki.gg/wiki/API_GetFunctionCPUUsage",
+      "error_type": "network_error",
+      "http_status_code": null,
+      "content": null
+    },
+    {
+      "url": "https://warcraft.wiki.gg/wiki/API_ResetCPUUsage",
+      "error_type": "network_error",
+      "http_status_code": null,
+      "content": null
+    }
+  ],
+  "usage": [
+    {
+      "name": "sku_extract_excerpts",
+      "count": 3
+    }
+  ],
+  "warnings": []
+}

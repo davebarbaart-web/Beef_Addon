@@ -1,0 +1,23 @@
+{
+  "extract_id": "extract_a0d54151b11bb25246671abbbfc4fa54",
+  "session_id": "session_a0d54151b11bb25246671abbbfc4fa54",
+  "status": "ok",
+  "results": [
+    {
+      "url": "https://www.wowace.com/projects/ace3/pages/api/ace-tab-3-0",
+      "title": "api/AceTab-3.0 - api - Pages - Ace3 - Addons - Projects - WowAce ",
+      "publish_date": null,
+      "excerpts": [
+        "CurseForge\n\n# Pages\n* AceConfig-3.0 Options Tables\n* AceDB-3.0 Tutorial\n* AceGUI-3.0 Tutorial\n* AceGUI-3.0 Widgets\n* api\n+ AceAddon-3.0\n+ AceBucket-3.0\n+ AceComm-3.0\n+ AceConfig-3.0\n+ AceConfigCmd-3.0\n+ AceConfigDialog-3.0\n+ AceConfigRegistry-3.0\n+ AceConsole-3.0\n+ AceDB-3.0\n+ AceDBOptions-3.0\n+ AceEvent-3.0\n+ AceGUI-3.0\n+ AceHook-3.0\n+ AceLocale-3.0\n+ AceSerializer-3.0\n+ AceTab-3.0\n+ AceTimer-3.0\n* Getting Started\n\n## api/AceTab-3.0\nAceTab-3.0 provides support for tab-completion.\nNote: This library is not yet finalized.\n\n## Comments\n* To post a comment, please  or  a new account.\nPosts Quoted:\nReply\nClear All Quotes\nOverwolf 2025"
+      ]
+    }
+  ],
+  "errors": [],
+  "usage": [
+    {
+      "name": "sku_extract_excerpts",
+      "count": 1
+    }
+  ],
+  "warnings": []
+}

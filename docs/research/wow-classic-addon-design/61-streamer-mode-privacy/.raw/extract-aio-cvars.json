@@ -1,0 +1,23 @@
+{
+  "extract_id": "extract_3ba87572c01b98c1c2f14088e25ca2b3",
+  "session_id": "session_3ba87572c01b98c1c2f14088e25ca2b3",
+  "status": "ok",
+  "results": [
+    {
+      "url": "https://github.com/Stanzilla/AdvancedInterfaceOptions/blob/master/cvars.lua",
+      "title": "AdvancedInterfaceOptions/cvars.lua at master \u00b7 Stanzilla/AdvancedInterfaceOptions \u00b7 GitHub",
+      "publish_date": "2017-01-16",
+      "excerpts": [
+        "# Stanzilla/AdvancedInterfaceOptions \u2014 cvars.lua\n```lua\n    description = OPTION_TOOLTIP_UNIT_NAMEPLATES_SHOW_FRIENDLY_GUARDIANS,\n    type = \"boolean\",\n  },\n  [\"nameplateShowFriendlyTotems\"] = { prettyName = UNIT_NAMEPLATES_SHOW_FRIENDLY_TOTEMS, description = OPTION_TOOLTIP_UNIT_NAMEPLATES_SHOW_FRIENDLY_TOTEMS, type = \"boolean\" },\n```\n\n...\n\n```lua\n  [\"namePlateEnemySize\"] = { prettyName = \"\", description = \"\", type = \"number\" },\n  [\"namePlateSelfClickThrough\"] = { prettyName = \"\", description = \"\", type = \"number\" },\n  [\"namePlateFriendlyClickThrough\"] = { prettyName = \"\", description = \"\", type = \"number\" },\n```\n\n...\n\n```lua\n  [\"cameraSmoothTrackingStyle\"] = { prettyName = nil, description = nil, type = \"number\" },\n\n  [\"chatBubbles\"] = { prettyName = nil, description = OPTION_TOOLTIP_CHAT_BUBBLES, type = \"boolean\" },\n```\n\n...\n\n```lua\n  [\"spamFilter\"] = { prettyName = nil, description = OPTION_TOOLTIP_SPAM_FILTER, type = \"boolean\" },\n  [\"profanityFilter\"] = { prettyName = nil, description = OPTION_TOOLTIP_PROFANITY_FILTER, type = \"boolean\" },\n```\n\n...\n\n```lua\n  [\"rotateMinimap\"] = { prettyName = nil, description = OPTION_TOOLTIP_ROTATE_MINIMAP, type = \"boolean\" },\n  [\"blockTrades\"] = { prettyName = nil, description = OPTION_TOOLTIP_BLOCK_TRADES, type = \"boolean\" },\n```\n\n...\n\n```lua\n  --[\"TargetPriorityAllowAnyOnScreen\"] = { prettyName = nil, description = \"If set, and no 100% correct target is available, allow selecting any valid in-range target (2 = also out-of-range)\", type = \"boolean\" },\n  [\"TargetPriorityCombatLock\"] = {\n    prettyName = nil,\n```"
+      ]
+    }
+  ],
+  "errors": [],
+  "usage": [
+    {
+      "name": "sku_extract_excerpts",
+      "count": 1
+    }
+  ],
+  "warnings": []
+}

@@ -1,0 +1,23 @@
+{
+  "extract_id": "extract_2637e72e17050ab1ba140a9829e811c2",
+  "session_id": "session_2637e72e17050ab1ba140a9829e811c2",
+  "status": "ok",
+  "results": [
+    {
+      "url": "https://dotesports.com/wow/news/official-wow-classic-hardcore-rules-explained-deaths-pvp-dungeons-and-more",
+      "title": "Official WoW Classic Hardcore rules explained: Deaths, PvP, dungeons, and more",
+      "publish_date": "2025-12-17",
+      "excerpts": [
+        "# Official WoW Classic Hardcore rules explained: Deaths, PvP, dungeons, and more\nThe famous \u201cpermadeath\u201d rule is obviously transferring over, while other quality-of-life changes are also being introduced to make Hardcore _WoW_ even more applicable to a broader audience.\n\n...\n\n## _WoW Classic_ Hardcore\u2019s biggest rule: Permadeath\n**The driving principle of _WoW Classic_ Hardcore is its permanent death rule** . When your character dies, it dies for good\u2014no negotiating, no second chances.\nUpon death, you lose all progress you made with your character, and you have to head back to the character select screen and start your journey all over again.\nThis concept has been present in _WoW Classic_ Hardcore runs ever since the game mode was popularized within the community. While it sounds brutal and unforgiving, the satisfaction you get from going as far as reaching full level 60, for example, is unmatched.\nNow that Hardcore servers are official, the permadeath rule is sticking around as the mode\u2019s most important pillar. Regardless of whether you\u2019re level 20 or level 60, your character is gone forever after they suffer their first death.\n\n...\n\n## What happens if your character dies in _WoW Classic_ Hardcore?\nShould your _Wow Classic_ Hardcore character die in the midst of their leveling journey, you\u2019ll be able to temporarily access your character as a ghost and take care of any loose ends that may have been left open after your death (such as player-to-player communication and the\ntransferring of any ranks within your guild). **You\u2019ll also have the option to transfer your Hardcore character to a non-Hardcore server after your death and continue your progression normally** .\nBut, as mentioned previously, you will not be able to continue making progress with your character on Hardcore servers."
+      ]
+    }
+  ],
+  "errors": [],
+  "usage": [
+    {
+      "name": "sku_extract_excerpts",
+      "count": 1
+    }
+  ],
+  "warnings": []
+}

@@ -1,0 +1,22 @@
+{
+  "extract_id": "extract_423389cac3c226bd2b0168f8bf35ce8d",
+  "session_id": "session_423389cac3c226bd2b0168f8bf35ce8d",
+  "status": "ok",
+  "results": [],
+  "errors": [
+    {
+      "url": "https://warcraft.wiki.gg/wiki/API_SendChatMessage",
+      "error_type": "network_error",
+      "http_status_code": null,
+      "content": null
+    }
+  ],
+  "usage": [],
+  "warnings": [
+    {
+      "type": "warning",
+      "message": "Neither objective nor search_queries were provided, provide at least one to increase the relevance of excerpts.",
+      "detail": null
+    }
+  ]
+}

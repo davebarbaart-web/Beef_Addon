@@ -1,0 +1,52 @@
+{
+  "extract_id": "extract_74319117ad184bcb84be2706d7a4060d",
+  "session_id": "session_74319117ad184bcb84be2706d7a4060d",
+  "status": "ok",
+  "results": [
+    {
+      "url": "https://www.wowinterface.com/forums/showthread.php?t=56862",
+      "title": "Making a pixel perfect UI on 2560x1440 resolution? - WoWInterface",
+      "publish_date": "2006-01-21",
+      "excerpts": [
+        "Discussion](https://www.wowinterface.com/forums/forumdisplay.php?s=edbad77e8314aa3ca90c747ba041af8c&f=144) \u00bb **Making a pixel perfect UI on 2560x1440 resolution?**\n\n...\n\n# [**1**](https://www.wowinterface.com/forums/showpost.php?s=edbad77e8314aa3ca90c747ba041af8c&p=330916&postcount=1)\n[kngslc](https://www.wowinterface.com/forums/member.php?s=edbad77e8314aa3ca90c747ba041af8c&u=340857)\nA Kobold Labourer\n|  |\nJoin Date: Nov 2018\nPosts: 1\nLightbulb **Making a pixel perfect UI on 2560x1440 resolution?**\n\n...\n\n| [AddOn Author - Click to view addons](https://www.wowinterface.com/downloads/author-52096.html) |\nJoin Date: Feb 2007\nPosts: 1,712\nWhat I do:\nLua Code:\n```\n1. SetCVar ( 'useuiscale' , 1 )\n2. SetCVar ( 'uiscale' , 1 )\n3. local _, height = GetPhysicalScreenSize ( )\n4. UIParent:SetScale ( 768 / height )\n```\n\n...\n\n|Originally Posted by **p3lim** [View Post](https://www.wowinterface.com/forums/showthread.php?s=edbad77e8314aa3ca90c747ba041af8c&p=330923)\nWhat I do:\nLua Code:\n```\n1. SetCVar ( 'useuiscale' , 1 )\n2. SetCVar ( 'uiscale' , 1 )\n3. local _, height = GetPhysicalScreenSize ( )\n4. UIParent:SetScale ( 768 / height )\n```\n\n...\n\n```\n14aa3ca90c747ba041af8c&f=144) \u00bb Making a pixel perfect UI on 2560x1440 resolution? |**\u00ab** [Previous Thread](https://www.wowinterface.com/forums/showthread.php?s=edbad77e8314aa3ca90c747ba041af8c&t=56862&goto=nextoldest) | [Next Thread](https://www.wowinterface.com/forums/showthread.php?s=edbad77e8314aa3ca90c747ba041af8c&t=56862&goto=nextnewe\n```"
+      ]
+    },
+    {
+      "url": "https://warcraft.wiki.gg/wiki/API_GetPhysicalScreenSize",
+      "title": "GetPhysicalScreenSize - Warcraft Wiki - Your wiki guide to the World of Warcraft",
+      "publish_date": "2020-03-02",
+      "excerpts": [
+        "# GetPhysicalScreenSize\n* [](https://mrbuds.github.io/wow-api-web/?search=api:function:GetPhysicalScreenSize:Screen) [/api addon](https://mrbuds.github.io/wow-api-web/?search=api:function:GetPhysicalScreenSize:Screen) |\n|Patch |\n|Added in 7.1.0 / 1.13.2 |\n\u2191 _World of Warcraft API_\nReturns physical screen size of game.\n```\nwidth , height = GetPhysicalScreenSize ()\n```\n\n## Returns\n```\nwidth\nnumber \\- game physical screen width.\n```\nheight\nnumber - game physical screen height.\n\n## Patch changes\n* **Patch 7.1.0 (2016-10-25):** Added.\nRetrieved from \" [https://warcraft.wiki.gg/wiki/API_GetPhysicalScreenSize?oldid=6587968](https://warcraft.wiki.gg/wiki/API_GetPhysicalScreenSize?oldid=6587968) \"\nCategories :\n* API systems/Screen\n* API functions\n[Report bad advertisement](https://www.wiki.gg/t/bad-ad)"
+      ]
+    },
+    {
+      "url": "https://warcraft.wiki.gg/wiki/API_GetScreenWidth",
+      "title": "GetScreenWidth - Warcraft Wiki - Your wiki guide to the World of Warcraft",
+      "publish_date": "2008-08-03",
+      "excerpts": [
+        "# GetScreenWidth\n\u2191 _World of Warcraft API_\nReturns the width of the window measured at UIParent scale (effectively the same as UIParent:GetWidth().\n```\nscreenWidth = GetScreenWidth()\n```\n\n## Returns\n```\nscreenWidth\nnumber \\- Width of window at UIParent scale\n```\n\n## Example\n```\n-- Note that the return value does not match the screen resolution set in the Video Options, but will instead represent a dimension with the same aspect ratio. \n DEFAULT_CHAT_FRAME : AddMessage ( ( GetScreenWidth () * UIParent : GetEffectiveScale () ).. \"x\" .. ( GetScreenHeight () * UIParent : GetEffectiveScale () ) )\n```\nRetrieved from \" [https://warcraft.wiki.gg/wiki/API_GetScreenWidth?oldid=5922636](https://warcraft.wiki.gg/wiki/API_GetScreenWidth?oldid=5922636) \"\nCategories :\n* API systems/Screen\n* API functions\n[Report bad advertisement](https://www.wiki.gg/t/bad-ad)"
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "url": "https://warcraft.wiki.gg/wiki/API_UIParent",
+      "error_type": "network_error",
+      "http_status_code": null,
+      "content": null
+    },
+    {
+      "url": "https://warcraft.wiki.gg/wiki/API_Region_GetEffectiveScale",
+      "error_type": "network_error",
+      "http_status_code": null,
+      "content": null
+    }
+  ],
+  "usage": [
+    {
+      "name": "sku_extract_excerpts",
+      "count": 3
+    }
+  ],
+  "warnings": []
+}

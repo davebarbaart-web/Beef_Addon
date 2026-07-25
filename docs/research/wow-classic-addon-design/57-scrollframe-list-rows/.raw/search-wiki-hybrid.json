@@ -1,0 +1,40 @@
+ScrollFrame/Archive - Warcraft Wiki
+  URL: https://warcraft.wiki.gg/wiki/UIOBJECT_ScrollFrame/Archive
+  Hybrid scroll frames give the impression of scrolling a long list without the performance cost of making widgets for off-screen list elements.
+
+HybridScrollFrame - Warcraft Wiki - Your wiki guide to the World of ...
+  URL: https://warcraft.wiki.gg/wiki/HybridScrollFrame
+  The HybridScrollFrame is a FrameXML-provided frame that is used by the UI to display large collections of items/object but without creating a new frame for ...
+
+Patch 10.1.0 - Warcraft Wiki
+  URL: https://warcraft.wiki.gg/wiki/Patch_10.1.0
+  The Raid Frame menu now has a shortcut button that opens Raid Frame settings in Interface Options. You can now snap frames to the corners of other frames.
+
+World of Warcraft functionality on Macs
+  URL: https://warcraft.wiki.gg/wiki/World_of_Warcraft_functionality_on_Macs
+  # World of Warcraft functionality on Macs
+## Image and Video
+### Screenshots
+```
+ /console screenshotFormat png
+```
+
+### Using two screens with the WoW window maximised on the secondary monitor (Work around)
+```
+tell application "World of Warcraft" to activate
+tell application "System Events" to tell process "World of Warcraft"
+	tell window 1
+		set position to {-1680, 0}
+	end tell
+end tell
+```
+
+## "Dual-Boxing" on one Mac
+### Hybrid Approach "How-To"
+```
+/Users/YourName/wowcopy.sh
+```
+
+Patch 10.1.5 - Warcraft Wiki
+  URL: https://warcraft.wiki.gg/wiki/Patch_10.1.5
+  Our goal is to allow for more continuous casts of utility and healing spells while maintaining limits on how much hybrids can contribute to ...

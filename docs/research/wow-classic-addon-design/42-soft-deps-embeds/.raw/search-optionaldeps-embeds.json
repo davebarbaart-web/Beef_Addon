@@ -1,0 +1,33 @@
+Addon Devs: How do you handle dependencies/libs in ...
+  URL: https://www.reddit.com/r/wowaddons/comments/zdgl6w/addon_devs_how_do_you_handle_dependencieslibs_in/
+  I know that a lot of WoW addons rely on libraries like Ace, LibCompress, LibDeflate, and others..
+
+I also know that Curse will automatically bundle ...
+
+Creating AddOn dependencies | WoWWiki
+  URL: https://wowwiki-archive.fandom.com/wiki/Creating_AddOn_dependencies
+  A dependent AddOn is one that relies on another AddOn or code library ・ an AddOn author should take into account ・ you can use the "OptionalDeps:" tag in ...
+
+Embedded Library Woes - UI and Macro
+  URL: https://us.forums.blizzard.com/en/wow/t/embedded-library-woes/1610075
+  LibStub will have on multiple addons with the same library embedded. You will end up with the one global version of the library used by all ...
+
+11 Useful Addons For Patch 11.0.7 The War Within! World of ...
+  URL: https://www.youtube.com/watch?v=GFr01R3TkmE
+  After a long break, we're back featuring addons old and new you might find useful for The War Within patch 11.0.7!
+
+Help with packaging addons
+  URL: https://www.wowinterface.com/forums/showthread.php?t=58078
+  The addon also requires two libraries: LibStub and LibSharedMedia. I made a current zip file manually and uploaded it to my addon website.
+
+My Favorite Addons (UI Settings & More) | The War Within
+  URL: https://www.youtube.com/watch?v=IrJcu_wjEJQ
+  World of Warcraft (WoW) The War Within Patch 11.1.5 my addon list video. I talk about the best addons that I use and why!
+
+WoW Addon Development Guide
+  URL: https://www.better-addons.com/
+  The complete reference for building World of Warcraft addons for Patch. Define your addon's metadata, dependencies, saved variables, and load conditions
+
+Warcraft Development Team Statement to WoWUIDevs on ...
+  URL: https://www.wowhead.com/news/warcraft-development-team-statement-to-wowuidevs-on-future-addon-changes-377142
+  The goal is to make class mechanics more approachable and easier to understand without addons. They want WoW to remain challenging, but less ...

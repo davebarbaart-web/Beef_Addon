@@ -1,0 +1,58 @@
+{
+  "extract_id": "extract_fb4ddf6ef71d18ae82dfbf467cbade80",
+  "session_id": "session_fb4ddf6ef71d18ae82dfbf467cbade80",
+  "status": "ok",
+  "results": [
+    {
+      "url": "https://wowpedia.fandom.com/wiki/API_GetInstanceInfo",
+      "title": "Client Challenge",
+      "publish_date": null,
+      "excerpts": [
+        "A required part of this site couldn\u2019t load. This may be due to a browser\nextension, network issues, or browser settings. Please check your\nconnection, disable any ad blockers, or try using a different browser."
+      ]
+    },
+    {
+      "url": "https://wowpedia.fandom.com/wiki/API_GetBattlefieldWinner",
+      "title": "GetBattlefieldWinner - Wowpedia - Your wiki guide to the World of Warcraft",
+      "publish_date": null,
+      "excerpts": [
+        "# GetBattlefieldWinner\n| <img src='https://static.wikia.nocookie.net/wowpedia/images/3/3d/Fatcatfire.png/revision/latest/scale-to-width-down/64?cb=20231015125034' width='64' height='64' /> | Automated updating of API pages at this location, to reflect patch changes, has ceased from 10.1.7 onwards. |\nReturns the winner of the battlefield."
+      ]
+    },
+    {
+      "url": "https://wowpedia.fandom.com/wiki/PLAYER_ENTERING_WORLD",
+      "title": "PLAYER_ENTERING_WORLD - Wowpedia - Your wiki guide to the World of Warcraft",
+      "publish_date": null,
+      "excerpts": [
+        "# PLAYER_ENTERING_WORLD\n|  | Automated updating of API pages at this location, to reflect patch changes, has ceased from 10.1.7 onwards. |\nFires when the player logs in, /reloads the UI or zones between map instances. Basically whenever the loading screen appears.\n```\nPLAYER_ENTERING_WORLD: isInitialLogin, isReloadingUi\n```\n\n...\n\n**Patch 8.0.1 (2018-07-17):** Added `isInitialLogin, isReloadingUi` params.\n* AddOn loading process\nCategories\n* Categories :\n* API events\n* API namespaces/C System\nCommunity content is available under [CC BY-SA 3.0](https://www.fandom.com/licensing) unless otherwise noted.\nMore Fandoms"
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "url": "https://wowpedia.fandom.com/wiki/ENCOUNTER_START",
+      "error_type": "network_error",
+      "http_status_code": null,
+      "content": null
+    },
+    {
+      "url": "https://wowpedia.fandom.com/wiki/ENCOUNTER_END",
+      "error_type": "network_error",
+      "http_status_code": null,
+      "content": null
+    },
+    {
+      "url": "https://wowpedia.fandom.com/wiki/UPDATE_BATTLEFIELD_SCORE",
+      "error_type": "network_error",
+      "http_status_code": null,
+      "content": null
+    }
+  ],
+  "usage": [
+    {
+      "name": "sku_extract_excerpts",
+      "count": 3
+    }
+  ],
+  "warnings": []
+}

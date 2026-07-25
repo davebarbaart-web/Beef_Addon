@@ -1,0 +1,58 @@
+{
+  "extract_id": "extract_40105d0d0cf33044eae8e3e91d1c75ae",
+  "session_id": "session_40105d0d0cf33044eae8e3e91d1c75ae",
+  "status": "ok",
+  "results": [
+    {
+      "url": "https://warcraft.wiki.gg/wiki/API_GetNumGroupMembers",
+      "title": "GetNumGroupMembers - Warcraft Wiki - Your wiki guide to the World of Warcraft",
+      "publish_date": "2012-07-07",
+      "excerpts": [
+        "# GetNumGroupMembers\nFrom Warcraft Wiki\nJump to navigation Jump to search\n| Main Menu |\n| * WoW API |\n* Lua API\n* Widget API\n* XML schema\n* FrameXML\n* Events\n* CVars\n* Combat Log\n* Escape sequences\n* API changes\n* HOWTOs\n* Discord logo.png [wowuidev](https://discord.gg/txUg39Vhc6) |\n**Lua error in Module:Wowapi/category at line 21: bad argument #2 to 'format' (string expected, got nil).**\n|Fat cat yearns for the mines |The API wiki is under maintenance\nSince `2026-07-23T06:08:00Z` , ETA: at least multiple days |\n| --- | --- |\nReturns the number of players in the group.\n\n...\n\n## Arguments\n```\ngroupType\nnumber ?\n\nIf omitted, defaults to `INSTANCE` if applicable, `HOME` otherwise.\n```\n| Value | Enum | Description |\n| 1 | LE_PARTY_CATEGORY_HOME | Home-realm group, i.e. a manually created group. |\n| 2 | LE_PARTY_CATEGORY_INSTANCE | Instance-specific temporary group, e.g. Battlegrounds, Dungeon Finder |\n\n...\n\n## Details\n| Related API | GetNumSubgroupMembers |\n| Related Events | GROUP_ROSTER_UPDATE |"
+      ]
+    },
+    {
+      "url": "https://warcraft.wiki.gg/wiki/GROUP_ROSTER_UPDATE",
+      "title": "GROUP_ROSTER_UPDATE - Warcraft Wiki - Your wiki guide to the World of Warcraft",
+      "publish_date": "2013-10-21",
+      "excerpts": [
+        "# GROUP_ROSTER_UPDATE\n## Patch changes\n* **Patch 5.0.4 (2012-08-28):** Added. This event replaced RAID_ROSTER_UPDATE and PARTY_MEMBERS_CHANGED .\nRetrieved from \" [https://warcraft.wiki.gg/wiki/GROUP_ROSTER_UPDATE?oldid=6589270](https://warcraft.wiki.gg/wiki/GROUP_ROSTER_UPDATE?oldid=6589270) \"\nCategories :\n* API systems/PartyInfo\n* API events"
+      ]
+    },
+    {
+      "url": "https://warcraft.wiki.gg/wiki/API_IsInGroup",
+      "title": "IsInGroup - Warcraft Wiki - Your wiki guide to the World of Warcraft",
+      "publish_date": "2012-12-16",
+      "excerpts": [
+        "# Navigation menu\n## Namespaces\n### World of Warcraft\n* Midnight\n* The War Within\n* MoP Classic\n* Season of Discovery\n* Interface customization\n\n...\n\n# IsInGroup\nFrom Warcraft Wiki\nJump to navigation Jump to search\n| Main Menu |\n| * WoW API |\n* Lua API\n* FrameXML API\n* Widget API\n* Widget scripts\n* XML schema\n* Events\n* CVars\n* Macro commands\n* Combat Log\n* Escape sequences\n* Hyperlinks\n* API changes\n* HOWTOs\n* [](https://discord.gg/txUg39Vhc6) [wowuidev](https://discord.gg/txUg39Vhc6) |\n\n...\n\nowner:refaim+NOT+owner:clicketz+NOT+owner:Zetaprime82+NOT+owner:biroistv+NOT+owner:liquidbase+NOT+owner:3kage+NOT+repo:Ellypse/IntelliJ-IDEA-Lua-IDE-WoW-API+NOT+repo:ChrisKader/wowapi+NOT+repo:nebularg/wow-selene-parser+NOT+repo:Resike/LuaLSP+NOT+owner:MrMartin92+NOT+repo:ketho-wow/KethoDoc+NOT+path:data/impl+NOT+path:wow-api.lua\n\n...\n\ne)\n* [](https://www.townlong-yak.com/globe/wut/:IsInGroup) [Globe](https://www.townlong-yak.com/globe/wut/:IsInGroup)\n* [](https://wowprogramming.com/docs/api/IsInGroup.html) [Wowprogramming](https://wowprogramming.com/docs/api/IsInGroup.html) |\n|Patch |\n|Added in 5.0.4 / 1.13.2 |\n\u2191 _World of Warcraft API_\nReturns true if the player is in a group.\n```\ninGroup = IsInGroup ([ groupType ])\n```\n\n## Arguments\n```\ngroupType\nnumber ? \\- If omitted, checks if you're in any type of group.\n\nIf omitted, defaults to `INSTANCE` if applicable, `HOME` otherwise.\n```\n| Value | Enum | Description |\n| 1 | LE_PARTY_CATEGORY_HOME | Home-realm group, i.e. a manually created group. |\n| 2 | LE_PARTY_CATEGORY_INSTANCE | Instance-specific temporary group, e.g. Battlegrounds, Dungeon Finder |\n\n## Returns\n```\ninGroup\nboolean \\- Returns true if the player is in the `groupType` group if specified, or in any type of group.\n```\n\n## Details\nIt is possible for a character to belong to a _home_ group at the same time they are in an _instance_ group ( LFR or Flex ). To distinguish between a party and a raid, use IsInRaid ().\n\n## Patch changes\n* **Patch 5.0.4 (2012-08-28):** Added `groupType` argument.\nRetrieved from \" [https://warcraft.wiki.gg/wiki/API_IsInGroup?oldid=6588289](https://warcraft.wiki.gg/wiki/API_IsInGroup?oldid=6588289) \"\nCategory :\n* API functions\n[Report bad advertisement](https://www.wiki.gg/t/bad-ad)"
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "url": "https://warcraft.wiki.gg/wiki/API_UnitIsInMyGuild",
+      "error_type": "network_error",
+      "http_status_code": null,
+      "content": null
+    },
+    {
+      "url": "https://warcraft.wiki.gg/wiki/API_UnitIsAFK",
+      "error_type": "network_error",
+      "http_status_code": null,
+      "content": null
+    },
+    {
+      "url": "https://warcraft.wiki.gg/wiki/API_UnitName",
+      "error_type": "network_error",
+      "http_status_code": null,
+      "content": null
+    }
+  ],
+  "usage": [
+    {
+      "name": "sku_extract_excerpts",
+      "count": 3
+    }
+  ],
+  "warnings": []
+}

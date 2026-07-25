@@ -1,0 +1,23 @@
+{
+  "extract_id": "extract_89ed4328584112d06e6151d85223a150",
+  "session_id": "session_89ed4328584112d06e6151d85223a150",
+  "status": "ok",
+  "results": [
+    {
+      "url": "https://www.warcrafttavern.com/wow-classic/news/anniversary-transfers-for-hardcore-and-classic-era-close-january-12th/",
+      "title": "Anniversary Transfers for Hardcore & Classic Era Close January 12th - WoW Classic - Warcraft Tavern",
+      "publish_date": "2026-01-07",
+      "excerpts": [
+        "# Anniversary Transfers for Hardcore & Classic Era Close January 12th\nLuxrah [Luxrah](https://www.warcrafttavern.com/participant/luxrah/) \u2022 Published January 7, 2026\nThere\u2019s a lot of news for WoW Classic Anniversary Edition today with the announcement of the [February 5th launch date](https://www.warcrafttavern.com/tbc/news/the-burning-crusade-launches-on-february-5-for-wow-classic-anniversary-edition/) , [standalone level 58 boosts\nthat include blood elves and draenei](https://www.warcrafttavern.com/tbc/news/blood-elf-draenei-will-be-eligible-for-boosts-in-the-tbc-pre-patch/) , and a [24-hour extended maintenance ahead of next week\u2019s\npre-patch](https://www.warcrafttavern.com/tbc/news/24-hour-maintenance-scheduled-for-tbc-anniversary-pre-patch-january-12/) .\n\n...\n\nThis includes **transfers from Anniversary to Classic Era** for those who wish to stay in the vanilla version of the game, as well as **transfers between Hardcore Anniversary and Normal Anniversary** **realms** for those who want to progress their Hardcore characters into\nTBC. There will not be a Hardcore version of The Burning Crusade, so characters who remain on Hardcore realms will continue with the vanilla game alongside Classic Era characters.\n\n...\n\n## References\nUntil the maintenance period begins, players with characters on Anniversary Hardcore realms can transfer their characters to Normal (non-Hardcore) Anniversary realms, so that those characters will continue to Burning Crusade Classic Anniversary.\nIf you wish to transfer your character from a Normal Anniversary Realm to a Classic Era realm (character doesn\u2019t advance to Burning Crusade Classic), or from an Anniversary Hardcore realm to a Normal Anniversary realm (character does advance to Burning Crusade Classic, and is no longer a Hardcore character), please do so as\n\n...\n\n## Author\n### Zygor Leveling Guides\n#### Lok-tar ogar!\nSomeone once said that you can\u2019t go home again. But they lacked vision. And a temporal discombobulator! At Warcraft Tavern we\u2019re huge fans of World of Warcraft. Here you can find Guides, News, Tools, Forums, and more for WoW Classic , TBC Classic , WotLK , Cataclysm , MoP & The War Within !"
+      ]
+    }
+  ],
+  "errors": [],
+  "usage": [
+    {
+      "name": "sku_extract_excerpts",
+      "count": 1
+    }
+  ],
+  "warnings": []
+}

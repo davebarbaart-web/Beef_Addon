@@ -1,0 +1,94 @@
+{
+  "search_id": "search_4720194dd27c82ec8dbcc6ed234d375c",
+  "session_id": "session_4720194dd27c82ec8dbcc6ed234d375c",
+  "status": "ok",
+  "results": [
+    {
+      "url": "https://warcraft.wiki.gg/wiki/DUEL_FINISHED",
+      "title": "DUEL_FINISHED - Warcraft Wiki - Your wiki guide to the World of Warcraft",
+      "publish_date": null,
+      "excerpts": [
+        "Fired when a duel is finished."
+      ]
+    },
+    {
+      "url": "https://warcraft.wiki.gg/wiki/API_AcceptDuel",
+      "title": "AcceptDuel - Warcraft Wiki - Your wiki guide to the World of Warcraft",
+      "publish_date": "2022-08-01",
+      "excerpts": [
+        "Accepts a duel challenge. AcceptDuel() StartDuel to issue a duel challenge. CancelDuel to reject a duel challenge."
+      ]
+    },
+    {
+      "url": "https://addonswow.com/duelbook",
+      "title": "WoW DuelBook addon Dragonflight/Wrath of the Lich King Classic 2026",
+      "publish_date": "2020-11-08",
+      "excerpts": [
+        "<strong>Registers duels and records outcome vs opponents in classic wow</strong>."
+      ]
+    },
+    {
+      "url": "https://wowpedia.fandom.com/wiki/API_AcceptDuel",
+      "title": "AcceptDuel - Wowpedia - Your wiki guide to the World of Warcraft",
+      "publish_date": null,
+      "excerpts": [
+        "<strong>Accepts a duel challenge</strong>. ... StartDuel to issue a duel challenge."
+      ]
+    },
+    {
+      "url": "https://wowpedia.fandom.com/wiki/API_StartDuel",
+      "title": "StartDuel - Wowpedia - Your wiki guide to the World of Warcraft",
+      "publish_date": "2026-06-26",
+      "excerpts": [
+        "<strong>Challenges the specified player to a duel</strong>. StartDuel(unit) StartDuel(name [, exactMatch])"
+      ]
+    },
+    {
+      "url": "https://www.curseforge.com/wow/addons/duelbook",
+      "title": "DuelBook - World of Warcraft Addons - CurseForge",
+      "publish_date": "2020-11-08",
+      "excerpts": [
+        "[promotional banner mobile promotional banner](https://links.curseforge.com/mc_modjam_2026_top)\n\n* [Create](https://authors.curseforge.com/welcome)\n  \n  MOD AUTHORS\n  \n    + [Become an Author](https://authors.curseforge.com/welcome)\n    + [Start a Project](https://authors.curseforge.com/#/projects/create/choose-game)\n    + [Project Submission Guide](https://support.curseforge.com/en/support/solutions/articles/9000199552-project-submission-guide-and-tips)\n  \n  MODDING TOOL DEVELOPERS\n  \n    + [Apply for an API Key](https://support.curseforge.com/en/support/solutions/articles/9000208346-about-the-curseforge-api-and-how-to-apply-for-a-key)\n    + [Documentation](https://docs.curseforge.com/rest-api/)\n    + [Terms & Conditions](https://support.curseforge.com/en/support/solutions/articles/9000207405-curse-forge-3rd-party-api-terms-and-conditions)\n  \n  SOCIAL\n  \n    + [Join Our Discord!](https://www.discord.com/invite/curseforge)\n    + [Authors Discord](https://discord.gg/S3EaZArYz2)\nEchoes of the Past: ModJam 2026 [](https://links.curseforge.com/mc_modjam_2026_nav)\n* [Studios](https://studios.curseforge.com/)\n  \n  GAME DEVELOPERS\n  \n    + [Unlock Modding for Your Game](https://studios.curseforge.com)\n    + [Documentation](https://docs.curseforge.com/)\n  \n  Echoes of the Past: ModJam 2026 [](https://links.curseforge.com/mc_modjam_2026_nav)\n*\n\n* [Go Premium](https://www.curseforge.com/premium?source=7)\n* Get CurseForge App\n\nE.T. mod home\n\nDiscover [Browse All](https://www.curseforge.com/wow/search?page=1&pageSize=20&sortBy=relevancy)\n\n* World of Warcraft\n* [Addons](https://www.curseforge.com/wow/search?class=addons&page=1&pageSize=20&sortBy=relevancy)\n\nDuelBook logo\n\n# DuelBook\n\n* By\n  \n  hotchilly hotchilly\n\nAddon to track classic wow duel outcomes\n\nTotal Downloads\n    2\\.2K\n\nLast Update\n    Nov 8, 2020\n\nMore Details\n\n* * *\n\nDuelBook\n\nDownload\n\n* * *\n\n### Details\n\nDownloads\n    2,215\nCreated\n    5 years ago\nUpdated\n    5 years ago\nProject ID\n    414392\nLicense\nMIT License\n\n* * *\n\n### Flavors\n\n* [Classic](https://www.curseforge.com/wow/addons/duelbook/files/all?page=1&pageSize=20&gameVersionTypeId=67408&showAlphaFiles=hide)\n\n* * *\n\n### Class & Categories\n\n* [Addons](https://www.curseforge.com/wow/search?class=addons&page=1&pageSize=20&sortBy=relevancy)\n* \n* [Minigames](https://www.curseforge.com/wow/search?class=addons&page=1&pageSize=20&sortBy=relevancy&categories=minigames)\n* [PvP](https://www.curseforge.com/wow/search?class=addons&page=1&pageSize=20&sortBy=relevancy&categories=pvp)\n* [Arena](https://www.curseforge.com/wow/search?class=addons&page=1&pageSize=20&sortBy=relevancy&categories=arena)\n\n* * *\n\n[informative placeholder](https://links.curseforge.com/wowcontest-winners)\n\n* * *\n\n### Game Versions\n\n[1\\.13.5](https://www.curseforge.com/wow/addons/duelbook/files/all?page=1&pageSize=20&version=1.13.5&showAlphaFiles=hide)\n\n* * *\n\n### Main File\n\n#### 1\\.13.5\n\nDuel Book Latest release * R * Classic * Nov 8, 2020\n\n* * *\n### Recent Files [View all](https://www.curseforge.com/wow/addons/duelbook/files/all?page=1&pageSize=20&showAlphaFiles=hide&sortBy=dateCreated&sortOrder=desc)\n\n#### WoW Classic\n\nDuel Book Latest release * R * Classic * Nov 8, 2020\n\n* * *\n\nReport\n\nDownload\n\n* Description\n* Comments\n* [Files](https://www.curseforge.com/wow/addons/duelbook/files?page=1&pageSize=20&showAlphaFiles=hide)\n* Gallery (1)\n* Relations\n\nitem image\n\n## Description\n\n/duelbook                to display duel history so far\n\nRegisters duels and records outcome vs opponents in classic wow. Saves name, class, win, loss for individual opponents\n\n## The DuelBook Team\n\nprofile avatar\n\nhotchilly\n\nOwner\n\n* 1\n  \n  Projects\n* 2\\.2K\n  \n  Downloads\n\nUnfollow\n\nWorld of Warcraft Discover [Browse](https://www.curseforge.com/wow/search?page=1&pageSize=20&sortBy=relevancy) Search\n\nCurseForge - a world of endless gaming possibilities for modders and gamers alike.  \nDownload the best mods and addons!\n\n* [](https://www.instagram.\ncom/curseforgeofficial \"Instagram\")\n* [](https://www.tiktok.com/@curseforge \"TikTok\")\n* [](https://www.youtube.com/@CurseForge \"YouTube\")\n* [](https://discord.gg/curseforge \"Discord\")\n* [](https://x.com/CurseForge \"Twitter / X\")\n* [](https://www.reddit.com/r/CurseForge \"Reddit\")\n\n* [Terms of Service](https://legal.overwolf.com/docs/overwolf/platform/platform-terms-of-use)\n* [Privacy Policy](https://legal.overwolf.com/docs/overwolf/platform/platform-privacy-policy)\n* Licenses\n* [Mod Author Terms](https://legal.overwolf.com/docs/curseforge/mod-authors-terms)\n*"
+      ]
+    },
+    {
+      "url": "https://www.curseforge.com/wow/addons/duelbook/files/3103316",
+      "title": "DuelBook - Addons - World of Warcraft - CurseForge",
+      "publish_date": null,
+      "excerpts": [
+        "<strong>Addon to track classic wow duel outcomes</strong>"
+      ]
+    },
+    {
+      "url": "https://us.forums.blizzard.com/en/wow/t/new-wcl-addon-should-be-banned/2085342?page=4",
+      "title": "New WCL Addon should be banned - Page 4 - General Discussion - World of Warcraft Forums",
+      "publish_date": "2025-03-31",
+      "excerpts": [
+        "We recognize the immense amount of effort and resources that go into developing an add-on; however, such requests should be limited to the add-on website or distribution site and should not appear in the game.\n> \n> \n\n[UI Add-On Development Policy](https://us.forums.blizzard.com/en/wow/t/ui-add-on-development-policy/24534) UI and Macro\n\n> 7/15/2009 Music Distribution through UI Add-Ons  We have recently seen a number of User Interface Add-Ons that are making modifications to the World of Warcraft in-game music files and wanted to take a moment to go over some important points with the community in connection with this. While we are currently allowing Add-Ons that remove or replace existing sound files, keep in mind that it is illegal to distribute copyrighted materials, in this case in-game music and audio files, without authoriz\u2026\n\n2 Likes\n\n[RayoftheSun-9391](https://us.forums.blizzard.com/en/wow/u/RayoftheSun-9391) (RayoftheSun) March 31, 2025, 1:20pm 68"
+      ]
+    },
+    {
+      "url": "https://eu.forums.blizzard.com/en/wow/t/duel-logs-addon/154534",
+      "title": "Duel logs addon - WoW Classic General Discussion - World of Warcraft Forums",
+      "publish_date": "2020-06-27",
+      "excerpts": [
+        "World of Warcraft Forums\n\n# Duel logs addon\n\nWoW Classic WoW Classic General Discussion\n\n[muh-195152](https://eu.forums.blizzard.com/en/wow/u/muh-195152) (muh) May 28, 2020, 11:07am 1\n\nSince dueling in durotar is the only relevant content, i\u2019m surprised there is still no addon that keeps track of your win/loses (just wins in my case) in duels\n\nthere were addons for that in vanilla (like SKMAP), but none works in classic\n\nbasically, kind of the same UI as pvp kills from Spy addon  \nSomething like:  \n\u201cduels vs asmongold:  \n04/05/20 : win  \n05/05/20 : win  \nratio: 100%\u201d\n\nany skilled indian can make it happen?\n\n[VanBust-713049](https://eu.forums.blizzard.com/en/wow/u/VanBust-713049) (VanBust) May 28, 2020, 11:11am 2\n\nAlso can those dueling horde players not kill my alliance char 1vs10 when i come to Durotar? Alliance players almost never duel so i go to Durotar but so many horde players don\u2019t have honor\u2026 maybe they are scared and it\u2019s a defensive reaction, i don\u2019t know\u2026\n[anon61799570](https://eu.forums.blizzard.com/en/wow/u/anon61799570) May 28, 2020, 11:53am 3\n\nAgree here  \nDueling and rare wpvp occassions are only PvP content atm. (Maybe those new wargame wsg mode if you have cool guild like me)\n\n[system](https://eu.forums.blizzard.com/en/wow/u/system) (system) closed June 27, 2020, 11:54am 4\n\nThis topic was automatically closed 30 days after the last reply. New replies are no longer allowed.\n\n* Home\n* Categories\n* Guidelines\n* Terms of Service\n* Privacy Policy\n\nPowered by [Discourse](https://www.discourse.org) , best viewed with JavaScript enabled"
+      ]
+    },
+    {
+      "url": "https://us.forums.blizzard.com/en/wow/t/addons-whats-allowed-whats-not/2176495",
+      "title": "Addons whats allowed whats not - General Discussion - World of Warcraft Forums",
+      "publish_date": "2025-10-02",
+      "excerpts": [
+        "In light of Blizzard\u2019s recent decision to restrict certain addons, I think it\u2019s important that players have access to a clear, official list of which addons are permitted and which are not."
+      ]
+    }
+  ],
+  "usage": [
+    {
+      "name": "sku_search",
+      "count": 1
+    }
+  ],
+  "warnings": []
+}

@@ -1,0 +1,39 @@
+{
+  "extract_id": "extract_f3a2736dc6f80ebba712178be46463a2",
+  "session_id": "session_f3a2736dc6f80ebba712178be46463a2",
+  "status": "ok",
+  "results": [
+    {
+      "url": "https://www.curseforge.com/wow/addons/pixelperfectuiscale",
+      "title": "",
+      "publish_date": "2026-06-12",
+      "excerpts": [
+        "# PixelPerfectUIScale\n* By\n  LanniOfAlonsus LanniOfAlonsus\nPixelPerfectUIScale is a lightweight addon that ensures your World of Warcraft UI always uses a pixel-perfect scale.\nTotal Downloads\n6.4K\nLast Update\nJun 12, 2026\nMore Details\nPixelPerfectUIScale\nDownload\n\n...\n\n## Details\n### **\ud83d\udcd0 PixelPerfectUIScale**\n**PixelPerfectUIScale** is a lightweight addon that ensures your World of Warcraft UI always uses a pixel-perfect scale.\nIt calculates the correct scale ( `768 / screenHeight` ) and applies it automatically when the game loads, when display settings change, or when Edit Mode is applied.\n\n...\n\n## **\ud83c\udf1f Background**\nThis addon is a conversion of the WeakAura **\u201cPixel perfect ui scale\u201d** created by **potat0nerd** :\n[https://wago.io/_F7SrQJMS](https://www.curseforge.com/linkout?remoteUrl=https%253a%252f%252fwago.io%252f_F7SrQJMS)\n\n...\n\n## **\u2728 Features**\n\u2705 **Automatically enforces pixel-perfect scale** ( `768 / screenHeight` )\n\u2705 **Custom scale modifier**\nYou can set a personal scale multiplier using:\n`/ppscale modifier <number>`\nExample:\n`/ppscale modifier 1.5`\nThis multiplies the base pixel-perfect scale by 1.5 \u2014 ideal for **4K or ultrawide displays** where the default scale looks too small.\n* Saved between sessions\n* Supported range: **0.5** to **3.0**\n\u2705 **Listens for scale-changing events**\n* `PLAYER_LOGIN`\n* `PLAYER_ENTERING_WORLD`\n* `DISPLAY_SIZE_CHANGED`\n* `UI_SCALE_CHANGED`\n* `EDIT_MODE_LAYOUTS_UPDATED`\n\u2705 **Safe handling during combat (Midnight compatible)**\nIf you enter combat, the addon defers applying UI scale changes until you leave combat, preventing protected-call errors."
+      ]
+    },
+    {
+      "url": "https://github.com/geek0x23/ZoxeTweaks",
+      "title": "GitHub - geek0x23/ZoxeTweaks: An addon to fix 1440p scaling, and make AtrocityUI more visible with proper ultra-wide support. \u00b7 GitHub",
+      "publish_date": "2023-01-22",
+      "excerpts": [
+        "# ZoxeTweaks\n1. **Make AtrocityUI more visible to me.** Fonts, chat panels, and a few other things here and there are just too small for me to see. My eyes aren't what they used to be.\n2. **Fix WoW's absolutely busted scaling at 1440p.** To get pixel-perfect WeakAuras, AtrocityUI sets the global UI scale to a very small number.\nAs a side effect, all of the default Blizzard frames become very small. This repo contains a small addon that manually scales individual frames **without** scaling `UIParent` . This is intentional so I don't break the pixel-perfect scaling for WeakAuras.\nThere's probably a more elegant way to do this, so if you have ideas please share!\n3. **Support ultrawide gaming at 3440 x 1440.** I have a bunch of settings that I like to tweak for all the various addons included with AtrocityUI (plus Shadow & Light). I got tired of doing it manually, so I wrote a script.\n\n...\n\n## Usage\nOnce installed, use the `/zt` command in-game to bring up the configuration options. You'll also find it in the default Blizzard addon options. If you chose to change the **scale factor** , please remember to reload your UI (or relog)."
+      ]
+    },
+    {
+      "url": "https://www.wowinterface.com/forums/showthread.php?t=46091",
+      "title": "Can't install Tom Tom - WoWInterface",
+      "publish_date": "2013-01-01",
+      "excerpts": [
+        "Posts: 2,988\nRight click on the Wow icon on your desktop. Choose Open file location. Is that the game folder you've been having issues with (making sure you don't somehow have two instances of the game on your PC as that's just one reason to get the error you got), and what is the full path to the game?"
+      ]
+    }
+  ],
+  "errors": [],
+  "usage": [
+    {
+      "name": "sku_extract_excerpts",
+      "count": 3
+    }
+  ],
+  "warnings": []
+}

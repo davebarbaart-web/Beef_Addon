@@ -1,0 +1,23 @@
+{
+  "extract_id": "extract_c8f93752ed9e2bfee0be8135dd5398e4",
+  "session_id": "session_c8f93752ed9e2bfee0be8135dd5398e4",
+  "status": "ok",
+  "results": [
+    {
+      "url": "https://warcraft.wiki.gg/wiki/API_PlaySound",
+      "title": "PlaySound - Warcraft Wiki - Your wiki guide to the World of Warcraft",
+      "publish_date": "2005-01-27",
+      "excerpts": [
+        "# PlaySound\n**Lua error in Module:Wowapi/category at line 21: bad argument #2 to 'format' (string expected, got nil).**\n|Fat cat yearns for the mines |The API wiki is under maintenance\nSince `2026-07-23T06:08:00Z` , ETA: at least multiple days |\n| --- | --- |\nPlays the specified sound by SoundKitID.\n```\nwillPlay , soundHandle = PlaySound ( soundKitID [, channel , forceNoDuplicates , runFinishCallback ])\n```\n\n## Contents\n* 1 Arguments\n* 2 Returns\n* 3 Example\n* 4 Details\n  + 4.1 Finding Sound IDs\n* 5 Patch changes\n* 6 See also\n\n## Arguments\n```\nsoundKitID\nnumber \\- Sound Kit ID in [SoundKitEntry.db2](https://wago.tools/db2/soundkitentry) . Sounds used in FrameXML are defined in the [SOUNDKIT](https://github.com/Gethe/wow-ui-source/blob/live/Interface/SharedXML/SoundKitConstants.lua) table.\n```\nchannel\nstring ? `= SFX` - The sound channel.\n\n...\n\n| Channel | Toggle CVar | Volume CVar [[1]](https://github.com/Gethe/wow-ui-source/blob/10.0.0/Interface/SharedXML/SettingDefinitions/Audio.lua) |\n| `Talking Head` [[2]](https://github.com/Gethe/wow-ui-source/blob/9.0.5/AddOns/Blizzard_TalkingHeadUI/Blizzard_TalkingHeadUI.lua) |  |  |\nVolume sliders in the interface options\n```\nforceNoDuplicates\nboolean ? `= true` \\- Allows duplicate sounds if false.\n```\nrunFinishCallback\nboolean ? `= false` - Fires SOUNDKIT_FINISHED when the sound has finished playing, arg1 will be `soundHandle` .\n\n## Returns\n```\nwillPlay\nboolean \\- true if the sound will be played, nil otherwise (prevented by a muted sound channel, for instance).\n```\nsoundHandle\nnumber - identifier for the queued playback.\n\n## Example\nPlays the ready check sound file ( _sound/interface/levelup2.ogg_ )\n```\nPlaySound ( SOUNDKIT . READY_CHECK ) -- by SOUNDKIT key \n PlaySound ( 8960 ) -- by SoundKitID\n```\nCopy\n```\nPlaySoundFile (567478) -- by FileDataID\n```\n\n...\n\n## Details\n```\n/ run PlaySound ( 5980 ) \n\n -- will play one of these sounds \n / run PlaySoundFile ( 552133 ) -- sound/creature/humanfemalestandardnpc/humanfemalestandardnpcgreeting01.ogg \n / run PlaySoundFile ( 552141 ) -- sound/creature/humanfemalestandardnpc/humanfemalestandardnpcgreeting02.ogg \n```\n\n...\n\n## Patch changes\n* Legion **Patch 7.3.0 (2017-08-29):** Changed. String-based input is not allowed. SoundKitID should be given while calling _PlaySound()_ . This change is more like a replacement for PlaySoundKitID .\n* Legion **Patch 7.0.3 (2016-07-19):** Added fourth argument, `runFinishCallback` .\n* Mists of Pandaria **Patch 5.0.4 (2012-08-28):** Added `willPlay` and `soundHandle` return values."
+      ]
+    }
+  ],
+  "errors": [],
+  "usage": [
+    {
+      "name": "sku_extract_excerpts",
+      "count": 1
+    }
+  ],
+  "warnings": []
+}

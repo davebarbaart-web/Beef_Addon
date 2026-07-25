@@ -1,0 +1,23 @@
+{
+  "extract_id": "extract_1f2989ba83c00b5ffb41551d13505172",
+  "session_id": "session_1f2989ba83c00b5ffb41551d13505172",
+  "status": "ok",
+  "results": [
+    {
+      "url": "https://www.wowace.com/projects/ace3/pages/ace-config-3-0-options-tables",
+      "title": "AceConfig-3.0 Options Tables - Pages - Ace3 - Addons - Projects - WowAce ",
+      "publish_date": null,
+      "excerpts": [
+        "# Pages\n## Common Parameters\n_Currently only supported by AceGUI \"Toggle\"._\n* **validate** (methodname|function|false) - validate the input/value before setting it. return a string (error message) to indicate error.\n* **confirm** (methodname|function|boolean) - prompt for confirmation before changing a value\n+ **true** - display \"name - desc\", or contents of .confirmText\n+ **function** - return a string (prompt to display) or true (as above), or false to skip the confirmation step\n* **order** (number|methodname|function) - relative position of item (default = 100, 0=first, -1=last)\n\n...\n\n+ **iconCoords** (table|methodname|function) - arguments to pass to SetTexCoord, e.g. {0.1,0.9,0.1,0.9}.\n* **handler** (table) - object on which getter/setter functions are called if they are declared as strings rather than function references\n* **type** (string) - \"execute\", \"input\", \"group\", etc; see below\n\n...\n\n## Item Types\n### execute\nA execute option will simply run 'func'. In a GUI, this would be a button.\nIf _image_ is set, it'll display a clickable image instead of a default GUI button.\n* **func** (function|methodname) - function to execute\n* **image** (string|function) - path to image texture, if this is a function it can optionally return the width and height of the image as the 2nd and 3rd value, these will be used instead of imageWidth and imageHeight.\n+ **imageCoords** (table|methodname|function) - arguments to pass to SetTexCoord, e.g. {0.1,0.9,0.1,0.9}.\n+ **imageWidth** (number) - Width of the displayed image\n+ **imageHeight** (number) - Height of the displayed image\n\n...\n\n## Comments\n  ```\n  local options = {\n      name = \"MyAddOn\",\n      handler = MyAddOn,\n      type = 'group',\n      args = {\n          msg = {\n              type = \"input\",\n              name = \"Message\",\n              desc = \"The message to be displayed when you get home.\",\n              usage = \"<Your message>\",\n  ```\n\n...\n\nI have a couple of sliders (type = \"range\") for which I'd like to set a default value so the first time they are displayed, they show the default.\nFor type = \"toggle\", I can set the value and the first time the options are displayed, they reflect that value. I looked in the documentation and didn't find an answer."
+      ]
+    }
+  ],
+  "errors": [],
+  "usage": [
+    {
+      "name": "sku_extract_excerpts",
+      "count": 1
+    }
+  ],
+  "warnings": []
+}

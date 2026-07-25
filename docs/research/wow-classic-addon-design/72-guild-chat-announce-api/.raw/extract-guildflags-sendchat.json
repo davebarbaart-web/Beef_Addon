@@ -1,0 +1,38 @@
+{
+  "extract_id": "extract_cbddc26e40d7883c854e78971f6d0d6f",
+  "session_id": "session_cbddc26e40d7883c854e78971f6d0d6f",
+  "status": "ok",
+  "results": [
+    {
+      "url": "https://rclootcouncil.com/",
+      "title": "RCLootCouncil",
+      "publish_date": "2026-01-01",
+      "excerpts": [
+        "# **RCLootCouncil** is an addon intended to facilitate and speed up the loot council process - something that still exists even though Blizzard has forced Personal Loot upon us all.\n## Download Now\nWorld of Warcraft, Warcraft and Blizzard Entertainment are trademarks or registered trademarks of Blizzard Entertainment, Inc.\nRCLootCouncil is not affiliated with Blizzard."
+      ]
+    },
+    {
+      "url": "https://wowpedia.fandom.com/wiki/API_SendChatMessage",
+      "title": "SendChatMessage - Wowpedia - Your wiki guide to the World of Warcraft",
+      "publish_date": "2026-06-22",
+      "excerpts": [
+        "in: API functions , API functions/restricted\n\n...\n\n# SendChatMessage\n|Inv mushroom 11 |**This function is restricted .**\n`SAY` , `YELL` and `CHANNEL` require a hardware event while outdoors. |\n| --- | --- |\nSends a chat message.\n```\nSendChatMessage(msg [, chatType, languageID, target])\n```\n\n## Arguments [ [](https://auth.fandom.com/signin?redirect=https%3A%2F%2Fwowpedia.fandom.com%2Fwiki%2FAPI_SendChatMessage%3Faction%3Dedit%26section%3D1&uselang=en&metadata=article-registration-edit-article-section \"Sign in to edit\") ]\n```\nmsg\nstring \\- The message to be sent. Large messages are truncated to max 255 characters, and only valid c\nhat message characters are permitted.\n```\n\n...\n\n## Chat types [ [](https://auth.fandom.com/signin?redirect=https%3A%2F%2Fwowpedia.fandom.com%2Fwiki%2FAPI_SendChatMessage%3Faction%3Dedit%26section%3D2&uselang=en&metadata=article-registration-edit-article-section \"Sign in to edit\") ]\nArena) |\n| \"GUILD\" | /g, /guild |  | Chat message to guild members |\n| \"OFFICER\" | /o, /officer |  | Chat message to guild officers |\n| \"WHISPER\" | /w, /whisper |  |  |\n\n...\n\n1. ^ The \"CHANNEL\" chatType is HW event restricted for both outdoors and indoors.\n\n...\n\n## Patch changes [ [](https://auth.fandom.com/signin?redirect=https%3A%2F%2Fwowpedia.fandom.com%2Fwiki%2FAPI_SendChatMessage%3Faction%3Dedit%26section%3D5&uselang=en&metadata=article-registration-edit-article-section \"Sign in to edit\") ]\nBc icon **Patch 2.4.0 (2008-03-25):** Large messages are truncated to 255 characters and no longer\n\n...\n\n## References [ [](https://auth.fandom.com/signin?redirect=https%3A%2F%2Fwowpedia.fandom.com%2Fwiki%2FAPI_SendChatMessage%3Faction%3Dedit%26section%3D6&uselang=en&metadata=article-registration-edit-article-section \"Sign in to edit\") ]\n[SendChatMessage restrictions](https://twitter.com/deadlybossmods/status/1176685822223011842) .\u200b \u201c _Ok, a\n\n...\n\nworld. It\u2019s permitted in raid/party/guild chat, and SAY/YELL within instances._ \u201d\nCategories\n* Categories :\n* API functions\n* API functions/restricted"
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "url": "https://warcraft.wiki.gg/wiki/API_GuildControlGetRankFlags",
+      "error_type": "http_error",
+      "http_status_code": 403,
+      "content": null
+    }
+  ],
+  "usage": [
+    {
+      "name": "sku_extract_excerpts",
+      "count": 2
+    }
+  ],
+  "warnings": []
+}

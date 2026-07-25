@@ -1,0 +1,16 @@
+{
+  "extract_id": "extract_820f12debfca813e92c71ac330e105bc",
+  "session_id": "session_820f12debfca813e92c71ac330e105bc",
+  "status": "ok",
+  "results": [],
+  "errors": [
+    {
+      "url": "https://authors.curseforge.com/forums/world-of-warcraft/general-chat/need-help/216366-accessing-tables-etc-from-slash-commands",
+      "error_type": "http_error",
+      "http_status_code": 403,
+      "content": null
+    }
+  ],
+  "usage": [],
+  "warnings": []
+}

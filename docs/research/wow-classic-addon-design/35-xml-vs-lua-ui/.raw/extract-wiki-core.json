@@ -1,0 +1,48 @@
+{
+  "extract_id": "extract_84d55456d23c7b4996908d8f363d7acd",
+  "session_id": "session_84d55456d23c7b4996908d8f363d7acd",
+  "status": "ok",
+  "results": [
+    {
+      "url": "https://warcraft.wiki.gg/wiki/Virtual_XML_template",
+      "title": "Virtual XML template - Warcraft Wiki - Your wiki guide to the World of Warcraft",
+      "publish_date": "2021-08-29",
+      "excerpts": [
+        "* \n* \n\nToggle personal tools menu\n\n* \n* \n\n## Navigation menu\n\n### Namespaces\n\n* Page\n* [Discussion](https://warcraft.wiki.gg/wiki/Talk:Virtual_XML_template?action=edit&redlink=1 \"Discussion about the content page (page does not exist) [t]\")\n\nEnglish\n\n### Views\n\n* Read\n* [Sign up to edit](https://warcraft.wiki.gg/wiki/Special:CreateAccount?warning=accountrequiredtoedit&returnto=Virtual_XML_template&returntoquery=action%3Dedit \"Edit this page [e]\")\n* [View source](https://warcraft.wiki.gg/wiki/Virtual_XML_template?action=edit \"This page is protected.\n  You can view its source [e]\")\n* [View history](https://warcraft.wiki.gg/wiki/Virtual_XML_template?action=history \"Past revisions of this page [h]\")\n\nMore\n\n### Search\n\n### Wiki community\n\n* About Warcraft Wiki\n* Community portal\n* Policies\n* Things to do\n* Village pump\n\n### World of Warcraft\n\n* Midnight\n* MoP Classic\n* BC Classic\n* Season of Discovery\n* Interface customization\n\n### Franchise\n\n* Warcraft universe\n* World of Warcraft\n* Warcraft Rumble\n* Hearthstone\n* Warcraft III\n* Warcraft II\n* Warcraft I\n\n### Useful pages\n\n* Trading Post\n* Playable races\n* Classes\n* Factions\n* Professions\n* Seasons\n* Zone storylines\n* Events\n* Instances\n* Player vs. Player\n\n### Lore\n\n* Major characters\n* Timeline\n* Media\n* Planets\n* Planes\n* Magic\n\n### Tools\n\n* What links here\n* Related changes\n* New page\n* Special pages\n* Printable version\n* [Page information](https://warcraft.wiki.gg/wiki/Virtual_XML_template?action=info \"More information about this page\")\n* [Database data](https://warcraft.wiki.gg/wiki/Virtual_XML_template?action=dbdata)\n* [Cite this page](https://warcraft.wiki.gg/wiki/Special:CiteThisPage?page=Virtual_XML_template&id=5922498&wpFormIdentifier=titleform \"Information on how to cite this page\")\n\n# Virtual XML template\n\nFrom Warcraft Wiki\n\nJump to navigation Jump to search\n\n\u2191 _Widget API_\n\n|Main Menu |\n| --- |\n|* WoW API\n* Lua API\n* FrameXML API\n\n* * *\n\n* Widget API\n* Widget scripts\n* XML schema\n* Events\n* CVars\n\n* * *\n\n* Macro commands\n* Combat Log\n* Escape sequences\n* Hyperlinks\n* API changes\n* HOWTOs\n* [](https://discord.gg/txUg39Vhc6) [wowuidev](https://discord.gg/txUg39Vhc6) |\n\n\u2192 UI Tech. Details\n\n**Virtual XML templates** [[ 1 ]]() (or _deferred nodes_ [[ 2 ]](.0.1-2) ) extend the Widget API by allowing widgets to inherit properties.\n\n```\n<Frame name=\"MyFrameTemplate\" virtual=\"true\" />\n<Frame inherits=\"MyFrameTemplate\" />\n\nCreateFrame(\"Frame\", nil, nil, \"MyFrameTemplate\")\n```\n\n## Contents\n\n* 1 Usage\n* 2 Details\n* 3 Patch changes\n* 4 See also\n* 5 References\n\n## Usage\n\n* Add `virtual=\"true\"` (and a name) in XML to any kind of < LayoutFrame >, < Animation > or < AnimationGroup >.\n* New widgets may inherit templates using a comma-delimited list of template names:\n  \n    + The `inherits=\"\"` attribute in XML.\n    + The fourth argument in CreateFrame ().\n* FrameXML provides numerous templates that AddOns may use, including:\n  \n    + A [complete list](https://github.com/Ketho/BlizzardInterfaceResources/blob/mainline/Resources/Templates.lua) (compiled by Ketho); and\n    + Several [basic widget appearances](https://www.townlong-yak.com/framexml/live/SharedUIPanelTemplates.xml) (SharedUIPanelTemplates.xml, archived at Townlong-Yak).\n\n## Details\n\n* Templates do not reside in the global environment ( \\_G ) during runtime; they exist in a separate state. [[ 3 ]]()\n* Reusing the same name on two virtual templates will throw a warning in `Logs/FrameXML.log` and in-game. [[ 2 ]](.0.1-2)\n\n## Patch changes\n\n*  **Patch 8.0.1 (2018-07-17):** Reusing the same template name now throws an in-game error. [[ 2 ]](.0.1-2)\n*  **Patch 1.11.0 (2006-06-19):** Now available during runtime through CreateFrame () or with LoadOnDemand . [[ 4 ]](.11.0-4)\n  \n      _Templates previously existed only temporarily during the AddOn loading process [[ 5 ]]()_\n\n## See also\n\n* Intrinsic frame \\- Alternative means to extend the widget API .\n\n## References\n\n1. ^  Ornyx 2016-10-04. [Notable UI Changes Coming in 7.1](https://blue.mmo-champion.com/topic/772205-notable-ui-changes-coming-in-71/) . Archived from [the original](http://us.battle.net/forums/en/wow/topic/20749494846)\n2. ^ a b c LanceDH, Ammako, Gethe, Necairiel, et al. 2018-07-01. [Deferred XML Node object named <name> already exists](https://www.wowinterface.com/forums/showthread.php?p=328463) . WoWInterface .\n3. ^ Mayron et al. 2015-06-24. [re:XML virtual object](https://www.wowinterface.com/forums/showthread.php?t=52401) . WoWInterface .\n4. ^  slouken 2006-05-23. [Re: Upcoming 1.11 Changes - Concise List](http://blue.cardplace.com/cache/wow-interface-customization/343889.htm) . Archived from [the original](http://forums.worldofwarcraft.com/thread.aspx?fn=wow-interface-customization&t=343889&p=)\n5. ^  slouken . [Re: Upcoming 1.7 Changes - Concise List](http://blue.cardplace.com/cache/wow-interface-customization/174783.htm) . Archived from [the original](http://forums.worldofwarcraft.com/thread.aspx?fn=wow-interface-customization&t=174783&p=)\n\nRetrieved from \" [https://warcraft.wiki.gg/wiki/Virtual\\_XML\\_template?oldid=5922498](https://warcraft.wiki.gg/wiki/Virtual_XML_template?oldid=5922498) \"\n\nCategory :\n\n* UI technical details\n\n[Report bad advertisement](https://www.wiki.gg/t/bad-ad)\n\nCookies help us deliver our services. By using our services, you agree to our use of cookies.\n\n[More information](https://www.indie.io/privacy-policy) OK\n\n* This page was last edited on 2 January 2024, at 22:32.\n* Pages that were created prior to October 2023 are adapted from the Fandom Wowpedia Wiki.  \n  Page content is under [Creative Commons Attribution-ShareAlike 4.0 License](https://creativecommons.org/licenses/by-sa/4.0) unless otherwise noted.\n\n* [Terms of Service](https://www.indie.io/terms-of-service)\n* [Privacy policy](https://www.indie.io/privacy-policy)\n* [Support Wiki](https://support.wiki.gg)\n* [Send a ticket to wiki.gg](https://wiki.gg/go/servicedesk)\n* [Status page](https://wikiggstatus.com)\n* Manage cookie settings\n\n* [](https://creativecommons.org/licenses/by-sa/4.0)\n* [](https://www.mediawiki.org/)\n* [](https://wiki.gg)"
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "url": "https://warcraft.wiki.gg/wiki/API_CreateFrame",
+      "error_type": "network_error",
+      "http_status_code": null,
+      "content": null
+    },
+    {
+      "url": "https://warcraft.wiki.gg/wiki/XML_UI",
+      "error_type": "network_error",
+      "http_status_code": null,
+      "content": null
+    },
+    {
+      "url": "https://warcraft.wiki.gg/wiki/XML/Attributes",
+      "error_type": "network_error",
+      "http_status_code": null,
+      "content": null
+    }
+  ],
+  "usage": [
+    {
+      "name": "sku_extract_excerpts",
+      "count": 1
+    }
+  ],
+  "warnings": [
+    {
+      "type": "warning",
+      "message": "Neither objective nor search_queries were provided, provide at least one to increase the relevance of excerpts.",
+      "detail": null
+    }
+  ]
+}

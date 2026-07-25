@@ -1,0 +1,16 @@
+{
+  "extract_id": "extract_900ee02d53fc43ec4ffb1cfe20fae1ad",
+  "session_id": "session_900ee02d53fc43ec4ffb1cfe20fae1ad",
+  "status": "ok",
+  "results": [],
+  "errors": [
+    {
+      "url": "https://warcraft.wiki.gg/wiki/API_SetBinding",
+      "error_type": "network_error",
+      "http_status_code": null,
+      "content": null
+    }
+  ],
+  "usage": [],
+  "warnings": []
+}

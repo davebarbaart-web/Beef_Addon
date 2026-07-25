@@ -1,0 +1,46 @@
+{
+  "extract_id": "extract_17f36fab7a5cbbebc488d6b89292d760",
+  "session_id": "session_17f36fab7a5cbbebc488d6b89292d760",
+  "status": "ok",
+  "results": [
+    {
+      "url": "https://warcraft.wiki.gg/wiki/UI_escape_sequences",
+      "title": "UI escape sequences - Warcraft Wiki - Your wiki guide to the World of Warcraft",
+      "publish_date": "2006-07-16",
+      "excerpts": [
+        "# UI escape sequences\n## Escape Sequences\n### Textures\n```\n|T path : height [: width [: offsetX : offsetY [: textureWidth : textureHeight :leftTexel:rightTexel:topTexel:bottomTexel[: rVertexColor : gVertexColor : bVertexColor ]]]]|t\n```\n```\nWill insert a texture into a font string. Parameter `**width**` is optional (see below). The offsets are optional and will shift the texture from where it would normally be placed. `_**TextHeight**_` is based on size of the font used - this is used to automatically scale icons based on the size of the text.\n```\n* `**height** == 0; **width** omitted: **Width** = **Height** = _**TextHeight**_` (always square!)\n* `**height** > 0; \u00a0 **width** omitted: **Width** = **Height** = height` (always square!)\n* `**height** == 0; **width** == 0\u00a0 \u00a0: **Width** = **Height** = _**TextHeight**_` (always square!)\n* `**height** > 0; \u00a0 **width** == 0\u00a0 \u00a0: **Width** = _**TextHeight**_ ; **Height** = height` (height is height!!!)\n* `**height** == 0; **width** > 0 \u00a0 \u00a0: **Width** = width * _**TextHeight**_ ; **Height** = _**TextHeight**_` (width is an aspect ratio and defines width!!!)\n* `**height** > 0; \u00a0 **width** > 0 \u00a0 \u00a0: **Width** = width ; **Height** = height`\n* `**offsetX offsetY** :` Offset for the rendered image, in pixels\n* `**textureWidth textureHeight** :` Size of the source image, in pixels\n* `**leftTexel rightTexel topTexel bottomTexel** :` `(x1 x2 y1 y2)` Coordinates that identify the left/right/top/bottom edges, in pixels (see Texture:SetTexCoord () but non-normalized)\n* `**rVertexColor gVertexColor bVertexColor** :` RGB color values in the range 0-255 that are used to tint the texture\n_Notes:_\n* When you need to display a square icon in the string (spell/item icon), use only `|T _path_ : _0_ |t`\n* When you need to display a rectangular image in the string (Blizzard logo), use aspect ratio version: `|T _path_ : _0_ : _aspectRatio_ |t`\n\n### Texture atlas\n```\n_Main article: AtlasID_\n```\nAtlases allow for easily getting part of a texture without having to use tex coords. \ud83d\udcdd Note there is a `:` after `|A` .\n```\n|A: atlas : height : width [: offsetX : offsetY [: rVertexColor : gVertexColor : bVertexColor ]]|a\n```\n\n...\n\n### Examples\n``` |This is red text this is normal color |\n|Texture |\n|Accepts a file path or FileDataID .  \n```\n\n...\n\n``` |Inv misc coin 01.png Coins [[2]](https://wago.tools/files?search=interface/icons/inv_misc_coin_01) |\n|```\n\"|TInterface \\\\ Icons \\\\ INV_Misc_Coin_01:16:16:0:0:64:64:4:60:4:60|t Coins (cropped)\"\n``` |INV Misc Coin 01 crop.png Coins (cropped) |\n|Sets the vertex color of the texture to green (73:177:73).  \n```\n\n...\n\n``` |RemoteChat Icon.png Reckful [[3]](https://wago.tools/files?search=UI-ChatIcon-ArmoryChat) |\n|Texture atlas |\n|Accepts an Atlas name or ID. [[4]](https://wago.tools/db2/UiTextureAtlasMember?filter%5BCommittedName%5D=groupfinder-icon-role-large-tank)\n\n```"
+      ]
+    },
+    {
+      "url": "https://www.wowace.com/projects/libdbicon-1-0",
+      "title": "Overview - LibDBIcon-1.0 - Addons - Projects - WowAce ",
+      "publish_date": null,
+      "excerpts": [
+        "# LibDBIcon-1.0\n[Patreon](https://github.com/sponsors/funkydude) Please support my work on [Patreon/GitHub](https://github.com/sponsors/funkydude)\nLibDBIcon-1.0 is a small library you can throw in your addon that will create a minimap icon.\nSimply get a reference to the library in your addon like so:\n`local icon = LibStub(\"LibDBIcon-1.0\")`"
+      ]
+    },
+    {
+      "url": "https://wowpedia.fandom.com/wiki/API_TextureBase_SetTexture",
+      "title": "Client Challenge",
+      "publish_date": null,
+      "excerpts": [
+        "A required part of this site couldn\u2019t load. This may be due to a browser\nextension, network issues, or browser settings. Please check your\nconnection, disable any ad blockers, or try using a different browser."
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "url": "https://warcraft.wiki.gg/wiki/API_SetPortraitToTexture",
+      "error_type": "network_error",
+      "http_status_code": null,
+      "content": null
+    }
+  ],
+  "usage": [
+    {
+      "name": "sku_extract_excerpts",
+      "count": 3
+    }
+  ],
+  "warnings": []
+}

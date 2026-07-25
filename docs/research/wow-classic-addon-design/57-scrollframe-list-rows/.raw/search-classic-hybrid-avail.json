@@ -1,0 +1,24 @@
+UI Frame/XML issue with build 56760 - WoW Classic
+  URL: https://us.forums.blizzard.com/en/wow/t/ui-framexml-issue-with-build-56760/1969201
+  Below are two screenshots that show something has drastically changed in the latest build. Classic Era/SoD/HC Build 56760 i.imgur.com/zvLchpW.
+
+FrameXML lua errors in WoW during combat
+  URL: https://www.reddit.com/r/wow/comments/ypbykn/has_anyone_been_getting_absolutely_blasted_with/
+  I've been getting FrameXML Errors when in combat after either up until I do a /reload. These happen with all Addons disabled too.
+
+FrameXML functions - Warcraft Wiki
+  URL: https://warcraft.wiki.gg/wiki/FrameXML_functions
+  FrameXML functions facilitate interacting with the UI. Note: These functions toggle the Interface Panels, but if they use ShowUIPanel() they cannot be ...
+
+HybridScrollFrame - Your wiki guide to the World of Warcraft
+  URL: https://wowpedia.fandom.com/wiki/HybridScrollFrame
+  The HybridScrollFrame is a FrameXML-provided frame that is used by the UI to display large collections of items/object but without creating a new frame for ...
+
+[BUG] Guild Frame Info Tab Causes Lua Error #74
+  URL: https://github.com/ClassicWoWCommunity/tbc-classic-bugs/issues/74
+  Open the guild frame. Click the "Info" tab (scroll icon) See error (may require addon such as Buggrabber and Bugsack) . Testing may require ...
+  Category: github
+
+Latest WoW Classic topics - World of Warcraft Forums
+  URL: https://eu.forums.blizzard.com/en/wow/c/wow-classic/249?page=1
+  For all things World of Warcraft Classic. Latest WoW Classic topics. Classic Anniversary The Burning. Anniversary realms … these awful raidframes?

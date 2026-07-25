@@ -1,0 +1,23 @@
+{
+  "extract_id": "extract_528c6a2f3357a1cb1b4f43bd70902b0a",
+  "session_id": "session_528c6a2f3357a1cb1b4f43bd70902b0a",
+  "status": "ok",
+  "results": [
+    {
+      "url": "https://wowpedia.fandom.com/wiki/Creating_simple_pop-up_dialog_boxes",
+      "title": "Client Challenge",
+      "publish_date": null,
+      "excerpts": [
+        "A required part of this site couldn\u2019t load. This may be due to a browser\nextension, network issues, or browser settings. Please check your\nconnection, disable any ad blockers, or try using a different browser."
+      ]
+    }
+  ],
+  "errors": [],
+  "usage": [
+    {
+      "name": "sku_extract_excerpts",
+      "count": 1
+    }
+  ],
+  "warnings": []
+}

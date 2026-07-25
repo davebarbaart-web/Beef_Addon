@@ -1,0 +1,78 @@
+{
+  "search_id": "search_4ce5b38fd51b28ed5fccc1b43c7aef7b",
+  "session_id": "session_4ce5b38fd51b28ed5fccc1b43c7aef7b",
+  "status": "ok",
+  "results": [
+    {
+      "url": "https://rclootcouncil.com/wiki/Options",
+      "title": "Wiki - Options",
+      "publish_date": null,
+      "excerpts": [
+        "Frontpage feedback\n\n# Options  \nAccess:\n\n* `/rc config` or `/rc c`\n* or through Interface -> AddOns\n\nContains descriptions of every option in RCLootCouncil. Each option is named after its' (english) in-game name so it's easily searchable. All major categories also have direct links below:\n\n### Table of Contents\n\nGeneral Settings\n\n* General\n  \n    + General\n    + Buttons\n    + Response\n    + Frame Options\n    + Loot History\n* Appearance\n  \n    + Skins\n    + Customize Appearance\n* Profile\n\nMaster Looter Options\n\n* General\n  \n    + Looting Options\n    + Voting Options\n    + Ignore Options\n* Awards\n  \n    + Auto Award\n    + Auto Award BoE's\n    + Award Reasons\n* Announcements\n  \n    + Award Announcement\n    + Announce Considerations\n* Buttons and Responses\n  \n    + Buttons and Responses\n    + Additional Buttons\n    + Timeout\n    + More Info\n    + Reponse from chat\n* Council\n  \n    + Current Council\n    + Add Council\n    + Group Council Members\n\n## General Settings\n\n...\n\nWhen enabled, the class icon in the voting frame is replaced with an icon of the candidates' current specialization.\n* **Chat Frame**  \n  Select which chat frame you want RCLootCouncil to send messages to. The default is your main chatframe.\n\n#### Loot History\n\nUnlike most settings here, which are bound to a specific Ace3 profile , the loot history stores its data on a faction-realm profile. This means every character on the same realm and faction shares the same loot history , and it cannot be changed through the profile section.\n\n* **Enable Loot History**  \n  Enabled by default. When enabled, any award handled with RCLootCouncil is registered and saved in the loot history , whenever the master looter sends it. The actual data is stored in the RCLootCouncil Saved Variables file.\n* **Send History**  \n  Enabled by default. When enabled, sends out loot history data when ever you award an item as the master looter. Requires \"Enable Loot History\" to be enabled to function.\n\n...\n\n* **Out of Raid Support**  \n  Disabled by default. When enabled, any time you're in group with 8 people or more, anyone outside of an instance will automatically send a \"Out of Raid\" response, as they would not be eligible for the loot. Enabling this basically prevents you from awarding items outside an instance, including test sessions(!), but is useful if you frequently have players sit outside the raid.\n\n#### _Classic_\n\n* **Usage**  \n  In the Classic version, these options are shown instead:\n  \n    + _Ask me every time I become Master Looter_ \\- default. Will produce a pop-up asking if you want to use RCLootCouncil any time you become Master Looter.\n    + _Always use RCLootCouncil when I'm Master Looter_ \\- automatically enables RCLootCouncil whenever you become the Master Looter. A message is still printed as a reminder when RCLootCouncil is enabled.\n    + _Never use RCLootCouncil_ \\- selecting this will never prompt you to start using RCLootCouncil.\nCurrently there's no way to use RCLootCouncil with this selected.\n* **Leader Usage**  \n  Enabled by default. Selecting this will make the above selection also apply when you're the group leader and enter a raid instance. E.g. \" _Ask me every time I become Master Looter_ \" essentially becomes \" _Ask me every time I'm group leader and enter a raid_ \". This is in addition to the \"Usage\" setting, not a replacement - i.e. ask me when I'm master looter OR enter a raid as leader.\n* **Use with Group Loot**  \n  Disabled by default. Allows you to use RCLootCouncil with the group loot loot method when enabled. The Group Leader acts as the Master Looter for all intents and purposes with this enabled, and will still need to loot all corpses to have loot added, but otherwise the addon works as with Master Loot. The only real difference is that nothing is given out or marked for trading when items are awarded - basically relying on raiders pressing the correct group loot button after an award.\n\n...\n\nThese control the quality an item must have to be auto awarded. Both limits are included, meaning to automatically give out only _rare_ items (blue) both the upper and lower limit should be set to rare. The group's loot threshold will automatically be lowered when RCLootCouncil is handling loot if required.  \n  _Note: Poor and Common (grey and white) items cannot be auto awarded to anyone but yourself due to Blizzard restrictions._\n* **Auto Award to**  \n  Determines who should receive auto awards. A list of current group members are displayed when in a group, otherwise you must input the recipients name manually.\n* **Reason**  \n  This is the reason used in the loot history and/or when announcing the award. This is selected among the Award Reasons .\n\n#### Auto Award Reputation Items\n\n**_Classic Only_**  \nBasically the same as Auto Award but for reputation items such as Coins and Bijous from Zul'Gurub.\n\n* **Auto Award Reputation Items**  \n  Disabled by default.\n\n...\n\nIt's independent of the normal auto award, and will be handled first in case the item fits both categories.\n\n_Retail_ \\- Note this works whether you've enabled Auto Loot BoE options or not.\n\n* **Auto Awards BoE's**  \n  Disabled by default. When enabled, the below options become available.\n* **Auto Award To**  \n  Determines who should receive BoE auto awards. A list of current group members are displayed when in a group, otherwise you must input the recipients name manually.\n* **Reason**  \n  This is the reason used in the loot history and/or when announcing the award. This is selected among the Award Reasons .\n\n#### Award Reasons\n\nThis is a list of separate award reasons that can be used instead of the normal responses. This allows you to setup reasons that only the Master Looter can choose from, and chose if it should be logged in the loot history. It also determines which reason should be used when clicking the disenchant button.\n\n* **Number of Reasons**\nChange the number of award reasons you want, up to 10. Defaults to 3.\n\nEach reason has its' own line of options, each controlling only that reason:\n\n1. **Name**  \n   The name of this reason as it will appear in menus and the loot history.\n2. **Color**  \n   The color of the name.\n3. **Log**  \n   If checked, this reason will be saved in the loot history when ever an item is awarded using it. If unchecked, it'll never get saved.\n4. **Disenchant**  \n   If checked, this is the reason used when awarded items with the disenchant button in the voting frame. Only one reason can be selected for this.\n5. **Move up**  \n   Moves the row 1 line up.\n6. **Move down**  \n   Moves the row 1 line down.\n\n* **Reset**  \n  Resets all Award Reasons options back to default. Has confirmation pop-up.\n\n## Announcements\n\nMost of these settings are hidden if the group is disabled.\n\n#### Award Announcement\n\n* **Announce Awards**  \n  Enabled by default.\nWhen enabled, this will announce when you award an item according to the settings below. You can announce in up to two different channels at once - each with a different text, if required. Disable to never announce awards.\n* **Channels**  \n  Select which channel to announce in or \"None\" to disable. \"Group\" is a dynamic option that will output to a channel relevant to your current group (party or raid). The \"Chat\" options simply outputs to your own chat. The message will be printed to your chat if the channel is invalid at the time of announcement. Do note the message will be sent directly as if you wrote it yourself.\n* **Message**  \n  The message to send to the channel when awarding items. There's a handful of keyword substitutions available - each will be replaced with the following:\n  \n    + & **i** \\- item link of the awarded item.\n    + & **l** \\- item level of the item.\n    + & **p** \\- name of the player receiving the loot.\n+ & **r** \\- reason or response the item was awarded for.\n    + & **s** \\- session id, order of the item in the voting frame.\n    + & **t** \\- item type, as shown in the voting frame.\n    + & **n** \\- roll, if rolls were added to that session.\n    + & **o** \\- the original owner of the item.\n    + & **m** \\- the winner's supplied note, or \"none\".\n\n#### Announce Considerations\n\n* **Announce Considerations**  \n  Disabled by default. When enabled, this will announce the items in a session when it starts. This is constructed of two things: a \"header\" message followed by a message for each item.\n* **Channel**  \n "
+      ]
+    },
+    {
+      "url": "https://rclootcouncil.com/wiki/Loot-History",
+      "title": "RCLootCouncil",
+      "publish_date": null,
+      "excerpts": [
+        "+ Class: Clicking (checking) any class here will only show awards for that/those class(es).\n    + Responses: Clicking (unchecking) any response or category here will hide entries with that response.\n7. **Import button**  \n   Opens a frame used for importing Loot History manually. See the synchronizer page for an in-game way of syncing data.\n8. **Export button**  \n   Opens a window with the currently selected export types' output highlighted, ready for copying. Due to the potential lag when doing huge exports, this window might show the entire export or just a single line, but in either case all the data is highlighted and can be copied directly.\n9. **Close button**  \n   Closes the Loot History.\n10. **Entry table**  \n    The table showing all available, non-filtered entries in the Loot History - 1 award per row.\n\n#### Entries\n\nEach entry represent one winner of an item awarded with RCLootCouncil. All columns can be sorted by clicking the header - click again to reverse the sort.\n\n...\n\nYou might be lucky the data is still available in the Saved Variables backup \"/SavedVariables/RCLootCouncil.lua.bak\". in case you regret._\n\n**RCLootCouncil**\n\n* [Addon](https://www.curseforge.com/wow/addons/rclootcouncil)\n* History Explorer\n* [Wiki](https://github.com/evil-morfar/RCLootCouncil2/wiki)\n* **Modules**\n* [RCLootCouncil - GroupGear](https://www.curseforge.com/wow/addons/rclootcouncil-groupgear)\n* [RCLootCouncil - ExtraUtilities](https://www.curseforge.com/wow/addons/rclootcouncil-extrautilities)\n* [RCLootCouncil - Classic](https://www.curseforge.com/wow/addons/rclootcouncil-classic/)\n\n**Community** [Curseforge](https://www.curseforge.com/wow/addons/rclootcouncil) [Discord](http://discord.rclootcouncil.com) [Github](https://github.com/evil-morfar/RCLootCouncil2) [Become a Patron](https://www.patreon.com/bePatron?u=22734500)\n\nWorld of Warcraft, Warcraft and Blizzard Entertainment are trademarks or registered trademarks of Blizzard Entertainment, Inc.\nRCLootCouncil is not affiliated with Blizzard."
+      ]
+    },
+    {
+      "url": "https://www.warcraftlogs.com/api/docs",
+      "title": "Warcraft Logs - Combat Analysis\n                for Warcraft",
+      "publish_date": null,
+      "excerpts": [
+        "Warcraft Logs - Combat Analysis for Warcraft\nWarcraft Logs uses OAuth 2.0 for API authentication. OAuth allows clients to request and then use an access token to authenticate API requests. We recommend that developers use stable libraries for performing the OAuth process instead of implementing their own."
+      ]
+    },
+    {
+      "url": "https://www.archon.gg/wow/articles/help/API-documentation",
+      "title": "API Documentation | Archon (WoW - Midnight)",
+      "publish_date": "2025-12-02",
+      "excerpts": [
+        "API Documentation | Archon (WoW - Midnight)\nWarcraft Logs uses OAuth 2.0 for API authentication. OAuth allows clients to request and then use an access token to authenticate API requests. We recommend that developers use stable libraries for performing the OAuth process instead of implementing their own."
+      ]
+    },
+    {
+      "url": "https://www.curseforge.com/wow/addons/rclootcouncil",
+      "title": "RCLootCouncil - World of Warcraft Addons - CurseForge",
+      "publish_date": "2026-06-16",
+      "excerpts": [
+        "... /rclootcouncil/files/all?page=1&pageSize=20&showAlphaFiles=hide)\n\n* * *\n\n### Links\n\n[Wiki](https://github.com/evil-morfar/RCLootCouncil2/wiki)\n\n[Source](https://github.com/evil-morfar/RCLootCouncil2)\n\n[Localization](https://legacy.curseforge.com/"
+      ]
+    },
+    {
+      "url": "https://warcraft.wiki.gg/",
+      "title": "Warcraft Wiki, the World of Warcraft wiki encyclopedia",
+      "publish_date": null,
+      "excerpts": [
+        "Warcraft Wiki\nAutomatically-collected information: We automatically collect and store certain types of information about your use of the Sites or Games. This may include information gathered from your device for the purpose of preventing cheating or other unauthorized activity in Games."
+      ]
+    },
+    {
+      "url": "https://warcraft.wiki.gg/wiki/World_of_Warcraft_API",
+      "title": "World of Warcraft API - Warcraft Wiki - Your wiki guide to the World of Warcraft",
+      "publish_date": "2004-11-13",
+      "excerpts": [
+        "Privacy Policy | indie.io - Warcraft Wiki\nAutomatically-collected information: We automatically collect and store certain types of information about your use of the Sites or Games. This may include information gathered from your device for the purpose of preventing cheating or other unauthorized activity in Games."
+      ]
+    },
+    {
+      "url": "https://github.com/K0bus/warcraftlog-api-v2",
+      "title": "GitHub - K0bus/warcraftlog-api-v2 \u00b7 GitHub",
+      "publish_date": null,
+      "excerpts": [
+        "GitHub - K0bus/warcraftlog-api-v2\nWarcraft Log API V2 This package allow you to simply fetch data from the GraphQL API of WarcraftLog."
+      ]
+    }
+  ],
+  "usage": [
+    {
+      "name": "sku_search",
+      "count": 1
+    }
+  ],
+  "warnings": []
+}

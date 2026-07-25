@@ -26,17 +26,22 @@ officer approval is the real gate.
 
 ## Install
 
-Copy the addon folder from this repo into your TBC Anniversary client's AddOns directory:
+Fast path on this Mac (Anniversary default tree):
+
+```bash
+./scripts/install-anniversary.sh
+```
+
+Or copy by hand:
 
 ```
-addon/ChurchOfBeef/  →  <your TBC Anniversary client folder>/Interface/AddOns/ChurchOfBeef/
+addon/ChurchOfBeef/  →  <TBC Anniversary client>/Interface/AddOns/ChurchOfBeef/
 ```
 
-Install path must be exactly `Interface/AddOns/ChurchOfBeef` (the folder name has to match the
-`.toc` filename). Reload the client and confirm **Church of Beef** appears in the AddOns list.
+Install path must be exactly `Interface/AddOns/ChurchOfBeef` (folder name matches the `.toc`).
+Reload (`/reload`) and confirm **Church of Beef** appears in the AddOns list.
 
-Nothing outside that folder is needed at runtime: the addon loads only default Blizzard UI
-textures and fonts, so there is no custom media to go missing.
+Nothing outside that folder is needed at runtime: stock Blizzard UI textures/fonts only — no custom `Media/`.
 
 ## Usage
 
@@ -95,11 +100,16 @@ the client.
 ## In-game verification is still required
 
 BeefNet replication, login sync, the frames, and the guild-chat spectacle cannot be proven
-offline. Before calling V1 done, walk [`docs/phases/v1-checklist.md`](docs/phases/v1-checklist.md)
-on a real TBC Anniversary client with `/console scriptErrors 1` (BugGrabber + BugSack preferred).
-The network and officer boxes need two characters — one Officer or higher, one plain member — and
-the social criterion needs an actual guild night: if a promotion passes unnoticed in guild chat,
-V1 has failed even with every function working.
+offline. Before calling V1 done:
+
+1. Install (`./scripts/install-anniversary.sh`) → `/reload` → `/beef`
+2. Walk [`docs/phases/v1-checklist.md`](docs/phases/v1-checklist.md) with `/console scriptErrors 1`
+   (BugGrabber + BugSack preferred)
+3. For a real guild night, use [`docs/phases/guild-night-playtest.md`](docs/phases/guild-night-playtest.md)
+
+Network and officer boxes need two characters — one Officer+, one member. The social criterion
+needs an actual guild night: if a promotion passes unnoticed in guild chat, V1 has failed even
+with every function working.
 
 ## Design spec
 

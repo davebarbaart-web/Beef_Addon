@@ -1,0 +1,62 @@
+{
+  "search_id": "search_17ea818d0ac57d83e08c6092cd83c9ea",
+  "session_id": "session_17ea818d0ac57d83e08c6092cd83c9ea",
+  "status": "ok",
+  "results": [
+    {
+      "url": "https://github.com/BigWigsMods/packager/blob/master/release.sh",
+      "title": "packager/release.sh at master \u00b7 BigWigsMods/packager",
+      "publish_date": null,
+      "excerpts": [
+        "Generate an addon zip file from a Git, SVN, or Mercurial checkout. - packager/release.sh at master \u00b7 BigWigsMods/packager"
+      ]
+    },
+    {
+      "url": "https://github.com/BigWigsMods/packager",
+      "title": "GitHub - BigWigsMods/packager: Generate an addon zip file from a Git, SVN, or Mercurial checkout. \u00b7 GitHub",
+      "publish_date": null,
+      "excerpts": [
+        "# BigWigsMods/packager\n\n- Page: GitHub repository\n- URL: https://github.com/BigWigsMods/packager\n- Description: Generate an addon zip file from a Git, SVN, or Mercurial checkout. - BigWigsMods/packager\n- Stars: 182\n- Forks: 62\n- Default branch: master\n- Created: 2016-02-12T10:07:08.000Z\n- Commits: 706\n\n## Top-level files\n\n- .gitattributes\n- .gitignore\n- README.md\n- action.yml\n- release.sh\n- setup-packager.sh\n\n## README.md\n\n# release.sh\n\n**release.sh** generates an addon zip file from a Git, SVN, or Mercurial\ncheckout.\n\n**release.sh** works by creating a new project directory ( `.release` by\ndefault), copying files from the checkout into the project directory, checking\nout external repositories then copying their files into the project directory,\nthen moves subdirectories into the project root. The project directory is then\nzipped to create a distributable addon zip file which can also be uploaded to\nCurseForge, WoWInterface, Wago, and GitHub (as a release).\n\n**release."
+      ]
+    },
+    {
+      "url": "https://us.forums.blizzard.com/en/wow/t/creating-addon-releases-with-github-actions/613424",
+      "title": "Creating addon releases with GitHub Actions - Guides / UI and Macro - World of Warcraft Forums",
+      "publish_date": "2020-08-16",
+      "excerpts": [
+        "[github.com](https://github.com/VgerMods/Pawn/blob/main/.github/workflows/package-addon.yml)\n\n#### [VgerMods/Pawn/blob/main/.github/workflows/package-addon.yml](https://github.com/VgerMods/Pawn/blob/main/.github/workflows/package-addon.yml)\n\n```\nname: Package World of Warcraft addon\n\non:\n  workflow_dispatch:\n    inputs:\n      version:\n        description: 'Addon version'\n        required: true\n\nenv:\n  CLASSIC_VERSION: 11403\n  BURNING_CRUSADE_VERSION: 20504\n  WRATH_VERSION: 30401\n\njobs:\n  package:\n    name: Create zips and tag\n    runs-on: ubuntu-latest\n\n    steps:\n```\n\nThis file has been truncated. [show original](https://github.com/VgerMods/Pawn/blob/main/.github/workflows/package-addon.yml)\n\n(Note that if your Git client uses OAuth, such as VS Code, GitHub may block you from changing things in `.github/workflows` from your client, so you might need to add the file directly on GitHub.)\n\nOnce that\u2019s there, here\u2019s how you create a release:\n\n1. Click **Actions** in your repo.\n2.\nChoose **Package World of Warcraft addon** .\n3. Click **Run workflow** (in the light blue bar).\n4. Type a version number and click **Run workflow** .\n5. In a minute or so, a new release will be tagged and there will be two zip files attached. (For example, [Pawn releases](https://github.com/VgerMods/Pawn/releases) .)\n\nThis workflow assumes that your TOC file has the regular 80300 version specified: it\u2019ll use the source code as-is to produce the retail version, and then the TOC file will get switched to 11305 in the Classic zip. (If the current Classic version changes in the future, just change the `CLASSIC_VERSION` number at the top of that `.yml` file.)\n\nAnyway, I hope someone finds that useful!\n\n2 \u200b\n\n\u200b \u200b\n\n806 views 3 links\n\nVger\n\n5 posts\n\n<Rapture>\n\n80 Troll Shaman 23305\n\nAug 2020\n\nI also just stumbled across this one:\n\n[GitHub](https://github.com/BigWigsMods/packager)\n\n### [GitHub - BigWigsMods/packager: Generate an addon zip file from a Git, SVN, or...](https://github."
+      ]
+    },
+    {
+      "url": "https://wowpedia.fandom.com/wiki/Using_the_BigWigs_Packager_with_GitHub_Actions",
+      "title": "Using the BigWigs Packager with GitHub Actions - Wowpedia - Your wiki guide to the World of Warcraft",
+      "publish_date": null,
+      "excerpts": [
+        "The packager can automatically generate multiple TOC files, for example this will create one zip file with three different TOCs: AddonName.toc, AddonName_Wrath.toc, AddonName_Vanilla.toc ... jobs: release: runs-on: ubuntu-latest steps: - uses: actions/checkout@v3 with: fetch-depth: 0 - uses: BigWigsMods/packager@v2 # automatically generates game type specific TOC files with: args: -S"
+      ]
+    },
+    {
+      "url": "https://raw.githubusercontent.com/BigWigsMods/packager/7025b62bbfe17817deca7caddaf572af8117fa47/release.sh",
+      "title": "https://raw.githubusercontent.com/BigWigsMods/pack...",
+      "publish_date": null,
+      "excerpts": [
+        "(Use 0 to unset the TOC value) -a wago-id Set the project id used on Wago Addons for uploading. (Use 0 to unset the TOC value) -g game-version Set the game version to use for uploading. -m pkgmeta.yaml Set the pkgmeta file to use. -n &quot;{template}&quot; Set the package zip file name and upload label."
+      ]
+    },
+    {
+      "url": "https://hub.docker.com/r/p3lim/wow-packager/",
+      "title": "p3lim/wow-packager - Docker Image",
+      "publish_date": null,
+      "excerpts": [
+        "release_ subdirectory in **.gitignore** .\n4. Run **release.sh** .\n\n#### \u2060 Using release.sh to build a Classic release\n\nTo make use of the _@retail@_ and _@non-retail@_ keywords, **release.sh** needs\nto know what version of World of Warcraft the package is targeting. This is\nautomatically detected using the `## Interface:` line of the addon's TOC file.\n\nIf your addon supports both retail and classic in the same branch, you can use\nkeywords in your TOC file to include the appropriate `## Interface:` line in the\npackage.\n\n```\n#@retail@\n## Interface: 80200\n#@end-retail@\n#@non-retail@\n# ## Interface: 11302\n#@end-non-retail@\n```\n\nCopy\n\nBy default, **release.sh** will target retail. You can change this by passing a\ndifferent game version as an argument. To target classic this would be `release.sh -g 1.13.2` .\n\n#### \u2060 Usage\n\n```\nUsage: release.sh [-cdelLosuz] [-t topdir] [-r releasedir] [-p curse-id] [-w wowi-id] [-g game-version] [-m pkgmeta.yml]\n-c               Skip copying files into the package directory.\n  -d               Skip uploading.\n  -e               Skip checkout of external repositories.\n  -l               Skip @localization@ keyword replacement.\n  -L               Only do @localization@ keyword replacement (skip upload to CurseForge).\n  -o               Keep existing package directory, overwriting its contents.\n  -s               Create a stripped-down \"nolib\" package.\n  -u               Use Unix line-endings.\n  -z               Skip zip file creation.\n  -t topdir        Set top-level directory of checkout.\n  -r releasedir    Set directory containing the package directory. Defaults to \"$topdir/.release\".\n  -p curse-id      Set the project id used on CurseForge for localization and uploading.\n  -w wowi-id       Set the addon id used on WoWInterface for uploading.\n  -g game-version  Set the game version to use for CurseForge uploading.\n  -m pkgmeta.yaml  Set the pkgmeta file to use.\n```\n\nCopy"
+      ]
+    }
+  ],
+  "usage": [
+    {
+      "name": "sku_search",
+      "count": 1
+    }
+  ],
+  "warnings": []
+}

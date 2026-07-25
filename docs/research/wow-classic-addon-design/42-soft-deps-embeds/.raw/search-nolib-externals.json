@@ -1,0 +1,34 @@
+Addon Devs: How do you handle dependencies/libs in ...
+  URL: https://www.reddit.com/r/wowaddons/comments/zdgl6w/addon_devs_how_do_you_handle_dependencieslibs_in/
+  I know that a lot of WoW addons rely on libraries like Ace, LibCompress, LibDeflate, and others..
+
+I also know that Curse will automatically bundle ...
+
+Help with packaging addons
+  URL: https://www.wowinterface.com/forums/showthread.php?t=58078
+  You use the .pkgmeta file for including external libraries (provided you use the CurseForge or BigWigs packager)
+
+Embedded Library Woes - UI and Macro
+  URL: https://us.forums.blizzard.com/en/wow/t/embedded-library-woes/1610075
+  Move your library code into a standalone addon of its own and then use it the two addons without embedding. If it can't do that then the ...
+
+wow-addon-partyping/.pkgmeta at master
+  URL: https://github.com/maluramichael/wow-addon-partyping/blob/master/.pkgmeta
+  WoW Classic Era addon: Play configurable sounds for party events ・ embed Ace3 libraries success ・ externals: libs/LibStub:
+  Category: github
+
+Preparing the PackageMeta File
+  URL: https://support.curseforge.com/en/support/solutions/articles/9000197952-preparing-the-packagemeta-file
+  Externals are specified by providing the externals header and key-value pairs for the local path to the remote repository.
+
+Classic WoW Addon Guide | How to Find, Install, and Update ...
+  URL: https://www.youtube.com/watch?v=bbQ4xI7XEUw
+  Classic WoW Addon Guide | How to Find, Install, and Update Addons | My Addon List · Comments.
+
+The Current Must-Have Addons! (WoW: The War Within)
+  URL: https://www.youtube.com/watch?v=b31uNacBJ38
+  This video is an addon guide for World of Warcraft: TWW showing the first addons a new player should install in patch 11.1 in 2025.
+
+Creating AddOn dependencies | WoWWiki
+  URL: https://wowwiki-archive.fandom.com/wiki/Creating_AddOn_dependencies
+  A dependent AddOn is one that relies on another AddOn or code library for it's full functionality.

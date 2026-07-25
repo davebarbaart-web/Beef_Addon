@@ -20,6 +20,7 @@ Do **not** open `.worktrees/feat-church-of-beef-v1` as a separate workspace — 
 |------|------|
 | Product decisions | `docs/superpowers/specs/2026-07-25-church-of-beef-design.md` |
 | Task / file layout | `docs/superpowers/plans/2026-07-25-church-of-beef-v1.md` |
+| **UI / art direction (agents)** | [`docs/superpowers/ui-polished-direction-for-agents.md`](docs/superpowers/ui-polished-direction-for-agents.md) — **read before any UI `CreateFrame`** |
 | Machine canon (ranks/thresholds) | `addon/ChurchOfBeef/Data/Ranks.lua` (on feature checkout) |
 | Lore prose (no numbers) | `docs/canon/` |
 | Cursor rules | [`.cursor/rules/`](.cursor/rules/) |
@@ -27,6 +28,10 @@ Do **not** open `.worktrees/feat-church-of-beef-v1` as a separate workspace — 
 | Editor defaults (Lua 5.1) | [`.vscode/`](.vscode/) |
 | DevEx backlog (needs approval) | [`OPTIMIZATIONS.md`](OPTIMIZATIONS.md) |
 | Research library | `docs/research/wow-classic-addon-design/` |
+
+### UI work is agent-executed
+
+V1 UI and later art direction are expected to be implemented by **coding agents**, not hand-designed in Figma. Orientation canvases (north star, build prep, commission brief) may live in the Cursor project `canvases/` folder; the **in-repo briefing** above is the durable entry point. Spec §15 / glossary win over canvases if they ever diverge.
 
 ### Checkout layout
 

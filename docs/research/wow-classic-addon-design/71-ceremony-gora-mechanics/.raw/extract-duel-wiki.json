@@ -1,0 +1,48 @@
+{
+  "extract_id": "extract_fc076793644177dc22d7abb40bad321d",
+  "session_id": "session_fc076793644177dc22d7abb40bad321d",
+  "status": "ok",
+  "results": [
+    {
+      "url": "https://warcraft.wiki.gg/wiki/API_AcceptDuel",
+      "title": "AcceptDuel - Warcraft Wiki - Your wiki guide to the World of Warcraft",
+      "publish_date": "2004-11-20",
+      "excerpts": [
+        "wiki.gg logo\n\nToggle personal tools menu\n\n* \n* \n\n[](https://app.wiki.gg/showcase/go?utm_campaign=sow&utm_medium=bannerheader&utm_source=warcraft.wiki.gg&location=desktop)\n\n# AcceptDuel\n\nFrom Warcraft Wiki\n\nJump to navigation Jump to search\n\n|Main Menu |\n| --- |\n|* WoW API\n* Lua API\n* Widget API\n* XML schema\n* FrameXML\n* Events\n* CVars\n\n* * *\n\n* Combat Log\n* Escape sequences\n* API changes\n* HOWTOs\n* Discord logo.png [wowuidev](https://discord.gg/txUg39Vhc6) |\n\n**Lua error in Module:Wowapi/category at line 21: bad argument #2 to 'format' (string expected, got nil).**\n\n|Fat cat yearns for the mines |The API wiki is under maintenance\n\nSince `2026-07-23T06:08:00Z` , ETA: at least multiple days |\n| --- | --- |\n\nAccepts a duel challenge.\n\n```\nAcceptDuel ()\n```\n\n## See also\n\n* StartDuel to issue a duel challenge.\n* CancelDuel to reject a duel challenge.\n\nRetrieved from \" [https://warcraft.wiki.gg/wiki/API\\_AcceptDuel?oldid=6582359](https://warcraft.wiki.gg/wiki/API_AcceptDuel?oldid=6582359) \"\n\nHidden category:\n\n* Pages with script errors\n\n[](https://app.wiki.gg/showcase/go?utm_campaign=sow&utm_medium=mrecmiddle&utm_source=warcraft.wiki.gg&location=desktop)\n\n[Report bad advertisement](https://www.wiki.gg/t/bad-ad)\n\n[](https://app.wiki.gg/showcase/go?utm_campaign=sow&utm_medium=bannerfooter&utm_source=warcraft.wiki.gg&location=desktop)\n\nCookies help us deliver our services. By using our services, you agree to our use of cookies.\n\n[More information](https://www.indie.io/privacy-policy) OK\n\n* This page was last edited on 2 January 2026, at 23:01.\n* Pages that were created prior to October 2023 are adapted from the Fandom Wowpedia Wiki.  \n  Page content is under [Creative Commons Attribution-ShareAlike 4.0 License](https://creativecommons.org/licenses/by-sa/4.0) unless otherwise noted.\n\n* [Terms of Service](https://www.indie.io/terms-of-service)\n* [Privacy policy](https://www.indie.io/privacy-policy)\n* [Support Wiki](https://support.wiki.gg)\n* [Send a ticket to wiki.gg](https://wiki.gg/go/servicedesk)\n* [Status page](https://wikiggstatus.com)\n* Manage US Privacy Settings\n\n* [Creative Commons Attribution-ShareAlike 4.0 License Creative Commons Attribution-ShareAlike 4.0 License](https://creativecommons.org/licenses/by-sa/4.0)\n* [Powered by MediaWiki Powered by MediaWiki](https://www.mediawiki.org/)\n* [Part of wiki.gg Part of wiki.gg](https://wiki.gg)\n\niiq_pixel"
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "url": "https://warcraft.wiki.gg/wiki/API_StartDuel",
+      "error_type": "http_error",
+      "http_status_code": 403,
+      "content": null
+    },
+    {
+      "url": "https://warcraft.wiki.gg/wiki/DUEL_FINISHED",
+      "error_type": "http_error",
+      "http_status_code": 403,
+      "content": null
+    },
+    {
+      "url": "https://warcraft.wiki.gg/wiki/DUEL_REQUESTED",
+      "error_type": "http_error",
+      "http_status_code": 403,
+      "content": null
+    }
+  ],
+  "usage": [
+    {
+      "name": "sku_extract_excerpts",
+      "count": 1
+    }
+  ],
+  "warnings": [
+    {
+      "type": "warning",
+      "message": "Neither objective nor search_queries were provided, provide at least one to increase the relevance of excerpts.",
+      "detail": null
+    }
+  ]
+}

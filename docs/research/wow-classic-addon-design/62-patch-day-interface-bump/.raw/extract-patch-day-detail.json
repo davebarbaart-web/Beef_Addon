@@ -1,0 +1,46 @@
+{
+  "extract_id": "extract_06bd567468e67c4d68e64b735dc369c2",
+  "session_id": "session_06bd567468e67c4d68e64b735dc369c2",
+  "status": "ok",
+  "results": [
+    {
+      "url": "https://warcraft.wiki.gg/wiki/Patch_2.5.6/API_changes",
+      "title": "Patch 2.5.6/API changes - Warcraft Wiki - Your wiki guide to the World of Warcraft",
+      "publish_date": "2026-07-10",
+      "excerpts": [
+        "# Patch 2.5.6/API changes\n## Resources\n* TOC: `20506`\n* Diffs: [wow-ui-source](https://github.com/Gethe/wow-ui-source/compare/2.5.5..2.5.6) , [BlizzardInterfaceResources](https://github.com/Ketho/BlizzardInterfaceResources/compare/2.5.5...2.5.6)\n\n## Blue posts\n**User Interface Updates in Classic** | 2026-07-10 05:10 | Blizzard Entertainment **Kaivax**\nHello,\n\n...\n\nSome third-party addons may experience errors until they are updated by their authors. As all versions of World of Warcraft share most of their UI code, the addon API in 1.15.9 very closely matches the addon API from 2.5.6.\nFor addon authors, we encourage you to use 2.5.6 as an environment for updating addons to be compatible with 1.15.9.\nWe will continue to refine our updates in the future, so that we\u2019re providing additional options for players to modify settings wherever possible.\nThank you, as always, for your passion and feedback.\n[View original post](https://us.forums.blizzard.com/en/wow/t/user-interface-updates-in-classic/2325408)"
+      ]
+    },
+    {
+      "url": "https://support.curseforge.com/support/solutions/articles/9000197281-automatic-packaging",
+      "title": "Automatic Packaging: CurseForge support",
+      "publish_date": null,
+      "excerpts": [
+        "# Thank you for reaching out to us!\n## Replacement Tokens\n### **Debug replacements**\n`--[===[@non-debug@` and `--@end-non-debug@]===]`\nTurns into `--@non-debug@` and `--@end-non-debug@` .\nXML\n`(insert code here)`\nTurns into `` .\n``\nTurns into `(insert code here)` .\nTOC\n`#@debug@` and `#@end-debug@>`\n\n...\n\n### **Exclude from packaging**\nThese occur based on filetype, as they tend to tie into the comment system for the file.\n`--@do-not-package@` and `--@end-do-not-package@` (for Lua)\n`and` (for XML)\n`(insert code here)`\n#@do-not-package@ and #@end-do-not-package@ (for TOC)\n\n...\n\n### Alpha replacements\n**TOC**\n`#@alpha@` and `#@end-alpha@`\nTurns into `#@alpha@` and `#@end-alpha@` , as well as adding a # to the beginning of each line in-between.\nDid you find it helpful? Yes No\nSend feedback\nSorry we couldn't be helpful. Help us improve this article with your feedback."
+      ]
+    },
+    {
+      "url": "https://wowpedia.fandom.com/wiki/Getting_the_current_interface_number",
+      "title": "Getting the current interface number - Wowpedia - Your wiki guide to the World of Warcraft",
+      "publish_date": null,
+      "excerpts": [
+        "# Getting the current interface number\nWhen loading the interface, the WoW client skips over any AddOn whose interface version does not match its own. This is an effort to keep the client's behavior free of errors due to changes in the API. Each AddOn specifies (in its .toc file ) the interface version with which it complies.\nSo an AddOn's .toc file most likely contains a line similar to:\n```\n## Interface: 120005\n```\nThe version string is (most of the time), the major patch number but with any periods and leading zeroes removed. For instance, 90002 is 9.0.2.\nThere are a number of ways to get the current interface version:\n```\nIt probably is 120005 (Retail), 40402 (Cataclysm Classic), 30405 (Wrath Classic) or 11508 (Classic)\nBut these numbers are maintained locally , so they _might_ be out of date.\n```\nUse GetBuildInfo\nIn particular, `/dump select(4, GetBuildInfo())` should output the correct version to your chat frame.\nSteal it from another AddOn\nRecently updated AddOns, which are not listed as \"out of date\" by the client contain the correct Interface version in their toc tag.\n\n## Patch changes [ [](https://auth.fandom.com/signin?redirect=https%3A%2F%2Fwowpedia.fandom.com%2Fwiki%2FGetting_the_current_interface_number%3Faction%3Dedit%26section%3D1&uselang=en&metadata=article-registration-edit-article-section \"Sign in to edit\") ]\n* Battle for Azeroth **Patch 8.2.0 (2019-06-25):** Removed from Blizzard's toc files, [[\n\n...\n\n`ExportInterfaceFiles code`to extract FrameXML files into`World of\nWarcraft\\BlizzardInterfaceCode`\n* Search for FrameXML.toc online, such as at"
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "url": "https://warcraft.wiki.gg/wiki/UI_FAQ/AddOns",
+      "error_type": "network_error",
+      "http_status_code": null,
+      "content": null
+    }
+  ],
+  "usage": [
+    {
+      "name": "sku_extract_excerpts",
+      "count": 3
+    }
+  ],
+  "warnings": []
+}

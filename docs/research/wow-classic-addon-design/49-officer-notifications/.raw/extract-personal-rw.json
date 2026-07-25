@@ -1,0 +1,23 @@
+{
+  "extract_id": "extract_c0929f8f1faccf9b678317c482d9e5ed",
+  "session_id": "session_c0929f8f1faccf9b678317c482d9e5ed",
+  "status": "ok",
+  "results": [
+    {
+      "url": "https://www.wowinterface.com/forums/showthread.php?t=36250",
+      "title": "Outputing a personal raid warning - WoWInterface",
+      "publish_date": null,
+      "excerpts": [
+        "personal raid warning**\n\n...\n\n[lilgulps's Avatar](https://www.wowinterface.com/forums/member.php?s=72d16e387b2e734b268fb2e46c6fef83&u=223026)\n| [AddOn Author - Click to view addons](https://www.wowinterface.com/portal223026.html) |\nJoin Date: Jan 2010\nPosts: 62\n**Outputing a personal raid warning**\nwhat is the script command for the api to output a message in the raid frame, that only the player can see, I.E. it doesn't try to broadcast to party or raid.\n[Reply With Quote](https://www.wowinterface.com/forums/newreply.php?s=72d16e387b2e734b268fb2e46c6fef83&do=newreply&p=214129)\n10-25-10, 10:31 PM\n\n...\n\n| [AddOn Author - Click to view addons](https://www.wowinterface.com/downloads/author-100992.html) |\nJoin Date: Jun 2008\nPosts: 115\nPretty sure it's\nCode:\n```\nRaidNotice_AddMessage(RaidWarningFrame, \"text\", ChatTypeInfo[\"RAID_WARNING\"])\n```\nIf you want the sound then you'll need\nCode:\n```\nPlaySoundFile(\"Sound\\\\Interface\\\\RaidWarning.wav\")\n```\n[Reply With Quote](https://www.wowinterface.com/forums/newreply.php?s=72d16e387b2e734b268fb2e46c6fef83&do=newreply&p=214134)\n10-25-10, 10:33 PM\n# [**3**](https://www.wowinterface.com/forums/showpost.php?s=72d16e387b2e734b268fb2e46c6fef83&p=214135&postcount=3)\n\n...\n\n|Originally Posted by **Dainton** [View Post](https://www.wowinterface.com/forums/showthread.php?s=72d16e387b2e734b268fb2e46c6fef83&p=214134)\nPretty sure it's\nCode:\n```\nRaidNotice_AddMessage(RaidWarningFrame, \"text\", ChatTypeInfo[\"RAID_WARNING\"])\n```\nIf you want the sound then you'll need\nCode:\n```\nPlaySoundFile(\"Sound\\\\Interface\\\\RaidWarning.wav\")\n``` |\n| --- |\n\nI don't think .wav files work anymore. It needs to be .mp3 or .ogg. The rest is correct. Can't confirm this but I think I've read something stating this.\n\n\\_\\_\\_\\_\\_\\_\\_\\_\\_\\_\\_\\_\\_\\_\\_\\_\\_\\_  \n```\n\n...\n\n```\nI think that's just for custom sound files and not the game's sound files.  \n  \nUsing\n\nCode:\n\n```\n\n...\n\n```\n a personal raid warning |**\u00ab** [Previous Thread](https://www.wowinterface.com/forums/showthread.php?s=72d16e387b2e734b268fb2e46c6fef83&t=36250&goto=nextoldest) | [Next Thread](https://www.wowinterface.com/forums/showthread.php?s=72d16e387b2e734b268fb2e46c6fef83&t=36250&goto=nextnewest) **\u00bb** |\n| --- | --- | --- |\n\n  \n  \n| Posting Rules |\n```"
+      ]
+    }
+  ],
+  "errors": [],
+  "usage": [
+    {
+      "name": "sku_extract_excerpts",
+      "count": 1
+    }
+  ],
+  "warnings": []
+}

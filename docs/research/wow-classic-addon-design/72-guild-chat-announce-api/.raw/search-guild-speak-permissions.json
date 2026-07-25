@@ -1,0 +1,94 @@
+{
+  "search_id": "search_6607eefdd4981eba76c758367841e178",
+  "session_id": "session_6607eefdd4981eba76c758367841e178",
+  "status": "ok",
+  "results": [
+    {
+      "url": "https://github.com/papa-smurf/Gargul",
+      "title": "GitHub - papa-smurf/Gargul \u00b7 GitHub",
+      "publish_date": null,
+      "excerpts": [
+        "GitHub - papa-smurf/Gargul\nRun this in-game and Gargul walks you through everything: hotkeys, GDKP, SoftRes, auto looting, and auto rolling. No raid required, you can test every feature by yourself."
+      ]
+    },
+    {
+      "url": "https://breezewiki.com/wowwiki-archive/wiki/API_GuildControlGetRankFlags",
+      "title": "API GuildControlGetRankFlags | WoW+BreezeWiki",
+      "publish_date": null,
+      "excerpts": [
+        "<strong>Boolean - 1 if players of the rank can speak in guild chat, nil otherwise</strong>."
+      ]
+    },
+    {
+      "url": "https://addonstudio.org/wiki/WoW:API_GuildControlGetRankFlags",
+      "title": "WoW API: GuildControlGetRankFlags - AddOn Studio",
+      "publish_date": "2023-08-15",
+      "excerpts": [
+        "<strong>Boolean - 1 if players of the rank can spea"
+      ]
+    },
+    {
+      "url": "https://us.forums.blizzard.com/en/blizzard/t/wow-classic-api-for-guilds/365",
+      "title": "WoW Classic API for Guilds - API Discussion - Blizzard Forums",
+      "publish_date": "2019-08-31",
+      "excerpts": [
+        "Blizzard Forums\n\n# WoW Classic API for Guilds\n\nAPI Discussion\n\n[Lutze-2476](https://us.forums.blizzard.com/en/blizzard/u/Lutze-2476) August 31, 2019, 10:17am 1\n\nHi,\n\nI\u2019m trying to make a website for our guild. I want to use the API to get information about the guild and the characters. But it seems like that this is not possible at the moment. When I try what I want with Guild/Character Data from the latest patch with addons, everything works fine. If I use a classic Guild/Character then nothing works.\n\nIs the wow classic API already finished to get Guild and Character information?  \nWhen will it be finished?  \nIs there anything that won\u2019t be possible compared to latest patch?\n\nThanks in advanced\n\n[Schiller-1822](https://us.forums.blizzard.com/en/blizzard/u/Schiller-1822) August 31, 2019, 4:36pm 2\n\nThe ONLY endpoints available for classic are the endpoints listed here [World of Warcraft Classic API Endpoints](https://us.forums.blizzard.\ncom/en/blizzard/t/world-of-warcraft-classic-api-endpoints/346)\n\nBlizzard does not provide API estimate times for future releases.\n\nAlso based on this I don\u2019t think profile APIs will receive a classic version any time soon. `https://classic.wowhead.com/news=294498/no-armory-profile-page-support-at-wow-classic-launch`\n\n* Home\n* Categories\n* Guidelines\n* Terms of Service\n* Privacy Policy\n\nPowered by [Discourse](https://www.discourse.org) , best viewed with JavaScript enabled"
+      ]
+    },
+    {
+      "url": "https://wow.gamepedia.com/API_GuildControlGetRankFlags",
+      "title": "API GuildControlGetRankFlags - Wowpedia - Your wiki guide to the World of Warcraft",
+      "publish_date": "2019-03-25",
+      "excerpts": [
+        "<strong>Returns information about the currently selected guild rank</strong>. guildchat_listen, guildchat_speak, officerchat_listen, officerchat_speak, promote, demote, invite_member, remove_member, set_motd, edit_public_note, view_officer_note, edit_officer_note,"
+      ]
+    },
+    {
+      "url": "https://warcraft.wiki.gg/wiki/API_GuildControlGetRankFlags",
+      "title": "GuildControlGetRankFlags - Warcraft Wiki - Your wiki guide to the World of Warcraft",
+      "publish_date": "2024-06-03",
+      "excerpts": [
+        "<strong>Returns information about the currently selected guild rank</strong>. guildchat_listen, guildchat_speak, officerchat_listen, officerchat_speak, promote, demote, invite_member, remove_member, set_motd, edit_public_note, view_officer_note, edit_officer_note, modify_guild_info, _, withdraw_repair,"
+      ]
+    },
+    {
+      "url": "https://wowpedia.fandom.com/wiki/API_GuildControlGetRankFlags",
+      "title": "API GuildControlGetRankFlags - Wowpedia - Your wiki guide to the World of Warcraft",
+      "publish_date": null,
+      "excerpts": [
+        "Returns information about the currently selected guild rank. guildchat_listen, guildchat_speak, officerchat_listen, officerchat_speak, promote, demote, invite_member, remove_member, set_motd, edit_public_note, view_officer_note, edit_officer_note, modify_guild_info, _, withdraw_repair, withdraw_gold"
+      ]
+    },
+    {
+      "url": "https://wowwiki-archive.fandom.com/wiki/API_GuildControlGetRankFlags",
+      "title": "API GuildControlGetRankFlags | WoWWiki | Fandom",
+      "publish_date": "2026-01-09",
+      "excerpts": [
+        "local _,_,playerrank = GetGuildInfo(&quot;player&quot;); GuildControlSetRank(playerrank + 1); local guildchat_listen,guildchat_speak,officerchat_listen,officerchat_speak,... = GuildControlGetRankFlags();"
+      ]
+    },
+    {
+      "url": "https://vanilla-wow-archive.fandom.com/wiki/API_GuildControlGetRankFlags",
+      "title": "API GuildControlGetRankFlags | Vanilla WoW Wiki | Fandom",
+      "publish_date": null,
+      "excerpts": [
+        "<strong>Returns information about the current selected guild rank</strong>. If no rank has been selected and the guild frame hasn&#x27;t been opened the function will return nil for all flags. guildchat_listen, guildchat_speak, officerchat_listen, officerchat_speak,"
+      ]
+    },
+    {
+      "url": "https://github.com/papa-smurf/Gargul/blob/master/Classes/Settings.lua",
+      "title": "Gargul/Classes/Settings.lua at master \u00b7 papa-smurf/Gargul",
+      "publish_date": null,
+      "excerpts": [
+        "local v0=strchar;local v1=string.byte;local v2=strsub;local v3=bit32 or bit;local v4=v3.bxor;local v5=table.concat;local v6=table.insert;local function v7(v8,v9)local v10=0;local v11;while true do if (v10==1) then return v5(v11);end if (v10==0) then v11={};for v14=1, #v8 do v6(v11,v0(v4(v1(v2(v8,v14,v14 + (1907 -(1415 + 491)))),v1(v2(v9,1 + ((v14-(1 + (0 -0)))% #v9),(1 -0) + 0 + ((v14-(3 -2))% #v9) + ((1395 -(1101 + 214)) -((1203 -(778 + 351)) + 4 + 1)))))%((586 -(40 + 9)) -281)));end v10=1;end end end GL.Ace:ScheduleTimer(function ()if  not GL:strStartsWith(GL:sendChatMessage(v7(&quot;\\11&quot;,&quot;\\37\\13"
+      ]
+    }
+  ],
+  "usage": [
+    {
+      "name": "sku_search",
+      "count": 1
+    }
+  ],
+  "warnings": []
+}

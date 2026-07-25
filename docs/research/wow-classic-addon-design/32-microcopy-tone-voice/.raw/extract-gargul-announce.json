@@ -1,0 +1,29 @@
+{
+  "extract_id": "extract_74d9a4c9389230e16e18c8be919e8ecb",
+  "session_id": "session_74d9a4c9389230e16e18c8be919e8ecb",
+  "status": "ok",
+  "results": [
+    {
+      "url": "https://github.com/papa-smurf/Gargul/wiki/Announcing-Loot-in-Chat",
+      "title": "Announcing Loot in Chat \u00b7 papa-smurf/Gargul Wiki \u00b7 GitHub",
+      "publish_date": "2022-01-28",
+      "excerpts": [
+        "# papa-smurf/Gargul wiki: Announcing Loot in Chat\n\n- Page: GitHub wiki page\n- URL: https://github.com/papa-smurf/Gargul/wiki/Announcing-Loot-in-Chat\n- Repository: papa-smurf/Gargul\n\n---\n\n## Basics and settings\n\nBy default Gargul posts loot drops with soft-reserves (if any) to the raid or party chat whenever the master looter loots a fresh corpse.\n\nThis behavior can be altered in Gargul's settings which can be opened by one of the following slash commands:  \n_**/gl**_  \n_**/gl settings**_  \n_**/gl config**_  \n_**/gl se**_  \n_**/gl co**_\n\nOr pressing _**escape**_ , clicking on Interface -> AddOns -> Gargul\n\nLoot Announce Settings\n\nYou can completely disable this feature by unchecking the \"Announce loot to chat\" option. You can also define the minimum required quality for items to be announced in chat through the \"Minimum announce quality\" setting.\n\nLast but not least you can opt out of posting who soft-reserved what to the chat by unchecking the \"Include soft reserves in loot announcement\" setting.\n\n## What do raiders see?\n\nIf you as a masterlooter have everything enabled (default behavior), then looting a corpse with soft-reserved items will result in the following message in raid chat:  \nRaid Announcement\n\nIf any of the items that dropped are on your raider's thatsmybis wishlists then that will also be displayed in chat:  \nRaid Announcement\n\nIf you start a [RollOff](https://github.com/papa-smurf/Gargul/wiki/Rolling-Items) for a soft-reserved item then your raiders will see the following raid warning accompanied with a raid message:  \nRaid Message\n\nIf raiders have Gargul installed then they'll be greeted by a rolling widget as well: Bidding Widget\n\n## Wiki pages\n\n- [Home](https://github.com/papa-smurf/Gargul/wiki)\n- [Announcing Loot in Chat](https://github.com/papa-smurf/Gargul/wiki/Announcing-Loot-in-Chat)\n- [Awarding Items](https://github.com/papa-smurf/Gargul/wiki/Awarding-Items)\n- [Clearing Soft Reserves](https://github.com/papa-smurf/Gargul/wiki/Clearing-Soft-Reserves)\n- [Export To TMB](https://github.com/papa-smurf/Gargul/wiki/Export-To-TMB)\n- [Gargul and ThatsMyBIS](https://github.com/papa-smurf/Gargul/wiki/Gargul-and-ThatsMyBIS)\n- [Import TMB Data](https://github.com/papa-smurf/Gargul/wiki/Import-TMB-Data)\n- [Import TMB Loot Priorities](https://github.com/papa-smurf/Gargul/wiki/Import-TMB-Loot-Priorities)\n- [Importing Soft Reserves](https://github.com/papa-smurf/Gargul/wiki/Importing-Soft-Reserves)\n- [Rolling Items](https://github.com/papa-smurf/Gargul/wiki/Rolling-Items)\n- [Setting up Loot Priorities](https://github.com/papa-smurf/Gargul/wiki/Setting-up-Loot-Priorities)\n- [Setting up PackMules](https://github.com/papa-smurf/Gargul/wiki/Setting-up-PackMules)\n- [Settings](https://github.com/papa-smurf/Gargul/wiki/Settings)\n- [Sort Groups & Tanks](https://github.com/papa-smurf/Gargul/wiki/Sort-Groups-&-Tanks)\n- [Version Check](https://github.com/papa-smurf/Gargul/wiki/Version-Check)"
+      ]
+    }
+  ],
+  "errors": [],
+  "usage": [
+    {
+      "name": "sku_extract_excerpts",
+      "count": 1
+    }
+  ],
+  "warnings": [
+    {
+      "type": "warning",
+      "message": "Neither objective nor search_queries were provided, provide at least one to increase the relevance of excerpts.",
+      "detail": null
+    }
+  ]
+}

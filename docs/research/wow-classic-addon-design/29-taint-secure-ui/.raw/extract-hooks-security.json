@@ -1,0 +1,46 @@
+{
+  "extract_id": "extract_acda96996e75b1164598e247ef36e8e9",
+  "session_id": "session_acda96996e75b1164598e247ef36e8e9",
+  "status": "ok",
+  "results": [
+    {
+      "url": "https://www.better-addons.com/security",
+      "title": "Security Model - WoW Addon Development Guide",
+      "publish_date": null,
+      "excerpts": [
+        "* Security Model Overview\n* Protected Functions\n* Taint System\n+ Secure vs. Tainted Code\n+ How Taint Propagates\n+ Checking Taint Status\n* Combat Lockdown\n+ Detecting Combat Lockdown\n+ Pattern: Queue Actions for After Combat\n* Hardware Event Requirements\n* What Addons Cannot Do\n* Best Practices\n+ Performance\n\n...\n\n* Security Model Overview\n* Protected Functions\n* Taint System\n+ Secure vs. Tainted Code\n+ How Taint Propagates\n+ Checking Taint Status\n* Combat Lockdown\n+ Detecting Combat Lockdown\n+ Pattern: Queue Actions for After Combat\n* Hardware Event Requirements\n* What Addons Cannot Do\n* Best Practices\n+ Performance\n\n...\n\n# Security Model & Best Practices \u00b6\n## Security Model Overview \u00b6\nWorld of Warcraft employs a strict addon security model designed to prevent botting, unfair gameplay advantages, and exploitation. Addons run in a **sandboxed Lua environment** with no access to the filesystem, network sockets, or operating system commands.\n\n...\n\n## Taint System \u00b6\n### Secure vs. Tainted Code \u00b6\n* **Secure code** \u2014 Blizzard's default UI code. It can call protected functions and modify secure frames.\n* **Tainted code** \u2014 Any code originating from an addon. It cannot call protected functions during combat.\n\n...\n\n### Checking Taint Status \u00b6\nUse `issecurevariable()` to inspect whether a variable is tainted:\n```\n local isTainted = not issecurevariable ( \"SomeGlobalVariable\" )  if isTainted then  print ( \"SomeGlobalVariable is tainted by addon code\" )  end   -- Check a table field  local isTainted = not issecurevariable ( SomeTable , \"key\" )\n```\n\n...\n\n## Combat Lockdown \u00b6\n### Detecting Combat Lockdown \u00b6\n```\n if InCombatLockdown () then  print ( \"In combat \u2014 protected actions are blocked!\" )  end\n```\nDuring Combat Lockdown, You Cannot:\n\n...\n\n### Pattern: Queue Actions for After Combat \u00b6\nThe standard pattern is to queue desired actions during combat and execute them when combat ends via the `PLAYER_REGEN_ENABLED` event:\n```\n local addonName , ns = ...   ns . pendingActions = {}   local frame = CreateFrame ( \"Frame\" )  frame : RegisterEvent ( \"PLAYER_REGEN_ENABLED\" )   frame : SetScript ( \"OnEvent\" , function ( self , event )  if event == \"PLAYER_REGEN_ENABLED\" then  for _ , action in ipairs ( ns . pendingActio\nns ) do  action ()  end  wipe ( ns . pendingActions )  end  end )   -- Helper to run an action now, or queue it for after combat  function ns : RunOrQueue ( action )  if InCombatLockdown () then  table.insert ( self . pendingActions , action )  print ( \"Action queued \u2014 will execute after co\nmbat.\" )  else  action ()  end  end   -- Usage example: safely show a secure frame  ns : RunOrQueue ( function ()  MySecureFrame : Show ()  end )\n```\nTip\nAlways check `InCombatLockdown()` before performing any protected operation. The queue-and-execute pattern above is the idiomatic way to handle this.\n\n...\n\n## What Addons Cannot Do \u00b6\nUnderstanding the boundaries of the sandbox helps avoid wasted effort and security violations.\nAddon Restrictions\n* **No filesystem access** \u2014 Cannot read, write, or list files (SavedVariables are the only persistence mechanism, managed by the game client)\n* **No network access** \u2014 Cannot open sockets, make HTTP requests, or communicate outside the game (addon messages are the only inter-player communication)\n\n...\n\n* **No secure frame modification in combat** \u2014 Cannot show, hide, or change attributes on secure frames during combat lockdown\n* **No cross-addon SavedVariables** \u2014 Cannot directly read another addon's saved data (use addon messages or public APIs instead)\n* **No raw memory access** \u2014 Cannot read or modify game memory; only the exposed Lua API is available"
+      ]
+    },
+    {
+      "url": "https://warcraft.wiki.gg/wiki/SecureActionButtonTemplate",
+      "title": "SecureActionButtonTemplate - Warcraft Wiki - Your wiki guide to the World of Warcraft",
+      "publish_date": "2006-11-16",
+      "excerpts": [
+        "# SecureActionButtonTemplate\nThe **SecureActionButtonTemplate** was introduced in Patch 2.0 to allow addons to perform protected actions \u2014 casting spells, executing macros, etc \u2014 by specifying button behavior via its attributes.\nA non-protected variant, **InsecureActionButtonTemplate** , was added in Patch 7.2.0 , and allows protected actions to be performed only while combat lockdown is not in effect.\n\n...\n\n## Creating a SecureActionButton\n### Insecure Template for out of combat use\nBeware that the button should still be created outside combat lockdown, since otherwise SetAttribute may become unusable in combat.\n\n...\n\n## Action types\n* If the value is a string, a restricted snippet stored in the attribute specified by the value on the button is executed as if it was OnClick. |"
+      ]
+    },
+    {
+      "url": "https://warcraft.wiki.gg/wiki/API_issecurevariable",
+      "title": "issecurevariable - Warcraft Wiki - Your wiki guide to the World of Warcraft",
+      "publish_date": "2007-01-04",
+      "excerpts": [
+        "# issecurevariable\n\u2191 _World of Warcraft API_\nReturns true if the specified variable is secure.\n```\nisSecure , taint = issecurevariable ([ tbl ,] variable )\n```\n\n...\n\n## Returns\n```\nisSecure\nboolean \\- true if the `table[variable]` key is secure, false if it is tainted.\n```\ntaint\nstring ? - name of the addon that tainted the table field; an empty string if tainted by a macro; nil if secure.\n\n...\n\n## Details\n||* v\n* [e](https://warcraft.wiki.gg/wiki/Template:API_Trail_Secure?action=edit)\nSecure Execution |\n| --- | --- |\n| |\n|Overview |* Secure Execution and Tainting\n* SecureTemplates\n* SecureHandlers\n* SecureStateDriver\n* RestrictedEnvironment |\n| |\n|Global API |* Protected functions\n* issecure\n* issecurevariable\n* forceinsecure\n* hooksecurefunc\n* securecall\n* secureexecuterange |\n| |\n|SecureTemplates |* ActionButton\n* UnitButton\n* GroupHeader"
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "url": "https://warcraft.wiki.gg/wiki/API_hooksecurefunc",
+      "error_type": "network_error",
+      "http_status_code": null,
+      "content": null
+    }
+  ],
+  "usage": [
+    {
+      "name": "sku_extract_excerpts",
+      "count": 3
+    }
+  ],
+  "warnings": []
+}

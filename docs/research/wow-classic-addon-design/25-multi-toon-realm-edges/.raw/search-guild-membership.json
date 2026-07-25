@@ -1,0 +1,78 @@
+{
+  "search_id": "search_56f18ce861b7668c36b63a06a70c0bce",
+  "session_id": "session_56f18ce861b7668c36b63a06a70c0bce",
+  "status": "ok",
+  "results": [
+    {
+      "url": "https://warcraft.wiki.gg/",
+      "title": "Warcraft Wiki, the World of Warcraft wiki encyclopedia",
+      "publish_date": null,
+      "excerpts": [
+        "For _Hearthstone\")_ gameplay and content information, see the wiki dedicated to the card game: [Hearthstone Wiki](https://hearthstone.wiki.gg/wiki/Hearthstone_Wiki \"hswiki:Hearthstone Wiki\")\n\n### News [ [edit](https://warcraft.wiki.gg/wiki/Warcraft_Wiki/News?action=edit) ]\n\nApr 21, 2026: _Midnight_ patch 12.0.5 now live!\n    Push back against the Void Assaults and disrupt the Twilight's Blade's Ritual Sites !\nMar 31, 2026: _Mists of Pandaria Classic_ : _Escalation_ is live!\n    Confront Garrosh Hellscream 's loyalists in the Barrens as the conflict between Alliance and Horde intensifies!\nFeb 5, 2026: _Burning Crusade Classic Anniversary Edition_ is live!\n    Journey to the shattered realm of Outland and confront the forces of Illidan Stormrage and the Burning Legion !\n\n* * *\n\n**Current and upcoming promotions:**\n\n    **Jan 6\u2014May 7, 2026:** Submit receipts for Pringles products to obtain the [[ Crimson Bow Tie ]](/wiki/Crimson_Bow_Tie \"Crimson Bow Tie\") cosmetic! _(UK/EU only)_"
+      ]
+    },
+    {
+      "url": "https://warcraft.wiki.gg/wiki/API_GetGuildInfo",
+      "title": "GetGuildInfo - Warcraft Wiki - Your wiki guide to the World of Warcraft",
+      "publish_date": "2005-03-15",
+      "excerpts": [
+        "wiki.gg logo\n\nToggle personal tools menu\n\n* \n* \n\n[](https://app.wiki.gg/showcase/go?utm_campaign=city-states%3A-medieval-1784938253396&utm_medium=bannerheader&utm_source=warcraft.wiki.gg&location=desktop)\n\n# GetGuildInfo\n\nFrom Warcraft Wiki\n\nJump to navigation Jump to search\n\n|Main Menu |\n| --- |\n|* WoW API\n* Lua API\n* Widget API\n* XML schema\n* FrameXML\n* Events\n* CVars\n\n* * *\n\n* Combat Log\n* Escape sequences\n* API changes\n* HOWTOs\n* Discord logo.png [wowuidev](https://discord.gg/txUg39Vhc6) |\n\n**Lua error in Module:Wowapi/category at line 21: bad argument #2 to 'format' (string expected, got nil).**\n\n|Fat cat yearns for the mines |The API wiki is under maintenance\n\nSince `2026-07-23T06:08:00Z` , ETA: at least multiple days |\n| --- | --- |\n\nReturns guild info for a player unit.\n\n```\nguildName , guildRankName , guildRankIndex , realm = GetGuildInfo ( unit )\n```\n\n## Arguments\n\n    unit\n    string : UnitId \\- The unit whose guild information you wish to query.\n\n## Returns\n\n    guildName\nstring \\- The name of the guild the unit is in (or nil?).\nguildRankName\n    string \\- unit's rank in unit's guild.\nguildRankIndex\n    number \\- unit's rank (index). - zero based index (0 is Guild Master, 1 and above are lower ranks)\nrealm\n    string ? \\- The name of the realm the guild is in, or nil if the guild's realm is the same as your current one\n\n## Details\n\n* This function only works in close proximity to the unit you are trying to get info from. It is the same distance that the character portrait loads if you are in party with them. It will abandon the data shortly after you leave the area, even if the portrait is remembered.\n* If using with UnitId \"player\" on loading it happens that this value is nil even if the player is in a guild. Here's a little function which checks in the GUILD\\_ROSTER\\_UPDATE and PLAYER\\_GUILD\\_UPDATE events, if guild name is available. As long as it is not, no actions are fired by my guild event handling.\n\n```\nlocal function IsPlayerInGuild()\nreturn IsInGuild () and GetGuildInfo(\"player\")\nend\n```\n\nRetrieved from \" [https://warcraft.wiki.gg/wiki/API\\_GetGuildInfo?oldid=6587731](https://warcraft.wiki.gg/wiki/API_GetGuildInfo?oldid=6587731) \"\n\nHidden category:\n\n* Pages with script errors\n\n[](https://app.wiki.gg/showcase/go?utm_campaign=city-states%3A-medieval-1784938253396&utm_medium=mrecmiddle&utm_source=warcraft.wiki.gg&location=desktop)\n\n[Report bad advertisement](https://www.wiki.gg/t/bad-ad)\n\n[](https://app.wiki.gg/showcase/go?utm_campaign=city-states%3A-medieval-1784938253396&utm_medium=bannerfooter&utm_source=warcraft.wiki.gg&location=desktop)\n\nCookies help us deliver our services. By using our services, you agree to our use of cookies.\n\n[More information](https://www.indie.io/privacy-policy) OK\n\n* This page was last edited on 3 January 2026, at 05:40.\n* Pages that were created prior to October 2023 are adapted from the Fandom Wowpedia Wiki.  \n  Page content is under [Creative Commons Attribution-ShareAlike 4."
+      ]
+    },
+    {
+      "url": "https://warcraft.wiki.gg/wiki/World_of_Warcraft",
+      "title": "World of Warcraft - Warcraft Wiki - Your wiki guide to the World of Warcraft",
+      "publish_date": "2004-11-13",
+      "excerpts": [
+        "+ Factions\n    + Reputation\n    + Professions\n    + Equipment\n  \n  Gameplay \u00bb\n  \n    + Combat\n    + PvP\n    + Quests\n    + Raids\n    + Events\n  \n  Guides Portal \u00bb\n  \n    + Instances by continent\n    + Instance grouping guide\n    + Newbie guide\n    + Travel guide\n    + Talent builds\n    + For many more, visit **guides**\n  \n  Interface customization project \u00bb\n  \n  Blizzard category \u00bb\n  \n    + Blizzard videos\n    + _Warcraft_ movie\")\n* Warcraft universe \u00bb\n  \n    + Books\n    + Games\n    + Lore\n    + Planets\n    + Zones (locations)\n    + Creatures\n  \n  Popular categories \u00bb\n  \n    + Game terms\n    + Formulas & game mechanics\n    + WoW items\n    + WoW NPCs\n    + WoW quests\n  \n  Community info \u00bb\n  \n    + Patches\n    + Fansites\n    + Wikis\n    + Forum trackers\n    + Guilds\")\n    + Realms (servers)\n  \n  Official sites \u00bb\n  \n    + [WoW US](https://worldofwarcraft.com/en-us/) / [forums](https://us.battle.net/forums/en/wow/)\n    + [WoW EU](https://worldofwarcraft.\n\n...\n\nOther videos were also made before the European release.\n\n## See also\n\n* Game manual\n* Loading screen\n* A listing of _World of Warcraft_ \\-related sites.\n* Timeline (World of Warcraft)\") for a timeline of game milestones since its announcement.\n* The World of Warcraft Townhall\n* EU English realms info\n\n## References\n\n1. ^ [The Activision/Blizzard Merger: Five Key Points](https://web.archive.org/web/20081221013844/http://www.gamasutra.com/php-bin/news_index.php?story=16458) . Industry News (2007-12-03). Archived from [the original](http://www.gamasutra.com/php-bin/news_index.php?story=16458) on 2008-12-21. Retrieved on 2018-03-05.\n2. ^ [Blizzard Entertainment Announces World of Warcraft Korean Release Date - January 18, 2005](https://web.archive.org/web/20050206195504/http://www.blizzard.com/press/koreanreleasedate.shtml) . Blizzard Entertainment (2005-01-17). Archived from [the original](http://www.blizzard.com/press/koreanreleasedate.shtml) on 2005-02-06.\n3.\n\n...\n\n33. ^ [Activision No Longer Has To Fear Declining 'World of Warcraft' Subscriptions](https://web.archive.org/web/20151103180613/http://www.forbes.com/sites/insertcoin/2015/11/03/activision-no-longer-has-to-fear-declining-world-of-warcraft-subscriptions/) . Forbes (2015-11-03). Archived from [the original](http://www.forbes.com/sites/insertcoin/2015/11/03/activision-no-longer-has-to-fear-declining-world-of-warcraft-subscriptions/) on 2015-11-03. Retrieved on 2018-03-06.\n34. ^ [Blizzard reaches 100M lifetime World of Warcraft accounts](https://web.archive.org/web/20140201230326/http://www.polygon.com/2014/1/28/5354856/world-of-warcraft-100m-accounts-lifetime) . Polygon (2014-01-28). Archived from [the original](http://www.polygon.com/2014/1/28/5354856/world-of-warcraft-100m-accounts-lifetime) on 2014-02-01. Retrieved on 2018-03-06.\n35. ^ [World of Warcraft: Azeroth by the Numbers](http://us.battle.net//wow/en/blog/12346804) . Blizzard Entertainment (2014-01-28).\n36.\n\n...\n\ncom/blizzard-talks-world-of-warcraft-legacy-servers-and-mor-1781753136) (2016-06-10).\n87. ^ _Play Nice: The Rise, Fall, and Future of Blizzard Entertainment_ , pg. 258, 259\n88. ^ 2014-08-11, [Blizzard Has Considered WoW 2 -- What Would You Like to See?](http://www.gamespot.com/articles/blizzard-has-considered-wow-2-what-would-you-like-/1100-6421751/) . _Gamespot_ , retrieved on 2014-08-16\n89. ^ 2015-08-13, [GAMESCOM 2015: BLIZZARD ON THE POSSIBILITY OF WORLD OF WARCRAFT 2](http://au.ign.com/articles/2015/08/13/gamescom-2015-blizzard-on-the-possibility-of-world-of-warcraft-2) . _IGN_ , retrieved on 2015-08-14\n90. ^ 2013-03-16, [Blizzard Exec Chris Metzen Explains How Fan Art Has Influenced Diablo To StarCraft](http://www.forbes.com/sites/johngaudiosi/2013/03/16/blizzard-exec-chris-metzen-explains-how-fan-art-has-influenced-diablo-to-starcraft/) . _Forbes_ , retrieved on 2015-03-02\n91. ^ 2025-03-23, [Sea of Thieves x Blizzard collab - not even any starcraft sails.\nDid Blizzard just forget about the franchise?](https://www.reddit.com/r/starcraft/comments/1jhmo3h/sea_of_thieves_x_blizzard_collab_not_even_any/) . _Reddit_ , retrieved on 2025-03-23\n92. ^ [Sea of Thieves prepares to set sail on Battle.net on May 22](https://news.blizzard.com/en-us/article/24192433/sea-of-thieves-prepares-to-set-sail-on-battle-net-on-may-22) . Blizzard Entertainment (2025-04-14).\n\n## External links\n\n* Blizzard Entertainment [Blizzard Entertainment](https://www.blizzard.com/en-us/WoW/ns/)\n  \n    + Blizzard Entertainment [Blizzard Entertainment](http://www.blizzard.com/wow/) World of Warcraft updated original page [ _dead link - [archived copy](http://web.archive.org/web/20041115022751/http://blizzard.com/wow/)_ ]\n    + Blizzard Entertainment [Blizzard Entertainment](http://us.blizzard.com/en-us/games/wow/) World of Warcraft current page\n* World of Warcraft Community Site [World of Warcraft Community Site](https://worldofwarcraft."
+      ]
+    },
+    {
+      "url": "https://warcraft.wiki.gg/wiki/Guild_list",
+      "title": "Guild list - Warcraft Wiki - Your wiki guide to the World of Warcraft",
+      "publish_date": null,
+      "excerpts": [
+        "The Guild list is the window that provides detailed information for the current guild that the player is in. If the player is in no guild, they will instead have access to the Guild Finder. With Battle for Azeroth, this window was replaced by the Guild &amp; Communities but can still be accessed by the /guildroster"
+      ]
+    },
+    {
+      "url": "https://warcraft.wiki.gg/wiki/World_of_Warcraft_API",
+      "title": "World of Warcraft API - Warcraft Wiki - Your wiki guide to the World of Warcraft",
+      "publish_date": null,
+      "excerpts": [
+        "List of global API functions for World of Warcraft AddOns."
+      ]
+    },
+    {
+      "url": "https://warcraft.wiki.gg/wiki/Warcraft_Wiki/Classic",
+      "title": "Warcraft Wiki/Classic - Warcraft Wiki - Your wiki guide to ...",
+      "publish_date": null,
+      "excerpts": [
+        "Warcraft Wiki/Classic - Warcraft Wiki - Your wiki guide to ...\nWarcraft Wiki/Classic < Warcraft Wiki Instances Zones Campaign Phased release plans Changes Celestial Dungeons Challenge Mode Season 2 BC Classic Anniversary Instances Zones Campaign Phased release plans Changes More Classic: Wrath of the Lich King Classic Cataclysm Classic"
+      ]
+    },
+    {
+      "url": "https://warcraft.wiki.gg/wiki/API_GetGuildRosterInfo",
+      "title": "GetGuildRosterInfo - Warcraft Wiki - Your wiki guide to the World of Warcraft",
+      "publish_date": null,
+      "excerpts": [
+        "<strong>Returns info for a guild member</strong>. name, rankName, rankIndex, level, classDisplayName, zone, publicNote, officerNote, isOnline, status, class, achievementPoints, achievementRank, isMobile, canSoR, repStanding, guid = GetGuildRosterInfo(index) index number - Ranging from 1 to GetNumGuildMembers()"
+      ]
+    },
+    {
+      "url": "https://warcraft.wiki.gg/wiki/Guild_&_Communities",
+      "title": "Guild & Communities - Warcraft Wiki - Your wiki guide to the World of Warcraft",
+      "publish_date": null,
+      "excerpts": [
+        "The Guild list interface has been implemented into this new community interface but can still be accessed separately. ... The responsiveness of the Communities UI has been improved. Upcoming calendar events are now shown in Community chat. Patch 8.0.1 (2018-07-17): Added. Retrieved from &quot;https://warcraft.wiki.gg/wiki/Guild_&amp;_Communities?oldid=6024213&quot;"
+      ]
+    }
+  ],
+  "usage": [
+    {
+      "name": "sku_search",
+      "count": 1
+    }
+  ],
+  "warnings": []
+}

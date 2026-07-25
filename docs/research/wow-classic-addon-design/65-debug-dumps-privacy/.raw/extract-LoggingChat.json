@@ -1,0 +1,16 @@
+{
+  "extract_id": "extract_844f5abff52d53e82a21a26df3ef55da",
+  "session_id": "session_844f5abff52d53e82a21a26df3ef55da",
+  "status": "ok",
+  "results": [],
+  "errors": [
+    {
+      "url": "https://warcraft.wiki.gg/wiki/API_LoggingChat",
+      "error_type": "http_error",
+      "http_status_code": 403,
+      "content": null
+    }
+  ],
+  "usage": [],
+  "warnings": []
+}

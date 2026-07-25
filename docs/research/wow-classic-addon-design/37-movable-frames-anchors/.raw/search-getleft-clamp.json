@@ -1,0 +1,78 @@
+{
+  "search_id": "search_4e905dcb7e6b7bc7dbd7394484cbfae7",
+  "session_id": "session_4e905dcb7e6b7bc7dbd7394484cbfae7",
+  "status": "ok",
+  "results": [
+    {
+      "url": "https://warcraft.wiki.gg/wiki/API_Frame_SetClampedToScreen",
+      "title": "API Frame SetClampedToScreen",
+      "publish_date": null,
+      "excerpts": [
+        "This method <strong>prevents the frame from being moved partially off-screen</strong> by the following methods: ... Despite calling SetPoint() toward 100 pixels beyond the left screen edge, the SpellBookFrame remains fully visible on the screen: SpellBookFrame:Show() SpellBookFrame:SetClampedToScreen(true)"
+      ]
+    },
+    {
+      "url": "https://warcraft.wiki.gg/wiki/API_ScriptRegion_GetLeft",
+      "title": "ScriptRegion:GetLeft - Warcraft Wiki - Your wiki guide to the World of Warcraft",
+      "publish_date": "2005-07-17",
+      "excerpts": [
+        "Returns the offset of the named part of the region from the bottom left of the screen (game window), the offset is in the effective scale of the region. <strong>left = ScriptRegion:GetLeft()</strong> right = ScriptRegion:GetRight() bottom = ScriptRegion:GetBottom() top = ScriptRegion:GetTop() x, y ="
+      ]
+    },
+    {
+      "url": "https://wowpedia.fandom.com/wiki/API_Frame_SetClampedToScreen",
+      "title": "API Frame SetClampedToScreen",
+      "publish_date": null,
+      "excerpts": [
+        "<strong>Prevents the frame from moving off-screen</strong>. Frame:SetClampedToScreen(clampedToScreen)"
+      ]
+    },
+    {
+      "url": "https://wowpedia.fandom.com/wiki/API_ScriptRegion_GetLeft",
+      "title": "ScriptRegion:GetLeft - Wowpedia - Your wiki guide to the World of Warcraft",
+      "publish_date": null,
+      "excerpts": [
+        "... Returns the offset in pixels from the screen to the region. <strong>left = ScriptRegion:GetLeft()</strong> right = ScriptRegion:GetRight() bottom = ScriptRegion:GetBottom() top = ScriptRegion:GetTop() x, y = ScriptRegion:GetCenter()"
+      ]
+    },
+    {
+      "url": "https://wowwiki-archive.fandom.com/wiki/API_Frame_SetClampedToScreen",
+      "title": "API Frame SetClampedToScreen | WoWWiki | Fandom",
+      "publish_date": "2024-10-29",
+      "excerpts": [
+        "com%2Fwiki%2FAPI_Frame_SetClampedToScreen%3Fcollections%3Dsave&uselang=en&metadata=collections-save-button)\n\nin: API stubs , World of Warcraft API\n\nEnglish\n\n* [\u0420\u0443\u0441\u0441\u043a\u0438\u0439](https://wowwiki.fandom.com/ru/wiki/%D0%A8%D0%B0%D0%B1%D0%BB%D0%BE%D0%BD:WoWAPI)\n\n# API Frame SetClampedToScreen\n\n[Sign In to Save Save](https://auth.fandom.com/signin?redirect=https%3A%2F%2Fwowwiki-archive.fandom.com%2Fwiki%2FAPI_Frame_SetClampedToScreen%3Fcollections%3Dsave&uselang=en&metadata=collections-save-button \"Sign In to Save\") [Edit](https://auth.fandom.com/signin?redirect=https%3A%2F%2Fwowwiki-archive.fandom.com%2Fwiki%2FAPI_Frame_SetClampedToScreen%3Fveaction%3Dedit&uselang=en&metadata=article-registration-edit-article)\n\n* [History](https://wowwiki-archive.fandom.com/wiki/API_Frame_SetClampedToScreen?action=history)\n* [Purge](https://wowwiki-archive.fandom.com/wiki/API_Frame_SetClampedToScreen?action=purge)\n* [Talk (0)](https://wowwiki-archive.fandom.com/wiki/Talk:API_Frame_SetClampedToScreen?\naction=edit&redlink=1)\n\n|[Stub](https://static.wikia.nocookie.net/wowwiki/images/f/fe/Stub.png/revision/latest?cb=20120414214552) |This article or section is **a World of Warcraft API stub** . You can help expand it by **[editing it](https://wowwiki-archive.fandom.com/wiki/API_Frame_SetClampedToScreen?action=edit)** .\n\n* Please see **WoWWiki:How to edit API pages** for a list of boilerplates and page tags to use for different types of API related pages. |\n| --- | --- |\n\n|Reference\n\n[e](https://wowwiki-archive.fandom.com/wiki/Template:Apinav?action=edit) |\n| --- |\n|AddOns  \nWoW API  \nWidget API  \nXML UI  \nEvent API  \nWoW Lua  \nMacro API  \nCVars  \nChanges\n\n* * *\n\nB attle.net API\n\n* * *\n\nHOWTOs  \nSnippets  \nUI tech.\n\n* * *\n\nCategories |\n\n\u2192 WoW API\n\n## Contents\n\n* 1 Parameters\n* 2 Returns\n* 3 Example\n\n\u2190 WoW API < Frame SetClampedToScreen\n\nSet whether the frame is prohibited from being positioned or dragged off screen.\nThis applies to any attempt of repositioning a frame partially or entirely off screen. If the frame is clamped to the screen boundaries then the frame points will be re-adjusted automatically so that the entire frame always stays on screen. Examples where this applies:\n\n* calling SetPoint()\n* dragging the frame after calling StartMoving()\n* sizing the frame after calling StartSizing()\n\n## Parameters [ ]\n\n    clamped\n    Boolean - Whether to enable (true) or disable (false) the clamping of the frame to the screen boundaries\n\n## Returns [ ]\n\n\\- unknown -\n\n## Example [ ]\n\nThe following sample code should cause the spell book frame to be places halfway outside the screen. Instead it stays fully inside of the screen.\n\n```\nSpellBookFrame:Show()\nSpellBookFrame:SetClampedToScreen( true )\nSpellBookFrame:SetPoint( \"TOPLEFT\", UIParent, \"TOPLEFT\", 1000, -100 )\n```\n\nCategories\n\n* Categories :\n* API stubs\n* World of Warcraft API\n\nLanguages\n\n[\u0420\u0443\u0441\u0441\u043a\u0438\u0439](https://wowwiki.fandom."
+      ]
+    },
+    {
+      "url": "https://us.forums.blizzard.com/en/wow/t/setuserplaced-not-working/249445",
+      "title": "SetUserPlaced Not Working - UI and Macro - World of Warcraft Forums",
+      "publish_date": "2019-08-13",
+      "excerpts": [
+        "World of Warcraft Forums\n\n# SetUserPlaced Not Working\n\nGuides UI and Macro\n\n[Caleb-452274](https://us.forums.blizzard.com/en/wow/u/Caleb-452274) (Caleb) August 12, 2019, 3:13am 1\n\nHello,\n\nI create my own frame that is moveable. I set the \u201cSetUserPlaced\u201d true, but the location of the frame isn\u2019t saved like it is supposed to. At one point it was working for a button I made, but that doesn\u2019t seem to be working anymore either. From what I read, I don\u2019t actually need to call the SetUserPlaced because StartMoving calls it. So it isn\u2019t in my code below, but when it was, it wasn\u2019t working.\n\nEDIT: I would also like to save the status of the frame if it is opened or closed.\n\nAny ideas?\n\nThank you,  \nInthenstus\n\n> Hyperspawn\\_TrackerFrame = CreateFrame(\u201cFrame\u201d , nil, UIParent)  \n> Hyperspawn\\_TrackerFrame:EnableMouse(true)  \n> Hyperspawn\\_TrackerFrame:RegisterForDrag(\u201cLeftButton\u201d)  \n> Hyperspawn\\_TrackerFrame:SetBackdrop({bgFile = \u201cInterface/Tooltips/UI-Tooltip-Background\u201d,\n> edgeFile = \u201cInterface/Tooltips/UI-Tooltip-Border\u201d,  \n> tile = true, tileSize = 16, edgeSize = 8,  \n> insets = { left = 1, right = 1, top = 1, bottom = 1 }});  \n> Hyperspawn\\_TrackerFrame:SetBackdropColor(0,0,0,1);  \n> Hyperspawn\\_TrackerFrame:SetHeight(111)  \n> Hyperspawn\\_TrackerFrame:SetMovable(true)  \n> Hyperspawn\\_TrackerFrame:SetPoint(\u201cCENTER\u201d,0,0)  \n> Hyperspawn\\_TrackerFrame:SetWidth(128)  \n> Hyperspawn\\_TrackerFrame:Show()  \n> Hyperspawn\\_TrackerFrame.texture = Hyperspawn\\_TrackerFrame:CreateTexture()  \n> Hyperspawn\\_TrackerFrame.texture:SetAllPoints(Hyperspawn\\_TrackerFrame)  \n> Hyperspawn\\_TrackerFrame.texture:SetColorTexture(0.0,0.0,0.0,0.0)\n> \n>\n\n[Fizzlemizz-3415](https://us.forums.blizzard.com/en/wow/u/Fizzlemizz-3415) (Fizzlemizz) August 12, 2019, 4:33am 2\n\nSetUserPlaced only works for frames created before the PLAYER\\_LOGIN event fires.\n\nFor saving the shown state, use the OnShow/OnHide scripts to set a Saved Variable.\nWhen the frame is created, and if the SV exists, show the frame (or not depending on how you set it up).\n\n1 Like\n\n[Caleb-452274](https://us.forums.blizzard.com/en/wow/u/Caleb-452274) (Caleb) August 13, 2019, 12:35am 3\n\nA frame must have a name for its location to be saved. Once I added a name the issue was resolved.\n\nFizz, would you mind helping me out again with the last part? How would I use the set script to save a variable? You helped me in the past with the check boxes, are they similar?\n\nVariable for Check Buttons\n\n> ```\n>   BOS_AL_CB:SetChecked(Hyperspawn_Options.BOS_AL_CB)\n>   BOS_AL_CB:SetScript(\"OnClick\", function(self)\n>   \tHyperspawn_Options.BOS_AL_CB = BOS_AL_CB:GetChecked()\n>   end)\n> ```\n> \n> \n\nThank you!\n\n[Fizzlemizz-3415](https://us.forums.blizzard.com/en/wow/u/Fizzlemizz-3415) (Fizzlemizz) August 13, 2019, 2:35am 4\n\nThat too (missed the nil for name).\nCalling SetChecked doesn\u2019t automatically run the OnClick script so that needs to be done manually if required (or a save the variable in SetChecked as well).\n\n```\nBOS_AL_CB:SetChecked(Hyperspawn_Options.BOS_AL_CB)\nBOS_AL_CB:GetScript(\"OnClick\")(BOS_AL_CB)\n```\n\n[Caleb-452274](https://us.forums.blizzard.com/en/wow/u/Caleb-452274) (Caleb) August 13, 2019, 2:59am 5\n\nSo is there a option to like :CheckHidden? For a frame to save it?\n\n[Fizzlemizz-3415](https://us.forums.blizzard.com/en/wow/u/Fizzlemizz-3415) (Fizzlemizz) August 13, 2019, 3:01am 6\n\nWhat is \u201cCheckHidden\u201d supposed to do?\n\nDo you mean IsShown()? if frame:IsShown() then \u2026 end.\n\nSetting SavedVariable values is up to you.\n\n[Caleb-452274](https://us.forums.blizzard.com/en/wow/u/Caleb-452274) (Caleb) August 13, 2019, 3:04am 7\n\nSorry, I was asking if there was something like that for a frame, instead of the check buttons, but is shown should do the trick I think!\n\nI will give that a shot shortly.\n\n...\n\n> print(\u201c|c00ffff00 [|c00A020F0Hyperspawn|c00ffff00]: You don\u2019t appear to be a member of the Hyperspawn community.|r\u201d)  \n> end\n> \n> \n\nTried this\u2026 didn\u2019t seem to do it.\n\n> ```\n>   Hyperspawn_TrackerFrame:IsShown()(Hyperspawn_Options.Hyperspawn_TrackerFrame)\n>   Hyperspawn_TrackerFrame:SetScript(\"OnClick\", function(self)\n>   \tHyperspawn_Options.Hyperspawn_TrackerFrame = Hyperspawn_TrackerFrame:IsShown()\n>   end)\n> ```\n> \n>\n\n[Fizzlemizz-3415](https://us.forums.blizzard.com/en/wow/u/Fizzlemizz-3415) (Fizzlemizz) August 13, 2019, 3:18am 8\n\n`Hyperspawn_TrackerFrame:SetShown(Hyperspawn_Options.Hyperspawn_TrackerFrame)`\n\nSetShown(xxx) sets the state, IsShown() gets the current state.\n\nWhat is the name of the Channel? SendChatMessage doesn\u2019t allow all text regardless, it does do some checking.\n\n[Caleb-452274](https://us.forums.blizzard.com/en/wow/u/Caleb-452274) (Caleb) August 13, 2019, 3:20am 9\n\nThe channel is Hyper, my in-game community (a club in API lingo).\n\n...\n\nI am going to do a bit more digging and see if I can use another API to pull the name of my group.\n\n* Home\n* Categories\n* Guidelines\n* Terms of Service\n* Privacy Policy\n\nPowered by [Discourse](https://www.discourse.org) , best viewed with JavaScript enabled"
+      ]
+    },
+    {
+      "url": "https://vanilla-wow-archive.fandom.com/wiki/API_Frame_SetClampedToScreen",
+      "title": "API Frame SetClampedToScreen | Vanilla WoW Wiki | Fandom",
+      "publish_date": "2026-03-10",
+      "excerpts": [
+        "- [Arathi Basin](https://vanilla-wow-archive.fandom.com/wiki/Arathi_Basin)\n        - [Warsong Gulch](https://vanilla-wow-archive.fandom.com/wiki/Warsong_Gulch)\n\n[](https://auth.fandom.com/signin?redirect=https%3A%2F%2Fvanilla-wow-archive.fandom.com%2Fwiki%2FAPI_Frame_SetClampedToScreen%3Fveaction%3Dedit&uselang=en&metadata=article-registration-edit-article)\n\nin: API stubs , World of Warcraft API\n\n# API Frame SetClampedToScreen\n\n [Sign in to edit](https://auth.fandom.com/signin?redirect=https%3A%2F%2Fvanilla-wow-archive.fandom.com%2Fwiki%2FAPI_Frame_SetClampedToScreen%3Fveaction%3Dedit&uselang=en&metadata=article-registration-edit-article)\n\n* [History](https://vanilla-wow-archive.fandom.com/wiki/API_Frame_SetClampedToScreen?action=history)\n* [Purge](https://vanilla-wow-archive.fandom.com/wiki/API_Frame_SetClampedToScreen?action=purge)\n* [Talk (0)](https://vanilla-wow-archive.fandom.com/wiki/Talk:API_Frame_SetClampedToScreen?action=edit&redlink=1)\n\n|[](https://static.wikia.\nnocookie.net/vanilla-wow/images/f/fe/Stub.png/revision/latest?cb=20121221182632) |This article or section is **a World of Warcraft API stub** . You can [help expand it](https://www.wowwiki.com/Find_or_fix_a_stub \"wowwiki:Find or fix a stub\") by **[editing it](https://vanilla-wow-archive.fandom.com/wiki/API_Frame_SetClampedToScreen?action=edit)** .\n\n* Please see **[WoWWiki:How to edit API pages](https://www.wowwiki.com/How_to_edit_API_pages \"wowwiki:How to edit API pages\")** for a list of boilerplates and page tags to use for different types of API related pages. |\n| --- | --- |\n\n|Reference [e](https://vanilla-wow-archive.fandom.com/wiki/Template:Apinav?action=edit) |\n| --- |\n|* AddOns\n* WoW API\n* Widget API\n* XML UI\n* WoW Lua\n* Macro API\n* Event API\n* Changes\n\n* * *\n\n* Web API\n\n* * *\n\n* HOWTOs\n* Snippets\n* UI tech.\n  \n    + CVars\n\n* * *\n\n* Category nav. |\n\n\u2192 WoW API\n\nSet whether the frame is prohibited from being positioned or dragged off screen.\nThis applies to any attempt of repositioning a frame partially or entirely off screen. If the frame is clamped to the screen boundaries then the frame points will be re-adjusted automatically so that the entire frame always stays on screen. Examples where this applies:\n\n* calling SetPoint()\n* dragging the frame after calling StartMoving()\n* sizing the frame after calling StartSizing()\n\n## Parameters [ ]\n\n    clamped\n    Boolean - Whether to enable (true) or disable (false) the clamping of the frame to the screen boundaries\n\n## Returns [ ]\n\n\\- unknown -\n\n## Example [ ]\n\nThe following sample code should cause the spell book frame to be places halfway outside the screen. Instead it stays fully inside of the screen.\n\n```\nSpellBookFrame:Show()\nSpellBookFrame:SetClampedToScreen( true )\nSpellBookFrame:SetPoint( \"TOPLEFT\", UIParent, \"TOPLEFT\", 1000, -100 )\n```\n\nCategories\n\n* Categories :\n* API stubs\n* World of Warcraft API\n\nCommunity content is available under [CC-BY-SA](https://www.fandom."
+      ]
+    },
+    {
+      "url": "https://breezewiki.com/wowwiki-archive/wiki/API_Frame_SetClampedToScreen",
+      "title": "API Frame SetClampedToScreen | WoW+BreezeWiki",
+      "publish_date": null,
+      "excerpts": [
+        "<strong>Set whether the frame is prohibited from being positioned or dragged off screen</strong>. This applies to any attempt of repositioning a frame partially or entirely off screen. If the frame is clamped to the screen boundaries then the frame points will be re-adjusted automatically so that the entire"
+      ]
+    }
+  ],
+  "usage": [
+    {
+      "name": "sku_search",
+      "count": 1
+    }
+  ],
+  "warnings": []
+}

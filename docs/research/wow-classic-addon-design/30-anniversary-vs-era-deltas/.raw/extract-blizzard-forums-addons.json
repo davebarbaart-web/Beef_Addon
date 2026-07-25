@@ -1,0 +1,23 @@
+{
+  "extract_id": "extract_18af924a2c08d4d274770637b45863da",
+  "session_id": "session_18af924a2c08d4d274770637b45863da",
+  "status": "ok",
+  "results": [
+    {
+      "url": "https://us.forums.blizzard.com/en/wow/t/the-burning-crusadeaddons/2226408",
+      "title": "The burning crusade/addons - WoW Classic / The Burning Crusade Classic - World of Warcraft Forums",
+      "publish_date": "2026-01-14",
+      "excerpts": [
+        "# The burning crusade/addons\n## post by Undercoverz-nightslayer on Jan 14\nUndercoverz\n23 posts\n17 Troll Hunter 0 WoW Classic\nJan 14\nThere are several threads on here stating that yes we will have to redo our whole setup but there is a workaround, install tbc, copy addons and WTF(if you have one) folder from classic, put in Anni folder and then update once it goes live\n\u200b\n\n...\n\n## post by xXTat69Xx-3289277 on Jan 14\nMedatnk\n1 post\n80 Orc Warrior 16425\nJan 14\njust copy your interface and wtf folders from classic era to anniversary directories then add them to curseforge and update them\n\u200b\n\u200b\n\n...\n\n## post by Tvirus-3286323 on Jan 14\nWhen you do a WoW anniversary update to TBC do a curesforge scan and a new tab comes up for TBC addons. Just make sure to try and signin to TBC and a inferface addon will be added. After that load curseforge and a TBC tab will be there, then you can dowload TBC addons if needed\n\u200b\n\u200b\n\n...\n\n## post by Matryx-2041904 on Jan 14\nBatl\n23 posts\n60 Orc Warrior 0 WoW Classic\nJan 14\nCurse has a tab for BCC anniversary I found everything I used in classic except gathermate2 but that was a few hours ago.\n\u200b\n\u200b\n\n...\n\n## post by Leafsfan9329-3244416 on Jan 14\nVeliveanna <flux>\n208 posts\n85 Orc Hunter 11500 WoW Classic\nJan 14\nWhat if curse isn\u2019t updating with a TBCC anniversary tab and I have no addon button in game.\n\u200b\n\u200b"
+      ]
+    }
+  ],
+  "errors": [],
+  "usage": [
+    {
+      "name": "sku_extract_excerpts",
+      "count": 1
+    }
+  ],
+  "warnings": []
+}

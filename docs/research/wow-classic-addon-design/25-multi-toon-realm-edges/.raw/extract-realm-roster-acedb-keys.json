@@ -1,0 +1,46 @@
+{
+  "extract_id": "extract_e46a7b9ed133de845f2eafda9bd3740d",
+  "session_id": "session_e46a7b9ed133de845f2eafda9bd3740d",
+  "status": "ok",
+  "results": [
+    {
+      "url": "https://warcraft.wiki.gg/wiki/API_GetGuildRosterInfo",
+      "title": "GetGuildRosterInfo - Warcraft Wiki - Your wiki guide to the World of Warcraft",
+      "publish_date": "2004-12-23",
+      "excerpts": [
+        "# GetGuildRosterInfo\nFrom Warcraft Wiki\nJump to navigation Jump to search\n| Main Menu |\n| * WoW API |\n* Lua API\n* Widget API\n* XML schema\n* FrameXML\n* Events\n* CVars\n* Combat Log\n* Escape sequences\n* API changes\n* HOWTOs\n* Discord logo.png [wowuidev](https://discord.gg/txUg39Vhc6) |\n**Lua error in Module:Wowapi/category at line 21: bad argument #2 to 'format' (string expected, got nil).**\n|Fat cat yearns for the mines |The API wiki is under maintenance\nSince `2026-07-23T06:08:00Z` , ETA: at least multiple days |\n| --- | --- |\nReturns info for a guild member.\n```\nname , rankName , rankIndex , level , classDisplayName , zone , publicNote , officerNote , isOnline , status , class , achievementPoints , achievementRank , isMobile , canSoR , repStanding , guid = GetGuildRosterInfo ( index )\n```\n\n## Arguments\n```\nindex\nnumber \\- Ranging from 1 to GetNumGuildMembers ()\n```\n\n## Returns\n```\nname\nstring \\- Name of character with realm (e.g. \"Arthas-Silvermoon\")\n```\nrankName\nstring - Name of character's guild rank (e.g. Guild Master, Officer, Member, ...)\nrankIndex\nnumber - Index of rank starting at 0 for GM (add 1 for GuildControlGetRankName(index) )\nlevel\nnumber - Character's level\nclassDisplayName\nstring - Localized class name (e.g. \"Mage\", \"Warrior\", \"Guerrier\", ...)\nzone\nstring - Character's location (last location if offline)\npublicNote\nstring - Character's public note, returns \"\" if you can't view notes or no note\nofficerNote\nstring - Character's officer note, returns \"\" if you can't view notes or no note\nisOnline\nboolean - true: online - false: offline\nstatus\nnumber - 0: none - 1: AFK - 2: Busy (Do Not Disturb) (changed in 4.3.2)\nclass\nstring - Localization-independent class name (e.g. \"MAGE\", \"WARRIOR\", \"DEATHKNIGHT\", ...)\nachievementPoints\nnumber - Character's achievement points\nachievementRank\nnumber - Where the character ranks in guild if sorted by achievement points\nisMobile\nboolean - true: player logged into app with this character\ncanSoR\nboolean - true: can use Scroll of Resurrection on character (deprecated)\nrepStanding\nnumber - Standing ID for character's guild reputation\nguid\nstring - Character's GUID\n\n## Details\n| Related API | C_GuildInfo.GuildRoster |\n| Related Events | GUILD_ROSTER_UPDATE |\nRetrieved from \" [https://warcraft.wiki.gg/wiki/API_GetGuildRosterInfo?oldid=6587734](https://warcraft.wiki.gg/wiki/API_GetGuildRosterInfo?oldid=6587734) \"\nHidden category:\n* Pages with script errors"
+      ]
+    },
+    {
+      "url": "https://github.com/Vicious-wow/XIV_Databar/blob/master/Libs/AceDB-3.0/AceDB-3.0.lua",
+      "title": "XIV_Databar/Libs/AceDB-3.0/AceDB-3.0.lua at master \u00b7 Vicious-wow/XIV_Databar \u00b7 GitHub",
+      "publish_date": "2019-07-11",
+      "excerpts": [
+        "# Vicious-wow/XIV_Databar \u2014 Libs/AceDB-3.0/AceDB-3.0.lua\n```lua\n\t[\"RegisterCallback\"] = true,\n\t[\"UnregisterCallback\"] = true,\n\t[\"UnregisterAllCallbacks\"] = true,\n\t[\"children\"] = true,\n}\n\nlocal realmKey = GetRealmName()\nlocal charKey = UnitName(\"player\") .. \" - \" .. realmKey\nlocal _, classKey = UnitClass(\"player\")\nlocal _, raceKey = UnitRace(\"player\")\nlocal factionKey = UnitFactionGroup(\"player\")\nlocal factionrealmKey = factionKey .. \" - \" .. realmKey\nlocal localeKey = GetLocale():lower()\n\nlocal regionTable = { \"US\", \"KR\", \"EU\", \"TW\", \"CN\" }\nlocal regionKey = regionTable[GetCurrentRegion()]\nlocal factionrealmregionKey = factionrealmKey .. \" - \" .. regionKey\n\n-- Actual database initialization function\nlocal function initdb(sv, defaults, defaultProfile, olddb, parent)\n```\n\n...\n\n```lua\n\t\t-- Use the profile of the parents DB\n\t\tprofileKey = parent.keys.profile or defaultProfile or charKey\n\n\t\t-- clear the profileKeys in the DB, namespaces don't need to store them\n\t\tsv.profileKeys = nil\n\tend\n\n\t-- This table contains keys that enable the dynamic creation\n\t-- of each section of the table.  The 'global' and 'profiles'\n\t-- have a key of true, since they are handled in a special case\n\tlocal keyTbl= {\n\t\t[\"char\"] = charKey,\n\t\t[\"realm\"] = realmKey,\n\t\t[\"class\"] = classKey,\n\t\t[\"race\"] = raceKey,\n\t\t[\"faction\"] = factionKey,\n\t\t[\"factionrealm\"] = factionrealmKey,\n\t\t[\"factionrealmregion\"] = factionrealmregionKey,\n\t\t[\"profile\"] = profileKey,\n\t\t[\"locale\"] = localeKey,\n\t\t[\"global\"] = true,\n\t\t[\"profiles\"] = true,\n\t}\n\n\tvalidateDefaults(defaults, keyTbl, 1)\n\n\t-- This allows us to use this function to reset an entire database\n\t-- Clear out the old database\n\tif olddb then\n\t\tfor k,v in pairs(olddb) do if not preserve_keys[k] then olddb[k] = nil end end\n\tend\n\n\t-- Give this database the metatable so it initializes dynamically\n```\n\n...\n\n```lua\n\tself.profile = nil\n\tself.keys[\"profile\"] = name\n\n\t-- if the storage exists, save the new profile\n\t-- this won't exist on namespaces.\n\tif self.sv.profileKeys then\n\t\tself.sv.profileKeys[charKey] = name\n\tend\n\n\t-- populate to child namespaces\n\tif self.children then\n```"
+      ]
+    },
+    {
+      "url": "https://warcraft.wiki.gg/wiki/API_GetGuildInfo",
+      "title": "GetGuildInfo - Warcraft Wiki - Your wiki guide to the World of Warcraft",
+      "publish_date": "2005-03-15",
+      "excerpts": [
+        "# GetGuildInfo\nFrom Warcraft Wiki\nJump to navigation Jump to search\n| Main Menu |\n| * WoW API |\n* Lua API\n* Widget API\n* XML schema\n* FrameXML\n* Events\n* CVars\n* Combat Log\n* Escape sequences\n* API changes\n* HOWTOs\n* Discord logo.png [wowuidev](https://discord.gg/txUg39Vhc6) |\n**Lua error in Module:Wowapi/category at line 21: bad argument #2 to 'format' (string expected, got nil).**\n|Fat cat yearns for the mines |The API wiki is under maintenance\nSince `2026-07-23T06:08:00Z` , ETA: at least multiple days |\n| --- | --- |\nReturns guild info for a player unit.\n```\nguildName , guildRankName , guildRankIndex , realm = GetGuildInfo ( unit )\n```\n\n## Arguments\n```\nunit\nstring : UnitId \\- The unit whose guild information you wish to query.\n```\n\n## Returns\n```\nguildName\nstring \\- The name of the guild the unit is in (or nil?).\n```\nguildRankName\nstring - unit's rank in unit's guild.\nguildRankIndex\nnumber - unit's rank (index). - zero based index (0 is Guild Master, 1 and above are lower ranks)\nrealm\nstring ? - The name of the realm the guild is in, or nil if the guild's realm is the same as your current one\n\n...\n\n## Details\n* If using with UnitId \"player\" on loading it happens that this value is nil even if the player is in a guild. Here's a little function which checks in the GUILD_ROSTER_UPDATE and PLAYER_GUILD_UPDATE events, if guild name is available. As long as it is not, no actions are fired by my guild event handling."
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "url": "https://wowpedia.fandom.com/wiki/API_GetRealmName",
+      "error_type": "http_error",
+      "http_status_code": 403,
+      "content": null
+    }
+  ],
+  "usage": [
+    {
+      "name": "sku_extract_excerpts",
+      "count": 3
+    }
+  ],
+  "warnings": []
+}

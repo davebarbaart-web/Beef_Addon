@@ -1,0 +1,16 @@
+{
+  "extract_id": "extract_e80934f4f48236bd0c46756293e708db",
+  "session_id": "session_e80934f4f48236bd0c46756293e708db",
+  "status": "ok",
+  "results": [],
+  "errors": [
+    {
+      "url": "https://warcraft.wiki.gg/wiki/API_ClearOverrideBindings",
+      "error_type": "network_error",
+      "http_status_code": null,
+      "content": null
+    }
+  ],
+  "usage": [],
+  "warnings": []
+}

@@ -1,0 +1,90 @@
+{
+  "search_id": "search_dd23408d6b9f137ea45f045dcdb26fef",
+  "session_id": "session_dd23408d6b9f137ea45f045dcdb26fef",
+  "status": "ok",
+  "results": [
+    {
+      "url": "https://wago.io/",
+      "title": "Wago.io: Import",
+      "publish_date": null,
+      "excerpts": [
+        "Wago.io: Import\nDatabase of sharable World of Warcraft addon elements."
+      ]
+    },
+    {
+      "url": "https://addons.wago.io/?category=1",
+      "title": "Wago Addons",
+      "publish_date": null,
+      "excerpts": []
+    },
+    {
+      "url": "https://addons.wago.io/?search=details%20wow",
+      "title": "Wago Addons",
+      "publish_date": null,
+      "excerpts": []
+    },
+    {
+      "url": "https://www.curseforge.com/minecraft/search?class=mc-addons&page=1&pageSize=20&sortBy=relevancy",
+      "title": "Minecraft Addons - CurseForge",
+      "publish_date": null,
+      "excerpts": [
+        "Minecraft Addons - CurseForge\nBrowse and download Minecraft Addons on CurseForge, the world's largest game modding repository. Easily install Minecraft Addons in one click."
+      ]
+    },
+    {
+      "url": "https://www.reddit.com/r/wow/comments/1eaa5y5/wago_addon_manager_vs_curseforge",
+      "title": "Wago Addon Manager vs. Curseforge : r/wow",
+      "publish_date": null,
+      "excerpts": [
+        "Wago Addon Manager vs. Curseforge : r/wow\nI am trying to move away as much as possible from CurseForge. However, what I noticed is, sometimes CF shows me an addon needs to be updated"
+      ]
+    },
+    {
+      "url": "https://www.reddit.com/r/wow/comments/1el4xq1/curseforge_vs_wago_for_addons",
+      "title": "CurseForge vs. Wago for addons : r/wow - Reddit",
+      "publish_date": null,
+      "excerpts": [
+        "CurseForge vs."
+      ]
+    },
+    {
+      "url": "https://wago.io/addons",
+      "title": "Browse Addons",
+      "publish_date": null,
+      "excerpts": [
+        "We cannot provide a description for this page right now"
+      ]
+    },
+    {
+      "url": "https://us.forums.blizzard.com/en/wow/t/wow-up-curse-wago/2292441",
+      "title": "WoW Up |Curse | Wago - UI and Macro - World of Warcraft Forums",
+      "publish_date": "2026-04-17",
+      "excerpts": [
+        "World of Warcraft Forums\n\n# WoW Up |Curse | Wago\n\nGuides UI and Macro\n\n[Bigrez-2270725](https://us.forums.blizzard.com/en/wow/u/Bigrez-2270725) (Bigrez) April 16, 2026, 10:28am 1\n\nHi \u2014 I\u2019d been using CurseForge or Wago depending on where an addon was available, but I recently added WoWUp after an addon pack recommended it as the main way to manage everything. I can see all my addons in WoWUp and update them there, but CurseForge and Wago still show updates available too.\n\nAny recommendations on the simplest way to handle this? Also, is there any reason to keep updating through Wago or CurseForge if I\u2019m already updating everything in WoWUp?\n\n[Linaori-2918678](https://us.forums.blizzard.com/en/wow/u/Linaori-2918678) (Linaori) April 16, 2026, 4:11pm 2\n\nNeither versions of wowup track changes of each other, or other addon managers for that matter. Best is to have only 1 of the 2. If you need both because some addon isn\u2019t available, ignore everything except that one addon.\n\n1 Like\n[Fizzlemizz-3415](https://us.forums.blizzard.com/en/wow/u/Fizzlemizz-3415) (Fizzlemizz) April 16, 2026, 4:52pm 3\n\nUpdating an addon more than once won\u2019t make a difference to the code that\u2019s in place once you\u2019re done (assuming all sites have the same (latest) version).\n\n1 Like\n\n[Bigrez-2270725](https://us.forums.blizzard.com/en/wow/u/Bigrez-2270725) (Bigrez) April 16, 2026, 5:53pm 4\n\nSorry - I\u2019m confused by this - can you explain. Do you mean only have curse or Wago? If i delete Wago, will all the addons move to curse that are available on curse if I sync Curse with my addon folder?\n\n[Fizzlemizz-3415](https://us.forums.blizzard.com/en/wow/u/Fizzlemizz-3415) (Fizzlemizz) April 16, 2026, 6:32pm 5\n\nThe Curse updater only lists addons on Curse. The Wago updater does the same for Wago, WoWUp lists addons on Curse, Wago and WoWInterface etc.\n\nIf you have WoWUp and one of the other installers you will be promted to update common addons by both updaters.\nDeleting the installer won\u2019t \u201cmove\u201d the addons, it will just restrict the sites used to find/dowload addons to whatever sites your remaining updater(s) support.\n\n1 Like\n\n[Bigrez-2270725](https://us.forums.blizzard.com/en/wow/u/Bigrez-2270725) (Bigrez) April 16, 2026, 6:37pm 6\n\nEasy question - if I have the raider io addon which is supported by both wago and curse, but I downloaded it on wago. If I delete wago, will it move to curse app manager?\n\n[Fizzlemizz-3415](https://us.forums.blizzard.com/en/wow/u/Fizzlemizz-3415) (Fizzlemizz) April 16, 2026, 6:44pm 7\n\nIf the addon is on Curse then the Curse downloader should already list it so it would just download it from Curse.\n\nAddon aurthors decide which sites they want to use for people to download their addon(s) and it is up to the aurthors to keep those sites up-to-date. The (legit) download sites just provide a place for people get the addons that have been uploaded to them.\n\n[Linaori-2918678](https://us.forums.blizzard.\ncom/en/wow/u/Linaori-2918678) (Linaori) April 17, 2026, 7:04am 8\n\nRezdog:\n\n> Sorry - I\u2019m confused by this - can you explain. Do you mean only have curse or Wago? If i delete Wago, will all the addons move to curse that are available on curse if I sync Curse with my addon folder?\n> \n>\n\nThe TL;DR is that both WowUp CF and WowUp Wago track addons independently. You only need both versions if there\u2019s an addon on Wago that isn\u2019t on CF, and vice versa.\n\nIf all of your addons are available on CF, you don\u2019t need the Wago version at all. If you do need the Wago version for a single addon, you can right click and check the ignore button in the Wago version, so only the CF version will be updating it.\n\nRezdog:\n\n> Easy question - if I have the raider io addon which is supported by both wago and curse, but I downloaded it on wago. If I delete wago, will it move to curse app manager?\n> \n>\n\nNot automatically.\nIn theory there\u2019s a \u201cre-scan\u201d you can do, but there\u2019s currently a bug in the CF app that will \u201cforget\u201d where the addon is coming from if you press that button (TL;DR is that fingerprinting addons is complicated). You can always reinstall the addon if that happens. You can also just uninstall it in the Wago version and then install it in the CF version.\n\n[Bigrez-2270725](https://us.forums.blizzard.com/en/wow/u/Bigrez-2270725) (Bigrez) April 17, 2026, 11:20am 9\n\nVery helpful - will I lose all my settings per addon - if I delete them from WAGO and reinstall in the CF?\n\n[Linaori-2918678](https://us.forums.blizzard.com/en/wow/u/Linaori-2918678) (Linaori) April 17, 2026, 12:03pm 10\n\nYes, as both are isolated apps\n\n[Fizzlemizz-3415](https://us.forums.blizzard.com/en/wow/u/Fizzlemizz-3415) (Fizzlemizz) April 17, 2026, 2:41pm 11\n\nThe question is a bit vague.\nMoving from one downloader to another, you won\u2019t loose the game settings you\u2019ve made to the addon itself (in-game) as these are stored by the game, not the downloader.\n\n[Belechannas-1977035](https://us.forums.blizzard.com/en/wow/u/Belechannas-1977035) (Belechannas) April 17, 2026, 7:36pm 12\n\nTo be safe, before making any changes, just create backup copies of your WTF and Interface folders.\n\n2 Likes\n\n* Home\n* Categories\n* Guidelines\n* Terms of Service\n* Privacy Policy\n\nPowered by [Discourse](https://www.discourse.org) , best viewed with JavaScript enabled"
+      ]
+    },
+    {
+      "url": "https://www.tecdud.com/wago",
+      "title": "wago - TECDUD",
+      "publish_date": "2023-11-11",
+      "excerpts": [
+        "... Optimization; Cyber Security Instructions; Back\n\npreview\n\n## **Wago**\n\n[https:// **wago** .io/ **weakaura** s](https://wago.io/weakauras)\n\nAnnouncing **Wago** Addons, the nextgen WoW Addon Platform built by the **Wago** team. Developer signups no"
+      ]
+    },
+    {
+      "url": "https://www.wowhead.com/news/wowup-launches-new-addon-manager-supporting-curseforge-downloads-329736",
+      "title": "WowUp Launches New Addon Manager Supporting CurseForge Downloads - Wowhead News",
+      "publish_date": "2022-11-05",
+      "excerpts": [
+        "Nov 5, 2022 \u2014 The developers of the popular third party addon manager WowUp have announced the launch of a new app which supports CurseForge downloads!"
+      ]
+    }
+  ],
+  "usage": [
+    {
+      "name": "sku_search",
+      "count": 1
+    }
+  ],
+  "warnings": []
+}

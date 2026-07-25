@@ -4,7 +4,9 @@ description: >-
   Install, reload, and offline-test the Church of Beef WoW addon. Use when
   developing or verifying the addon, running lua tests/run.lua, copying into
   Interface/AddOns, /reload smoke checks, or when the user mentions install,
-  AddOns path, /beef, WOW_ADDONS_DIR, or offline Core tests.
+  AddOns path, /beef, WOW_ADDONS_DIR, or offline Core tests. Before any UI
+  CreateFrame / visual work, also read
+  docs/superpowers/ui-polished-direction-for-agents.md.
 ---
 
 # Church of Beef — install / reload / test
@@ -120,6 +122,18 @@ Zip root must be `ChurchOfBeef/`, not the monorepo root. No packager upload with
 - [ ] /reload + /beef smoke (and two-client if Net/officer)
 - [ ] No gameplay automation / Retail-only APIs introduced
 ```
+
+## 5. UI / art work (agent-executed)
+
+UI and art direction are implemented by coding agents. Before scaffolding frames
+or Media:
+
+1. Read `docs/superpowers/ui-polished-direction-for-agents.md` (authority order + V1 bans).
+2. Follow design spec §10 / §15 and glossary rows 68–71, 74–81.
+3. Prefer Cursor canvas `cob-v1-ui-build-prep` as the day-to-day checklist when available.
+4. Do **not** add custom `Media/` or SFX in V1 Tasks 7–10.
+
+Green harness still does not prove UI polish — complete step 3 (in-game smoke) for UI changes.
 
 ## Do not duplicate
 

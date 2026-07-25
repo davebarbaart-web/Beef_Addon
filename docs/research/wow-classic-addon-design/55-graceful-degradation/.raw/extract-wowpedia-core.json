@@ -1,0 +1,42 @@
+{
+  "extract_id": "extract_1b9064984c5f96a8954dee253d0c91c9",
+  "session_id": "session_1b9064984c5f96a8954dee253d0c91c9",
+  "status": "ok",
+  "results": [
+    {
+      "url": "https://wowpedia.fandom.com/wiki/WOW_PROJECT_ID",
+      "title": "WOW PROJECT ID - Wowpedia - Your wiki guide to the World of Warcraft",
+      "publish_date": null,
+      "excerpts": [
+        "Wowpedia\n\nWe have moved to Warcraft Wiki. Click here for information and the new URL.\n\nREAD MORE\n\n[](https://www.fandom.com/)\n\n[Create a Free Account](https://auth.fandom.com/register?source=mw&redirect=https%3A%2F%2Fwowpedia.fandom.com%2Fwiki%2FWOW_PROJECT_ID&metadata=header-registration-button)\n\n[Home](https://www.fandom.com/)\n\nExplore\n\n[Saved](https://www.fandom.com/saved)\n\n[Progress](https://www.fandom.com/progress)\n\nHistory\n\n[Utilities](https://www.fandom.com/utilities)\n\nMore\n\nAdvertisement\n\nSkip to content\n\n[](https://auth.fandom.com/signin?redirect=https%3A%2F%2Fwowpedia.fandom.com%2Fwiki%2FWOW_PROJECT_ID%3Fveaction%3Dedit&uselang=en&metadata=article-registration-edit-article) [](https://auth.fandom.com/signin?redirect=https%3A%2F%2Fwowpedia.fandom.com%2Fwiki%2FWOW_PROJECT_ID%3Fcollections%3Dsave&uselang=en&metadata=collections-save-button)\n\nin: API events\n\n# WOW PROJECT ID\n\n[Sign In to Save Save](https://auth.fandom.com/signin?redirect=https%3A%2F%2Fwowpedia.fandom.com%2Fwiki%2FWOW_PROJECT_ID%3Fcollections%3Dsave&uselang=en&metadata=collections-save-button \"Sign In to Save\") [Edit](https://auth.fandom.com/signin?redirect=https%3A%2F%2Fwowpedia.fandom.com%2Fwiki%2FWOW_PROJECT_ID%3Fveaction%3Dedit&uselang=en&metadata=article-registration-edit-article)\n\n* [History](https://wowpedia.fandom.com/wiki/WOW_PROJECT_ID?action=history)\n* [Purge](https://wowpedia.fandom.com/wiki/WOW_PROJECT_ID?action=purge)\n* [Talk (0)](https://wowpedia.fandom.com/wiki/Talk:WOW_PROJECT_ID?action=edit&redlink=1)\n\n|Main Menu |\n| --- |\n|* WoW API\n* Lua API\n* FrameXML util\n\n* * *\n\n* Widget API\n* Widget scripts\n* XML schema\n* Events\n* CVars\n\n* * *\n\n* Macro commands\n* Combat Log\n* Escape sequences\n* Hyperlinks\n* API changes\n* HOWTOs\n* [Discord logo](https://discord.gg/txUg39Vhc6) [wowuidev](https://discord.gg/txUg39Vhc6) |\n\n\u2192 All API events\n\nThe `WOW_PROJECT_ID` and `LE_EXPANSION_LEVEL_CURRENT` constants can be used to determine the current expansion level.\n\n|Value |Constant |Description |FrameXML |\n| --- | --- | --- | --- |\n| |WOW\\_PROJECT\\_ID | | |\n|1 |WOW\\_PROJECT\\_MAINLINE |Retail |`[BNet.lua](https://github.com/Gethe/wow-ui-source/blob/9.2.5/Interface/FrameXML/BNet.lua)` |\n|2 |WOW\\_PROJECT\\_CLASSIC |Classic Era |`[Constants.lua](https://github.com/Gethe/wow-ui-source/blob/1.14.3/Interface_Vanilla/FrameXML/Constants.lua)` |\n|5 |WOW\\_PROJECT\\_BURNING\\_CRUSADE\\_CLASSIC |Burning Crusade Classic |`[Constants.lua](https://github.com/Gethe/wow-ui-source/blob/2.5.4/Interface_TBC/FrameXML/Constants.lua)` |\n|11 |WOW\\_PROJECT\\_WRATH\\_CLASSIC |Wrath Classic |`[Constants.lua](https://github.com/Gethe/wow-ui-source/blob/3.4.0/Interface_Wrath/FrameXML/Constants.lua)` |\n|14 |WOW\\_PROJECT\\_CATACLYSM\\_CLASSIC |Cataclysm Classic |`[Constant.lue](https://github.com/Gethe/wow-ui-source/tree/4.4.2/Interface)` |\n|15 |WOW\\_PROJECT\\_MISTS\\_CLASSIC |Mists Classic |`[Constant.lue](https://github.com/Gethe/wow-ui-source/tree/5.5.3/Interface)` |\n\n|Value |Enum |Description |\n| --- | --- | --- |\n| |LE\\_EXPANSION\\_LEVEL\\_CURRENT | |\n|0 |LE\\_EXPANSION\\_CLASSIC |Vanilla / Classic Era |\n|1 |LE\\_EXPANSION\\_BURNING\\_CRUSADE |The Burning Crusade |\n|2 |LE\\_EXPANSION\\_WRATH\\_OF\\_THE\\_LICH\\_KING |Wrath of the Lich King |\n|3 |LE\\_EXPANSION\\_CATACLYSM |Cataclysm |\n|4 |LE\\_EXPANSION\\_MISTS\\_OF\\_PANDARIA |Mists of Pandaria |\n|5 |LE\\_EXPANSION\\_WARLORDS\\_OF\\_DRAENOR |Warlords of Draenor |\n|6 |LE\\_EXPANSION\\_LEGION |Legion |\n|7 |LE\\_EXPANSION\\_BATTLE\\_FOR\\_AZEROTH |Battle for Azeroth |\n|8 |LE\\_EXPANSION\\_SHADOWLANDS |Shadowlands |\n|9 |LE\\_EXPANSION\\_DRAGONFLIGHT |Dragonflight |\n|10 |LE\\_EXPANSION\\_WAR\\_WITHIN |The War Within |\n\n## Example [ [](https://auth.fandom.com/signin?redirect=https%3A%2F%2Fwowpedia.fandom.com%2Fwiki%2FWOW_PROJECT_ID%3Faction%3Dedit%26section%3D1&uselang=en&metadata=article-registration-edit-article-section \"Sign in to edit\") ]\n\n```\nif WOW_PROJECT_ID == WOW_PROJECT_MAINLINE then \n -- mainline \n elseif WOW_PROJECT_ID == WOW_PROJECT_WRATH_CLASSIC then \n -- wrath \n elseif WOW_PROJECT_ID == WOW_PROJECT_CLASSIC then \n -- vanilla \n end\n```\n\n## Patch changes [ [](https://auth.fandom.com/signin?redirect=https%3A%2F%2Fwowpedia.fandom.com%2Fwiki%2FWOW_PROJECT_ID%3Faction%3Dedit%26section%3D2&uselang=en&metadata=article-registration-edit-article-section \"Sign in to edit\") ]\n\nWrath-Logo-Small **Patch 3.4.0 (2022-08-30):** (2022-09-01) Added `WOW_PROJECT_WRATH_CLASSIC` in build 3.4.0 (45435) [[1]](https://github.com/Gethe/wow-ui-source/commit/2d9e615ca6f200275e9cb744625f1267d4886135)  \nWrath-Logo-Small **Patch 3.4.0 (2022-08-30):** Streamlined expansion enums between retail and classic. [[2]](https://github.com/Stanzilla/WoWUIBugs/issues/251)\n\n## See also [ [](https://auth.fandom.com/signin?redirect=https%3A%2F%2Fwowpedia.fandom.com%2Fwiki%2FWOW_PROJECT_ID%3Faction%3Dedit%26section%3D3&uselang=en&metadata=article-registration-edit-article-section \"Sign in to edit\") ]\n\nGitHub Octocat [Search FrameXML](https://github.com/search?q=repo%3AGethe%2Fwow-ui-source+WOW_PROJECT_ID&type=code)\n\nAuthoring\n\n|Global API |* GetBuildInfo\n* GetExpansionLevel\n* GetAddOnMetadata |\n| --- | --- |\n\n|Docs |* **WOW\\_PROJECT\\_ID**\n* TOC format |\n| --- | --- |\n\n|Tutorials |* Using the BigWigs Packager with GitHub Actions |\n| --- | --- |\n\nCategories\n\n* Categories :\n* API events\n\nCommunity content is available under [CC BY-SA 3.0](https://www.fandom.com/licensing) unless otherwise noted.\n\nMore Fandoms\n\n* [Fantasy](https://www.fandom.com/fancentral/fantasy)\n* [World of Warcraft](https://www.fandom.com/universe/world-of-warcraft)\n\nAdvertisement\n\nAdvertisement\n\nAdvertisement"
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "url": "https://wowpedia.fandom.com/wiki/API_C_ChatInfo.RegisterAddonMessagePrefix",
+      "error_type": "network_error",
+      "http_status_code": null,
+      "content": null
+    },
+    {
+      "url": "https://wowpedia.fandom.com/wiki/Porting_addons_to_Classic",
+      "error_type": "network_error",
+      "http_status_code": null,
+      "content": null
+    }
+  ],
+  "usage": [
+    {
+      "name": "sku_extract_excerpts",
+      "count": 1
+    }
+  ],
+  "warnings": [
+    {
+      "type": "warning",
+      "message": "Neither objective nor search_queries were provided, provide at least one to increase the relevance of excerpts.",
+      "detail": null
+    }
+  ]
+}

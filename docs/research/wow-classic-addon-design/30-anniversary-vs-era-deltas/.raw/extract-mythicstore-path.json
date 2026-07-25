@@ -1,0 +1,23 @@
+{
+  "extract_id": "extract_80abc1f83eaec72011477b68a5fe7eb8",
+  "session_id": "session_80abc1f83eaec72011477b68a5fe7eb8",
+  "status": "ok",
+  "results": [
+    {
+      "url": "https://mythic-store.com/us/blog/best-tbc-anniversary-addons-full-guide-for-2025",
+      "title": "Best TBC Anniversary Addons: Full Guide for 2026 | Mythic-Store",
+      "publish_date": "2026-02-09",
+      "excerpts": [
+        "# Best TBC Anniversary Addons: Full Guide for 2026\n## How to Install Addons\n1. **Download the addon** (from sites like CurseForge or WoWInterface)\n2. **Unzip** into:\n+ Windows: `C:\\Program Files (x86)\\World of Warcraft\\_anniversary_\\Interface\\AddOns`\n+ macOS: `/Applications/World of Warcraft/_anniversary_/Interface/AddOns`\n3.\n**Launch WoW** and click the **\u201cAddOns\u201d** button at the character screen\n4. **Enable** and customize in-game ( `/addonname` usually opens the config)\n5. **Restart the game** to apply changes\n**Pro tip:** You can copy addons from the Classic Era client if you played that \u2014 just move everything from `_classic_era_` to `_anniversary_` .\n\n## Best Addons for TBC Anniversary\n### MoveAnything\n**Why it rocks:** Lets you move, resize, or hide any UI element \u2014 map, character panel, loot window, and more. No more clutter or awkward positioning."
+      ]
+    }
+  ],
+  "errors": [],
+  "usage": [
+    {
+      "name": "sku_extract_excerpts",
+      "count": 1
+    }
+  ],
+  "warnings": []
+}

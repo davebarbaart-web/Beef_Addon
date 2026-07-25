@@ -1,0 +1,23 @@
+{
+  "extract_id": "extract_d8174ae3b7d4f7f9ba8870d957a79dd7",
+  "session_id": "session_d8174ae3b7d4f7f9ba8870d957a79dd7",
+  "status": "ok",
+  "results": [
+    {
+      "url": "https://github.com/Ennie/wow-ui-source/blob/master/FrameXML/RaidWarning.lua",
+      "title": "wow-ui-source/FrameXML/RaidWarning.lua at master \u00b7 Ennie/wow-ui-source \u00b7 GitHub",
+      "publish_date": "2011-10-07",
+      "excerpts": [
+        "# Ennie/wow-ui-source \u2014 FrameXML/RaidWarning.lua\n```lua\n\tFadingFrame_SetHoldTime(slotFrame, RAID_NOTICE_FADE_IN_TIME);\n\tFadingFrame_SetFadeOutTime(slotFrame, RAID_NOTICE_FADE_OUT_TIME);\nend\n\nfunction RaidNotice_AddMessage( noticeFrame, textString, colorInfo, displayTime )\n\tif ( not textString ) then\n\t\treturn;\n\tend\n\t\n```\n\n...\n\n```lua\n\tself.timings[\"RAID_NOTICE_SCALE_UP_TIME\"] = 0.2;\n\tself.timings[\"RAID_NOTICE_SCALE_DOWN_TIME\"] = 0.4;\nend\n\nfunction RaidWarningFrame_OnEvent(self, event, message)\n\tif ( event == \"CHAT_MSG_RAID_WARNING\" ) then\n\t\t\n\t\t--Task 21207: Add the ability to link raid icons to other players\n```\n\n...\n\n```lua\n\t\t\t\tmessage = string.gsub(message, tag, groupList);\n\t\t\tend\n\t\tend\t\t\n\t\t\n\t\tRaidNotice_AddMessage( self, message, ChatTypeInfo[\"RAID_WARNING\"] );\n\t\tPlaySound(\"RaidWarning\");\n\tend\nend\n\n-----------  BOSS EMOTE \nfunction RaidBossEmoteFrame_OnLoad(self)\n\tRaidNotice_FadeInit(self.slot1);\n```\n\n...\n\n```lua\n\t\tRaidNotice_AddMessage( self, body, info, displayTime );\n--\t\tRaidNotice_AddMessage( RaidBossEmoteFrame, \"This is a TEST of the MESSAGE!\", ChatTypeInfo[\"RAID_BOSS_EMOTE\"] );\n\t\tif ( playSound ) then\n\t\t\tPlaySound(\"RaidBossEmoteWarning\");\n\t\tend\n\telseif ( event == \"CLEAR_BOSS_EMOTES\" ) then\n\t\tRaidNotice_Clear(self);\n\tend\nend\n```"
+      ]
+    }
+  ],
+  "errors": [],
+  "usage": [
+    {
+      "name": "sku_extract_excerpts",
+      "count": 1
+    }
+  ],
+  "warnings": []
+}

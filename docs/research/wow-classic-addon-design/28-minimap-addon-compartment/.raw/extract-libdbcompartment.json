@@ -1,0 +1,38 @@
+{
+  "extract_id": "extract_e31272aff09d577cc5367f32f5f7fb6b",
+  "session_id": "session_e31272aff09d577cc5367f32f5f7fb6b",
+  "status": "ok",
+  "results": [
+    {
+      "url": "https://github.com/Meorawr/LibDBCompartment",
+      "title": "GitHub - Meorawr/LibDBCompartment: Library for handling integration into Blizzards' minimap addon compartment. \u00b7 GitHub",
+      "publish_date": "2023-03-30",
+      "excerpts": [
+        "# LibDBCompartment\nWorld of Warcraft library for integrating addons into Blizzards' minimap addon compartment through [LibDataBroker](https://github.com/tekkub/libdatabroker-1-1) data objects.\nThe design of the library mirrors that of [LibDBIcon](https://www.curseforge.com/wow/addons/libdbicon-1-0) and provides a nearly identical public interface, with the exception that direct integration of saved variables for persisting compartment button visibility is _not_ provided.\nIn game flavors that don't support the addon compartment the full API of the library can be used as normal, but the library will not attempt to register any button entries into the non-existent compartment dropdown list."
+      ]
+    },
+    {
+      "url": "https://www.curseforge.com/wow/addons/mbb-classic",
+      "title": "MBB - Classic - World of Warcraft Addons - CurseForge",
+      "publish_date": "2021-03-04",
+      "excerpts": [
+        "# MBB - Classic\n## Details\n### Flavors\n* [Classic](https://www.curseforge.com/wow/addons/mbb-classic/files/all?page=1&pageSize=20&gameVersionTypeId=67408&showAlphaFiles=hide)\n* [Classic TBC](https://www.curseforge.com/wow/addons/mbb-classic/files/all?page=1&pageSize=20&gameVersionTypeId=73246&showAlphaFiles=hide)\n\n...\n\n### Recent Files [View all](https://www.curseforge.com/wow/addons/mbb-classic/files/all?page=1&pageSize=20&showAlphaFiles=hide&sortBy=dateCreated&sortOrder=desc)\n#### WoW Classic\nThe Addon HidingBar supersedes MBB on all aspects and is continually updated.\nhttps://www.curseforge.com/wow/addons/hidingbar"
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "url": "https://www.curseforge.com/wow/addons/libdbcompartment",
+      "error_type": "network_error",
+      "http_status_code": null,
+      "content": null
+    }
+  ],
+  "usage": [
+    {
+      "name": "sku_extract_excerpts",
+      "count": 2
+    }
+  ],
+  "warnings": []
+}

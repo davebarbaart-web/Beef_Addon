@@ -1,0 +1,23 @@
+{
+  "extract_id": "extract_ddd71237cdcb4624a2affb038520de3c",
+  "session_id": "session_ddd71237cdcb4624a2affb038520de3c",
+  "status": "ok",
+  "results": [
+    {
+      "url": "https://github.com/WeakAuras/WeakAuras2/blob/main/.github/ISSUE_TEMPLATE/bug_report.yml",
+      "title": "WeakAuras2/.github/ISSUE_TEMPLATE/bug_report.yml at main \u00b7 WeakAuras/WeakAuras2 \u00b7 GitHub",
+      "publish_date": "2014-10-10",
+      "excerpts": [
+        "# WeakAuras/WeakAuras2 \u2014 .github/ISSUE_TEMPLATE/bug_report.yml\n```yml\nname: \"Bug Report\"\ndescription: Create a report to help us improve\nlabels: ['\ud83d\udc1b Bug']\ntype: Bug\nbody:\n- type: checkboxes\n  attributes:\n    label: Is there an existing issue for this?\n```\n\n...\n\n```yml\n      Do you have an error log of what happened? If you don't see any errors, make sure that error reporting is enabled (`/console scriptErrors 1`) or install [BugSack](https://www.curseforge.com/wow/addons/bugsack) & [BugGrabber](https://www.curseforge.com/wow/addons/\nbug-grabber), yes both are needed.\n      Note that if the error looks like `[string \"--[[ Error in ' my awesome aura' ]` then the bug is in the aura that got mentioned, not in WeakAuras itself.\n    render: Text\n  validations:\n    required: false\n\n- type: textarea\n```\n\n...\n\n```yml\n    description: If you do not know which aura is causing issues for you, please attach a ZIP archive of your WeakAuras SavedVariables file, it's the `WeakAuras.lua` file in `World of Warcraft\\_retail_\\WTF\\Account\\YOUR_ACCOUNT\\SavedVariables\\`. In case you do, please e\n```"
+      ]
+    }
+  ],
+  "errors": [],
+  "usage": [
+    {
+      "name": "sku_extract_excerpts",
+      "count": 1
+    }
+  ],
+  "warnings": []
+}

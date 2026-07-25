@@ -1,0 +1,19 @@
+Making a scrollable list using FauxScrollFrameTemplate - Warcraft ...
+  URL: https://warcraft.wiki.gg/wiki/Making_a_scrollable_list_using_FauxScrollFrameTemplate
+  # Making a scrollable list using FauxScrollFrameTemplate
+## How to do it
+```
+ function MyModScrollBar_Update()
+   FauxScrollFrame_Update(MyModScrollBar,50,5,16);
+   -- 50 is max entries, 5 is number of lines, 16 is pixel height of each line
+   DEFAULT_CHAT_FRAME:AddMessage("We're at "..FauxScrollFrame_GetOffset(MyModScrollBar));
+ end
+```
+
+Frame:SetID - Warcraft Wiki
+  URL: https://warcraft.wiki.gg/wiki/API_Frame_SetID
+  Frame IDs can be a useful way to keep track of multiple similar frames, especially in cases where a list of frames is created from a template ( ...
+
+ScrollFrame/Archive - Warcraft Wiki
+  URL: https://warcraft.wiki.gg/wiki/UIOBJECT_ScrollFrame/Archive
+  Faux and Hybrid scroll frames give the impression of scrolling a long list without the performance cost of making widgets for off-screen list ...

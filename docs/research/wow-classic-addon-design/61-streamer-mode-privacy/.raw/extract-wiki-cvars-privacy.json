@@ -1,0 +1,23 @@
+{
+  "extract_id": "extract_c2b2d9fb5c9a937ad5869d62f403d119",
+  "session_id": "session_c2b2d9fb5c9a937ad5869d62f403d119",
+  "status": "ok",
+  "results": [
+    {
+      "url": "https://warcraft.wiki.gg/wiki/Console_variables",
+      "title": "Console variables - Warcraft Wiki - Your wiki guide to the World of Warcraft",
+      "publish_date": "2006-06-15",
+      "excerpts": [
+        "# Console variables\n## CVar Scope\nSome CVars are character-specific or WoW account-wide, for example:\n* When setting nameplateMotion , it will only be changed for your current character.\n* When setting chatBubbles , it will not be changed for any other WoW accounts on your Blizzard account.\n\n## Resetting CVars\nUse GetCVarDefault or the cvar_default command to reset a CVar, for example:\n```\n/ run SetCVar ( \"autoSelfCast\" , GetCVarDefault ( \"autoSelfCast\" ))\n```\n```\n/console cvar_default autoSelfCast\n```\nThe [AdvancedInterfaceOptions](https://www.curseforge.com/wow/addons/advancedinterfaceoptions) addon can show which cvars were changed from the default:\nAdvancedInterfaceOptions cvar browser\nTo reset the whole user interface:\n```\n/console cvar_default\n```\n\n...\n\n## List of Console Variables\n|  |  |  | Name | Default | Category | Scope | Description |\n\n...\n\n(default: disabled) |\n\n...\n\n| 1.0.0 | [GitHub Octocat.png](https://github.com/search?q=repo:Gethe/wow-ui-source+blockTrades&type=code) |  | [blockTrades](https://warcraft.wiki.gg/wiki/CVar_blockTrades?action=edit&redlink=1 \"CVar blockTrades (page does not exist)\") | `0` | Game | Character | Whether to automatically block trade requests |\n\n...\n\nBehavior of announcement when target dies (0=default, 1=target dead) |\n\n...\n\n| 1.x | [GitHub Octocat.png](https://github.com/search?q=repo:Gethe/wow-ui-source+chatBubbles&type=code) |  | chatBubbles | `1` | Game | Account | Whether to show in-game chat bubbles |\n\n...\n\n| 11.0.0 |  |  | [collapsedCurrencyCategoryDefaults](https://warcraft.wiki.gg/wiki/CVar_collapsedCurrencyCategoryDefaults?action=edit&redlink=1 \"CVar collapsedCurrencyCategoryDefaults (page does not exist)\") | `0` | Game | Character | Stores the IDs of currency categories that should be collapsed by default in\n\n...\n\n| 12.0.0 |  |  | [petJournalFilterVersion](https://warcraft.wiki.gg/wiki/CVar_petJournalFilterVersion?action=edit&redlink=1 \"CVar petJournalFilterVersion (page does not exist)\") | `0` | Game | Account | Current filter version. Will reset all filters to their defaults if out of date. |\n\n...\n\n| 9.1.5 |  |  | [seenRegionalChatDisabled](https://warcraft.wiki.gg/wiki/CVar_seenRegionalChatDisabled?action=edit&redlink=1 \"CVar seenRegionalChatDisabled (page does not exist)\") | `0` | Game | Account | Seen the alert indicating chat has been disabled by default. (UK and CA AADC) |\n\n...\n\n| 9.1.5 |  |  | [showOutfitDetails](https://warcraft.wiki.gg/wiki/CVar_showOutfitDetails?action=edit&redlink=1 \"CVar showOutfitDetails (page does not exist)\") | `1` | Game | Character | Whether or not to show outfit details when the dressing room is opened in maximized mode, default on |"
+      ]
+    }
+  ],
+  "errors": [],
+  "usage": [
+    {
+      "name": "sku_extract_excerpts",
+      "count": 1
+    }
+  ],
+  "warnings": []
+}

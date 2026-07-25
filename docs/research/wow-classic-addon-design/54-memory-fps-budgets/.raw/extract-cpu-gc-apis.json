@@ -1,0 +1,56 @@
+{
+  "extract_id": "extract_370b0d50a624d991a7e28d1f070ff57d",
+  "session_id": "session_370b0d50a624d991a7e28d1f070ff57d",
+  "status": "ok",
+  "results": [
+    {
+      "url": "https://wowprogramming.com/docs/api/UpdateAddOnCPUUsage.html",
+      "title": "Home Page - World of Warcraft Programming: A Guide and Reference for Creating WoW Addons",
+      "publish_date": null,
+      "excerpts": [
+        "World of Warcraft Programming Site Logo\n* Store\n* About\n* Utils\n* Snippets\n* Forums\n* Chapters\n* Reference\n* Home\nUpdates addon CPU profiling information. Only has effect if the `scriptProfile` CVar is set to 1. See `GetAddOnCPUUsage()` for the updated data.\nSee also Debugging and Profiling functions .\nSignature:\n`UpdateAddOnCPUUsage()`"
+      ]
+    },
+    {
+      "url": "https://wowpedia.fandom.com/wiki/CVar_scriptProfile",
+      "title": "CVar scriptProfile - Wowpedia - Your wiki guide to the World of Warcraft",
+      "publish_date": "2025-11-07",
+      "excerpts": [
+        "# CVar scriptProfile\n* [History](https://wowpedia.fandom.com/wiki/CVar_scriptProfile?action=history)\n* [Purge](https://wowpedia.fandom.com/wiki/CVar_scriptProfile?action=purge)\n* [Talk (0)](https://wowpedia.fandom.com/wiki/Talk:CVar_scriptProfile?action=edit&redlink=1)\nEnables CPU profiling for lua scripts.\n0\n0\nOff\n1\nOn\nThis CVar requires a UI reload.\nIn-game, type the following\n```\n/console scriptProfile setting\n/reload\n```\nAlternatively, you can exit wow, open the Config-cache.wtf file, and add the following line:\n```\nSET scriptProfile setting\n```\nCategories\n* Categories :\n* Console variables"
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "url": "https://warcraft.wiki.gg/wiki/API_GetFrameCPUUsage",
+      "error_type": "network_error",
+      "http_status_code": null,
+      "content": null
+    },
+    {
+      "url": "https://wowpedia.fandom.com/wiki/API_GetFunctionCPUUsage",
+      "error_type": "network_error",
+      "http_status_code": null,
+      "content": null
+    },
+    {
+      "url": "https://wowpedia.fandom.com/wiki/API_ResetCPUUsage",
+      "error_type": "network_error",
+      "http_status_code": null,
+      "content": null
+    },
+    {
+      "url": "https://warcraft.wiki.gg/wiki/API_collectgarbage",
+      "error_type": "http_error",
+      "http_status_code": 403,
+      "content": null
+    }
+  ],
+  "usage": [
+    {
+      "name": "sku_extract_excerpts",
+      "count": 2
+    }
+  ],
+  "warnings": []
+}

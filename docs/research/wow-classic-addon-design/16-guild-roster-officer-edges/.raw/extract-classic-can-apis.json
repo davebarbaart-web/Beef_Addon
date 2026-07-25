@@ -1,0 +1,72 @@
+{
+  "extract_id": "extract_31471563fa693514e7734fde7153fc2a",
+  "session_id": "session_31471563fa693514e7734fde7153fc2a",
+  "status": "ok",
+  "results": [
+    {
+      "url": "https://github.com/Stanzilla/WoWUIBugs/wiki/2.5.1-Consolidated-UI-Changes",
+      "title": "2.5.1 Consolidated UI Changes \u00b7 Stanzilla/WoWUIBugs Wiki \u00b7 GitHub",
+      "publish_date": "2010-01-05",
+      "excerpts": [
+        "# Stanzilla/WoWUIBugs wiki: 2.5.1 Consolidated UI Changes\n## API Changes by Category\n### C_EquipmentSet\nThe in-game equipment manager was added in patch 3.1.2, however its APIs have been added to BC Classic and appear to be functional.\n\n...\n\n### C_GuildInfo\n* Added: [C_GuildInfo.CanEditOfficerNote](https://wow.fandom.com/wiki/API_C_GuildInfo.CanEditOfficerNote) - Replaces [CanEditOfficerNote](https://wow.fandom.com/wiki/API_CanEditOfficerNote) .\n* Added: [C_GuildInfo.CanViewOfficerNote](https://wow.fandom.com/wiki/API_C_GuildInfo.CanViewOfficerNote) - Replaces [CanViewOfficerNote](https://wow.fandom.com/wiki/API_CanViewOfficerNote) .\n* Added: [C_GuildInfo.GetGuildTabardInfo](https://wow.fandom.com/wiki/API_C_GuildInfo.GetGuildTabardInfo)\n* Added: [C_GuildInfo.GuildRoster](https://wow.fandom.com/wiki/API_C_GuildInfo.GuildRoster) - Replaces [GuildRoster](https://wow.fandom.com/wiki/API_GuildRoster) .\n* Added: [C_GuildInfo.IsGuildOfficer](https://wow.fandom.com/wiki/API_C_GuildInfo.IsGuildOfficer)\n\n...\n\n### C_ItemUpgrade\nItem upgrades are only available in Retail-specific content. The APIs listed below are likely non-functional in BC classic and will do nothing interesting if used.\n* Added: [C_ItemUpgrade.GetItemHyperlink](https://wow.fandom.com/wiki/API_C_ItemUpgrade.GetItemHyperlink)\n\n...\n\n### C_TaskQuest\nThe task quest system is used in Retail-only content for time-limited quests such as invasions. The APIs listed below are likely non-functional in BC classic and will do nothing interesting if used.\n\n...\n\n## Deprecated APIs\n* [SwapChatChannelByLocalID](https://wow.fandom.com/wiki/API_SwapChatChannelByLocalID) - Replaced by C_ChatInfo.SwapChatChannelsByChannelIndex.\n* [CanEditOfficerNote](https://wow.fandom.com/wiki/API_CanEditOfficerNote) - Replaced by C_GuildInfo.CanEditOfficerNote.\n* [CanViewOfficerNote](https://wow.fandom.com/wiki/API_CanViewOfficerNote) - Replaced by C_GuildInfo.CanViewOfficerNote.\n* [GuildRoster](https://wow.fandom.com/wiki/API_GuildRoster) - Replaced by C_GuildInfo.GuildRoster.\n\n...\n\n## Resources\n* [FrameXML Diff](https://github.com/Gethe/wow-ui-source/compare/classic...classic_beta)\n* [FrameXML Export](https://github.com/Gethe/wow-ui-source/tree/classic_beta)\n* [Known Issues](https://github.com/Stanzilla/WoWUIBugs/labels/BCC)"
+      ]
+    },
+    {
+      "url": "https://addonstudio.org/wiki/WoW:API_CanGuildInvite",
+      "title": "WoW API: CanGuildInvite - AddOn Studio",
+      "publish_date": "2023-08-15",
+      "excerpts": [
+        "# WoW API: CanGuildInvite\nFrom AddOn Studio\nJump to navigation Jump to search\n|Reference\n| [e](https://addonstudio.org/mw1/index.php?title=Template:Apinav&action=edit) |\n| AddOns |\n| WoW API |\n| Widget API |\n| XML UI |\n| Event API |\n| WoW Lua |\n| Macro API |\n| CVars |\nBattle.net\nHOWTOs\nSnippets\nUI tech\nCategories |\n\u2192 WoW API\n\n## Contents\n* 1 Arguments\n* 2 Returns\n\u2190 WoW API < CanGuildInvite\nChecks whether you have guild inviting permission.\n```\ncanInvite = CanGuildInvite()\n```\n\n...\n\n## Returns\n* World of Warcraft API\n* This page was last edited on 15 August 2023, at 04:45.\n* Copyright \u00a9 AddOn Studio 2010-2025. All rights reserved. Some content is available under Creative Commons Attribution-NonCommercial-ShareAlike .\n* Privacy policy\n* About AddOn Studio\n* Disclaimers"
+      ]
+    },
+    {
+      "url": "https://wowprogramming.com/docs/api/CanGuildInvite.html",
+      "title": "Home Page - World of Warcraft Programming: A Guide and Reference for Creating WoW Addons",
+      "publish_date": null,
+      "excerpts": [
+        "World of Warcraft Programming Site Logo\n* Store\n* About\n* Utils\n* Snippets\n* Forums\n* Chapters\n* Reference\n* Home\nReturns whether the player is allowed to invite new members to his or her guild\nSee also Guild functions .\nSignature:\n`canInvite` `=` `CanGuildInvite()`\nReturns:\n* `canInvite` - 1 if the player can invite members to their guild, otherwise nil ( `1nil` )"
+      ]
+    },
+    {
+      "url": "https://wowprogramming.com/docs/api/CanEditOfficerNote.html",
+      "title": "Home Page - World of Warcraft Programming: A Guide and Reference for Creating WoW Addons",
+      "publish_date": null,
+      "excerpts": [
+        "World of Warcraft Programming Site Logo\n* Store\n* About\n* Utils\n* Snippets\n* Forums\n* Chapters\n* Reference\n* Home\nReturns whether the player is allowed to edit guild officer notes\nSee also Guild functions .\nSignature:\n`canEdit` `=` `CanEditOfficerNote()`\nReturns:\n* `canEdit` - 1 if the player can edit officer notes; otherwise nil ( `1nil` )"
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "url": "https://wowpedia.fandom.com/wiki/API_C_GuildInfo.CanEditOfficerNote",
+      "error_type": "network_error",
+      "http_status_code": null,
+      "content": null
+    },
+    {
+      "url": "https://addonstudio.org/wiki/WoW:API_CanEditOfficerNote",
+      "error_type": "http_error",
+      "http_status_code": 404,
+      "content": null
+    },
+    {
+      "url": "https://addonstudio.org/wiki/WoW:API_CanViewOfficerNote",
+      "error_type": "http_error",
+      "http_status_code": 404,
+      "content": null
+    },
+    {
+      "url": "https://wowpedia.fandom.com/wiki/Talk:API_GetNumGuildMembers",
+      "error_type": "network_error",
+      "http_status_code": null,
+      "content": null
+    }
+  ],
+  "usage": [
+    {
+      "name": "sku_extract_excerpts",
+      "count": 4
+    }
+  ],
+  "warnings": []
+}

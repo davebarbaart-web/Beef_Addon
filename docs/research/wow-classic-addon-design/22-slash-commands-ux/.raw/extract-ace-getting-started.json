@@ -1,0 +1,23 @@
+{
+  "extract_id": "extract_c33a83badb8b8ca1f8788e5514d397db",
+  "session_id": "session_c33a83badb8b8ca1f8788e5514d397db",
+  "status": "ok",
+  "results": [
+    {
+      "url": "https://www.wowace.com/projects/ace3/pages/getting-started",
+      "title": "Getting Started - Pages - Ace3 - Addons - Projects - WowAce ",
+      "publish_date": "2013-05-26",
+      "excerpts": [
+        "# Pages\n## Using AceAddon-3.0\n### Standard methods\nThe OnInitialize() method of your addon object is called by AceAddon when the addon is first loaded by the game client. It's a good time to do things like restore saved settings (see the info on AceConfig for more notes about that).\n\n...\n\n## Using AceConsole-3.0\n### Using AceConsole for slash commands\nTo allow your addon to process slash commands, you need to register them, and provide a reference to a function that will do the processing. This is done via AceConsole's RegisterChatCommand() method. Note that the first argument (the command) should _not_ include a slash.\n\n...\n\n```\nMyAddon : RegisterChatCommand ( \" myslash\" , \" MySlashProcessorFunc\" ) \n\n function MyAddon : MySlashProcessorFunc ( input ) \n  -- Process the slash command ('input' contains whatever follows the slash command) \n end\n```\nHowever, in many cases it may be simpler to not code the processing of slash commands by hand, and instead utilize AceConfig's ability to generate slash commands automatically. Read on for how to use AceConfig to set up addon options.\n\n...\n\n## Using AceConfig-3.0\n### Creating an options table and handlers\n```\nlocal options = { \n    name = \" MyAddon\" , \n    handler = MyAddon , \n    type = ' group' , \n    args = { \n        msg = { \n            type = ' input' , \n            name = ' My Message' , \n            desc = ' The message for my addon' , \n            set = ' SetMyMessage' , \n```\n\n...\n\nThe above options table defines a single setting, \"msg\", which is a textual input (type = 'input') setting. **set** and **get** can be either method names of your addon object (or whatever object is defined as **handler** ), or full functions.\n\n...\n\n### Registering the options\nThe third argument is a list of slash commands you want tied to this option set. If you don't wish to tie any slash command to your options (i.e. if you only want GUI configuration or some such), set the third argument to nil.\n\n...\n\n## Using AceDBOptions-3.0\nAceDBOptions provides a quick way to integrate profile management into an addon using AceDB and AceConfig, without having to worry about SetProfile/GetProfiles. It can be set up via a single function call, which returns a table which can be included into the options table passed to AceConfig:\n\n...\n\nYou can call this right before you pass your options table to AceConfig: _db_ is the name of your database object from AceDB, and in this case _options.args.profile_ would be where in your options table you wish the \"profile\" command (and subcommands) to reside."
+      ]
+    }
+  ],
+  "errors": [],
+  "usage": [
+    {
+      "name": "sku_extract_excerpts",
+      "count": 1
+    }
+  ],
+  "warnings": []
+}

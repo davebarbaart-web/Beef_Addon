@@ -1,0 +1,23 @@
+{
+  "extract_id": "extract_6de479c3e969c33193432a7687aefebf",
+  "session_id": "session_6de479c3e969c33193432a7687aefebf",
+  "status": "ok",
+  "results": [
+    {
+      "url": "https://wowwiki-archive.fandom.com/wiki/API_SendChatMessage",
+      "title": "API SendChatMessage | WoWWiki | Fandom",
+      "publish_date": null,
+      "excerpts": [
+        "# API SendChatMessage\n## Contents\n* 1 Parameters\n  + 1.1 Arguments\n  + 1.2 Returns\n* 2 Example\n  + 2.1 Result\n* 3 Example\n  + 3.1 Result\n  + 3.2 Example\n  + 3.3 Result\n* 4 Details\n\u2190 WoW API < SendChatMessage\nSends a chat message.\n```\n/script SendChatMessage(\"msg\" ,\"chatType\" ,\"language\" ,\"channel\");\n```\n\n## Parameters [ ]\n### Arguments [ ]\n```\n(msg, chatType, language, channel)\n\nmsg\nString, The message to be sent, maximum length of 255 characters. (Not all characters in this string are allowed: See list of valid chat message characters )\n\nchatType\nString - (Optional) The type of chat message to be sent, \"SAY\", \"PARTY\", etc. See the list of chatTypeIds .\nIf chatType is **nil** or omitted then \"SAY\" will be used.\n\n\nlanguage\nString - (Optional) The language used to translate the message.\n\n**Languages** : \"COMMON\", \"DARNASSIAN\", \"DWARVEN\", \"DRAENEI\", \"TAURAHE\", \"ORCISH\", \"GUTTERSPEAK\", \"DEMONIC\", \"DRACONIC\", \"KALIMAG\", \"TITAN\", \"GNOMISH\", \"TROLL\"\nIf language is **nil** or omitted the default language will be used: \"ORCISH\" for the Horde, and \"COMMON\" for the Alliance, as returned by GetDefaultLanguage (\"player\").\nInstead of the name string, it is also valid to use the languageID to specify the language to speak in. This will use the language selected by the user:\n\nSendChatMessage(\"ExampleText\", \"SAY\", DEFAULT\\_CHAT\\_FRAME.editBox.languageID);\n\nchannel\nString - The channel or player receiving the message for \"CHANNEL\"/\"WHISPER\" communication. If sending to a channel you must use the number (eg. \"1\"); obtain it using GetChannelName (\"channelName\"). This field is required for the \"CHANNEL\"/\"WHISPER\" chat types and ignored for any other chat type.\n```\n\n### Returns [ ]\n```\nnil\n```\n\n## Example [ ]\n```\n/script SendChatMessage(\"Hello Bob!\", \"WHISPER\", \"Common\", \"Bob\");\n```\n\n...\n\n```\nlocal s = \"Hello World\"\nlocal index = GetChannelName(\"General\") -- It finds General is a channel at index 1\nif (index~=nil) then \n  SendChatMessage(s , \"CHANNEL\", nil, index); \nend\n```\n\n...\n\n### Example [ ]\n```\n/run msg = \"Buy my gems\"\n/run SendChatMessage(msg, \"WHISPER\", nil, GetUnitName(\"PLAYERTARGET\"))\n```\n\n### Result [ ]\n```\nWhispers current target \"Buy my gems\"\n```\n\n## Details [ ]\n```\nSends a chat message of the specified in 'msg' (ex. \"Hey!\"), to the system specified in 'chatType' (\"SAY\", \"WHISPER\", \"EMOTE\", \"CHANNEL\", \"PARTY\", \"BATTLEGROUND\", \"GUILD\", \"OFFICER\", \"YELL\", \"RAID\", \"RAID\\_WARNING\", \"AFK\", \"DND\"), in the language specified in 'language' (\"COMMON\", \"DARNASSIAN\", \"DWARVISH\", \"TAURAHE\", \"O\nRCISH\", \"GUTTERSPEAK\", \"DEMONIC\", \"DRACONIC\", \"KALIMAG\", \"TITAN\", \"GNOMISH\"), to the player or channel specified in 'channel'(ex. \"1\", \"Bob\").\n```\n\n...\n\n* The earliest you can send a chat message to \"GUILD\" is after the event \"CLUB_STREAM_SUBSCRIBED\" is fired, as this is when the Community channel is loaded. (Guild is a Community channel)\n* \"AFK\" and \"DND\" set your AFK or DND auto-reply. To cancel afk/dnd status, send another message to the same 'channel'.\n* It should be noted that you must provide a 'language' (be it nil or an actual language name) before the 'channel' when sending to the \"WHISPER\" or \"CHANNEL\" system.\n* To send a whisper to the player's selected target, use UnitName (\"target\") as the Channel.\n* Patch 1.11.0 added the \"RAID_WARNING\" system, only usable by the raid leader and raid assistants. The default UI shows messages send via \"RAID_WARNING\" in big letters on the center of the screen. As of a recent change in patch 2.0.0 this is also available in party and usable by all party member; Please don't abuse this idea.\n* Some channels may have restrictions on who may speak in them. For example, in order to speak in the 'World Defense' channel, you must have a PvP rank of 11 or higher.\n* Patch 2.0.0 throws an error when trying to speak a language you don't know."
+      ]
+    }
+  ],
+  "errors": [],
+  "usage": [
+    {
+      "name": "sku_extract_excerpts",
+      "count": 1
+    }
+  ],
+  "warnings": []
+}

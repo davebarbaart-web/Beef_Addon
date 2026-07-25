@@ -1,0 +1,23 @@
+{
+  "extract_id": "extract_a70dc9b92fa1f6458fb822110b387e8d",
+  "session_id": "session_a70dc9b92fa1f6458fb822110b387e8d",
+  "status": "ok",
+  "results": [
+    {
+      "url": "https://github.com/papa-smurf/Gargul",
+      "title": "GitHub - papa-smurf/Gargul \u00b7 GitHub",
+      "publish_date": null,
+      "excerpts": [
+        "# Gargul\n## Hotkeys\nUse these on any item in your bags, loot windows, or chat links:\n| Action | Default Hotkey |\n| Roll out / Auction | `ALT_CLICK` |\n| Award to a player | `ALT_SHIFT_CLICK` |\n| Mark for disenchant | `CTRL_SHIFT_CLICK` |\nChange hotkeys in `/gl` -> Shortcut Keys."
+      ]
+    }
+  ],
+  "errors": [],
+  "usage": [
+    {
+      "name": "sku_extract_excerpts",
+      "count": 1
+    }
+  ],
+  "warnings": []
+}

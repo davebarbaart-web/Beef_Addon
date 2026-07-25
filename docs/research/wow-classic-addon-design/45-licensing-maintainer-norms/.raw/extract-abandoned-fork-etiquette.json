@@ -1,0 +1,23 @@
+{
+  "extract_id": "extract_7441d70651252d6ffec0f978d1e183cb",
+  "session_id": "session_7441d70651252d6ffec0f978d1e183cb",
+  "status": "ok",
+  "results": [
+    {
+      "url": "https://www.reddit.com/r/wowaddons/comments/1d44ze3/has_anyone_taken_on_an_abandoned_addon/",
+      "title": "Reddit - The heart of the internet",
+      "publish_date": "2024-05-30",
+      "excerpts": [
+        "Skip to main content Open menu Open navigation [](https://www.reddit.com/) Go to Reddit Home\nr/wowaddons\nExpand user menu Open settings menu\n[Go to wowaddons](https://www.reddit.com/r/wowaddons/) [r/wowaddons](https://www.reddit.com/r/wowaddons/) \u2022 2y ago\n[zharrt](https://www.reddit.com/user/zharrt/)\n\n# Has anyone taken on an abandoned addon?\nI used to use what I would imagine is a simple addon but made a big QOL improvement. It was abandoned in 8.x the licence is \u201cPublic Domain\u201d so hopefully there is no issue there\nIf I wanted to take it in I\u2019m guessing I just clone the existing repository, try and fix the addon based on two expansions worth of changes and then uploaded it to curseforge as addon2.0.\nWhile I\u2019m trying to work out the kinks I\u2019m assuming I can just make the code changes direct in the right WTF folder until it works and then upload to curseforge when I\u2019m done? Do I need to sign or similar any addon while I\u2019m developing it?\nRead more Share"
+      ]
+    }
+  ],
+  "errors": [],
+  "usage": [
+    {
+      "name": "sku_extract_excerpts",
+      "count": 1
+    }
+  ],
+  "warnings": []
+}

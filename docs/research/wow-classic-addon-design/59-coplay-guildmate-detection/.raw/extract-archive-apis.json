@@ -1,0 +1,60 @@
+{
+  "extract_id": "extract_0bf89ad6b0503f4a3e5de3466c13ac19",
+  "session_id": "session_0bf89ad6b0503f4a3e5de3466c13ac19",
+  "status": "ok",
+  "results": [
+    {
+      "url": "https://warcraft.wiki.gg/wiki/API_CheckInteractDistance",
+      "title": "CheckInteractDistance - Warcraft Wiki - Your wiki guide to the World of Warcraft",
+      "publish_date": "2005-05-04",
+      "excerpts": [
+        "# CheckInteractDistance\nFrom Warcraft Wiki\nJump to navigation Jump to search\n| Main Menu |\n| * WoW API |\n* Lua API\n* Widget API\n* XML schema\n* FrameXML\n* Events\n* CVars\n* Combat Log\n* Escape sequences\n* API changes\n* HOWTOs\n* Discord logo.png [wowuidev](https://discord.gg/txUg39Vhc6) |\n|Fat cat yearns for the mines |The API wiki is under maintenance\nSince `2026-07-23T06:08:00Z` , ETA: at least multiple days |\n| --- | --- |\n|Icon-addon-48x48.png |**This function is restricted .**\n**``** - This cannot be called while in combat.\nRestricted since patch 10.2.0. |\n| --- | --- |\nReturns true if the player is in range to perform a specific interaction with the unit.\n```\ninRange = CheckInteractDistance ( unit , distIndex )\n```\n\n## Contents\n* 1 Arguments\n* 2 Returns\n* 3 Details\n* 4 Example\n* 5 Patch changes\n\n## Arguments\n```\nunit\nstring : UnitId \\- The unit to compare distance to.\n```\ndistIndex\nnumber - A value from 1 to 5:\n1 = Compare Achievements, 28 yards\n2 = Trade, 8 yards\n3 = Duel, 7 yards\n4 = Follow, 28 yards\n5 = Pet-battle Duel, 7 yards\n\n## Returns\n```\ninRange\nboolean \\- 1 if you are in range to perform the interaction, nil otherwise.\n```\n\n## Details\n* If \"unit\" is a hostile unit, the return values are the same. But you obviously won't be able to do things like Trade.\n\n## Example\n```\nif ( CheckInteractDistance(\"target\", 4) ) then\n  FollowUnit(\"target\");\nelse\n  -- we're too far away to follow the target\nend\n```\n\n...\n\n## Patch changes\nRetrieved from \" [https://warcraft.wiki.gg/wiki/API_CheckInteractDistance?oldid=6587326](https://warcraft.wiki.gg/wiki/API_CheckInteractDistance?oldid=6587326) \"\nCategories :\n* API systems/PlayerScript\n* API functions\n* API functions/restricted"
+      ]
+    },
+    {
+      "url": "https://wowwiki-archive.fandom.com/wiki/API_GetRaidRosterInfo",
+      "title": "API GetRaidRosterInfo | WoWWiki | Fandom",
+      "publish_date": null,
+      "excerpts": [
+        "# API GetRaidRosterInfo\n## Contents\n* 1 Parameters\n  + 1.1 Arguments\n  + 1.2 Returns\n* 2 Details\n\u2190 WoW API < GetRaidRosterInfo\nGets information about a raid member.\n```\nname, rank, subgroup, level, class, fileName, \n  zone, online, isDead, role, isML = GetRaidRosterInfo(raidIndex);\n```\n\n## Parameters [ ]\n### Arguments [ ]\nraidIndex\nNumber - Index of raid member between 1 and MAX_RAID_MEMBERS (40). If you specify an index that is out of bounds, the function returns nil.\n\n### Returns [ ]\nname\nString - raid member's name. In cross-realm battlegrounds, returns \"Name-Server\" for cross-realm players.\nrank\nInteger - Returns 2 if the raid member is the leader of the raid, 1 if the raid member is promoted to assistant, and 0 otherwise.\nsubgroup\nInteger - The raid party this character is currently a member of.\nRaid subgroups are numbered as on the standard raid window.\nlevel\nNumber - The level of the character. If this character is offline, the level will show as 0 (not nil).\nclass\nString - The character's class (localized), with the first letter capitalized (e.g. \"Priest\"). This function works as normal for offline characters.\nfileName\nString - The system representation of the character's class; always in english, always fully capitalized.\nzone\nString - The name of the zone this character is currently in. This is the value returned by GetRealZoneText . It is the same value you see if you mouseover their portrait (if in group).\nIf the character is offline, this value will be the string \"Offline\".\n**BUG** (as of 6/07/2013): Sometimes values are different, example: Thron des Donners and Der Thron des Donners.\n**BUG** (as of 2/26/2005): It seems that the person calling this function will have their Zone value returned as nil if they have not changed locations since last reloading their UI. Once you change locations (get the name to popup on screen), it seems to return as normal.\nThis only seems to affect when you look at the zone value of yourself from the raid. _Could a call to SetMapToCurrentZone () cure this?_\nYou should use functions categorised under **Location Functions** for getting your own location text -- Salanex\n**Possible values:** nil, \"Offline\", any valid location\nonline\nBoolean - Returns 1 if raid member is online, nil otherwise.\nisDead\nBoolean - Returns 1 if raid member is dead (hunters Feigning Death are considered alive), nil otherwise.\nrole\nString - The player's role within the raid (\"MAINTANK\" or \"MAINASSIST\").\nisML\nBoolean - Returns 1 if the raid member is master looter, nil otherwise\n\n## Details [ ]\nDo not make any assumptions about raidid (raid1, raid2, etc) to name mappings remaining the same or not. When the raid changes, people MAY retain it or not, depending on raid size and WoW patch. Yes, this behavior has changed with patches in the past and may do it again.\nCategories\n* Categories :\n* World of Warcraft API\nLanguages\n[\u0420\u0443\u0441\u0441\u043a\u0438\u0439](https://wowwiki.fandom.com/ru/wiki/%D0%A8%D0%B0%D0%B1%D0%BB%D0%BE%D0%BD:WoWAPI)\nCommunity content is available under [CC-BY-SA](https://www.fandom.com/licensing) unless otherwise noted.\nMore Fandoms\n* [Fantasy](https://www.fandom.com/fancentral/fantasy)\n* [World of Warcraft](https://www.fandom.com/universe/world-of-warcraft)\nAdvertisement\nAdvertisement\nAdvertisement"
+      ]
+    },
+    {
+      "url": "https://wowwiki-archive.fandom.com/wiki/API_UnitInRange",
+      "title": "API UnitInRange | WoWWiki | Fandom",
+      "publish_date": null,
+      "excerpts": [
+        "# API UnitInRange\n## Contents\n* 1 Arguments\n* 2 Returns\n* 3 Example\n  + 3.1 Result\n* 4 Details\n* 5 See also\n\u2190 WoW API < UnitInRange\nReturns 1 if the unit is in range of most helpful spells (40yds) and in a group / raid with you, otherwise nil.\n```\nisTrue = UnitInRange(\"unit\")\n```\n\n## Arguments [ ]\nunit\nString - unitId to check.\n\n## Returns [ ]\nisTrue\n1 or nil\n\n## Example [ ]\n```\nif UnitInRange(\"target\") then\n    print(UnitName(\"target\") .. \" is 40 yds away.\")\nelse\n    print(UnitName(\"target\") .. \" is not in range!\")\nend\n```\n\n### Result [ ]\n```\n_FarfarawayDPS_ is 40 yds away.\n _FarfarawayDPS_ is not in range!\n```\n\n## Details [ ]\n```\nReturns 'false' for any unit not in party or raid.\nWill return nil for hostile units.\n```\n\n## See also [ ]\n* API IsSpellInRange\nCategories\n* Categories :\n* World of Warcraft API\nLanguages\n[\u0420\u0443\u0441\u0441\u043a\u0438\u0439](https://wowwiki.fandom.com/ru/wiki/%D0%A8%D0%B0%D0%B1%D0%BB%D0%BE%D0%BD:WoWAPI)\nCommunity content is available under [CC-BY-SA](https://www.fandom.com/licensing) unless otherwise noted.\nMore Fandoms"
+      ]
+    },
+    {
+      "url": "https://wowwiki-archive.fandom.com/wiki/API_UnitIsAFK",
+      "title": "API UnitIsAFK | WoWWiki | Fandom",
+      "publish_date": "2026-02-08",
+      "excerpts": [
+        "[](https://auth.fandom.com/signin?redirect=https%3A%2F%2Fwowwiki-archive.fandom.com%2Fwiki%2FAPI_UnitIsAFK%3Fveaction%3Dedit&uselang=en)\nin: World of Warcraft API\nEnglish\n* [\u0420\u0443\u0441\u0441\u043a\u0438\u0439](https://wowwiki.fandom.com/ru/wiki/%D0%A8%D0%B0%D0%B1%D0%BB%D0%BE%D0%BD:WoWAPI)\n\n# API UnitIsAFK\n* [History](https://wowwiki-archive.fandom.com/wiki/API_UnitIsAFK?action=history)\n* [Purge](https://wowwiki-archive.fandom.com/wiki/API_UnitIsAFK?action=purge)\n* [Talk (0)](https://wowwiki-archive.fandom.com/wiki/Talk:API_UnitIsAFK?action=edit&redlink=1)\n|Reference\n| [e](https://wowwiki-archive.fandom.com/wiki/Template:Apinav?action=edit) |\n| AddOns |\n| WoW API |\n| Widget API |\n| XML UI |\n| Event API |\n| WoW Lua |\n| Macro API |\n| CVars |\n| Changes |\nB attle.net API\nHOWTOs\nSnippets\nUI tech.\nCategories |\n\u2192 WoW API\n\n## Contents\n* 1 Arguments\n* 2 Returns\n* 3 Example\n\u2190 WoW API < UnitIsAFK\nChecks if a unit is AFK.\n```\nisAFK = UnitIsAFK(\"unit\")\n```\n\n### Arguments [ ]\nunit\nThe UnitId to return AFK status of.\n\n### Returns [ ]\nisAFK\ntrue if unit is AFK, false otherwise.\n\n## Example [ ]\nIf the player is AFK, the following script outputs \"You are AFK\" to the default chat window.\n```\nif UnitIsAFK(\"player\") then\n  DEFAULT_CHAT_FRAME:AddMessage(\"You are AFK\");\nend\n```\nCategories\n* Categories :\n* World of Warcraft API\nLanguages\n[\u0420\u0443\u0441\u0441\u043a\u0438\u0439](https://wowwiki.fandom.com/ru/wiki/%D0%A8%D0%B0%D0%B1%D0%BB%D0%BE%D0%BD:WoWAPI)\nCommunity content is available under [CC-BY-SA](https://www.fandom.com/licensing) unless otherwise noted.\nMore Fandoms\n\n...\n\n## [](https://www.fandom.com/ \"Fandom logo\")\n### Fandom Apps\nTake your favorite fandoms with you and never miss a beat.\n* [](https://apps.apple.com/us/app/fandom-videos-news-reviews/id1230063803)\n* [](https://play.google.com/store/apps/details?id=com.fandom.app&referrer=utm_source%3Dwikia%26utm_medium%3Dglobalfooter)\nWoWWiki is a Fandom Games Community.\nView Mobile Site"
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "url": "https://wowwiki-archive.fandom.com/wiki/API_UnitIsInMyGuild",
+      "error_type": "network_error",
+      "http_status_code": null,
+      "content": null
+    },
+    {
+      "url": "https://wowwiki-archive.fandom.com/wiki/API_UnitIsConnected",
+      "error_type": "http_error",
+      "http_status_code": 403,
+      "content": null
+    }
+  ],
+  "usage": [
+    {
+      "name": "sku_extract_excerpts",
+      "count": 4
+    }
+  ],
+  "warnings": []
+}

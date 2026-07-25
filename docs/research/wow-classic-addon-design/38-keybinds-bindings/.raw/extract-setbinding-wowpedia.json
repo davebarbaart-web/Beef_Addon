@@ -1,0 +1,23 @@
+{
+  "extract_id": "extract_e8e52c4eda1f7414a092eb839f78d9bb",
+  "session_id": "session_e8e52c4eda1f7414a092eb839f78d9bb",
+  "status": "ok",
+  "results": [
+    {
+      "url": "https://wowpedia.fandom.com/wiki/API_SetBinding",
+      "title": "SetBinding - Wowpedia - Your wiki guide to the World of Warcraft",
+      "publish_date": null,
+      "excerpts": [
+        "# SetBinding\n* [History](https://wowpedia.fandom.com/wiki/API_SetBinding?action=history)\n* [Purge](https://wowpedia.fandom.com/wiki/API_SetBinding?action=purge)\n* Talk (12)\n| Main Menu |\n| * WoW API |\n* Lua API\n* FrameXML util\n* Widget API\n* Widget scripts\n* XML schema\n* Events\n* CVars\n* Macro commands\n* Combat Log\n* Escape sequences\n* Hyperlinks\n* API changes\n* HOWTOs\n* [Discord logo](https://discord.gg/txUg39Vhc6) [wowuidev](https://discord.gg/txUg39Vhc6) |\n| Swogstun | Automated updating of API pages at this location, to reflect patch changes, has ceased from 10.1.7 onwards. |\n|Icon-addon-48x48 |**This function is restricted .**\n**``** - This cannot be called while in combat.\nRestricted since patch 2.0; Snippets executed by SecureHandlers may alter [override] bindings in-combat. |\n| --- | --- |\nSets a key binding to an action.\n```\nok = SetBinding(key [, command, mode])\n```\n\n...\n\n## Arguments [ [](https://auth.fandom.com/signin?redirect=https%3A%2F%2Fwowpedia.fandom.com%2Fwiki%2FAPI_SetBinding%3Faction%3Dedit%26section%3D1&uselang=en&metadata=article-registration-edit-article-section \"Sign in to edit\") ]\n- Any name attribute value of a Bindings.xml-defined binding, or an action command string, or nil to unbind all\n\n...\n\n## Details [ [](https://auth.fandom.com/signin?redirect=https%3A%2F%2Fwowpedia.fandom.com%2Fwiki%2FAPI_SetBinding%3Faction%3Dedit%26section%3D4&uselang=en&metadata=article-registration-edit-article-section \"Sign in to edit\") ]\nHowever, bindings are not saved without an explicit SaveBindings () call.\nUnless saved, bindings will reset on next log-in / bindings load.\n\n...\n\naction.\n* If you set bindings using this API, they will be **permanently saved** to the current set, if you want more"
+      ]
+    }
+  ],
+  "errors": [],
+  "usage": [
+    {
+      "name": "sku_extract_excerpts",
+      "count": 1
+    }
+  ],
+  "warnings": []
+}

@@ -1,0 +1,78 @@
+{
+  "search_id": "search_da0eb598818076a9b2cd3267572c41d1",
+  "session_id": "session_da0eb598818076a9b2cd3267572c41d1",
+  "status": "ok",
+  "results": [
+    {
+      "url": "https://www.wowinterface.com/downloads/info25051-CEPGP.html",
+      "title": "CEPGP : Classic - General : World of Warcraft AddOns",
+      "publish_date": null,
+      "excerpts": [
+        "[](https://www.wowinterface.com)\n\n [World of Warcraft AddOns](https://www.wowinterface.com/downloads/index.php?s=8dffdfd4126acf361f653e996e19e141) \u00bb [Addons for WoW Classic](https://www.wowinterface.com/downloads/index.php?cid=158) \u00bb [Classic - General](https://www.wowinterface.com/downloads/index.php?cid=160) \u00bb **CEPGP**\n\n- Addon Info.\n- Change Log\n- Comments (4)\n- Donate!\n\n[Download](https://www.wowinterface.com/downloads/landing.php?s=8dffdfd4126acf361f653e996e19e141&fileid=25051 \"WoW Retail\")\n\n(155Kb)\n\n[Download](https://www.wowinterface.com/downloads/landing.php?s=8dffdfd4126acf361f653e996e19e141&fileid=25051 \"WoW Retail\")\n\nUpdated: 02-03-21 11:47 PM\n\nAdd Favorite\n\n[Install Help](http://faq.wowinterface.com)\n\nPictures\n\nFile Info\n\nView 1 Screenshot\n\n|Compatibility: |Classic Patch (1.13.6) |\n| --- | --- |\n|Updated: |02-03-21 11:47 PM |\n|Created: |06-29-19 09:41 PM |\n|Downloads: |41,376 |\n|Favorites: |11 |\n|MD5: | |\n\n# CEPGP Popular! (More than 5000 hits)\n\nVersion: 1.13.5\nby: [**Alumian**](https://www.wowinterface.com/forums/member.php?s=8dffdfd4126acf361f653e996e19e141&action=getinfo&userid=342166) [ [More](https://www.wowinterface.com/downloads/author-342166.html) ]\n\nAn addon designed to handle your guild's EPGP standings by storing the respective values in your Officer Notes. Another primary function of the addon is to handle loot moderation which you must be the master looter to utilise.  \n  \nFor this addon to work, anyone using the addon must be able to at the very least view Officer Notes. To adjust EP and GP values you must be able to edit Officer Notes.  \n  \nThe addon is entirely GUI based and the frame is designed to only appear automatically on raid bosses.  \n  \nFunctionality:  \n  \nEither /cepgp or /cep can be used as a valid command call  \nshow - Shows the cepgp window  \nversion - Allows you to check if each raid member is running the addon - and if so, what version of the addon they are using\nNote: cepgp is a context sensitive addon and elements will be visible when they are relevent  \n  \nAny function that involves modifying EPGP standings requires you to be able to edit officer notes to have it available to you.  \n  \nThe following commands can be used to get EPGP reports.  \n  \nThe player you whisper must be able to at least view officer notes  \n  \n/w player !info - Gets your current EPGP standings  \n/w player !infoguild - Gets your current EPGP standings and PR rank within your guild  \n/w player !inforaid - Gets your current EPGP standings and PR rank within the raid  \n/w player !infoclass - Gets your current EPGP standing s and PR rank among your class within the raid  \nDefinitions:  \n  \nEP: Effort points. Points gained from what ever criteria.  \n  \nGP: Gear points. Points gained from being awarded gear.  \n  \nPR: Priority. Calculated by EP / GP.  \n  \nDecay: Reduces the EP and GP of every guild member by a given percent.\n\n...\n\n\\- Players can no longer continue to submit responses after the distribution timer has expired  \n\\- Text from the message log can now be copied  \n\\- Minimap icon will now tell you on mouseover if CEPGP is active in your raid or not  \n\\- Implemented query and response messages for importing  \n\\- Staggered import process  \n\\- All rare tokens now have been overriden to use the epic rarity value  \n\\- Changed attachment point for the sync settings button  \n\\- Addition of new entries is no longer locked for the period where traffic is being shared  \n\\- Traffic sharing will no longer prevent new traffic entries from being created during the sharing process  \n\\- Traffic sharing and import settings now detects if the source player has disconnected  \n\\- Addon management delegation (force sync) is now selected via checkboxes rather than a dropdown menu  \n\\- Addon configuration (force sync) can now be pushed out without needing to nominate a rank to accept it from\n\n...\n\nNew Features: Extra responses for loot can now be added  \n  \nBug Fixes/Changes:  \nUpdated interface version  \nRewrote software license  \nComms module will now check and resend failed messages  \nCorrected slot token for Imperial Qiraji Regalia  \nAdded Vek'lor's Diadem and Vek'nilash's Circlet to token table  \nRewrote the traffic sharing module with significant optimisations  \nResolved duplicate check for loot responses  \nHunters will no longer auto pass on daggers  \nRaid window will now update properly when EPGP standings change  \nStandby list should now be correctly recorded when taking an attendance snapshot  \n  \n\\--------------------------------------------------------------------------------  \n  \nVersion 1.12.16  \n  \nFixed a bug preventing GP on tooltips from persisting  \n  \n\\--------------------------------------------------------------------------------  \n  \nVersion 1.12.15  \n  \nNew Features:  \nAdded traffic sharing  \nImplemented auto rolling  \n  \nBug Fixes/Changes:\n\n...\n\n\\- Added a measure to ensure boss kills are detected even if outside of 50 yards of the boss kill  \n\\- Added a template for new localisations to be added  \n\\- Added an import CSV function  \n\\- Added an option to toggle showing passes in loot distribution  \n\\- Added an optional timer in the loot GUI  \n\\- Added confirmation window for awarding EP on world boss kills  \n\\- Added more options to import/sync settings  \n\\- Added PR and trailing commas to optional fields in the EPGP export  \n\\- Added search function to the traffic frame  \n\\- Added slot weight for one-hand weapons  \n\\- Addon version will now show the beta/release state  \n\\- Adjustments to synchronising settings  \n\\- Boss EP settings now translate to your locale  \n\\- Corrected the GP value for bows  \n\\- Disabled auto award checkboxes for world bosses  \n\\- EPGP will now be logged when an item is given for free/without EPGP  \n\\- Fields will no longer remain highlighted when deselecting an editbox\n\n...\n\n[Optimisation] Optimisations to memory usage  \n[Optimisation] Further optimisations to scrollbar memory usage  \n[Optimisation] Further optimised polling of guild updates\n\n|[Post A Reply](https://www.wowinterface.com/downloads/addcomment.php?s=8dffdfd4126acf361f653e996e19e141&action=addcomment&fileid=25051) |Comment Options | |\n| --- | --- | --- |\n\n|Unread 08-28-23, 04:20 PM | |\n| --- | --- |\n|[Drack\\_Pyrewood](https://www.wowinterface.com/forums/member.php?s=8dffdfd4126acf361f653e996e19e141&u=354718)\n\nA Kobold Labourer\n\nForum posts: 0\n\nFile comments: 1\n\nUploads: 0 |**Memory leak?**\n\n* * *\n\nHello!  \n  \nAfter the recent wow classic era patch the addon seems to use extreme amounts of memory. Will there be any updates to the addon to fix this?  \n  \nSeems to accumulate about 1MB pr sec till the game simply crashes. |\n|[Report comment to moderator](https://www.wowinterface.com/downloads/report.php?s=8dffdfd4126acf361f653e996e19e141&action=reportcmnt&commentid=493060) |* * *\n[Reply With Quote](https://www.wowinterface.com/downloads/addcomment.php?s=8dffdfd4126acf361f653e996e19e141&action=addcomment&fileid=25051&quote=493060) |\n\n|Unread 10-18-19, 06:44 PM | |\n| --- | --- |\n|[wayne62682](https://www.wowinterface.com/forums/member.php?s=8dffdfd4126acf361f653e996e19e141&u=253730)\n\nA Kobold Labourer\n\n[AddOn Compiler - Click to view compilations](https://www.wowinterface.com/downloads/author-253730.html)\n\n  \nForum posts: 0\n\nFile comments: 7\n\nUploads: 3 |Great addon, I am evaluating it for my guild in Classic. I could have sworn the last time I checked there was an option to award EP to raid/standby at a set interval (e.g. every 60 minutes give everyone 5 EP) but I can't find that option. Did I remember incorrectly? |\n|[Report comment to moderator](https://www.wowinterface.com/downloads/report.php?s=8dffdfd4126acf361f653e996e19e141&action=reportcmnt&commentid=483527) |* * *\n\n[Reply With Quote](https://www.wowinterface.com/downloads/addcomment.php?\n\n...\n\n| --- | --- |\n|[Blood Threat and Fears](https://www.wowinterface.com/forums/member.php?s=8dffdfd4126acf361f653e996e19e141&u=342476)\n\nA Kobold Labourer\n\nForum posts: 0\n\nFile comments: 1\n\nUploads: 0 |**Have any more screenshots?**\n\n* * *\n\nHey Alumian, great stuff! I am doing a video about EPGP for Classic. I was wondering if there were any more screenshots of the Interface - like what are the different interfaces for the members/officers/guild master. Although, the first screenshot that you've already uploaded seems to be all of the actual interface. Can you confirm?  \n  \nAlso, will there be a way to export a file from the addon into like a excel/html format? A file that shows EPGP and PR vaules, list of gear received [name of the gear], a list from high to low recent attendance, and overall statistics - like a document I can post on our guild discord or even the Guilded app.  \n  \nAnyways, My guild and I, are looking forward to using your addon.\n\n...\n\nAddons for WoW Classic \\- Cataclysm Classic \\- The Burning Crusade Classic \\- Classic - General \\- WOTLK Classic Stand-Alone Addons \\- Action Bar Mods \\- Auction House & Vendors \\- Carbonite \\- Bags, Bank, Inventory \\- Buff, Debuff, Spell \\- Casting Bars, Cooldowns \\- Character Advancement \\- Chat Mods \\- Class & Role Specific \\-- Death Knight \\-- Demon Hunter \\-- Druid \\-- Hunter \\-- Mage \\-- Monk \\-- Paladin \\-- Priest \\-- Rogue \\-- Shaman \\-- Warlock \\-- Warrior \\-- DPS \\-- Healers \\-- Tank \\- oUF \\-- oUF: Core \\-- oUF: Layouts \\-- oUF: Plugins \\- Combat Mods \\- Data Mods \\- Garrisons \\- Graphic UI Mods \\- Group, Guild & Friends \\- Info, Plug-in Bars \\-- Data Broker \\-- FuBar \\-- Titan Panel \\-- Other \\- Map, Coords, Compasses \\- Mail \\- Mini Games, ROFL \\- Mounts & Pets \\- PvP, Arena, BattleGrounds \\- Raid Mods \\- RolePlay, Music Mods \\- Suites \\- TradeSkill Mods \\- ToolTip \\- UI Media \\- Unit Mods \\- Miscellaneous \\- Utility Mods Compilations \\- Graphical Compilations \\- Minimalis"
+      ]
+    },
+    {
+      "url": "https://www.curseforge.com/wow/addons/cepgp",
+      "title": "CEPGP - World of Warcraft Addons - CurseForge",
+      "publish_date": null,
+      "excerpts": [
+        "<strong>An addon designed to handle your guild&#x27;s EPGP standings by storing the respective values in your Officer Notes</strong>."
+      ]
+    },
+    {
+      "url": "http://www.epgpweb.com/help/addon",
+      "title": "EPGPWeb \nThe Addon\n",
+      "publish_date": null,
+      "excerpts": [
+        "We have also implemented an addon that implements EPGP in game. The addon is built around the following principles: Simplicity: Be as simple as possible, but not simpler ... With the above in mind the addon was built, over multiple iterations. That said it is always a work in progress that strives for perfection. Once you install the addon, you can bring up the standings UI by typing:"
+      ]
+    },
+    {
+      "url": "https://github.com/yutsuku/epgp",
+      "title": "GitHub - yutsuku/epgp: epgp (dkp reloaded)  - a World of Warcraft (3.3.5a) AddOn (modification) \u00b7 GitHub",
+      "publish_date": null,
+      "excerpts": [
+        "# yutsuku/epgp\n\n- Page: GitHub repository\n- URL: https://github.com/yutsuku/epgp\n- Description: epgp (dkp reloaded)  - a World of Warcraft (3.3.5a) AddOn (modification) - yutsuku/epgp\n- Stars: 1\n- Forks: 0\n- License: BSD-3-Clause license\n- Default branch: master\n- Created: 2019-01-30T15:39:19.000Z\n- Commits: 2\n\n## Top-level files\n\n- images/\n- libs/\n- localization/\n- CREDITS\n- LICENCE\n- LibCoroutine-1.0.lua\n- LibDebug-1.0.lua\n- LibGearPoints-1.0.lua\n- LibGuildStorage-1.0.dot\n- LibGuildStorage-1.0.lua\n- LibItemUtils-1.0.lua\n- LibJSON-1.0.lua\n- LibLootNotify-1.0.lua\n- LibRPC-1.0.lua\n- README\n- TODO\n- announce.lua\n- bindings.xml\n- boss.lua\n- epgp.lua\n- epgp.toc\n- epgp_options.lua\n- epgp_recurring.lua\n- gptooltip.lua\n- ldb.lua\n- log.lua\n- loot.lua\n- lootmaster.lua\n- lootmaster_ui.lua\n- popups.lua\n- ui.lua\n- warnings.lua\n- whisper.lua\n\n## README\n\n```\nBefore you install this addon, read the documentation at:\n\nhttp://epgp.googlecode.com/"
+      ]
+    },
+    {
+      "url": "https://eu.forums.blizzard.com/en/wow/t/addon-accessing-and-sharing-officer-notes-for-any-guild-member/573173",
+      "title": "Addon accessing and sharing Officer Notes for any guild member - Support / Customer Support - World of Warcraft Forums",
+      "publish_date": null,
+      "excerpts": [
+        "The behaviour of an addon has come into my knowledge, and as far as I checked, its code violates a basic privacy rule for guilds. Every guild member X that installs the addon Guild Tracker (from curseforge, etc) can see changes to Officer Notes made by an officer for member X or any other member, even though member X is not an officer."
+      ]
+    },
+    {
+      "url": "https://legacy-wow.com/classic-addons/cepgp/",
+      "title": "CEPGP",
+      "publish_date": null,
+      "excerpts": [
+        "For more frequent updates and more detailed change logs, please keep an eye on the GitHub page: https://github.com/Alumian/CEPGP-Retail An addon designed to handle your guild\u2019s EPGP standings by <strong>storing the respective values in your Officer Notes</strong>."
+      ]
+    },
+    {
+      "url": "https://www.wowinterface.com/downloads/info26606-CalamityEPGP.html",
+      "title": "CalamityEPGP : WOTLK Classic  : World of Warcraft AddOns",
+      "publish_date": null,
+      "excerpts": [
+        "This addon **does not** use your guild&#x27;s officer notes to store standings. Therefore, it can handle standings for PUGs as well as guild members. ## Features - Maintains your guild&#x27;s EPGP standings - Assists in distributing loot - Auto awards EP for boss kills - Maintains table of mains to alts - Syncs EP and/or GP between characters depending on settings - Keeps a history of EP/GP modifications for auditing - GP value and awarded information in an item&#x27;s tooltip - Base GP to prevent new raiders and returning raiders from winning gear over consistent raiders - Different GP value when awarding i"
+      ]
+    },
+    {
+      "url": "https://github.com/Road-block/shootyepgp",
+      "title": "GitHub - Road-block/shootyepgp: Guild Helper addon for EPGP loot system in WoW (1.12) \u00b7 GitHub",
+      "publish_date": null,
+      "excerpts": [
+        "officer notes must be set to visible ... FuBar shootyepgp icon will show all available settings. <strong>Left-click shows the standings window with everyone&#x27;s EP, GP and PR values</strong>."
+      ]
+    }
+  ],
+  "usage": [
+    {
+      "name": "sku_search",
+      "count": 1
+    }
+  ],
+  "warnings": []
+}

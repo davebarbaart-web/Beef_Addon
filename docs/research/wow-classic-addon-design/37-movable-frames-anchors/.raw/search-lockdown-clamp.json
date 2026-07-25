@@ -1,0 +1,94 @@
+{
+  "search_id": "search_ea20460d4b440926d371b17365fa17c0",
+  "session_id": "session_ea20460d4b440926d371b17365fa17c0",
+  "status": "ok",
+  "results": [
+    {
+      "url": "https://wowpedia.fandom.com/wiki/API_Frame_StartMoving",
+      "title": "Frame:StartMoving - Wowpedia - Your wiki guide to the World of Warcraft",
+      "publish_date": null,
+      "excerpts": [
+        "Begins repositioning the frame via mouse movement. Frame:StartMoving([alwaysStartFromMouse])"
+      ]
+    },
+    {
+      "url": "https://warcraft.wiki.gg/wiki/API_StartMoving",
+      "title": "Frame:StartMoving - Warcraft Wiki - Your wiki guide to the World of Warcraft",
+      "publish_date": null,
+      "excerpts": [
+        "<strong>Begins repositioning the frame via mouse movement</strong>. Frame:StartMoving([alwaysStartFromMouse]) alwaysStartFromMouse boolean? = false This function triggers an error &quot;Frame:StartMoving(): Frame is not movable&quot; if called on a non-movable widget. This function automatically flags the widget as"
+      ]
+    },
+    {
+      "url": "https://addonstudio.org/wiki/WoW:API_Frame_StartMoving",
+      "title": "Widget API: Frame:StartMoving - AddOn Studio",
+      "publish_date": null,
+      "excerpts": [
+        "For example, if MyFrame&#x27;s TOPLEFT is anchored to MyParent&#x27;s TOPLEFT at (5,-5), and MyParent&#x27;s TOPLEFT is anchored to UIParent&#x27;s TOPLEFT at (100,-100), then MyFrame:StartMoving() immediately re-anchors MyFrame&#x27;s TOPLEFT to the screen&#x27;s (nil anchor) TOPLEFT at (105,-105). The original anchor frame (MyParent) and offset will not be restored by StopMovingOrSizing()."
+      ]
+    },
+    {
+      "url": "https://breezewiki.com/wowwiki-archive/wiki/API_Frame_StartMoving",
+      "title": "API Frame StartMoving | WoW+BreezeWiki",
+      "publish_date": null,
+      "excerpts": [
+        "To confirm, please click directly in the circle, or hold down the 3 key on your keyboard \u00b7 BreezeWiki source code"
+      ]
+    },
+    {
+      "url": "https://wowwiki-archive.fandom.com/wiki/API_Frame_StartMoving",
+      "title": "API Frame StartMoving | WoWWiki | Fandom",
+      "publish_date": null,
+      "excerpts": [
+        "\u2190 Widget API \u2190 Frame ... event to allow your frame-based object to be moved by the user. Use the Frame:StopMovingOrSizing() function inside the ... XML section to stop the moving process. Moving a frame using this function sets the user placed flag for the frame, making the"
+      ]
+    },
+    {
+      "url": "https://www.wowinterface.com/forums/showthread.php?t=52537",
+      "title": "TargetFrameToT taint? - WoWInterface",
+      "publish_date": null,
+      "excerpts": [
+        "s=1e969fc052aafbebded96af67d5c487c&u=221168)\n\n|[AddOn Author - Click to view addons](https://www.wowinterface.com/downloads/author-221168.html) |\n| --- |\n\nJoin Date: Dec 2009\n\nPosts: 122\n\n**TargetFrameToT taint?**\n\n* * *\n\nHey guys, I'm having a hard time moving my TargetFrameToT. I'm trying to \"detach\" it from my target frame, basically, and have it display above and to the right so it doesn't overlap my action bars. I really just want to keep it parented to the target frame if I can and just move it a little. Here's a copy of my taint log.  \n  \n<http://pastebin.com/gyQV87xU>  \n  \nI'm really new to this lua stuff (even started reading WoW Programming 2nd Edition) but is this because the ToT frame isn't technically movable? Using SetMovable and SetUserPlaced didn't change anything. This is what I'm using to move the ToT frame.  \n  \nLua Code:\n\n```\n1. TargetFrameToT:ClearAllPoints ( )\n2. TargetFrameToT:SetPoint ( \"CENTER\" ,TargetFrame, \"CENTER\" , 60 , 100 )\n3. TargetFrameToT.\n\n...\n\n2. hooksecurefunc ( PetFrame, \"SetPoint\" , function ( self )\n3. \u00a0 \u00a0 if moving then\n4. \u00a0 \u00a0 \u00a0 \u00a0 return\n5. \u00a0 \u00a0 end\n6. \u00a0 \u00a0 moving = true\n7. \u00a0 \u00a0 self:SetMovable ( true )\n8. \u00a0 \u00a0 self:SetUserPlaced ( true )\n9. \u00a0 \u00a0 self:ClearAllPoints ( )\n10. \u00a0 \u00a0 self:SetPoint ( \"CENTER\" , UIParent, \"CENTER\" , 0 , 0 )\n11. \u00a0 \u00a0 self:SetMovable ( false )\n12. \u00a0 \u00a0 moving = nil\n13. end )\n14. PetFrame:SetPoint ( \"CENTER\" , UIParent, \"CENTER\" , 0 , 0 )\n```\n\n  \nThe big advantage of the SetUserPlaced call if the frame is supported, then you can clear/move protected frames even in combat.  \n  \n_There is also a similar hack with secure frames, where you can resize them in combat while StartSizing is active._\n\n* * *\n\n_Last edited by Resike : 07-25-15 at 07:26 PM ._\n\n[Reply With Quote](https://www.wowinterface.com/forums/newreply.php?s=1e969fc052aafbebded96af67d5c487c&do=newreply&p=309965)\n\n07-25-15, 10:28 PM\n\n\\# [**8**](https://www.wowinterface.com/forums/showpost.php?\n\n...\n\n211  An action was blocked in combat because of taint from JasmerUI - PetActionBarFrame:Show()\n7/26 09:25:53.211      Interface\\FrameXML\\PetActionBarFrame.lua:83\n```\n\nI wound up using the following to move both frames, so far no problems. I think the reason it wasn't working for the pet frame earlier is I might not have actually exited the game, just did a /reload, I don't remember though. Either way, only tested on my hunter and rogue. No taint log, frames stay put now.  \n  \nLua Code:\n\n```\n1. PetFrame:SetMovable ( true )\n2. PetFrame:ClearAllPoints ( )\n3. PetFrame:SetPoint ( \"CENTER\" , PlayerFrame, \"CENTER\" , - 60 , 100 )\n4. PetFrame:SetUserPlaced ( true )\n5. PetFrame:SetMovable ( false )\n6. \u00a0\n7. TargetFrameToT:SetMovable ( true )\n8. TargetFrameToT:ClearAllPoints ( )\n9. TargetFrameToT:SetPoint ( \"CENTER\" , TargetFrame, \"CENTER\" , 60 , 100 )\n10. TargetFrameToT:SetUserPlaced ( true )\n11. TargetFrameToT:SetMovable ( false )\n```"
+      ]
+    },
+    {
+      "url": "https://www.wowinterface.com/forums/showthread.php?p=313021",
+      "title": "Movable frame with buttons inside (lua) - Page 2 - WoWInterface",
+      "publish_date": null,
+      "excerpts": [
+        "com/forums/showpost.php?s=6d65bded42536b36e276e853d7179fa8&p=313006&postcount=21)\n\n[tyroneexe](https://www.wowinterface.com/forums/member.php?s=6d65bded42536b36e276e853d7179fa8&u=329320)\n\nA Deviate Faerie Dragon\n\n|[AddOn Author - Click to view addons](https://www.wowinterface.com/downloads/author-329320.html) |\n| --- |\n\nJoin Date: Feb 2016\n\nPosts: 13\n\nThe quest to make the addon/frame hidden when not in ashran continues.  \n  \nTried\n\nLua Code:\n\n```\n1. if pvpMapID = 3 then\n2. \u00a0 \u00a0 frame:Show ( )\n3. else\n4. \u00a0 \u00a0 frame:Hide ( )\n5. end\n```\n\n  \nalso\n\nLua Code:\n\n```\n1. frame:SetShown ( pvpMapID ( 3 ) )\n```\n\nand  \nLua Code:\n\n```\n1. if ( not Api:IsInAshran ( ) ) then\n2. \u00a0 \u00a0 \u00a0 \u00a0 self.Component:Hide ( )\n3. \u00a0 \u00a0 end\n```\n\n  \nand while some parts might be part of the solution, I'm also sure I'm missing some parts.  \nmaybe  \nLua Code:\n\n```\n1. local pvpID, localizedName \u00a0 = GetWorldPVPAreaInfo ( 3 ) ;\n```\n\nis part of the solution.  \n  \nI think I'll leave it for today, spend enough time on that today. Thanks for the help thus far.\n\n...\n\nmacrotext1 = SLASH_WORLD_MARKER1.. \" 8\" ;\n247. \u00a0 \u00a0 \u00a0 \u00a0 \u00a0 \u00a0 \u00a0 \u00a0 \u00a0 \u00a0 macrotext2 = SLASH_CLEAR_WORLD_MARKER1.. \" 8\" ;\n248. \u00a0 \u00a0 \u00a0 \u00a0 \u00a0 \u00a0 \u00a0 \u00a0 } ;\n249. \u00a0 \u00a0 \u00a0 \u00a0 \u00a0 \u00a0 } ;\n250. \u00a0 \u00a0 \u00a0 \u00a0 } ;\n251. \u00a0 \u00a0 } ;\n252. } ;\n253. \u00a0\n254. ------------------------------------------------------------------\n255. --[[\u00a0 \u00a0 Addon Code (Don't change anything below this line)\u00a0 ]]\n256. ------------------------------------------------------------------\n257. --\u00a0 Button Handlers\n258. local function Container_OnEvent ( self )\n259. \u00a0 \u00a0 if not ( self.HasProtectedFrame and InCombatLockdown ( ) ) then -- \u00a0 Check if we have a protected button and can show/hide ourselves (Protected frames are protected in combat)\n260. \u00a0 \u00a0 \u00a0 \u00a0 self:SetShown ( GetZoneText ( ) == GetMapNameByID ( 978 ) )\n261. \u00a0 \u00a0 end\n262. end\n263. \u00a0\n264. local function Button_OnEnter ( self )\n265. \u00a0 \u00a0 GameTooltip:SetOwner ( self, \"ANCHOR_TOP\" ) ;\n266. \u00a0 \u00a0 GameTooltip:AddLine ( self.Tooltip, 0 , 1 , 0.5 ) ;\n267.\n\n...\n\n( server and \"-\" ..server: gsub ( \"%s\" , \"\" ) or \"\" ) ; --\u00a0 \u00a0 Format name to <name-server> if necessary\n285. \u00a0 \u00a0 \u00a0 \u00a0 \u00a0 \u00a0 \u00a0 \u00a0 end\n286. \u00a0 \u00a0 \u00a0 \u00a0 \u00a0 \u00a0 end\n287. \u00a0 \u00a0 \u00a0 \u00a0 \u00a0 \u00a0 DoEmote ( self.Emote [ 1 ] ,target ) ;\n288. \u00a0 \u00a0 \u00a0 \u00a0 else\n289. \u00a0 \u00a0 \u00a0 \u00a0 \u00a0 \u00a0 DoEmote ( self.Emote ) ;\n290. \u00a0 \u00a0 \u00a0 \u00a0 end\n291. \u00a0 \u00a0 end\n292. end\n293. \u00a0\n294. local OffsetX = 0 ;\n295. for containerid,buttonlist in ipairs ( ButtonData ) do\n296. --\u00a0 Container Frame\n297. \u00a0 \u00a0 local container = CreateFrame ( \"Frame\" , \"AshranCommander\" ..containerid,UIParent ) ;\n298. \u00a0 \u00a0 container:SetBackdrop ( Backdrop ) ;\n299. \u00a0 \u00a0 container:Hide ( ) ; -- Start hidden\n300. \u00a0\n301. --\u00a0 Enable Dragging\n302. \u00a0 \u00a0 container:EnableMouse ( true ) ;\n303. \u00a0 \u00a0 container:SetMovable ( true ) ;\n304. \u00a0 \u00a0 container:SetClampedToScreen ( true ) ;\n305. \u00a0 \u00a0 container:RegisterForDrag ( \"LeftButton\" ) ;\n306. \u00a0 \u00a0 container:SetScript ( \"OnDragStart\" ,container.StartMoving ) ;\n307. \u00a0 \u00a0 container:SetScript ( \"OnDragStop\" ,container.StopMovingOrSizing ) ;\n308.\n\n...\n\nSince we're starting to deal with protected frames, the show/hide event code checks **InCombatLockdown()** and also listens to **PLAYER\\_REGEN\\_ENABLED** in order to retry once out of combat. Buttons are now directly anchored to the container frame with some mathematical magic instead of anchored to each other. Script handlers on the buttons are now using **_Frame_ :HookScript()** in order to avoid taint and preserve scripts set by inherited templates.\n\n\\_\\_\\_\\_\\_\\_\\_\\_\\_\\_\\_\\_\\_\\_\\_\\_\\_\\_  \n[WoWInterface AddOns](https://www.wowinterface.com/downloads/author-34145.html)  \n|\"All I want is a pretty girl, a decent meal, and the right to shoot lightning at fools.\"  \n\\-Anders (Dragon Age: Origins - Awakening) |\n| --- |\n\n* * *\n\n_Last edited by SDPhantom : 02-23-16 at 03:11 PM ._\n\n[Reply With Quote](https://www.wowinterface.com/forums/newreply.php?s=6d65bded42536b36e276e853d7179fa8&do=newreply&p=313020)\n\n02-13-16, 03:59 PM\n\n\\# [**30**](https://www.wowinterface.com/forums/showpost.php?\ns=6d65bded42536b36e276e853d7179fa8&p=313021&postcount=30)\n\n[tyroneexe](https://www.wowinterface.com/forums/member.php?s=6d65bded42536b36e276e853d7179fa8&u=329320)\n\nA Deviate Faerie Dragon\n\n|[AddOn Author - Click to view addons](https://www.wowinterface.com/downloads/author-329320.html) |\n| --- |\n\nJoin Date: Feb 2016\n\nPosts: 13\n\nThis looks very interesting. I starting to understand the code, but like languages it's easier to understand sentences than construct sentences.  \n  \nMy current code, not altered yet, provides these two frames with the functions I think are needed.  \n  \n  \n  \nCurrent code.  \nLua Code:\n\n```\n1. local frame = CreateFrame ( \"Frame\" , \"ACFrame\" ,UIParent )\n2. frame:SetPoint ( \"CENTER\" ,UIParent )\n3. frame:SetSize ( 40 + 40 + 20 , ( 7 * 40 ) + 20 )\n4. frame:SetBackdrop ( StaticPopup1:GetBackdrop ( ) )\n5. frame:EnableMouse ( true )\n6. frame:SetScale ( 0.8 )\n7. frame:SetMovable ( true )\n8. frame:SetClampedToScreen ( true )\n9. frame:RegisterForDrag ( \"LeftButton\" ) -- \u00a0 Register left button for dragging\n10.\nframe:SetScript ( \"OnDragStart\" ,frame.StartMoving ) -- \u00a0Set script for drag start\n11. frame:SetScript ( \"OnDragStop\" ,frame.StopMovingOrSizing ) -- \u00a0 \u00a0Set script for drag stop\n12. frame:SetUserPlaced ( true )\n13. -- disabled for testing purposes frame:RegisterEvent(\"PLAYER_ENTERING_WORLD\")-- \u00a0Load screen disapears\n14. -- disabled for testing purposes frame:RegisterEvent(\"ZONE_CHANGED_NEW_AREA\")-- \u00a0Moved into new area\n15. -- disabled for testing purposes frame:SetScript(\"OnEvent\",function(self,event) self:SetShown(GetZoneText()==GetMapNameByID(978)) end)\n16. \u00a0 \u00a0\n17. \u00a0\n18. local CreateButton ; do -- Prototype for function\n19. \u00a0 \u00a0 -- \u00a0Drag Handlers\n20. \u00a0 \u00a0 local function OnDragStart ( self ) self:GetParent ( ) :StartMoving ( ) ; end\n21. \u00a0 \u00a0 local function OnDragStop ( self ) self:GetParent ( ) :StopMovingOrSizing ( ) ; end\n22. \u00a0\n23. \u00a0 \u00a0 -- \u00a0Tooltip Handlers\n24. \u00a0 \u00a0 local function OnEnter ( self )\n25. \u00a0 \u00a0 \u00a0 \u00a0 if self.Tooltip then\n26. \u00a0 \u00a0 \u00a0 \u00a0 \u00a0 \u00a0 GameTooltip:SetOwner ( self, \"ANCHOR_TOP\" ) ;\n27.\n\n...\n\nframe:SetSize ( 40 + 40 + 40 + 20 , ( 3 * 40 ) + 20 )\n180. frame:SetBackdrop ( StaticPopup1:GetBackdrop ( ) )\n181. frame:EnableMouse ( true )\n182. frame:SetScale ( 0.8 )\n183. frame:SetMovable ( true )\n184. frame:SetClampedToScreen ( true )\n185. frame:RegisterForDrag ( \"LeftButton\" ) -- \u00a0 Register left button for dragging\n186. frame:SetScript ( \"OnDragStart\" ,frame.StartMoving ) -- \u00a0Set script for drag start\n187. frame:SetScript ( \"OnDragStop\" ,frame.StopMovingOrSizing ) -- \u00a0 \u00a0Set script for drag stop\n188. frame:SetUserPlaced ( true )\n189. -- disabled for testing purposes frame:RegisterEvent(\"PLAYER_ENTERING_WORLD\")-- \u00a0Load screen disapears\n190. -- disabled for testing purposesframe:RegisterEvent(\"ZONE_CHANGED_NEW_AREA\")-- \u00a0Moved into new area\n191. -- disabled for testing purposesframe:SetScript(\"OnEvent\",function(self,event) self:SetShown(GetZoneText()==GetMapNameByID(978)) end)\n192. \u00a0 \u00a0\n193. \u00a0\n194. local CreateButton ; do -- Prototype for function\n195. \u00a0 \u00a0 -- \u00a0Drag Handlers\n196."
+      ]
+    },
+    {
+      "url": "https://wowpedia.fandom.com/wiki/Making_draggable_frames",
+      "title": "Making draggable frames - Wowpedia - Your wiki guide to the World of Warcraft",
+      "publish_date": null,
+      "excerpts": [
+        "Summary: Flag a frame as movable (either through the movable XML attribute or frame:SetMovable(isMovable)). <strong>To initiate dragging of a frame, call frame:StartMoving();</strong> to stop, call frame:StopMovingOrSizing(). These functions may be called from"
+      ]
+    },
+    {
+      "url": "https://wowwiki-archive.fandom.com/wiki/API_Frame_SetUserPlaced",
+      "title": "API Frame SetUserPlaced | WoWWiki | Fandom",
+      "publish_date": "2024-10-29",
+      "excerpts": [
+        "WoWWiki\n\n**This wiki contains inaccurate and out-of-date information. Please head over to [https://wowpedia.fandom.com](https://wowpedia.fandom.com/) for more accurate and up-to-date game information.**\n\nREAD MORE\n\n[](https://www.fandom.com/)\n\n[Create a Free Account](https://auth.fandom.com/register?source=mw&redirect=https%3A%2F%2Fwowwiki-archive.fandom.com%2Fwiki%2FAPI_Frame_SetUserPlaced&metadata=header-registration-button)\n\n[Home](https://www.fandom.com/)\n\nExplore\n\n[Saved](https://www.fandom.com/saved)\n\n[Progress](https://www.fandom.com/progress)\n\nHistory\n\n[Utilities](https://www.fandom.com/utilities)\n\nMore\n\nAdvertisement\n\nSkip to content\n\n[](https://auth.fandom.com/signin?redirect=https%3A%2F%2Fwowwiki-archive.fandom.com%2Fwiki%2FAPI_Frame_SetUserPlaced%3Fveaction%3Dedit&uselang=en&metadata=article-registration-edit-article) [](https://auth.fandom.com/signin?redirect=https%3A%2F%2Fwowwiki-archive.fandom.\ncom%2Fwiki%2FAPI_Frame_SetUserPlaced%3Fcollections%3Dsave&uselang=en&metadata=collections-save-button)\n\nin: Widget methods\n\n# API Frame SetUserPlaced\n\n[Sign In to Save Save](https://auth.fandom.com/signin?redirect=https%3A%2F%2Fwowwiki-archive.fandom.com%2Fwiki%2FAPI_Frame_SetUserPlaced%3Fcollections%3Dsave&uselang=en&metadata=collections-save-button \"Sign In to Save\") [Edit](https://auth.fandom.com/signin?redirect=https%3A%2F%2Fwowwiki-archive.fandom.com%2Fwiki%2FAPI_Frame_SetUserPlaced%3Fveaction%3Dedit&uselang=en&metadata=article-registration-edit-article)\n\n* [History](https://wowwiki-archive.fandom.com/wiki/API_Frame_SetUserPlaced?action=history)\n* [Purge](https://wowwiki-archive.fandom.com/wiki/API_Frame_SetUserPlaced?action=purge)\n* [Talk (0)](https://wowwiki-archive.fandom.com/wiki/Talk:API_Frame_SetUserPlaced?action=edit&redlink=1)\n\n|Reference\n\n[e](https://wowwiki-archive.fandom.com/wiki/Template:Apinav?action=edit) |\n| --- |\n|AddOns  \nWoW API  \nWidget API  \nXML UI\nEvent API  \nWoW Lua  \nMacro API  \nCVars  \nChanges\n\n* * *\n\nB attle.net API\n\n* * *\n\nHOWTOs  \nSnippets  \nUI tech.\n\n* * *\n\nCategories |\n\n\u2192 Methods\n\n## Contents\n\n* 1 Arguments\n* 2 Notes\n* 3 Also See\n\n\u2190 Widget API \u2190 Frame < SetUserPlaced\n\nSets whether a frame has been moved by the user (and will thus be saved in the layout cache).\n\n```\nframe:SetUserPlaced(isUserPlaced);\n```\n\n## Arguments [ ]\n\nisUserPlaced\n    Boolean - true if the frame has been moved by the user, false if not\n\n## Notes [ ]\n\n* **There is usually no need to explicitly call this function** ; the flag is automatically set by Frame:StartMoving (), and when the frame's position is restored from the layout cache.\n* Positions of anonymous frames (frames without a name) will not be restored.\n* Only frames created prior to the completion of the initial loading process will have their position restored.\n\n## Also See [ ]\n\n* Frame:IsUserPlaced ()\n\nCategories\n\n* Categories :\n* Widget methods\nCommunity content is available under [CC-BY-SA](https://www.fandom.com/licensing) unless otherwise noted.\n\nMore Fandoms\n\n* [Fantasy](https://www.fandom.com/fancentral/fantasy)\n* [World of Warcraft](https://www.fandom.com/universe/world-of-warcraft)\n\nAdvertisement\n\nAdvertisement\n\nAdvertisement"
+      ]
+    },
+    {
+      "url": "https://breezewiki.com/wowwiki-archive/wiki/API_Frame_SetClampedToScreen",
+      "title": "API Frame SetClampedToScreen | WoW+BreezeWiki",
+      "publish_date": null,
+      "excerpts": [
+        "SpellBookFrame:Show() SpellBookFrame:SetClampedToScreen( true ) SpellBookFrame:SetPoint( &quot;TOPLEFT&quot;, UIParent, &quot;TOPLEFT&quot;, 1000, -100 )"
+      ]
+    }
+  ],
+  "usage": [
+    {
+      "name": "sku_search",
+      "count": 1
+    }
+  ],
+  "warnings": []
+}

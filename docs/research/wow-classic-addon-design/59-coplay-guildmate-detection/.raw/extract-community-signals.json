@@ -1,0 +1,31 @@
+{
+  "extract_id": "extract_1ce9e52e755b6cb547bf1ef2dff7e079",
+  "session_id": "session_1ce9e52e755b6cb547bf1ef2dff7e079",
+  "status": "ok",
+  "results": [
+    {
+      "url": "https://www.reddit.com/r/classicwow/comments/1amv8o5/psa_new_115_build_removes_range_checking_from/",
+      "title": "Reddit - The heart of the internet",
+      "publish_date": "2024-02-09",
+      "excerpts": [
+        "# PSA: New 1.15 build removes Range Checking from addons (e.g. DBM /range)\nThe latest 1.15 build has heavily modified the Range Checking API for the game, in-line with the change back in November on Retail.\nThis means that you can no longer type `/range` with DBM inside instances.\nSome testing we did:\n* DBM `/range` check disabled inside instances\n* WeakAura built in range functionality works in instances until you enter combat then it breaks\n\n...\n\n**This change is for all of Classic Era, not just SoD.**\nPersonally I am pretty disappointed with this change. We were raiding AQ40 on Hardcore tonight then attempting KT this weekend, but having `/range` removed is a huge increase in difficulty.\nI can see these changes making sense in Retail but I really don't think anyone was asking for this in Classic. I am not looking forward to C'thun Eye Beams tonight without a `/range` .\nThis brings up possible accessibility issues too. In retail boss mechanics are telegraphed with big brightly colored shapes and sounds, that isn't the case in Classic.\n\n...\n\n# People also ask about section\n[Most underrated classes in Classic WoW](https://www.reddit.com/answers/34476006-b733-4f08-b6fa-16fe8dc0cebc/?q=Most+underrated+classes+in+Classic+WoW&source=PDP&relatedPostId=t3_1amv8o5)\n\n...\n\n[Favorite raid encounters in Classic WoW](https://www.reddit.com/answers/46249e5f-d994-4a14-9ad6-6a9b4a5e84d9/?q=Favorite+raid+encounters+in+Classic+WoW&source=PDP&relatedPostId=t3_1amv8o5)\nPublic\nAnyone can view, post, and comment to this community\n0 0"
+      ]
+    },
+    {
+      "url": "https://us.forums.blizzard.com/en/wow/t/guild-addon-help/450778",
+      "title": "Guild Addon help - WoW Classic General Discussion - World of Warcraft Forums",
+      "publish_date": "2020-02-23",
+      "excerpts": [
+        "# Guild Addon help\nWoW Classic WoW Classic General Discussion\n[Heavenshaker-886092](https://us.forums.blizzard.com/en/wow/u/Heavenshaker-886092) (Heavenshaker) February 23, 2020, 1:21am 1\nIs there an addon that can track the players in a group and the levels gain while in that group or time elapsed in that group? I\u2019d like to give an incentive to other guild members to help other guild members w/ quests or even power level them with DKP awards."
+      ]
+    }
+  ],
+  "errors": [],
+  "usage": [
+    {
+      "name": "sku_extract_excerpts",
+      "count": 2
+    }
+  ],
+  "warnings": []
+}

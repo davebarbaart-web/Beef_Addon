@@ -1,0 +1,78 @@
+{
+  "search_id": "search_2d2d1a24cf67f5be0be33bc62784027c",
+  "session_id": "session_2d2d1a24cf67f5be0be33bc62784027c",
+  "status": "ok",
+  "results": [
+    {
+      "url": "https://warcraft.wiki.gg/wiki/DUEL_FINISHED",
+      "title": "DUEL_FINISHED - Warcraft Wiki - Your wiki guide to the World of Warcraft",
+      "publish_date": null,
+      "excerpts": [
+        "<strong>Fired when a duel is finished</strong>."
+      ]
+    },
+    {
+      "url": "https://warcraft.wiki.gg/wiki/API_AcceptDuel",
+      "title": "AcceptDuel - Warcraft Wiki - Your wiki guide to the World of Warcraft",
+      "publish_date": null,
+      "excerpts": [
+        "<strong>Accepts a duel challenge</strong>. AcceptDuel() StartDuel to issue a duel challenge. CancelDuel to reject a duel challenge."
+      ]
+    },
+    {
+      "url": "https://wowpedia.fandom.com/wiki/API_StartDuel",
+      "title": "StartDuel - Wowpedia - Your wiki guide to the World of Warcraft",
+      "publish_date": "2026-06-26",
+      "excerpts": [
+        "<strong>Challenges the specified player to a duel</strong>. StartDuel(unit) StartDuel(name [, exactMatch])"
+      ]
+    },
+    {
+      "url": "https://wowpedia.fandom.com/wiki/API_AcceptDuel",
+      "title": "AcceptDuel - Wowpedia - Your wiki guide to the World of Warcraft",
+      "publish_date": null,
+      "excerpts": [
+        "We have moved to Warcraft Wiki. Click here for information and the new URL \u00b7 <strong>Accepts a duel challenge</strong>"
+      ]
+    },
+    {
+      "url": "https://warcraft.wiki.gg/wiki/Dueling",
+      "title": "Dueling - Warcraft Wiki - Your wiki guide to the World of Warcraft",
+      "publish_date": "2025-04-20",
+      "excerpts": [
+        "Dueling is a way for players in the PvE environment to fight each other consensually. Players from opposite factions can duel, but the mechanism is primarily for dueling players of the same faction. Perfect for challenging friends or testing out skills against other adventurers 1-on-1, duels offer no"
+      ]
+    },
+    {
+      "url": "https://warcraft.wiki.gg/wiki/World_of_Warcraft_API/Alphabetic",
+      "title": "World of Warcraft API/Alphabetic - Warcraft Wiki - Your wiki guide to the World of Warcraft",
+      "publish_date": null,
+      "excerpts": [
+        "AcceptDuel() - <strong>Accepts a duel challenge</strong>."
+      ]
+    },
+    {
+      "url": "https://warcraft.wiki.gg/wiki/Category:API_functions",
+      "title": "Category:API functions - Warcraft Wiki - Your wiki guide to the World of Warcraft",
+      "publish_date": "2021-07-07",
+      "excerpts": [
+        "World of Warcraft API/Classic \u00b7 API AbandonQuest \u00b7 API AbandonSkill \u00b7 API AcceptAreaSpiritHeal \u00b7 API AcceptArenaTeam \u00b7 API AcceptBattlefieldPort \u00b7 API AcceptDuel \u00b7 API AcceptGroup \u00b7 API AcceptGuild \u00b7 API AcceptLevelGrant \u00b7 API AcceptProposal \u00b7 API AcceptQuest \u00b7"
+      ]
+    },
+    {
+      "url": "https://warcraft.wiki.gg/wiki/Warcraft_Wiki:How_to_edit_API_pages",
+      "title": "Warcraft Wiki:How to edit API pages - Warcraft Wiki - Your wiki guide to the World of Warcraft",
+      "publish_date": "2006-06-10",
+      "excerpts": [
+        "Global, honest-to-god APIs, e.g. [UnitName], [AcceptDuel], [GetAddOnDependencies] Name the page API FunctionName. Use Help:API Function articles as a basis for the page. Place {{wowapi}} at the top of the page (the boilerplate already has it). Places the page in Category:API functions."
+      ]
+    }
+  ],
+  "usage": [
+    {
+      "name": "sku_search",
+      "count": 1
+    }
+  ],
+  "warnings": []
+}

@@ -1,0 +1,23 @@
+{
+  "extract_id": "extract_6829d84d231a3e36b2097a0d59913772",
+  "session_id": "session_6829d84d231a3e36b2097a0d59913772",
+  "status": "ok",
+  "results": [
+    {
+      "url": "https://www.wowace.com/projects/ace3/pages/api/ace-console-3-0",
+      "title": "api/AceConsole-3.0 - api - Pages - Ace3 - Addons - Projects - WowAce ",
+      "publish_date": null,
+      "excerpts": [
+        "# Pages\n## api/AceConsole-3.0\n**AceConsole-3.0** provides registration facilities for slash commands.\nYou can register slash commands to your custom functions and use the `GetArgs` function to parse them\nto your addons individual needs.\n\n...\n\n## AceConsole:GetArgs(str, numargs, startpos)\nRetreive one or more space-separated arguments from a string.\nTreats quoted strings and itemlinks as non-spaced.\n\n### Parameters\nstr\nThe raw argument string\nnumargs\nHow many arguments to get (default 1)\nstartpos\nWhere in the string to start scanning (default 1)\n\n### Return value\nReturns arg1, arg2, ..., nextposition\nMissing arguments will be returned as nils. 'nextposition' is returned as 1e9 at the end of the string.\n\n...\n\n## AceConsole:Print([chatframe ,] ...)\nPrint to DEFAULT_CHAT_FRAME or given ChatFrame (anything with an .AddMessage function)\n\n### Parameters\nchatframe\nCustom ChatFrame to print to (or any frame with an .AddMessage function)\n...\nList of any values to be printed\n\n## AceConsole:Printf([chatframe ,] \"format\"[, ...])\nFormatted (using format()) print to DEFAULT_CHAT_FRAME or given ChatFrame (anything with an .AddMessage function)\n\n### Parameters\nchatframe\nCustom ChatFrame to print to (or any frame with an .AddMessage function)\nformat\nFormat string - same syntax as standard Lua format()\n...\nArguments to the format string\n\n## AceConsole:RegisterChatCommand(command, func, persist)\nRegister a simple chat command\n\n### Parameters\ncommand\nChat command to be registered WITHOUT leading \"/\"\nfunc\nFunction to call when the slash command is being used (funcref or methodname)\npersist\nif false, the command will be soft disabled/enabled when aceconsole is used as a mixin (default: true)\n\n## AceConsole:UnregisterChatCommand(command)\nUnregister a chatcommand\n\n### Parameters\ncommand\nChat command to be unregistered WITHOUT leading \"/\""
+      ]
+    }
+  ],
+  "errors": [],
+  "usage": [
+    {
+      "name": "sku_extract_excerpts",
+      "count": 1
+    }
+  ],
+  "warnings": []
+}

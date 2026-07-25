@@ -1,0 +1,23 @@
+"Out of date addons" but show as up-to-date (or missing) : r/wowaddons
+  URL: https://www.reddit.com/r/wowaddons/comments/1fz4rym/followup_out_of_date_addons_but_show_as_uptodate/
+  Most of my addons say out-of-date in-game, but curseforge says they're up-to-date. Even when I do a fresh install of the addon. Any advice?
+
+Dynamically adding and removing frames?
+  URL: https://www.wowinterface.com/forums/showthread.php?t=58069
+  The best you can do is recycle frames by use of "Frame Pools". Returns a frame if there is one in the pool or creates one if empty end local ...
+
+Creating WoW AddOns - Episode 8 - Scroll Frames and More XML
+  URL: https://www.youtube.com/watch?v=1CQHKo1Pt2Q
+  This is a series which teaches you to write your own World of Warcraft AddOns using Lua programming and some XML.
+
+CreateFrame - Two Frames? - UI and Macro - World of Warcraft Forums
+  URL: https://us.forums.blizzard.com/en/wow/t/createframe-two-frames/151670
+  I have a simple addon that places a rectangular frame on the screen, adds an orange texture to it, and then makes it draggable. Right now, that's all it does.
+
+API CreateFrame | WoWWiki
+  URL: https://wowwiki-archive.fandom.com/wiki/API_CreateFrame
+  Creates a new UI frame. What are addons? Frames CANNOT be deleted. Reuse them.
+
+How to create a simple WoW UI Addon
+  URL: https://www.youtube.com/watch?v=RbgYCqWX_rE
+  CreateFrame("Frame") frame:SetScript("OnUpdate", function(self, elapsed) Addon in WoW

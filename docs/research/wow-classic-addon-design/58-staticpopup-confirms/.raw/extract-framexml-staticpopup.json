@@ -1,0 +1,23 @@
+{
+  "extract_id": "extract_da8418b482e591abe925fe83b7256e71",
+  "session_id": "session_da8418b482e591abe925fe83b7256e71",
+  "status": "ok",
+  "results": [
+    {
+      "url": "https://www.townlong-yak.com/framexml/go/StaticPopup",
+      "title": "FrameXML",
+      "publish_date": null,
+      "excerpts": [
+        "# Did you mean?\n* StaticPopup_IsAnyDialogShown ()\n* StaticPopup_IsCustomGenericConfirmationShown (referenceKey)\n* StaticPopup_IsLastDisplayedFrame (frame)\n* StaticPopup_IsSpecial (dialog)\n* StaticPopup_OnAcceptWithSpinner (onAcceptCallback, onEventCallback, events, beforeSpinnerWaitTime, dialog)\n* StaticPopup_OnClick (dialog, index)\n* StaticPopup_OnCloseButtonClicked (closeButton, button)\n* StaticPopup_OnHide (dialog)\n* StaticPopup_OnHyperlinkClick (dialog, ...)\n* StaticPopup_OnHyperlinkEnter (dialog, ...)\n* StaticPopup_OnHyperlinkLeave (dialog, ...)\n* StaticPopup_OnKeyDown (dialog, key)\n* StaticPopup_OnShow (dialog)\n\n...\n\n* StaticPopup_Show (which, text_arg1, text_arg2, data, insertedFrame, customOnHideScript)\n* StaticPopup_ShowCustomGenericConfirmation (customData, insertedFrame)\n* StaticPopup_ShowCustomGenericInputBox (customData, insertedFrame)\n* StaticPopup_ShowGenericConfirmation (text, callback, insertedFrame)"
+      ]
+    }
+  ],
+  "errors": [],
+  "usage": [
+    {
+      "name": "sku_extract_excerpts",
+      "count": 1
+    }
+  ],
+  "warnings": []
+}

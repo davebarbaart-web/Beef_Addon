@@ -1,0 +1,16 @@
+{
+  "extract_id": "extract_d26ea428b6eafccee8242fcf64049baa",
+  "session_id": "session_d26ea428b6eafccee8242fcf64049baa",
+  "status": "ok",
+  "results": [],
+  "errors": [
+    {
+      "url": "https://warcraft.wiki.gg/wiki/API_Frame_SetClampedToScreen",
+      "error_type": "network_error",
+      "http_status_code": null,
+      "content": null
+    }
+  ],
+  "usage": [],
+  "warnings": []
+}

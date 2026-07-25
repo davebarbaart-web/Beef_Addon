@@ -1,0 +1,21 @@
+Gethe/wow-ui-source: git mirror of the user interface ...
+  URL: https://github.com/Gethe/wow-ui-source
+  This repo contains the latest WoW UI source code. Branches should reflect the most recent patches to their respective clients.
+  Category: github
+
+World of Warcraft Interface AddOn Kit Where can i find! ...
+  URL: https://us.forums.blizzard.com/en/wow/t/world-of-warcraft-interface-addon-kit-where-can-i-find-please/1798954
+  Rather than the Addon Kit, you can use the console command 'ExportInterfaceFiles code' to extract the UI code. Gethe/wow-ui-source:
+
+Nevcairiel/wow-ui-source-1: git mirror of the user interface ...
+  URL: https://github.com/Nevcairiel/wow-ui-source-1
+  This repo contains the latest WoW UI source code. Branches should reflect the most recent patches to their respective clients (live, ptr and beta).
+  Category: github
+
+Viewing Blizzard's WoW user interface code
+  URL: https://wowwiki-archive.fandom.com/wiki/Viewing_Blizzard%27s_WoW_user_interface_code
+  The World of Warcraft user interface code that makes up the WoW Lua and FrameXML user interface can be viewed in it's source code form.
+
+WoW UI Elements - Libary
+  URL: https://www.wowinterface.com/forums/showthread.php?t=48726
+  WoW UI Elements - Libary Graphics Help. this art libary seems not up to date, no encounter journal and so on, it only supports PNG and JPG. ...

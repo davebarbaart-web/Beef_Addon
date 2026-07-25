@@ -1,0 +1,39 @@
+{
+  "extract_id": "extract_1f27925992bee01803d8b1c6bbf274b3",
+  "session_id": "session_1f27925992bee01803d8b1c6bbf274b3",
+  "status": "ok",
+  "results": [
+    {
+      "url": "https://www.curseforge.com/wow/addons/minimapbuttonbutton",
+      "title": "",
+      "publish_date": "2026-07-22",
+      "excerpts": [
+        "+ [Project Submission Guide](https://support.curseforge.com/en/support/solutions/articles/9000199552-project-submission-guide-and-tips)\n+ [Apply for an API Key](https://support.curseforge.com/en/support/solutions/articles/9000208346-about-the-curseforge-api-and-how-to-apply-for-a-key)\n+ [Documentation](https://docs.curseforge.com/rest-api/)\n\n...\n\n# MinimapButtonButton\n## Details\n### Flavors\n* [Retail](https://www.curseforge.com/wow/addons/minimapbuttonbutton/files/all?page=1&pageSize=20&gameVersionTypeId=517&showAlphaFiles=hide)\n* [MoP Classic](https://www.curseforge.com/wow/addons/minimapbuttonbutton/files/all?page=1&pageSize=20&gameVersionTypeId=79434&showAlphaFiles=hide)\n* [Titan Reforged Classic](https://www.curseforge.com/wow/addons/minimapbuttonbutton/files/all?page=1&pageSize=20&gameVersionTypeId=81212&showAlphaFiles=hide)\n* [Classic](https://www.curseforge.com/wow/addons/minimapbuttonbutton/files/all?page=1&pageSize=20&gameVersionTypeId=67408&showAlphaFiles=hide)\n* [Classic TBC](https://www.curseforge.com/wow/addons/minimapbuttonbutton/files/all?page=1&pageSize=20&gameVersionTypeId=73246&showAlphaFiles=hide)\n\n...\n\n### Main File\n#### 12.0.7\n1.24.9 Latest release * R * Titan Reforged Classic + 4 * Jul 22, 2026\n\n...\n\n### Recent Files [View all](https://www.curseforge.com/wow/addons/minimapbuttonbutton/files/all?page=1&pageSize=20&showAlphaFiles=hide&sortBy=dateCreated&sortOrder=desc)\n#### WoW Mists of Pandaria Classic\n1.24.9 Latest release * R * MoP Classic + 6 * Jul 22, 2026\n\n...\n\n#### WoW Classic\n1.24.9 Latest release * R * Classic + 6 * Jul 22, 2026\n\n#### WoW Burning Crusade Classic\n1.24.9 Latest release * R * Classic TBC + 6 * Jul 22, 2026\nReport\nDownload"
+      ]
+    },
+    {
+      "url": "https://www.curseforge.com/wow/addons/mbb",
+      "title": "",
+      "publish_date": "2023-05-16",
+      "excerpts": [
+        "+ [Project Submission Guide](https://support.curseforge.com/en/support/solutions/articles/9000199552-project-submission-guide-and-tips)\n+ [Apply for an API Key](https://support.curseforge.com/en/support/solutions/articles/9000208346-about-the-curseforge-api-and-how-to-apply-for-a-key)\n+ [Documentation](https://docs.curseforge.com/rest-api/)\n\n...\n\n# MBB\n## Details\n### Flavors\n* [Retail](https://www.curseforge.com/wow/addons/mbb/files/all?page=1&pageSize=20&gameVersionTypeId=517&showAlphaFiles=hide)\n\n...\n\n## More from VallanTV\n* LoggerHeadLite - Classic project image\nLoggerHeadLite - Classic\nBy VallanTV\nLoggerHeadLite is a an automated combat log enabler.\nView\nInstall\n+ 12.2K\n+ [Addons](https://www.curseforge.com/wow/search?class=addons&page=1&pageSize=20&sortBy=relevancy)\n+ 12.2K\n+ May 20, 2020\n+ [Addons](https://www.curseforge.com/wow/search?class=addons&page=1&pageSize=20&sortBy=relevancy)\n+ +1\n* MBB - Classic project image\nMBB - Classic\nBy VallanTV\nCleans up minimap buttons and makes them accessible through a pop out menu!\nView\nInstall\n+ 313.3K\n\n...\n\nInstall\n+ 1.6M\n+ [Addons](https://www.curseforge.com/wow/search?class=addons&page=1&pageSize=20&sortBy=relevancy)\n+ 1.6M\n+ August 31, 2016\n+ [Addons](https://www.curseforge.com/wow/search?class=addons&page=1&pageSize=20&sortBy=relevancy)\n+ +1\n* LoggerHeadLite - Classic project image\nLoggerHeadLite - Classic\nBy VallanTV\n\n...\n\n* MBB - Classic project image\nMBB - Classic\nBy VallanTV\nCleans up minimap buttons and makes them accessible through a pop out menu!\nView\nInstall\n+ 313.3K\n+ [Addons](https://www.curseforge.com/wow/search?class=addons&page=1&pageSize=20&sortBy=relevancy)\n+ 313.3K\n+ March 4, 2021"
+      ]
+    },
+    {
+      "url": "https://github.com/tekkub/libdatabroker-1-1/wiki/How-to-provide-a-dataobject",
+      "title": "How to provide a dataobject \u00b7 tekkub/libdatabroker-1-1 Wiki \u00b7 GitHub",
+      "publish_date": "2010-09-14",
+      "excerpts": [
+        "# tekkub/libdatabroker-1-1 wiki: How to provide a dataobject\n## A quicklauncher\n```\nLibStub:GetLibrary(\"LibDataBroker-1.1\"):NewDataObject(\"MyAddonName\", {\n\ttype = \"launcher\",\n\ticon = \"Interface\\\\Icons\\\\Spell_Nature_StormReach\",\n\tOnClick = function(clickedframe, button)\n\t\tInterfaceOptionsFrame_OpenToFrame(myconfigframe)\n\tend,\n})\n```\n\n...\n\n## A data \u201cfeed\u201d\n```\nlocal UPDATEPERIOD, elapsed = 0.5, 0\nlocal ldb = LibStub:GetLibrary(\"LibDataBroker-1.1\")\nlocal dataobj = ldb:NewDataObject(\"myFPS\", {type = \"data source\", text = \"75.0 FPS\"})\nlocal f = CreateFrame(\"frame\")\n\nf:SetScript(\"OnUpdate\", function(self, elap)\n\telapsed = elapsed + elap\n```\n\n...\n\n## Wiki pages\n- [Home](https://github.com/tekkub/libdatabroker-1-1/wiki)\n- [Addons using LDB](https://github.com/tekkub/libdatabroker-1-1/wiki/Addons-using-LDB)\n- [API](https://github.com/tekkub/libdatabroker-1-1/wiki/API)\n- [Data Specifications](https://github.com/tekkub/libdatabroker-1-1/wiki/Data-Specifications)"
+      ]
+    }
+  ],
+  "errors": [],
+  "usage": [
+    {
+      "name": "sku_extract_excerpts",
+      "count": 3
+    }
+  ],
+  "warnings": []
+}

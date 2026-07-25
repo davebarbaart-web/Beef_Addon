@@ -1,0 +1,46 @@
+{
+  "extract_id": "extract_f97ef2f50454cae972b12395fc746fa0",
+  "session_id": "session_f97ef2f50454cae972b12395fc746fa0",
+  "status": "ok",
+  "results": [
+    {
+      "url": "https://web.archive.org/web/20210518120056/https://www.townlong-yak.com/taint.log/about.html",
+      "title": "Taint in World of Warcraft",
+      "publish_date": "2021-05-18",
+      "excerpts": [
+        "# Taint in World of Warcraft\nAll Blizzard UI code is considered secure by default, and can therefore call these functions as it pleases. Addon code, meanwhile, is considered _tainted_ , and may not call these functions directly.\nTo prevent tainted addon code from manipulating secure code into calling protected functions on its behalf, the secure/tainted classification also applies to most locations that can store values: global variables, local variables, table keys, widget script handler slots, and function closures.\n\n...\n\nOnce the current execution path becomes tainted (by either executing addon code, or accessing a tainted value), any variables it writes to, and any function closures it creates, are also marked as tainted.\n\n...\n\nTaint errors can manifest in various ways, including \"Interface action failed because of an AddOn\" messages appearing in chat, and popups inviting players to disable specific addons.\nMost of the errors actually encountered by players are a result of unintended propagation of taint, rather than actual automation behavior being prevented (because most published addons are _not_ trying to automate gameplay).\nUnfortunately, tracking the root cause of those issues is often not straightforward, as some errors require a specific sequence of events to occur before they trigger.\n\n## Taint.log levels\nTo assist in fixing taint errors, the World of Warcraft client can log some taint-related information to a text file ( World of Warcraft\\\u200bLogs\\\u200btaint.log ). To enable this, type /console taintlog 1 into the chat box and press Enter.\n\n...\n\nLevel 0\nNothing is logged. This is the default.\nLevel 1\nActions blocked due to taint are logged.\nLevel 2\nAlso logs tainting or accessing tainted global variables.\nLevel 11\nAlso logs tainting or accessing tainted table entries.\n\n...\n\nIf you are debugging a specific issue, it may be useful to set the log level to 0 before reloading the interface after triggering the issue.\n\n### Level 1: blocked protected actions\nLevel 1 logs consist entirely of stack traces of actions prevented due to taint.\n\n...\n\n### Not logged at any level\nNone of the taint log levels trace taint to or from local variables, widget properties, and non-string table keys. Therefore, it is possible\nfor a taint log to contain nothing but the \"action blocked\" event even at higher levels of logging."
+      ]
+    },
+    {
+      "url": "https://web.archive.org/web/20200715202710/https://www.townlong-yak.com/bugs/PfF9rr-UIDropDownMenu",
+      "title": "UIDropDownMenu taint issues",
+      "publish_date": "2020-07-15",
+      "excerpts": [
+        "# Issues index\nUIDropDownMenu_GetSelectedID taints dropdown initialization\n**Fixed in Patch 8.1.0** .\nUIDropDownMenu displayMode taints dropdown initialization\n**Not fixed.** Avoided by idiomatic code.\nUIDropDownMenu_SetSelectedValue/_Refresh can taint execution\n**Not fixed.** Affects the Communities UI.\nUIDropDownMenu_Refresh accesses uninitialized buttons\n**Not fixed.** Affects the Interface Options Frame/CUFProfiles.\n\n## Common remarks\nTaint errors require a specific iteration of addon, UIDropDownMenu, and\nother FrameXML code, and can be avoided by modifying one or more of these\nelements. In some cases, modifications to addon code are sufficient, while in\nothers, insecure patches to UIDropDownMenu or FrameXML code are possible,\nmitigating the errors for specific code paths.\nThere may exist additional problematic interactions that have not been\ndescribed here. For those cases, having a reliable test case to reproduce an\nerror is helpful in identifying the issue.\nWhile it is possible to replace all UIDropDownMenu usage in addons with\ncustom code implementing similar functionality, this is only a complete\nsolution if the addon does not interact with any other parts of FrameXML which\ndo use UIDropDownMenu, including for example the Interface Options frame."
+      ]
+    },
+    {
+      "url": "https://www.wowace.com/projects/libuidropdownmenu",
+      "title": "Overview - LibUIDropDownMenu - Addons - Projects - WowAce ",
+      "publish_date": "2026-01-01",
+      "excerpts": [
+        "CurseForge\n\n# About\nStandard **UIDropDownMenu** 's global functions using protected frames and causing taints when used by third-party addons. But it is possible to avoid taints by using same functionality with that library.\n\n# What is it\nLibrary is standard code from Blizzard's files EasyMenu.lua, UIDropDownMenu.lua, UIDropDownMenu.xml, UIDropDownMenuTemplates.lua and UIDropDownMenuTemplates.xml with frames, tables, variables and functions bounded to the library tables.\nGlobal constants have been added with a prefix \" L_ \", for example:\n\n...\n\n# How to use it ( for addon developer )\n## Initial Preparation\nAssuming your addon is using all the UIDropDownMenu functions from the WoW's built in function calls, then it is suggested that you have below preparation in your lua codes:\n> local LibDD = LibStub:GetLibrary(\" LibUIDropDownMenu-4.0 \")\n\n### Function Call Replacement\nDepends on which UIDropDownMenu's function calls you have used in your addon, you will need below similar replacement:\n\n...\n\n# FAQ\n## Comments\nI am trying to migrate an addon from using the standard UIDropDownMenu to this library due to the mentioned taint issues. Everything else is pretty clear, but the addon uses XML instead of lua to create the dropdown menus. How can I convert the XML to use this library?\n\n...\n\nIf you have this issue after implementing, use my version of the library.\nhttps://www.wowace.com/projects/libuidropdownmenu/issues/21\nmy version: https://github.com/Xam-insight/CustomAchiever/tree/main/Libs/LibUIDropDownMenu\n+ Location: Rennes\n+ Join Date: 5/12/2005\n+ Posts: 3\n+ Member Details\n\n...\n\nA better workaround on line 244 in the LibUIDropDownMenu.lua file.\n-- UIDropDownMenuButtonIcon Script BEGIN\nlocal function icon_OnClick(self, button)\nlocal buttonParent = self:GetParent()\nif not buttonParent then\nreturn\nend\nbutton_OnClick(buttonParent, button)\nend\n+ Location: Rennes\n+ Join Date: 5/12/2005\n+ Posts: 3\n\n...\n\nWithout GLOBAL_MOUSE_DOWN like in Retail, it is necessary to periodically check if the mouse is no longer over the menu and then close it accordingly. This could be done with OnUpdate, but I would strongly suggest the use of C_Timer with L_UIDROPDOWNMENU_SHOW_TIME as in my example.\n\n...\n\n[#12](https://www.wowace.com/error?comment=12) HonorGoG     + View User Profile\nHello Arith, the Titan Panel Development Team did some debugging and fixed the problem for The Burning Crusade Classic Beta.\nWithin LibUIDropDownMenu.lua at line 221, these changes will make it all work:\n\n...\n\nMessage: ...DropDownMenu\\LibUIDropDownMenu\\LibUIDropDownMenu.lua:223: attempt to call method 'SetBackdrop' (a nil value)\nTime: Tue Apr 6 01:03:50 2021\nCount: 1\nStack: ...DropDownMenu\\LibUIDropDownMenu\\LibUIDropDownMenu.lua:223: attempt to call method 'SetBackdrop' (a nil value)\n[string \"@Interface\\AddOns\\TitanClassic\\libs\\!LibUIDropDownMenu\\LibUIDropDownMenu\\LibUIDropDownMenu.lua\"]:223: in function `creatre_UIDropDownList'\n[string \"@Interface\\AddOns\\TitanClassic\\libs\\!LibUIDropDownMenu\\LibUIDropDownMenu\\LibUIDropDownMenu.lua\"]:386: in main chunk\nLocals: name = \"L_DropDownList1\"\nparent = nil\n\n...\n\nBankFrameItem17SearchOverlay = BankFrameItem17SearchOverlay {\n}\nDMG_LCD = \"DMG\"\nVideoOptionsPanel_Cancel = <function> defined @In\nAlso this one popped up too.\nMessage: Interface\\AddOns\\TitanClassic\\TitanClassicUtils.lua:1208: attempt to call global 'L_Create_UIDropDownMenu' (a nil value)\nTime: Tue Apr 6 01:03:51 2021\nCount: 15\n\n...\n\n0 = <userdata>\nregistry = <table> {\n}\n}\nisChildButton = nil\ncat = \"Built-ins\"\nnotes = \"\"\n(*temporary) = nil\n(*temporary) = \"TitanPanelXPButtonRightClickMenu\"\n(*temporary) = TitanPanelXPButton {\n0 = <userdata>\nregistry = <table> {\n}\n}\n(*temporary) = \"attempt to call global 'L_Create_UIDropDownMenu' (a nil value)\""
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "url": "https://warcraft.wiki.gg/wiki/ADDON_ACTION_BLOCKED",
+      "error_type": "network_error",
+      "http_status_code": null,
+      "content": null
+    }
+  ],
+  "usage": [
+    {
+      "name": "sku_extract_excerpts",
+      "count": 3
+    }
+  ],
+  "warnings": []
+}

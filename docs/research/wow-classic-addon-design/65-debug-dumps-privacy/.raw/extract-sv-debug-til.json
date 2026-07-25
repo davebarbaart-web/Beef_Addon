@@ -1,0 +1,23 @@
+{
+  "extract_id": "extract_b3da460979796df3bee432f51fe1ddef",
+  "session_id": "session_b3da460979796df3bee432f51fe1ddef",
+  "status": "ok",
+  "results": [
+    {
+      "url": "https://rpmessner.github.io/til/wow/debugging-addons-with-savedvariables.html",
+      "title": "Debugging WoW Addons with SavedVariables | TIL",
+      "publish_date": null,
+      "excerpts": [
+        "# Debugging WoW Addons with SavedVariables\nWoW addons run in a sandboxed Lua environment and cannot write arbitrary files to disk. However, they can save data to SavedVariables, which get written when you `/reload` or log out.\n\n## The Workflow\n1. Add a debug SavedVariable to your `.toc` file:\n  ```\n  ## SavedVariables: MyAddonDB, MyAddonDebug\n  ```\n2. Create a function that dumps frame/API info to the SavedVariable:\n  ```\n  function MyAddon : DumpDebugInfo () MyAddonDebug = { timestamp = date ( \"%Y-%m-%d %H:%M:%S\" ), -- collect whatever data you need } print ( \"Debug info saved. Do /reload to write SavedVariables.\" ) end\n  ```\n3. Trigger the dump via slash command, then `/reload` to flush to disk\n4. Read the SavedVariables file from outside the game:\n  ```\n  WTF/Account/<ACCOUNT>/SavedVariables/MyAddon.lua\n  ```\n\n## Example: Discovering Frame Structure\n```\nfunction MyAddon : InvestigateFrame ( frameName ) local frame = _G [ frameName ] if not frame then return end MyAddonDebug = { regions = {}, children = {}, } -- Get regions (textures, fontstrings) for i , region in ipairs ({ frame : GetRegions ()}) do table.insert ( MyAddonDebug . regions , { ty\n```\n\n...\n\n## Reading Errors with BugSack/BugGrabber\nIf you have BugSack installed, Lua errors are captured in `!BugGrabber.lua` :\n```\nWTF/Account/<ACCOUNT>/SavedVariables/!BugGrabber.lua\n```\nAfter hitting errors, `/reload` and read this file for full stacktraces.\n\n## Why This Matters\nThis workflow enables an external tool (like Claude Code) to:\n* Request specific frame investigations\n* Read the dumped data after reload\n* Iterate on fixes without manual copy/paste of error messages"
+      ]
+    }
+  ],
+  "errors": [],
+  "usage": [
+    {
+      "name": "sku_extract_excerpts",
+      "count": 1
+    }
+  ],
+  "warnings": []
+}

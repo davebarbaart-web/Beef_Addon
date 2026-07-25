@@ -1,0 +1,50 @@
+{
+  "extract_id": "extract_9e5e31d785c49079e7abe7f2e54aabcf",
+  "session_id": "session_9e5e31d785c49079e7abe7f2e54aabcf",
+  "status": "ok",
+  "results": [
+    {
+      "url": "https://us.forums.blizzard.com/en/wow/t/encounterend-payload-issue/439290",
+      "title": "ENCOUNTER_END Payload Issue - WoW Classic Bug Report - World of Warcraft Forums",
+      "publish_date": "2020-02-10",
+      "excerpts": [
+        "# ENCOUNTER_END Payload Issue\nWoW Classic WoW Classic Bug Report\n[Rylak-3034442](https://us.forums.blizzard.com/en/wow/u/Rylak-3034442) (Rylak) February 10, 2020, 8:05am 1\nI maintain and develop an addon for which part of the functionality requires detection of boss kills. I\u2019ve noticed that with the ENCOUNTER_END event on non-English clients, part of the payload appears to be missing information.\nWhile troubleshooting an issue where a boss kill was not detected with a player using a zhCN client, I examined their etrace and found the ENCOUNTER_END entry. I found that arg 2 returned \"* instead of the boss name.\nThis issue doesn\u2019t appear to be occurring on enUS or enGB clients but I suspect that it is occurring on ruRU clients as I have had users reporting the exact same behaviour on that locale."
+      ]
+    },
+    {
+      "url": "https://wowinterface.com/forums/showthread.php?t=19130",
+      "title": "issues with ZONE_CHANGED event - WoWInterface",
+      "publish_date": null,
+      "excerpts": [
+        "I will first say that I am relatively new at creating addons for WoW. This will likely show in the question I have.\n\n...\n\nI am basically saying when the event PLAYER_ENTERING_WORLD or ZONE_CHANGED is fired, test IsInInstance() then toggle the autoloot setting ( done: SetCVar(\"AutoLootDefault\",x) where x is either 1 or 0).\nWhen I first log in, or if I reload the UI, then the test happens after PEW event is fired. If I am in a world area then zone into an instance, ZONE_CHANGED doesn't always fire and therefore autoloot isn't set.\nI have tried ZONE_CHANGED and ZONE_CHANGED_NEW_AREA (just in case) but neither has been reliable.\n\n...\n\n```\n    \t    elseif event == \"ZONE_CHANGED_NEW_AREA\" then\n    \t    \tframe:UnregisterEvent( \"ZONE_CHANGED_NEW_AREA\" )\n               --Chat for debugging\n    \t    \tDEFAULT_CHAT_FRAME:AddMessage(\"zone unreg\",0.3,0.8,1)\n    \t    end\n\tend\nend\n\nfunction SmartLooter_Command (command )\n\t-- Handle slash commands later\nend\n\n```\n\n...\n\nPLAYER_ENTERING_WORLD is fired if you enter an instance, or not?\nFor what do you need ZONE_CHANGED?\nJust don't unregister PLAYER_ENTERING_WORLD and kick out all the ZONE_CHANGED stuff.\nbtw: instances ~= zones ( http://www.wowwiki.com/Events/Z )\n\n...\n\nA Molten Giant\n[Tekkub's Avatar](https://wowinterface.com/forums/member.php?s=72d16e387b2e734b268fb2e46c6fef83&u=20806)\n| [AddOn Author - Click to view addons](https://www.wowinterface.com/downloads/author-20806.html) |\nJoin Date: Dec 2005\nPosts: 960\nPEW fires every time you login and zone (I.E. any time you get a loading screen)"
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "url": "https://warcraft.wiki.gg/wiki/ENCOUNTER_END",
+      "error_type": "network_error",
+      "http_status_code": null,
+      "content": null
+    },
+    {
+      "url": "https://warcraft.wiki.gg/wiki/ENCOUNTER_START",
+      "error_type": "network_error",
+      "http_status_code": null,
+      "content": null
+    },
+    {
+      "url": "https://warcraft.wiki.gg/wiki/API_GetBattlefieldWinner",
+      "error_type": "network_error",
+      "http_status_code": null,
+      "content": null
+    }
+  ],
+  "usage": [
+    {
+      "name": "sku_extract_excerpts",
+      "count": 2
+    }
+  ],
+  "warnings": []
+}

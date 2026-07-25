@@ -1,0 +1,39 @@
+{
+  "extract_id": "extract_a66c837f8e0506147607ce8742fee136",
+  "session_id": "session_a66c837f8e0506147607ce8742fee136",
+  "status": "ok",
+  "results": [
+    {
+      "url": "https://warcraft.wiki.gg/wiki/SavedVariables",
+      "title": "SavedVariables - Warcraft Wiki - Your wiki guide to the World of Warcraft",
+      "publish_date": "2005-04-01",
+      "excerpts": [
+        "# SavedVariables\n## What are they?\nThis is the name given to data which is saved by the user interface and addons between play sessions, storing things such as configurations, collected data, etc. Saved variables are stored in several different files:\nAll under `_X:/World of Warcraft Install Dir_ /_game_type_/WTF/Account/ _ACCOUNTNAME_ /` :\n* `./SavedVariables.lua` - only contains settings for Blizzard's own UI\n* `./SavedVariables/ _ADDONNAME_ .lua` - global data, per AddOn\n* `./ _REALMNAME_ / _CHARNAME_ /SavedVariables/ _ADDONNAME_ .lua` - per-character data, per AddOn\nThe format of these files is plain Lua. In theory, you could put actual code in them and have it be loaded, but it would be overwritten the next time variables are saved.\nBeware, if you have a copy of the `SavedVariables.lua` in other locations than the correct one (specifically in your `World of Warcraft` directory, but possibly not limited to it), then it will be loaded INSTEAD of the one in your account, yet the account one is saved upon logout."
+      ]
+    },
+    {
+      "url": "https://warcraft.wiki.gg/wiki/TOC_format",
+      "title": "TOC format - Warcraft Wiki - Your wiki guide to the World of Warcraft",
+      "publish_date": "2005-03-14",
+      "excerpts": [
+        "# TOC format\n`.toc` files contain information about the addon (e.g. addon name, addon description, addon saved variables). They also specify the loading order for the addon's `.lua` and `.xml` files. A `.toc` file is mandatory for an addon.\n\n...\n\n## Saved variables\n```\n_Main article: Saving variables between game sessions_\n```\n\n### LoadSavedVariablesFirst\n`1` if SavedVariables file(s) should be loaded before all script files for this addon.\n\n### SavedVariables\nVariables saved in `WTF/[account]/SavedVariables` .\n```\n## SavedVariables : MyAddOnNameFoo, MyAddOnNameBar\n```\n\n### SavedVariablesPerCharacter\nVariables saved in `WTF/[account]/[server]/[character]/SavedVariables` .\n```\n## SavedVariablesPerCharacter : MyAddOnNameAnotherVariable\n```\n\n...\n\n## Restricted\n### SavedVariablesMachine\nList of global variable names to be persisted across all accounts on the same machine.\n\n...\n\n## Patch changes\n### Modern\n* The War Within **Patch 11.1.5 (2025-04-22):**\n+ Added support for per-file conditional directives and variables.\n+ Added the `LoadSavedVariablesFirst` field.\n+ `AllowLoadGameType` is now usable by insecure addons.\n* The War Within **Patch 11.1.0 (2025-02-25):** Added the `Category` and `Group` fields."
+      ]
+    },
+    {
+      "url": "https://warcraft.wiki.gg/wiki/Saving_variables_between_game_sessions",
+      "title": "Saving variables between game sessions - Warcraft Wiki - Your wiki guide to the World of Warcraft",
+      "publish_date": "2005-01-04",
+      "excerpts": [
+        "# Saving variables between game sessions\nTo enable this, the addons may specify a number of variables to be saved to disk when the player's character logs out of the game, and restored when the character logs back in. Variables that are saved and restored by the client are called SavedVariables.\n\n...\n\n## Specifying which variables to save\nVariables listed after this directive are saved on a per-character basis: a separate copy of the variable is stored and restored for each character. This may be more useful for simple per-character options or history data.\n\n## The loading process\nThe variables saved by those directives are not immediately available when your addon loads; instead, they're loaded at a later point. The client fires events to let addons know that their saved variables were loaded.\n1. WoW FrameXML code is loaded and executed.\n2. Addon code is loaded and executed.\n3. Saved variables for one addon a time are loaded and executed, then `ADDON_LOADED` event is fired for that addon.\n4.\n\n...\n\nAddons should generally use `ADDON_LOADED` to initialize their saved variables; the first argument of the event is the name of the addon for which it is being fired.\n\n...\n\n## Saving to disk\nIf an addon needs to make last-minute changes before the variables are saved, use the `PLAYER_LOGOUT` event: it fires just before the character logs out, and is the last event before your saved variables are written to disk.\n\n...\n\n## Code example\nTo save the count, a global variable, `HaveWeMetCount` is used (and saved on a per-account basis through #SavedVariables); while `HaveWeMetLastSeen` is saved per-character and used to determine whether the addon has seen _this_ character before.\nWhen the addon is loaded for the first time, the `HaveWeMetCount` variable will be `nil` after ADDON_LOADED (assuming no other addon overwrites the global); similarly, when a character previously unknown to the addon is encountered, `HaveWeMetLastSeen` will be `nil` .\n\n### HaveWeMet\\HaveWeMet.toc\n```\n## Interface: 120005\n## Title: Have We Met?\n## SavedVariables: HaveWeMetCount\n## SavedVariablesPerCharacter: HaveWeMetLastSeen\nHaveWeMet.lua\n```\n\n...\n\n### HaveWeMet\\HaveWeMet.lua\n```\n -- Our saved variables, if they exist, have been loaded at this point. \n if HaveWeMetCount == nil then \n -- This is the first time this addon is loaded; set SVs to default values \n HaveWeMetCount = 0 \n end \n\n if HaveWeMetLastSeen == nil then \n```\n\n...\n\n```\n print ( \"Hello again, \" .. name .. \"; you've been gone for \" .. SecondsToTime ( elapsed )) \n end \n\n elseif event == \"PLAYER_LOGOUT\" then \n -- Save the time at which the character logs out \n HaveWeMetLastSeen = time () \n end \n end ) \n\n SLASH_HAVEWEMET1 = \"/hwm\" \n function SlashCmdList . HAVEWEMET ( msg ) \n```\n\n...\n\n## Common pitfalls\nSaved variables are loaded after the addon code is executed\nThey cannot be accessed immediately, and will overwrite any \"defaults\" the addon may place in the global environment during its loading process.\nOnly some variable types may be saved\nStrings, booleans, numbers and tables are the only variable types that will be saved (functions, userdata and coroutines will not). Circular references in tables may not be preserved.\nSaving tables\nTables are a _great_ way to avoid having to use a large number of names in the global namespace.\nHowever, they may be more difficult to initialize to default values when your addon is updated and you add or remove a key. Multiple saved variables that reference the same table will each create a separate (but identical) instance of the table, and as such will no longer point to the same table when they are loaded again.\nVariables are saved and loaded in the _global_ environment\nIf you want to save a local value, you have to first read it from the global environment (_G table) on ADDON_LOADED, then return it into the global environment before the player logs out.\n\n...\n\n## Storage\n* `WTF\\Account\\ACCOUNTNAME\\SavedVariables.lua` - Blizzard's saved variables.\n* `WTF\\Account\\ACCOUNTNAME\\SavedVariables\\AddOnName.lua` - Per-account settings for each individual AddOn.\n* `WTF\\Account\\ACCOUNTNAME\\RealmName\\CharacterName\\SavedVariables\\AddOnName.lua` - Per-character settings for each individual AddOn."
+      ]
+    }
+  ],
+  "errors": [],
+  "usage": [
+    {
+      "name": "sku_extract_excerpts",
+      "count": 3
+    }
+  ],
+  "warnings": []
+}

@@ -1,0 +1,23 @@
+{
+  "extract_id": "extract_c4b9a207f887cb7f0e389eb16cc748db",
+  "session_id": "session_c4b9a207f887cb7f0e389eb16cc748db",
+  "status": "ok",
+  "results": [
+    {
+      "url": "https://us.forums.blizzard.com/en/wow/t/no-addons/1658472",
+      "title": "No addons? - WoW Classic Hardcore - World of Warcraft Forums",
+      "publish_date": "2023-09-04",
+      "excerpts": [
+        "World of Warcraft Forums\n\n# No addons?\nWoW Classic WoW Classic Hardcore\n[Trialsin-1612608](https://us.forums.blizzard.com/en/wow/u/Trialsin-1612608) (Trialsin) August 25, 2023, 4:06pm 1\nAre addons allowed? I\u2019m not seeing an option - perhaps I put them in the wrong folder for hardcore?\n[Innverness-2037246](https://us.forums.blizzard.com/en/wow/u/Innverness-2037246) (Innverness) August 25, 2023, 4:11pm 2\nHi Bremon, please be sure that you put them in the _classic_era_ > Interface folder. Fingers crossed for you!\n2 Likes\n\n...\n\nHey there **Bremon** , you need to make sure that the addons aren\u2019t sitting in a second folder.\nEx. ( **Questie** > **Questie** ) - _If it\u2019s somewhat like this, just take the folder(s) out and place them in the location below._\nThe Blizzard client is sensitive to what it can read and it only goes 1 folder deep."
+      ]
+    }
+  ],
+  "errors": [],
+  "usage": [
+    {
+      "name": "sku_extract_excerpts",
+      "count": 1
+    }
+  ],
+  "warnings": []
+}

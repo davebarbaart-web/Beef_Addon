@@ -1,0 +1,23 @@
+{
+  "extract_id": "extract_ca9c9a679b22f8b4bfab158b13f2951d",
+  "session_id": "session_ca9c9a679b22f8b4bfab158b13f2951d",
+  "status": "ok",
+  "results": [
+    {
+      "url": "https://blizzardwatch.com/2026/07/22/blizzard-modernized-parts-wow-classic-era-tbc-classic-anniversary-realms-user-interface/",
+      "title": "Blizzard has modernized some parts of the WoW Classic Era and TBC Classic anniversary realms user interface",
+      "publish_date": "2026-07-22",
+      "excerpts": [
+        "# Blizzard has modernized some parts of the WoW Classic Era and TBC Classic anniversary realms user interface\nBy [Nick Marino](https://blizzardwatch.com/author/nmarino/)\nOver the last week, Blizzard [implemented user interface changes](https://us.forums.blizzard.com/en/wow/t/user-interface-updates-in-classic/2325408) to [_World of Warcraft\nClassic_](https://blizzardwatch.com/category/warcraft/wow-classic/) realms and [_The Burning Crusade Classic_ anniversary](https://blizzardwatch.com/tag/tbc-classic-anniversary-realms/) realms that specifically affect the look of\ncharacter name plates and raid frames, and also affect all _Classic_ realms including [Era](https://blizzardwatch.com/tag/classic-era/) , [Season of Discovery](https://blizzardwatch.com/tag/season-of-discovery/) , and\n\n...\n\nBlizzard has communicated these user interface changes, it feels more like a modernized update to the _Classic_ world and we\u2019ve broken down what they are, how they affect the game now, and what changes could be in store for the\n\n...\n\n## What are the changes and why were they made?\n* Raid Frames\n+ Added options to select health bar color and background color\n+ Added options to show or hide dispellable debuff indicators\n* Edit Mode\n+ Added Layout Template, Opacity, and Aura Icon Size Options\n* Nameplates\n+ Added option to color friendly or enemy nameplates based on player class color\nThere were also bugs affecting the size of the aura icons in the edit mode preview and the item comparison tooltip always showing that were fixed but the main thing really stands out is that the appearance of nameplate and raid frame are more in line with the styles used in _World of Warcraft\nMidnight._ This is intentional, as Blizzard explains that all _World of Warcraft Classic_ servers and realms, regardless of progression or state, share code with retail _World of Warcraft._ Whenever a _Classic_ release occurs, its code mirrors the corresponding current version of retail _WoW_ (\n_Classic_ 2019 shared code with _[Battle for Azeroth](https://blizzardwatch.com/tag/battle-for-azeroth/) ,_ _TBC Classic_ anniversary with _[The War Within](https://blizzardwatch.com/tag/the-war-within/) )._\nAfter hearing unhappy player feedback, Blizzard provided some chat commands that **don\u2019t roll back the UI to pre-update versions** but add some extra modifications, and plan to make these settings as part of the Options menu in the future:\n\n...\n\nSo, what\u2019s the overall goal here? From a development standpoint, this shared code provides the easiest route for Blizzard to support and maintain each game in the long run despite the differing aspects of their time-locked state.\nThe downside here is the permanence of the UI changes integrated that have no real visual rollback option. Sure, Edit Mode exists and has a _Classic_ pre-set, but even that itself is a tool from the retail version and its existence in _Classic_ is still a shift to the modern day.\nCould Blizzard be moving to fully integrate retail _WoW_ UI into _Classic_ ? Maybe, but since the appeal of _Classic_ is the nostalgic, old-school look and feel, it\u2019d be a bad overall move to do that and it makes more sense to preserve that aesthetic where possible."
+      ]
+    }
+  ],
+  "errors": [],
+  "usage": [
+    {
+      "name": "sku_extract_excerpts",
+      "count": 1
+    }
+  ],
+  "warnings": []
+}

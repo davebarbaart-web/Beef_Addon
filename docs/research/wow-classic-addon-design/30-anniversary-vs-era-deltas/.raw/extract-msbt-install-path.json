@@ -1,0 +1,23 @@
+{
+  "extract_id": "extract_4cd9f7a9d4d8cdb411479bf42801cbd2",
+  "session_id": "session_4cd9f7a9d4d8cdb411479bf42801cbd2",
+  "status": "ok",
+  "results": [
+    {
+      "url": "https://www.curseforge.com/wow/addons/mikscrollingbattletext-tbc-anniversary/files/7573212",
+      "title": "MikScrollingBattleText(TBC Anniversary) - 5.0.4 - World of Warcraft Addons - CurseForge",
+      "publish_date": "2026-02-04",
+      "excerpts": [
+        "# MikScrollingBattleText(TBC Anniversary)\n* By\n  Dshonored Dshonored\nUpdated version of the classic MSBT a combat text replacement that organizes damage, healing, and triggers into highly configurable scrolling areas with built-in cooldown alerts.\nTotal Downloads\n95.2K\nLast Update\nFeb 4, 2026\nMore Details\n\n...\n\n## Details\nDownloads\n95,266\nCreated\n5 months ago\nUpdated\n5 months ago\nProject ID\n1431196\nLicense\nAll Rights Reserved\n\n### Flavors\n* [Classic TBC](https://www.curseforge.com/wow/addons/mikscrollingbattletext-tbc-anniversary/files/all?page=1&pageSize=20&gameVersionTypeId=73246&showAlphaFiles=hide)\n\n### Class & Categories\n* [Addons](https://www.curseforge.com/wow/search?class=addons&page=1&pageSize=20&sortBy=relevancy)\n* [Combat](https://www.curseforge.com/wow/search?class=addons&page=1&pageSize=20&sortBy=relevancy&categories=combat)\n\n...\n\n### Game Versions\n[2.5.5](https://www.curseforge.com/wow/addons/mikscrollingbattletext-tbc-anniversary/files/all?page=1&pageSize=20&version=2.5.5&showAlphaFiles=hide)\n\n...\n\n### Main File\n#### 2.5.5\n5.2.0 Latest release * R * Classic TBC * Feb 4, 2026\n\n...\n\n## File Details\nDownload Install\n\n## 5.0.4\nBy Dshonored\n* R\n* Feb 4, 2026\n* 685.48 KB\n* 285\n* 2.5.5\n* Classic TBC\n\n### File Name\nMikScrollingBattleText-5.0.4.zip\n\n...\n\n# Mik's Scrolling Battle Text - Changelog\nChanges:\n--------\n- Fixed GitHub Actions workflow syntax error\n- Removed README.md from repository\n- Corrected TBC Anniversary interface version to 20505 (was incorrectly set to 110205)\n* Updated both MikScrollingBattleText.toc and MSBTOptions.toc with correct interface version\n* Addon now correctly supports Classic (11503), TBC (40400), Retail (110002), and TBC Anniversary (20505)\n\n...\n\nChanges:\n--------\n- Updated interface version to support TBC Anniversary (110205)\n* Added interface version 110205 for compatibility with latest TBC Anniversary client\n* Addon now supports Classic (11503), TBC (40400), Retail (110002), and TBC Anniversary (110205)\n\n...\n\nInstallation:\n-------------\n1. Extract both \"MikScrollingBattleText\" and \"MSBTOptions\" folders to your\nWorld of Warcraft/_anniversary_/Interface/AddOns/ directory\n2. Restart World of Warcraft or type /reload in-game\n3. Configure your spam control thresholds in the options menu"
+      ]
+    }
+  ],
+  "errors": [],
+  "usage": [
+    {
+      "name": "sku_extract_excerpts",
+      "count": 1
+    }
+  ],
+  "warnings": []
+}

@@ -1,0 +1,23 @@
+Embedded Library Woes - UI and Macro - World of Warcraft Forums
+  URL: https://us.forums.blizzard.com/en/wow/t/embedded-library-woes/1610075
+  LibStub will have on multiple addons with the same library embedded. You will end up with the one global version of the library used by all ...
+
+Addon Embedded Libs Question : r/wowaddons
+  URL: https://www.reddit.com/r/wowaddons/comments/f66vwb/addon_embedded_libs_question/
+  I am trying to use embedded libraries to create a minimap icon for my addon. The rest of the addon seems to work fine. All the frames and logic function as ...
+
+Overview - LibStub - Addons - Projects
+  URL: https://www.wowace.com/projects/libstub
+  LibStub is a minimalistic versioning library that allows other libraries to easily register themselves and upgrade. It is meant to be a cross-community library ...
+
+Help with packaging addons
+  URL: https://www.wowinterface.com/forums/showthread.php?t=58078
+  The addon also requires two libraries: LibStub and LibSharedMedia. I made a current zip file manually and uploaded it to my addon website.
+
+LibStub - Wowpedia - Your wiki guide to the World of Warcraft
+  URL: https://wowpedia.fandom.com/wiki/LibStub
+  LibStub is a minimalistic versioning library embedded by thousands of other addons. [1] It allows addons to more easily share libraries.
+
+some addons wont work
+  URL: https://www.esoui.com/forums/showthread.php?t=8045
+  "Upgrading" libraries the old LibStub way is very complicated and if you messed up in some old version of it, it will cause unexpected and ...

@@ -1,0 +1,23 @@
+{
+  "extract_id": "extract_9fd12623a0889a2df7dacdd77f55053c",
+  "session_id": "session_9fd12623a0889a2df7dacdd77f55053c",
+  "status": "ok",
+  "results": [
+    {
+      "url": "https://raw.githubusercontent.com/papa-smurf/Gargul/master/LICENSE",
+      "title": "",
+      "publish_date": null,
+      "excerpts": [
+        "Forking or viewing this repository on GitHub does not grant any license\nto modify or redistribute the code. In the absence of a permissive license,\nall rights are reserved by default under copyright law.\n\n...\n\nWant to contribute? Contact the author on Discord (see the project README)\nor open a pull request on GitHub. Contributions are welcome, but all\ncontributed code becomes subject to this license."
+      ]
+    }
+  ],
+  "errors": [],
+  "usage": [
+    {
+      "name": "sku_extract_excerpts",
+      "count": 1
+    }
+  ],
+  "warnings": []
+}

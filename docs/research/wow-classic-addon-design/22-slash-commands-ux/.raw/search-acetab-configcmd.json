@@ -1,0 +1,94 @@
+{
+  "search_id": "search_951666f2056f6ab5a58bf0bf7a59a26f",
+  "session_id": "session_951666f2056f6ab5a58bf0bf7a59a26f",
+  "status": "ok",
+  "results": [
+    {
+      "url": "https://github.com/WoWUIDev/Ace3/blob/master/AceTab-3.0/AceTab-3.0.lua",
+      "title": "Ace3/AceTab-3.0/AceTab-3.0.lua at master \u00b7 WoWUIDev/Ace3",
+      "publish_date": null,
+      "excerpts": [
+        "--- AceTab-3.0 <strong>provides support for tab-completion</strong>."
+      ]
+    },
+    {
+      "url": "https://www.wowace.com/projects/ace3/pages/api/ace-tab-3-0",
+      "title": "api/AceTab-3.0 - api - Pages - Ace3 - Addons - Projects - WowAce",
+      "publish_date": null,
+      "excerpts": [
+        "AceTab-3.0 <strong>provides support for tab-completion</strong>."
+      ]
+    },
+    {
+      "url": "https://github.com/hurricup/WoW-Ace3/blob/master/AceTab-3.0/AceTab-3.0.lua",
+      "title": "WoW-Ace3/AceTab-3.0/AceTab-3.0.lua at master \u00b7 hurricup/WoW-Ace3",
+      "publish_date": "2016-07-18",
+      "excerpts": [
+        "GitHub mirror of the official Ace3 libraries release - WoW-Ace3/AceTab-3.0/AceTab-3.0.lua at master \u00b7 hurricup/WoW-Ace3"
+      ]
+    },
+    {
+      "url": "https://www.wowace.com/projects/ace3/pages/api/ace-config-cmd-3-0",
+      "title": "api/AceConfigCmd-3.0 - api - Pages - Ace3 - Addons - Projects - WowAce ",
+      "publish_date": null,
+      "excerpts": [
+        "CurseForge  \n\n### Pages\n\n* AceConfig-3.0 Options Tables\n* AceDB-3.0 Tutorial\n* AceGUI-3.0 Tutorial\n* AceGUI-3.0 Widgets\n* api\n  \n    + AceAddon-3.0\n    + AceBucket-3.0\n    + AceComm-3.0\n    + AceConfig-3.0\n    + AceConfigCmd-3.0\n    + AceConfigDialog-3.0\n    + AceConfigRegistry-3.0\n    + AceConsole-3.0\n    + AceDB-3.0\n    + AceDBOptions-3.0\n    + AceEvent-3.0\n    + AceGUI-3.0\n    + AceHook-3.0\n    + AceLocale-3.0\n    + AceSerializer-3.0\n    + AceTab-3.0\n    + AceTimer-3.0\n* Getting Started\n\n### api/AceConfigCmd-3.0\n\nAceConfigCmd-3.0 handles access to an options table through the \"command line\" interface via the ChatFrames.\n\n## AceConfigCmd:CreateChatCommand(slashcmd, appName)\n\nUtility function to create a slash command handler.  \nAlso registers tab completion with AceTab\n\n### Parameters\n\nslashcmd\n    The slash command WITHOUT leading slash (only used for error output)\nappName\n    The application name as given to `:RegisterOptionsTable()`\n## AceConfigCmd:GetChatCommandOptions(slashcmd)\n\nUtility function that returns the options table that belongs to a slashcommand.  \nDesigned to be used for the AceTab interface.\n\n### Parameters\n\nslashcmd\n    The slash command WITHOUT leading slash (only used for error output)\n\n### Return value\n\nThe options table associated with the slash command (or nil if the slash command was not registered)\n\n## AceConfigCmd:HandleCommand(slashcmd, appName, input)\n\nHandle the chat command.  \nThis is usually called from a chat command handler to parse the command input as operations on an aceoptions table.  \nAceConfigCmd uses this function internally when a slash command is registered with `:CreateChatCommand`\n\n### Parameters\n\nslashcmd\n    The slash command WITHOUT leading slash (only used for error output)\nappName\n    The application name as given to `:RegisterOptionsTable()` input\n    The commandline input (as given by the WoW handler, i.e. without the command itself)\n\n### Usage\n\n```\nMyAddon = LibStub ( \" AceAddon-3.0\" ): NewAddon ( \" MyAddon\" , \" AceConsole-3.0\" ) \n -- Use AceConsole-3.0 to register a Chat Command \n MyAddon : RegisterChatCommand ( \" mychat\" , \" ChatCommand\" ) \n\n -- Show the GUI if no input is supplied, otherwise handle the chat input. \n function MyAddon : ChatCommand ( input ) \n  -- Assuming \"MyOptions\" is the appName of a valid options table \n  if not input or input : trim () == \" \" then \n    LibStub ( \" AceConfigDialog-3.0\" ): Open ( \" MyOptions\" ) \n  else \n    LibStub ( \" AceConfigCmd-3.0\" ). HandleCommand ( MyAddon , \" mychat\" , \" MyOptions\" , input ) \n  end \n end\n```\n\n* * *\n\n## Comments\n\n* \\_ForgeUser581183\n  \n  View _ForgeUser581183's Profile\n  \n    + \n    + Join Date: 3/7/2008\n    + Posts: 19\n    + Member Details\n  \n  [\\#1](https://www.wowace.com/projects/ace3/pages/api/ace-config-cmd-3-0?comment=1) \\_ForgeUser581183     + View User Profile\n    + [Send Message](https://www.wowace.com/private-messages/send?recipient=_ForgeUser581183)"
+      ]
+    },
+    {
+      "url": "https://authors.curseforge.com/forums/world-of-warcraft/general-chat/need-help/216366-accessing-tables-etc-from-slash-commands",
+      "title": "accessing tables etc from slash commands - Need Help? - General Chat - World of Warcraft - Forums - Authors CurseForge",
+      "publish_date": null,
+      "excerpts": [
+        "I was working on tab completion for /dump, it worked sort of, but i couldnt figure out ace tab, and just gave up. Maybe you will find something useful in it. local AceTab = LibStub(&quot;AceTab-3.0&quot;) if not AceTab:IsTabCompletionRegistered(&quot;prat_debug_tables&quot;) then AceTab:RegisterTabCompletion( &quot;prat_debug_tables&quot;, -- descriptor string Unique identifier for this tab completion set &quot;%.&quot;, -- prematches string|table|nil String match(es) AFTER which this tab completion will apply."
+      ]
+    },
+    {
+      "url": "https://repos.curseforge.com/wow/inventory/file/c6ff7ba0e8f6/Libs/AceConfig-3.0/AceConfigCmd-3.0/AceConfigCmd-3.0.lua?style=paper",
+      "title": "wow/inventory: c6ff7ba0e8f6 Libs/AceConfig-3.0/AceConfigCmd-3.0/AceConfigCmd-3.0.lua",
+      "publish_date": null,
+      "excerpts": [
+        "-- This is usually called from a chat command handler to parse the command input as operations on an aceoptions table.\\\\ -- AceConfigCmd uses this function internally when a slash command is registered with `:CreateChatCommand` -- @param slashcmd The slash command WITHOUT leading slash (only used for error output) -- @param appName The application name as given to `:RegisterOptionsTable()` -- @param input The commandline input (as given by the WoW handler, i.e. without the command itself) -- @usage -- MyAddon = LibStub(&quot;AceAddon-3.0&quot;):NewAddon(&quot;MyAddon&quot;, &quot;AceConsole-3.0&quot;) -- -- Use AceConsole-3.0 to register a Chat Command -- MyAddon:RegisterChatCommand(&quot;mychat&quot;, &quot;ChatCommand&quot;) -- -- -- Show the GUI if no input is supplied, otherwise handle the chat input."
+      ]
+    },
+    {
+      "url": "https://wowinterface.com/forums/archive/index.php/t-48783.html",
+      "title": "I have never realised this... (slash commands) [Archive] - WoWInterface",
+      "publish_date": "2014-01-09",
+      "excerpts": [
+        "WoWInterface &gt; General Discussion &gt; General WoW Chat &gt; I have never realised this... (slash commands) ... View Full Version : I have never realised this... (slash commands) ... So apparently, if you <strong>type a slash in the chat edit box, and then press tab</strong>, it will try to auto complete the slash"
+      ]
+    },
+    {
+      "url": "https://www.curseforge.com/wow/addons/ace3/files/245173",
+      "title": "Ace3 - Beta-r701 - World of Warcraft Addons - CurseForge",
+      "publish_date": "2026-02-03",
+      "excerpts": [
+        "M /branches/RC1/AceSerializer-3.0  \nM /branches/RC1/AceTab-3.0  \nM /branches/RC1/docs  \nM /branches/RC1/tests\n\nAdded .pkgmeta and removed log template  \n\\------------------------------------------------------------------------  \nr689 | nevcairiel | 2008-09-26 20:55:53 +0000 (Fri, 26 Sep 2008) | 1 line  \nChanged paths:  \nA /branches/RC1/AceTab-3.0  \nA /branches/RC1/AceTab-3.0/AceConfigTab-3.0.lua  \nA /branches/RC1/AceTab-3.0/AceTab-3.0.lua  \nA /branches/RC1/AceTab-3.0/AceTab-3.0.xml  \nA /trunk/AceTab-3.0  \nA /trunk/AceTab-3.0/AceConfigTab-3.0.lua  \nA /trunk/AceTab-3.0/AceTab-3.0.lua  \nA /trunk/AceTab-3.0/AceTab-3.0.xml\n\nRe-add AceTab-3.0, its history was lost due to weird svn behaviour. Does this thing even work?  \n\\------------------------------------------------------------------------  \nr688 | nevcairiel | 2008-09-26 20:39:43 +0000 (Fri, 26 Sep 2008) | 1 line  \nChanged paths:  \nD /branches/Ace3  \nA /branches/RC1 (from /branches/Ace3/RC1:687)  \nD /tags/Ace3\n\n...\n\nM /branches/Ace3/RC1/AceConsole-3.0/AceConsole-3.0.lua\n\nAce3 - AceConsole-3.0:  \nCheck all slash commands when registering instead of only the AceConsole-3.0 ones.\n\n\\------------------------------------------------------------------------  \nr625 | nevcairiel | 2008-04-13 10:09:12 +0000 (Sun, 13 Apr 2008) | 1 line  \nChanged paths:  \nM /branches/Ace3/RC1/AceDBOptions-3.0/AceDBOptions-3.0.lua  \nM /branches/Ace3/RC1/AceHook-3.0/AceHook-3.0.lua  \nM /branches/Ace3/RC1/changelog.txt\n\nAce3 - update changelog and fix up some minor revs  \n\\------------------------------------------------------------------------  \nr624 | nevcairiel | 2008-04-13 09:08:38 +0000 (Sun, 13 Apr 2008) | 2 lines  \nChanged paths:  \nM /branches/Ace3/RC1/AceDB-3.0/AceDB-3.0.lua\n\nAce3 - AceDB-3.0  \n\\- fix logic issue, doh!  \n\\------------------------------------------------------------------------  \nr623 | nevcairiel | 2008-04-13 09:06:11 +0000 (Sun, 13 Apr 2008) | 3 lines  \nChanged paths:  \nM /branches/Ace3/RC1/AceDB-3.\n\n...\n\nr472 | nargiddley | 2008-01-20 23:50:35 +0000 (Sun, 20 Jan 2008) | 1 line  \nChanged paths:  \nM /branches/Ace3/Beta/AceGUI-3.0/widgets/AceGUIWidget-DropDown.lua  \nM /branches/Ace3/Beta/AceGUI-3.0/widgets/AceGUIWidget-Frame.lua\n\nAce3 - AceGUI: Restore Frame widget's strata on Aquire, Reset Dropdown group's label on Aquire  \n\\------------------------------------------------------------------------  \nr471 | ammo | 2008-01-20 20:26:57 +0000 (Sun, 20 Jan 2008) | 5 lines  \nChanged paths:  \nM /branches/Ace3/Beta/AceConfig-3.0/AceConfigCmd-3.0/AceConfigCmd-3.0.lua  \nM /branches/Ace3/Beta/AceConsole-3.0/AceConsole-3.0.lua\n\nAce3 - ACE-69  \n\\- Add IterateChatCommands to AceConsole  \n\\- RegisterChatCommand now returns true upon success  \n\\- Add GetChatCommandOptions to AceConfigCmd so AceTab can get the options table for a chatcommand\n\n\\------------------------------------------------------------------------  \nr470 | polarina | 2008-01-20 19:55:19 +0000 (Sun, 20 Jan 2008) | 4 lines\n\n...\n\nChanged paths:  \nM /branches/Ace3/Beta/AceConfig-3.0/AceConfigCmd-3.0/AceConfigCmd-3.0.lua\n\nAce3 - AceConfigCmd:  \n\\- fix a bug with registering chat commands  \n\\------------------------------------------------------------------------  \nr377 | nargiddley | 2007-12-02 00:46:02 +0000 (Sun, 02 Dec 2007) | 1 line  \nChanged paths:  \nM /branches/Ace3/Beta/AceGUI-3.0/widgets/AceGUIWidget-DropDown.lua  \nM /branches/Ace3/Beta/AceGUI-3.0/widgets/AceGUIWidget-EditBox.lua\n\nAce3 - AceGUI: :SetText(nil) sets to \"\" instead of erroring for Editbox and Dropdown widgets  \n\\------------------------------------------------------------------------  \nr376 | nevcairiel | 2007-12-01 09:04:51 +0000 (Sat, 01 Dec 2007) | 2 lines  \nChanged paths:  \nM /branches/Ace3/Beta/AceDB-3.0/AceDB-3.0.lua\n\nAce3 - AceDB-3.0  \n\\- add a check to :RegisterDefaults to not fail if no previous defaults had been set  \n\\------------------------------------------------------------------------\n\n...\n\nChanged paths:  \nA /branches/Ace3/Beta/docs/AceSerializer-3.0.txt\n\nAce3 - AceSerializer-3.0: what's up doc?  \n\\------------------------------------------------------------------------  \nr339 | ammo | 2007-11-19 09:36:28 +0000 (Mon, 19 Nov 2007) | 2 lines  \nChanged paths:  \nA /branches/Ace3/Beta/docs/AceLocale-3.0.txt\n\nAce3 - Docs: one doc a day keeps the doc away :)  \n\\- Added AceLocale-3.0 first draft documentation  \n\\------------------------------------------------------------------------  \nr338 | mikk | 2007-11-18 19:26:13 +0000 (Sun, 18 Nov 2007) | 6 lines  \nChanged paths:  \nM /branches/Ace3/Beta/AceConfig-3.0/AceConfig-3.0.lua  \nM /branches/Ace3/Beta/AceConfig-3.0/AceConfigCmd-3.0/AceConfigCmd-3.0.lua\n\nAce3 - AceConfig:  \n\\- Move chat command creation from AceConfig to AceConfigCmd:CreateChatCommand(). (AceConfig will call this on its own if we use the AceConfig shorthand)  \n\\- VERY VERY simply help output added to AceConfigCmd"
+      ]
+    },
+    {
+      "url": "https://addonstudio.org/wiki/WoW:Ace2_(AddOn)",
+      "title": "WoW:Ace2 (AddOn) - AddOn Studio",
+      "publish_date": "2023-08-15",
+      "excerpts": [
+        "AceConsole-2.0 - provides console I/O functionality, slash commands, easy printing \u00b7 AceTab-2.0 - provides easy tab completion support \u00b7 AceDB-2.0 - allows for fast, clean, and featureful saved variable access, including per-class settings \u00b7 AceEvent-2.0 - allows for simple event handling, scheduling, and inter-addon communication \u00b7"
+      ]
+    },
+    {
+      "url": "https://us.forums.blizzard.com/en/wow/t/how-to-execute-a-slash-command-from-inside-an-addon/2034102",
+      "title": "How to execute a slash command from inside an addon - Guides / UI and Macro - World of Warcraft Forums",
+      "publish_date": "2024-12-24",
+      "excerpts": [
+        "* \u200b\n* \u200b\n\nForums Guides UI and Macro How to execute a slash command from inside an addon\n\nAll outgoing email has been globally disabled by an administrator. No email notifications of any kind will be sent. \u200b\n\n# How to execute a slash command from inside an addon\n\nUI and Macro\n\nYou have selected **0** posts.\n\nselect all\n\ncancel selecting\n\nDec 2024\n\n1 / 3\n\nDec 2024\n\nDec 2024\n\nAitfnahuo\n\n2 posts\n\n26 Tauren Druid 590 WoW Classic\n\nDec 2024\n\nI have an addon that works with TitanPanel, Bazooka, etc. It creates a drop down list of options that run slash commands from other addons. I use macrotext, but that broke this past summer. Is it possible to execute a slash command (from another addon) inside my addon? Example: \u201c/bt\u201d opens the bartender options window.  \nI used to use the following code to run that slash command:  \nOnClick = function(self, button)  \nlocal command\\_line = \u2018/bt\u2019  \nMacroEditBox:SetText(command\\_line)  \nChatEdit\\_SendText(MacroEditBox)  \nend,\n\nAny help would be appreciated.\n\u200b\n\n\u200b \u200b\n\n309 views\n\nFizzlemizz\n\n2679 posts\n\n<Autonomous Collective>\n\n80 Gnome Priest 13505\n\n1\n\nDec 2024\n\nIn the addon(s) there will an associated function in the `SlashCmdList` table eg,\n\n```\nSlashCmdList[\"WhateverTheAddonUsesToNameTheSlashCommandFunction\"]  = function (msg)\n     -- code... end\n```\n\nIn this case, you could run the command with:\n\n```\nSlashCmdList [ \"WhateverTheAddonUsesToNameTheSlashCommandFunction\" ] ()\n```\n\nIf the addon accepts parameters, just place them inside the `()` brackets wrapped in quotes eg.\n\n```\nSlashCmdList  \"WhateverTheAddonUsesToNameTheSlashCommandFunction\" \n SlashCmdList  \"WhateverTheAddonUsesToNameTheSlashCommandFunction\" \n```\n\nWith addon like BarTender that use the AceConsole, you can look for the `:RegisterChatCommand` code. The slash command will be  \n`ACECONSOLE_` and the uppercase slash command used in-game minus the `\\` so for BarTender it\u2019s:\n\n```\nSlashCmdList.ACECONSOLE_BT()\n```\n\n```\nSlashCmdList [ \"ACECONSOLE_BT\" ] ()\n```\n\n\u200b\n\n\u200b \u200b\n\nAitfnahuo\n2 posts\n\n26 Tauren Druid 590 WoW Classic\n\nDec 2024\n\nFizzlemizz:\n\n> `SlashCmdList`\n> \n>\n\nThank you.  \nThat worked and was very easy to follow.\n\n\u200b\n\n\u200b \u200b\n\nReply\n\n  \n### New & Unread Topics\n\n|Topic |Replies |Views |Activity |\n| --- | --- | --- | --- |\n|One button macro to apply weapon stones?\n\nUI and Macro |0 |18 |3d |\n|End of the Instance\n\nUI and Macro |1 |33 |14d |\n|Showtooltip\n\nUI and Macro |1 |49 |11d |\n|Looking for help with a macro not working\n\nUI and Macro |6 |62 |8d |\n|Macro Help (Discipline Priest)\n\nUI and Macro |3 |12 |1d |\n\n### Want to read more? Browse other topics in UI and Macro or view latest topics .\n\nInvalid date Invalid date"
+      ]
+    }
+  ],
+  "usage": [
+    {
+      "name": "sku_search",
+      "count": 1
+    }
+  ],
+  "warnings": []
+}

@@ -1,0 +1,26 @@
+WelcomeHome: Your first Ace3 Addon - Warcraft Wiki
+  URL: https://warcraft.wiki.gg/wiki/WelcomeHome:_Your_first_Ace3_Addon
+  # WelcomeHome: Your first Ace3 Addon
+## Bringing Ace3 to the Party
+The **OptionalDeps** part is there in case a user of your addon comes along later and chooses to use a standalone Ace3 instead of using the embedded libraries in your Libs folder and the **X-Embeds** is there to tell updaters what libs it needs to download separately if the user don't want to use the embedded libs.
+
+## Final Source Files
+### embeds.xml
+```
+<Ui xmlns="http://www.blizzard.com/wow/ui/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.blizzard.com/wow/ui/
+..\FrameXML\UI.xsd">
+     <Script file="Libs\LibStub\LibStub.lua"/>
+     <Include file="Libs\CallbackHandler-1.0\CallbackHandler-1.0.xml"/>
+     <Include file="Libs\AceAddon-3.0\AceAddon-3.0.xml"/>
+     <Include file="Libs\AceEvent-3.0\AceEvent-3.0.xml"/>
+     <Include file="Libs\AceDB-3.0\AceDB-3.0.xml"/>
+     <Include file="Libs\AceLocale-3.0\AceLocale-3.0.xml"/>
+     <Include file="Libs\AceConsole-3.0\AceConsole-3.0.xml"/>
+     <Include file="Libs\AceGUI-3.0\AceGUI-3.0.xml"/>
+     <Include file="Libs\AceConfig-3.0\AceConfig-3.0.xml"/>
+</Ui>
+```
+
+Using the BigWigs Packager with GitHub Actions - Warcraft Wiki ...
+  URL: https://warcraft.wiki.gg/wiki/Using_the_BigWigs_Packager_with_GitHub_Actions
+  Use e.g. Ace3 standalone by dropping the Ace3 in the AddOns folder and specifying ## OptionalDeps: Ace3 in your TOC. A library can be used standalone if it has ...

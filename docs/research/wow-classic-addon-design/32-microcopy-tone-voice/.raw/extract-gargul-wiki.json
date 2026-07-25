@@ -1,0 +1,29 @@
+{
+  "extract_id": "extract_8343af52b0438f57eb0773f855f6d265",
+  "session_id": "session_8343af52b0438f57eb0773f855f6d265",
+  "status": "ok",
+  "results": [
+    {
+      "url": "https://github.com/papa-smurf/Gargul/wiki",
+      "title": "Home \u00b7 papa-smurf/Gargul Wiki \u00b7 GitHub",
+      "publish_date": null,
+      "excerpts": [
+        "# papa-smurf/Gargul wiki: Home\n\n- Page: GitHub wiki page\n- URL: https://github.com/papa-smurf/Gargul/wiki\n- Repository: papa-smurf/Gargul\n\n---\n\n### For live support visit Discord\n\n<https://discord.gg/D3mDhYPVzf>\n\n## Using Gargul with ThatsMyBIS\n\n[All you need](https://github.com/papa-smurf/Gargul/wiki/Gargul-and-ThatsMyBIS)\n\n## Master Looting\n\n### General\n\n[Announcing Loot in Chat](https://github.com/papa-smurf/Gargul/wiki/Announcing-Loot-in-Chat)  \n[Rolling Items](https://github.com/papa-smurf/Gargul/wiki/Rolling-Items)  \n[Setting up PackMules](https://github.com/papa-smurf/Gargul/wiki/Setting-up-PackMules)  \n[Setting up Loot Priorities](https://github.com/papa-smurf/Gargul/wiki/Setting-up-Loot-Priorities)\n\n### That's My BIS (thatsmybis.com)\n\nStep 1: [Import TMB Data](https://github.com/papa-smurf/Gargul/wiki/Import-TMB-Data)  \nStep 2: [Import TMB Item Priority Notes](https://github.com/papa-smurf/Gargul/wiki/Import-TMB-Loot-Priorities)  \nStep 3: [Awarding Items](https://github.com/papa-smurf/Gargul/wiki/Awarding-Items)  \n[\\- Awarding items that DON'T require rolling](https://github.com/papa-smurf/Gargul/wiki/Awarding-Items)  \n[\\- Awarding items that DO require rolling](https://github.com/papa-smurf/Gargul/wiki/Awarding-Items)  \nStep 4: [Export to TMB](https://github.com/papa-smurf/Gargul/wiki/Export-To-TMB)\n\n### Soft-Reserves (softres.it)\n\n[Importing Soft-Reserves](https://github.com/papa-smurf/Gargul/wiki/Importing-Soft-Reserves)  \n[Clearing Soft-Reserves](https://github.com/papa-smurf/Gargul/wiki/Importing-Soft-Reserves)\n\n## Raid Leading\n\n[Sort Groups & Tanks](https://github.com/papa-smurf/Gargul/wiki/Sort-Groups-&-Tanks)  \nCheck Who's Missing (WIP)  \nChecking Buffs (WIP)  \nChecking Items (WIP)\n\n## Miscellaneous\n\n[Version Check](https://github.com/papa-smurf/Gargul/wiki/Version-Check)  \n[Settings](https://github.com/papa-smurf/Gargul/wiki/Settings)\n\n## Wiki pages\n\n- [Home](https://github.com/papa-smurf/Gargul/wiki)\n- [Announcing Loot in Chat](https://github.com/papa-smurf/Gargul/wiki/Announcing-Loot-in-Chat)\n- [Awarding Items](https://github.com/papa-smurf/Gargul/wiki/Awarding-Items)\n- [Clearing Soft Reserves](https://github.com/papa-smurf/Gargul/wiki/Clearing-Soft-Reserves)\n- [Export To TMB](https://github.com/papa-smurf/Gargul/wiki/Export-To-TMB)\n- [Gargul and ThatsMyBIS](https://github.com/papa-smurf/Gargul/wiki/Gargul-and-ThatsMyBIS)\n- [Import TMB Data](https://github.com/papa-smurf/Gargul/wiki/Import-TMB-Data)\n- [Import TMB Loot Priorities](https://github.com/papa-smurf/Gargul/wiki/Import-TMB-Loot-Priorities)\n- [Importing Soft Reserves](https://github.com/papa-smurf/Gargul/wiki/Importing-Soft-Reserves)\n- [Rolling Items](https://github.com/papa-smurf/Gargul/wiki/Rolling-Items)\n- [Setting up Loot Priorities](https://github.com/papa-smurf/Gargul/wiki/Setting-up-Loot-Priorities)\n- [Setting up PackMules](https://github.com/papa-smurf/Gargul/wiki/Setting-up-PackMules)\n- [Settings](https://github.com/papa-smurf/Gargul/wiki/Settings)\n- [Sort Groups & Tanks](https://github.com/papa-smurf/Gargul/wiki/Sort-Groups-&-Tanks)\n- [Version Check](https://github.com/papa-smurf/Gargul/wiki/Version-Check)"
+      ]
+    }
+  ],
+  "errors": [],
+  "usage": [
+    {
+      "name": "sku_extract_excerpts",
+      "count": 1
+    }
+  ],
+  "warnings": [
+    {
+      "type": "warning",
+      "message": "Neither objective nor search_queries were provided, provide at least one to increase the relevance of excerpts.",
+      "detail": null
+    }
+  ]
+}

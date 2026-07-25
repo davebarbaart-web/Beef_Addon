@@ -1,0 +1,16 @@
+{
+  "extract_id": "extract_a6bee3f3f6468e3d5faf9c29b6db2c91",
+  "session_id": "session_a6bee3f3f6468e3d5faf9c29b6db2c91",
+  "status": "ok",
+  "results": [],
+  "errors": [
+    {
+      "url": "https://legal.overwolf.com/docs/curseforge/mod-authors-terms/ https://www.wowinterface.com/forums/showthread.php?t=48644 https://wowinterface.com/forums/showthread.php?p=190341 https://github.com/tukui-org/ElvUI/blob/main/LICENSE.txt https://www.wowace.com/projects/ace3/pages/license https://support.curseforge.com/en/support/solutions/articles/9000199552-project-submission-guide-and-tips",
+      "error_type": "fetch_error",
+      "http_status_code": null,
+      "content": null
+    }
+  ],
+  "usage": [],
+  "warnings": []
+}

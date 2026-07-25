@@ -1,0 +1,23 @@
+{
+  "extract_id": "extract_ae0b635ffddfc09cf44faaeb31ebd70a",
+  "session_id": "session_ae0b635ffddfc09cf44faaeb31ebd70a",
+  "status": "ok",
+  "results": [
+    {
+      "url": "https://www.wowace.com/projects/libwindow-1-1",
+      "title": "Overview - LibWindow-1.1 - Addons - Projects - WowAce ",
+      "publish_date": null,
+      "excerpts": [
+        "# LibWindow-1.1\n* Save and restore positions: WindowLib will pick the attach point based on which quadrant of the screen the frame is in: top-left? bottom-right? center?\n* Handle window dragging\n* Mouse wheel zooming\n* Only mouse-enabling the window while Alt is held\n\n...\n\n## Why bother?\n* Save the position in the _parent's_ scale, not the frame's own EffectiveScale. This prevents overlaps and gaps when changing scale.\n* Compute the closest screen corner and save relative to your frame's closest corner, i.e. bottomright-to-bottomright, topleft-to-topleft. This prevents things disappearing off screen.\n\n...\n\n## API Documentation\n### .RegisterConfig(frame, storage[, names])\n#### Manual variable naming\nThe optional last argument to the function is a table containing name mappings and/or a prefix for all variable names.\nExample use - manually specify all variable names:\n```\n names = { \n   x = \" posx\" , \n   y = \" posy\" , \n   scale = \" size\" , \n   point = \" whereToAttach\" , \n }\n```\nExample use - just prefix most names, but hard-code one\n```\n names = { \n   prefix = \" myframe\" ,  -- names become e.g. \"myframex\", \"myframey\" \n   point = \" gluemyframe\" , \n }\n```\n\n### .SavePosition(frame)\nComputes which quadrant the frame lives in, and saves its position relative to the right corner.\n```\n myframe : SetScript ( \" OnDragStop\" , lwin . SavePosition )\n```\nYou do not need to call this yourself if you used :MakeDraggable() on the frame.\n\n### .RestorePosition(frame)\nRestores position **and scale** from configuration data.\n```\n lwin . RestorePosition ( myframe )\n```\n\n...\n\n## Notes\n### On positioning logic\nWindowLib will pick the attach point based on which quadrant of the screen the frame is in: top-left? bottom-right? center?\n\n...\n\n* Two frames sitting next to each other when the UI is resized, will ''keep'' sitting next to each other with this relative positioning. (For example: Think of how your Bags sit next to each other, regardless of UI scale!)\n\n...\n\n### Adding LibWindow to an existing addon\nLibWindow remembers position in the _parent's_ scale. BUT: most addons translate to _global_ scale and save that. This is not compatible unless your UIParent is scale 1.0.\n**Example old code:**\n\n...\n\n```\n function MyAddon : OnProfileEnable () \n   local p = self . db . profile \n   if not p . libwindowed then \n     p . x = p . x / UIParent : GetScale () \n     p . y = p . y / UIParent : GetScale () \n     p . libwindowed = true \n   end \n   -- now it's safe to call .RestorePosition()\n```"
+      ]
+    }
+  ],
+  "errors": [],
+  "usage": [
+    {
+      "name": "sku_extract_excerpts",
+      "count": 1
+    }
+  ],
+  "warnings": []
+}

@@ -1,0 +1,16 @@
+{
+  "extract_id": "extract_b645408c555ac1d908a79e2dc8ca2a38",
+  "session_id": "session_b645408c555ac1d908a79e2dc8ca2a38",
+  "status": "ok",
+  "results": [],
+  "errors": [
+    {
+      "url": "https://wowpedia.fandom.com/wiki/CVar_profanityFilter",
+      "error_type": "network_error",
+      "http_status_code": null,
+      "content": null
+    }
+  ],
+  "usage": [],
+  "warnings": []
+}

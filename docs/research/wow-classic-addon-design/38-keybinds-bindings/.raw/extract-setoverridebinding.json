@@ -1,0 +1,16 @@
+{
+  "extract_id": "extract_460d396071e56d13241792b5cf2c7dbc",
+  "session_id": "session_460d396071e56d13241792b5cf2c7dbc",
+  "status": "ok",
+  "results": [],
+  "errors": [
+    {
+      "url": "https://warcraft.wiki.gg/wiki/API_SetOverrideBinding",
+      "error_type": "network_error",
+      "http_status_code": null,
+      "content": null
+    }
+  ],
+  "usage": [],
+  "warnings": []
+}

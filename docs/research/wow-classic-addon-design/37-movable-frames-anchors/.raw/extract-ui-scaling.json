@@ -1,0 +1,23 @@
+{
+  "extract_id": "extract_ef5e215d9349ce46444384a53365cc68",
+  "session_id": "session_ef5e215d9349ce46444384a53365cc68",
+  "status": "ok",
+  "results": [
+    {
+      "url": "https://wowpedia.fandom.com/wiki/UI_scaling",
+      "title": "UI scaling - Wowpedia - Your wiki guide to the World of Warcraft",
+      "publish_date": null,
+      "excerpts": [
+        "# UI scaling\n## Contents\n* 1 Screen units\n* 2 Region units\n  + 2.1 UIParent\n* 3 Pixel perfect UI\n* 4 Examples\n* 5 Patch changes\nFunctions like GetCursorPosition () measure from the bottom-left corner (0, 0). The maximum visible Y coordinate is always 768, while the maximum visible X coordinate depends on aspect ratio:\n\n...\n\nFrameXML has functions to compare regions independent of their effective scale:\n* Region:GetScaledRect () - Similar to GetRect() but measuring with screen units.\n* GetUnscaledFrameRect ( region , scale ) - Similar to GetRect(), but measuring with any choice of effective scale.\nMost user interface elements are parented by `UIParent` that covers the whole screen. Addons inserting widgets into the UI should consider making them children of UIParent (or within its heirarchy of children) to inherit a common scale.\nThe System window , within \"Graphics\", presents a checkbox and slider corresponding to console variables useUiScale and uiScale . Disabling this option causes UIParent to adopt a default scale per the table below:\n\n...\n\n```\nUIParent:SetScale(0.5333)\n```\nSetting a \"pixel perfect\" UI with a 1920x1080 resolution, using an AddOn:\n```\nC_CVar . SetCVar ( \"useUiScale\" , 1 ) \n C_CVar . SetCVar ( \"uiScale\" , 768 / 1080 )\n```\nChecking if the cursor is over a frame:\n```\nfunction MouseIsOver ( frame ) \n\t local x , y = GetCursorPosition (); \n\t local s = frame : GetEffectiveScale (); \n\t x , y = x / s , y / s ; \n\t return (( x >= frame : GetLeft ()) and ( x <= frame : GetRight ()) \n\t\t and ( y >= frame : GetBottom ()) and ( y <= frame : GetTop ())) \n end\n```\nChecking if two frames overlap:"
+      ]
+    }
+  ],
+  "errors": [],
+  "usage": [
+    {
+      "name": "sku_extract_excerpts",
+      "count": 1
+    }
+  ],
+  "warnings": []
+}

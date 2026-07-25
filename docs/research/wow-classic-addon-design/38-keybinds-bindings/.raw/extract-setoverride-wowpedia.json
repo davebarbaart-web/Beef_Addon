@@ -1,0 +1,16 @@
+{
+  "extract_id": "extract_312a08532f64a3e67f80b30b2066743b",
+  "session_id": "session_312a08532f64a3e67f80b30b2066743b",
+  "status": "ok",
+  "results": [],
+  "errors": [
+    {
+      "url": "https://wowpedia.fandom.com/wiki/API_SetOverrideBinding",
+      "error_type": "network_error",
+      "http_status_code": null,
+      "content": null
+    }
+  ],
+  "usage": [],
+  "warnings": []
+}

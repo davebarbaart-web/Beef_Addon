@@ -1,0 +1,94 @@
+{
+  "search_id": "search_67ffa7521d24efeb86d8a38c65ac2173",
+  "session_id": "session_67ffa7521d24efeb86d8a38c65ac2173",
+  "status": "ok",
+  "results": [
+    {
+      "url": "https://www.curseforge.com/wow/addons/mbb-classic",
+      "title": "MBB - Classic - World of Warcraft Addons - CurseForge",
+      "publish_date": null,
+      "excerpts": [
+        "<strong>MBB reduces minimap buttons and makes them accessible through a pop out menu</strong>. Click the MBB button to expand the menu and display the buttons. Each button that is collapsed into the menu can be reattached to the minimap with Ctrl + Right Click."
+      ]
+    },
+    {
+      "url": "https://www.curseforge.com/wow/addons/mbb",
+      "title": "MBB - World of Warcraft Addons - CurseForge",
+      "publish_date": null,
+      "excerpts": [
+        "<strong>Cleans up minimap buttons and makes them accessible through a pop out menu</strong>!. Download MBB by VallanTV, with over 1.5M+ downloads on CurseForge"
+      ]
+    },
+    {
+      "url": "https://github.com/vallantv/MBBClassic",
+      "title": "GitHub - vallantv/MBBClassic: A WoW Classic addon that gathers all minimap buttons into one button. \u00b7 GitHub",
+      "publish_date": null,
+      "excerpts": [
+        "<strong>MBB reduces minimap buttons and makes them accessible through a pop out menu</strong>. Click the MBB button to expand the menu and display the buttons. Each button that is collapsed into the menu can be reattached to the minimap with Ctrl + Right Click."
+      ]
+    },
+    {
+      "url": "https://www.wowinterface.com/downloads/info11047-MBBMiniMapButtonBag.html",
+      "title": "MBB (MiniMap Button Bag) : Discontinued and Outdated Mods  : World of Warcraft AddOns",
+      "publish_date": null,
+      "excerpts": [
+        "Note this version has been tidied up and made to work with WotLK from the live version maintained in my name at http://files.wowace.com/MBB/MBB.zip Note also that the secure headers template code needs work and so the buttons may not function in combat."
+      ]
+    },
+    {
+      "url": "https://github.com/funkydude/SexyMap/blob/master/Buttons_Classic.lua",
+      "title": "SexyMap/Buttons_Classic.lua at master \u00b7 funkydude/SexyMap",
+      "publish_date": null,
+      "excerpts": [
+        "Spice up your minimap in World of Warcraft with some sexy options. - SexyMap/Buttons_Classic.lua at master \u00b7 funkydude/SexyMap"
+      ]
+    },
+    {
+      "url": "https://www.wowisclassic.com/en/addons/sexymap/",
+      "title": "SexyMap - Addon for Classic WoW - 1.13.3",
+      "publish_date": null,
+      "excerpts": [
+        "SexyMap: Make your minimap looks awesome! ... Minimap moving, and movement of things like the quest tracker and durability frame. ... Hiding of all buttons attached to the minimap (can be set to be always hidden, or to show on minimap hover)"
+      ]
+    },
+    {
+      "url": "https://www.wowace.com/projects/mbb",
+      "title": "Overview - MBB - Addons - Projects - WowAce ",
+      "publish_date": null,
+      "excerpts": [
+        "https://www.curseforge.com/wow/addons/minimapbuttonbag-reborn-mmb-reborn \u00b7 Rollback Post to Revision RollBack \u00b7 TechnoHunter \u00b7 Join Date: 4/23/2010 \u00b7 Posts: 14 \u00b7 Member Details \u00b7 #520 TechnoHunter \u00b7 View User Profile \u00b7 Send Message Posted Sep 13, 2021 \u00b7 is there a version of this that works with burning crusade classic?"
+      ]
+    },
+    {
+      "url": "https://www.warcrafttavern.com/wow-classic/addons/sexymap/",
+      "title": "SexyMap WoW Classic Addon 1.13 - Warcraft Tavern",
+      "publish_date": null,
+      "excerpts": [
+        "Hiding of all buttons attached to the minimap (can be set to be always hidden, or to show on minimap hover) Sexy minimap border options, extremely configurable, with several slammin\u2019 presets. ... Mousewheel minimap zoom, and auto zoom-out. A HUD overlay for resource gathering, target tracking, and more. Please support my work on Patreon! SexyMap is open source and development is done on GitHub."
+      ]
+    },
+    {
+      "url": "https://arcaneintellect.com/minimap-button-bag-mbb-world-of-warcraft-wow-addon-spotlight/",
+      "title": "Minimap Button Bag (MBB): World of Warcraft (WoW) AddOn Spotlight - Arcane Intellect",
+      "publish_date": "2021-07-01",
+      "excerpts": [
+        "Fortunately, we can take a \u201chair of the dog\u201d approach and install another addon to fix it. While several addons help organize icons, the one I use is Minimap Button Bag (MBB).\n\nScreenshot of cluttered minimap in World of Warcraft Having a lot of addons installed can clutter your minimap.\n\nThis is an excellent addon because it is easy-to-use and works in both Shadowlands and Burning Crusade Classic!\n\nOkay, let\u2019s get to cleaning up those pesky icons with Minimap Button Bag.\n\nYou can also watch my 55-second video on using MBB if you want a quick overview of how the addon works:\n\n<https://youtu.be/X1MK7By4eY0>\n\n## **How does the Minimap Button Bag addon work?**\n\nMinimap Button Bag takes all your addon icons and consolidates them into a single circle. You can then click on the icon to expand it and see all your addon icons.\n\nBy default, the icons will pop out to the left of the MBB icon.\nIf you want to customize the addon, there are options that allow you to change that direction and the number of rows. I will show you how to change those settings in the customization section below.\n\nHere is an example of what the default behavior of the addon looks like.\n\nScreenshot of minimap button bag addon in WoW Minimap Button Bag organizes your icons into a single icon.\n\n## **How to install Minimap Button Bag**\n\nYou can install MBB by downloading it from [CurseForge](https://www.curseforge.com/wow/addons/mbb) and placing it in your addons folder. However, if you are using enough addons that you need MBB, I recommend installing it with an addon manager instead.\n\nAddon managers allow you to install and update addons with a single click. In contrast, manual installation requires you to download a folder, unzip it, and move it every time you update.\n\nIf you need help setting up an addon manager, I covered the steps in my guide to [installing WoW addons](https://arcaneintellect.\n\n...\n\nbottom directions in MBB addon. You can add extra rows to MBB in the options menu.\n\n### _**Slash Commands**_\n\nIn addition to the options menu, there are a few slash commands available for Minimap Button Bag. These are useful if you need to reset the addon to its original position or settings.\n\nHere are the 3 main slash commands you can use:\n\n|Command |Description |\n| --- | --- |\n|/mmbb buttons |Lists all icons included in the bag |\n|/mmbb reset position |Resets the position of the MBB icon |\n|/mmbb reset all |Resets all settings for the addon |\n\n## **Final Thoughts and Important Links**\n\nMany addons install icons around the edge of your minimap. Thanks to addons like Minimap Button Bag, you can take that clutter and organize it into one neat icon. If you are trying to maintain a clean UI, I would highly recommend trying out MBB.\n\n**Author(s):** [VallanTV](https://www.curseforge.com/members/vallantv) , [Forge\\_User\\_75527174](https://www.curseforge.\ncom/members/Forge_User_75527174) , [karlsnyder](https://www.curseforge.com/members/karlsnyder)\n\n**Website:** <https://www.curseforge.com/wow/addons/mbb>\n\nThanks for reading!\n\n## RELATED ARTICLES\n\n[](https://arcaneintellect.com/rune-helper-addon-spotlight-wow/)\n\n### [(Hylbrande) Rune Helper: World of Warcraft (WoW) AddOn Spotlight](https://arcaneintellect.com/rune-helper-addon-spotlight-wow/)\n\n[](https://arcaneintellect.com/world-of-warcraft-wow-addon-hekili/)\n\n### [Hekili Addon Guide \u2013 How to Use Hekili in World of Warcraft (WoW)](https://arcaneintellect.com/world-of-warcraft-wow-addon-hekili/)\n\n[](https://arcaneintellect.com/btwquests-addon-guide/)\n\n### [BtwQuests Addon Guide \u2013 World of Warcraft (WoW)](https://arcaneintellect.com/btwquests-addon-guide/)\n\nFiled Under: [addon-spotlight](https://arcaneintellect.com/category/addons/addon-spotlight/) , [Addons](https://arcaneintellect.com/category/addons/) Tagged With: [addon spotlight](https://arcaneintellect.\ncom/tag/addon-spotlight/) , [addons](https://arcaneintellect.com/tag/addons/) , [burning crusade](https://arcaneintellect.com/tag/burning-crusade/) , [shadowlands](https://arcaneintellect.com/tag/shadowlands/) , [ui](https://arcaneintellect.com/tag/ui/)\n\n### Tags\n\n[addon](https://arcaneintellect.com/tag/addon/) [addons](https://arcaneintellect.com/tag/addons/) [addon spotlight](https://arcaneintellect.com/tag/addon-spotlight/) [allied race](https://arcaneintellect.com/tag/allied-race/) [allied races](https://arcaneintellect.com/tag/allied-races/) [battle for azeroth](https://arcaneintellect.com/tag/battle-for-azeroth/) [beginner](https://arcaneintellect.com/tag/beginner/) [bfa](https://arcaneintellect.com/tag/bfa/) [burning crusade](https://arcaneintellect.com/tag/burning-crusade/) [classic](https://arcaneintellect.com/tag/classic/) [dragonflight](https://arcaneintellect.com/tag/dragonflight/) [dungeon](https://arcaneintellect.com/tag/dungeon/) [dungeons](https://arcaneintellect.\n\n...\n\ncom/tag/retail/) [rotation](https://arcaneintellect.com/tag/rotation/) [shadowlands](https://arcaneintellect.com/tag/shadowlands/) [the war within](https://arcaneintellect.com/tag/the-war-within/) [timewalking](https://arcaneintellect.com/tag/timewalking/) [torghast](https://arcaneintellect.com/tag/torghast/) [user interface](https://arcaneintellect.com/tag/user-interface/) [warlords of draenor](https://arcaneintellect.com/tag/warlords-of-draenor/) [world of warcraft](https://arcaneintellect.com/tag/world-of-warcraft/) [wotlk](https://arcaneintellect.com/tag/wotlk/) [wotlk classic](https://arcaneintellect.com/tag/wotlk-classic/) [wow](https://arcaneintellect.com/tag/wow/) [wow token](https://arcaneintellect.com/tag/wow-token/) [wrath of the lich king](https://arcaneintellect.com/tag/wrath-of-the-lich-king/) [zereth mortis](https://arcaneintellect.com/tag/zereth-mortis/)\n\nAvatar photo\n\n#### About Archdruid Andoris\n\nI'm glad you found me!\n\n...\n\n* [How To Get To Outland in [Retail and Classic]](https://arcaneintellect.com/how-to-get-to-outland-wow-retail-and-classic/)\n* [Best WoW Addons in 2025 [Retail]](https://arcaneintellect.com/best-world-of-warcraft-wow-addons/)\n* [How much does it cost to play World of Warcraft (WoW)?](https://arcaneintellect.com/world-of-warcraft-wow-subscription-cost-price-guide/)\n* [(Hylbrande) Rune Helper: World of Warcraft (WoW) AddOn Spotlight](https://arcaneintellect.com/rune-helper-addon-spotlight-wow/)\n\n### Search\n\nSearch the site ...\n\n### OTHER LINKS\n\n[Privacy Policy](https://g.ezoic.net/privacy/arcaneintellect.com)\n\n[Contact Us](https://arcaneintellect.com/contact-us/)"
+      ]
+    },
+    {
+      "url": "https://turtle-wow.fandom.com/wiki/MinimapButtonBag",
+      "title": "MinimapButtonBag | Turtle WoW Wiki | Fandom",
+      "publish_date": null,
+      "excerpts": [
+        "MinimapButtonBag <strong>cleans up your mini-map and relocates the buttons in a menu bar</strong>. You can still access them through a single mini-map button. Download Latest Version Unzip it into WoW\\Interface\\AddOns Rename &quot;MinimapButtonBag-master&quot; to"
+      ]
+    }
+  ],
+  "usage": [
+    {
+      "name": "sku_search",
+      "count": 1
+    }
+  ],
+  "warnings": []
+}

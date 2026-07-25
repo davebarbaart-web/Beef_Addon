@@ -1,0 +1,16 @@
+{
+  "extract_id": "extract_d19fc7cde07a0072b84fe2ef259d2058",
+  "session_id": "session_d19fc7cde07a0072b84fe2ef259d2058",
+  "status": "ok",
+  "results": [],
+  "errors": [
+    {
+      "url": "https://warcraft.wiki.gg/wiki/Patch_2.5.5",
+      "error_type": "network_error",
+      "http_status_code": null,
+      "content": null
+    }
+  ],
+  "usage": [],
+  "warnings": []
+}

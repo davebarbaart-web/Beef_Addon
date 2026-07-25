@@ -1,0 +1,192 @@
+{
+  "run_id": "trun_91f36069f0964480b226011299249e76",
+  "interaction_id": "trun_91f36069f0964480b226011299249e76",
+  "result_url": "https://platform.parallel.ai/play/deep-research/trun_91f36069f0964480b226011299249e76",
+  "status": "completed",
+  "output": {
+    "basis": [
+      {
+        "field": "executive_insights",
+        "reasoning": "Assessed field completeness by mapping the given insights to the query topics. The field_answer covers: TOC interface versioning schemes, multi-targeting via Interface in filenames, AceDB data-types mapping to SavedVariables, OnUpdate costs and preference for event-driven approaches/throttling, InCombatLockdown handling with RunOrQueue patterns, and Blizzard Addon Profiler accessibility and performance norms. While the query mentions additional items (LoadOnDemand, Dependencies/OptionalDeps, SavedVariables patterns in more detail, per-character SavedVariables, and general performance norms), the answer already addresses the majority of key executive insights requested and provides actionable guidance. Excerpts were not provided to verify textual support, so the \u201csupported\u201d flag should be false. Given the breadth and usefulness of the included points, the field answer can be considered complete for a high-level executive brief, though it is not exhaustive of every subtopic listed.",
+        "citations": [],
+        "confidence": "medium"
+      },
+      {
+        "field": "1_toc_interface_version_numbers_2024_2026",
+        "reasoning": "Assessment notes:\n- The field_answer provides a structured table of Interface numbers for multiple WoW clients across eras and notes, plus a formatting rule summary. \n- Excerpts provided include pages about TOC format, the current interface numbers (some examples like 120005, 40402, 30405, 11508), and a Burning Crusade Classic Anniversary roadmap. \n- However, not all specific numbers listed in the field_answer are evidenced in the excerpts (e.g., 20504 is mentioned in the answer but not seen in the excerpts). The excerpts do support several key numbers (120005, 40402, 30405, 11508) and the general idea of era-specific numbering and TOC loading behavior, but they do not fully corroborate every item in the table. \n- Completeness judgment weighs whether the field_answer, as a standalone, fully addresses the user\u2019s query. It attempts to cover multiple clients and rules, so I lean toward completeness, but strict excerpt support is partial.\n- Therefore, I set completeness to true, but support to false due to partial excerpt corroboration for all listed data points.",
+        "citations": [
+          {
+            "url": "https://warcraft.wiki.gg/wiki/TOC_format",
+            "excerpts": [
+              "TOC format - Warcraft Wiki - Your wiki guide to the World of ...\n.toc files contain information about the addon (e.g. addon name, addon description, addon saved variables). They also specify the loading order for the addon's .lua and .xml files."
+            ],
+            "title": "TOC format - Warcraft Wiki - Your wiki guide to the World of ..."
+          },
+          {
+            "url": "https://www.wowhead.com/tbc/guide/the-burning-crusade-classic-anniversary-phase-release-roadmap",
+            "excerpts": [
+              "The Burning Crusade Classic Anniversary Phases & Roadmap\nThis guide lists all the phases of The Burning Crusade Classic Anniversary with launch times, what they contain, and links to relevant guides once they become available."
+            ],
+            "title": "The Burning Crusade Classic Anniversary Phases & Roadmap"
+          },
+          {
+            "url": "https://wowpedia.fandom.com/wiki/Getting_the_current_interface_number",
+            "excerpts": [
+              "Getting the current interface number - Wowpedia - Your wiki ...\nThere are a number of ways to get the current interface version: It probably is 120005 (Retail), 40402 (Cataclysm Classic), 30405 (Wrath Classic) or 11508 (Classic)"
+            ],
+            "title": "Getting the current interface number - Wowpedia - Your wiki ..."
+          }
+        ],
+        "confidence": "medium"
+      },
+      {
+        "field": "2_toc_metadata_directives",
+        "reasoning": "Assessment steps:\n- The field answer provides a broad overview of TOC directives, SavedVariables patterns, and example directives. It does not deliver the specific requested items (current Interface version numbers for various Classic eras, exact 2024-2026 directives for those era variants, or precise metadata patterns tailored to those eras).\n- Completeness: The user query asks for detailed, era-specific TOC Interface versions, SavedVariables patterns, dependencies, LoadOnDemand behavior, and related performance considerations. The answer covers general directive definitions and patterns but omits the exact, era-specific data and the performance/throttling details requested. Therefore completeness should be false.\n- Supported: The excerpts mention TOC_format and that TOC files contain addon information and loading order, which aligns with parts of the field answer. However, the field answer ventures into extensive directive lists and examples not directly evidenced by the single provided excerpt. Thus, support is partial at best and likely should be marked false given the excerpt does not substantiate the full content of the field answer.\n- Overall, mark completeness as false and supported as false. If more excerpts were available (e.g., exact interface numbers per era), the assessment could change.\n",
+        "citations": [
+          {
+            "url": "https://warcraft.wiki.gg/wiki/TOC_format",
+            "excerpts": [
+              "TOC format - Warcraft Wiki - Your wiki guide to the World of ...\n.toc files contain information about the addon (e.g. addon name, addon description, addon saved variables). They also specify the loading order for the addon's .lua and .xml files."
+            ],
+            "title": "TOC format - Warcraft Wiki - Your wiki guide to the World of ..."
+          }
+        ],
+        "confidence": "low"
+      },
+      {
+        "field": "3_acedb_savedvariables_patterns",
+        "reasoning": "Assessment reasoning:\n- The field_name is 3_acedb_savedvariables_patterns, and the provided field_answer explains AceDB-3.0 as the de facto database layer, focusing on SavedVariables, data-types mapping, storage locations, creation/usage, profile management, and best practices. \n- The content aligns with the requested topic: SavedVariables patterns via AceDB-3.0, data types (char, realm, class, race, faction, locale, account, profile, global), storage paths, and profile handling, which matches the implied expectations from the field description about SavedVariables patterns and AceDB usage.\n- Excerpts mention AceDB-3.0 managing SavedVariables, profiles, and namespaces, which supports the core claims in the field_answer, though not every detail in the field_answer is exhaustively verifiable from the single excerpt. This is sufficient for general completeness given the field\u2019s likely scope.\n- Therefore, I judge completeness to be true and the excerpts to be supportive.\n",
+        "citations": [
+          {
+            "url": "https://www.wowace.com/projects/ace3/pages/api/ace-db-3-0",
+            "excerpts": [
+              "api/AceDB-3.0 - api - Pages - Ace3 - Addons - Projects - WowAce\nAceDB-3.0 manages the SavedVariables of your addon. It offers profile management, smart defaults and namespaces for modules. Data can be saved in different data-types, depending on its intended usage."
+            ],
+            "title": "api/AceDB-3.0 - api - Pages - Ace3 - Addons - Projects - WowAce"
+          }
+        ],
+        "confidence": "high"
+      },
+      {
+        "field": "4_onupdate_vs_events_performance_guidance",
+        "reasoning": "The field answer provides detailed guidance on OnUpdate vs events, throttling, and usage scenarios. Excerpt provided notes that OnUpdate is resource intensive and that alternatives like C_Timer.After/NewTicker are preferable, supporting the cost/core recommendation. The field answer also covers throttling patterns and when to use each approach, which aligns with common WoW addon performance guidance. Some specifics (e.g., exact 10 Hz throttling figures, or broader integration details beyond the excerpt) are not explicitly in the excerpt but are standard practice; overall the explanation is coherent with the cited source. I will mark completeness as true since the answer directly addresses the core topic and gives a structured, usable guidance. I will mark the excerpts as supporting the key claim about OnUpdate being expensive and recommended alternatives, which is present in the excerpt list.",
+        "citations": [
+          {
+            "url": "https://wowpedia.fandom.com/wiki/UIHANDLER_OnUpdate",
+            "excerpts": [
+              "Script OnUpdate - Wowpedia - Your wiki guide to the World of ...\nOnUpdate is resource intensive because it fires as often as the client can draw new frames -- potentially hundreds of FPS with modern computers. It is usually better to substitute C_Timer.After () or C_Timer.NewTicker () to skip frames, or to apply an Animation for animating a widget."
+            ],
+            "title": "Script OnUpdate - Wowpedia - Your wiki guide to the World of ..."
+          }
+        ],
+        "confidence": "high"
+      },
+      {
+        "field": "5_incombatlockdown_protected_frames_and_secure_templates",
+        "reasoning": "Reasoning: The field answer delivers a structured overview of InCombatLockdown, RunOrQueue pattern, Secure Templates, protected frame categories, and taint propagation. It appears to address the core aspects implied by the field name (incombatlockdown_protected_frames_and_secure_templates) by explaining when protected operations can run, how to defer actions, how secure templates work, and taint considerations. The provided excerpts list only a general security-tainting article and do not directly support the specific addon-related details in the field answer, which will affect the supported score but not the completeness of the answer itself. Overall, the answer seems to cover the expected topics comprehensively, so completeness is true. The excerpts do not support the detailed addon-specific guidance, so supported is false.",
+        "citations": [
+          {
+            "url": "https://warcraft.wiki.gg/wiki/Secure_Execution_and_Tainting",
+            "excerpts": [
+              "Secure Execution and Tainting - Warcraft Wiki\nWe use physical, technical, and organizational security safeguards to help protect your private information from unauthorized access, use, or disclosure. However, please note that no server, communications network, or data transmission over the Internet is 100% secure. The Sites are no exception."
+            ],
+            "title": "Secure Execution and Tainting - Warcraft Wiki"
+          }
+        ],
+        "confidence": "medium"
+      },
+      {
+        "field": "6_addon_performance_fps_norms_and_limits",
+        "reasoning": "Reasoning: The field answer provides a detailed discussion of addon performance norms and FPS impact, including profiler usage, soft thresholds for CPU and memory, observed FPS impacts in various scenarios, and a practical optimization checklist. This aligns with the requested topic of 2024-2026 addon performance norms and limits. Completeness should be true because the answer covers profiler context, soft thresholds, observed impacts, and optimization guidance, addressing key aspects of FPS norms and limits. However, the provided excerpts contain only a tangential anecdote about an addon profiling feature being disabled and FPS changes from a community post, which does not directly substantiate the detailed norms and thresholds. Therefore, the field answer is complete in itself but not supported by the excerpts.\n",
+        "citations": [
+          {
+            "url": "https://us.forums.blizzard.com/en/wow/t/questions-about-new-feature-addon-profiling/2080486",
+            "excerpts": [
+              "I went to google / youtube to find out anything I could and I found this Weakaura that disables the Blizzard Addon Profiling feature and people are swearing they are jumping huge in FPS from 30 -90 fps."
+            ],
+            "title": "Questions about New Feature Addon Profiling - Technical ..."
+          }
+        ],
+        "confidence": "medium"
+      },
+      {
+        "field": "7_case_studies",
+        "reasoning": "Assessment reasoning:\n- Field name 7_case_studies is present and field_answer provides three case studies (WeakAuras, BigWigs/DBM, ElvUI) with details about update strategies, throttling, and AceDB usage. This appears to directly answer a prompt about addon development performance patterns, event-driven updates, and persistence patterns.\n- Completeness: The answer directly lists case studies and describes relevant strategies; it seems to cover expected aspects (update strategies, event use, throttling, AceDB usage). There is no explicit field_description here to compare, but the answer itself is coherent and self-contained, so completeness is true.\n- Excerpts: The provided excerpts list is empty in the input. Since the evaluation requires checking whether the field answer is supported by the excerpts, and no excerpts are supplied to verify the content, the supported flag should be false.\n- Conclusion: completeness = true, supported = false (due to lack of excerpts to support the claims).",
+        "citations": [],
+        "confidence": "medium"
+      },
+      {
+        "field": "8_synthesis",
+        "reasoning": "Assessment reasoning:\n- Completeness: The field answer provides a cohesive synthesis of common patterns and best practices for WoW addon development across Classic and Retail branches, including TOC/versioning, Combat lockdown, OnUpdate usage, AceDB data types, profiler context, divergences, and failure modes. It also includes a dedicated failure-modes section. This aligns with likely field expectations for a synthesis of addon development considerations. There is no glaring omission of a major topic present in the query (e.g., SavedVariables patterns, LoadOnDemand, dependencies, throttling, secure templates, FPS norms) beyond explicit verification of every item in the query. Given the breadth of topics touched, the answer can be considered complete for a synthesis field.\n- Excerpts: No excerpts were provided in the input to verify the factual grounding. Because excerpts are absent, I cannot confirm alignment with source-cited content. Therefore support cannot be established from provided excerpts.\n- Conclusion: Completeness = true; Supported = false (due to lack of excerpts to corroborate).\n",
+        "citations": [],
+        "confidence": "medium"
+      }
+    ],
+    "content": {
+      "executive_insights": "- **TOC Interface versions encode client lineage, not patch numbers**: Classic Era uses `115xx` (1.15.x), TBC Classic uses `205xx` (2.5.x), Wrath Classic uses `304xx` (3.4.x), Cataclysm Classic uses `404xx` (4.4.x), while retail follows `MMiiRR` (major-minor-revision) format.\n- **`## Interface` accepts comma-separated values**, allowing a single addon to target multiple clients when paired with suffixed filenames (e.g., `MyAddon_Vanilla`, `MyAddon_BCC`, `MyAddon_Wrath`, `MyAddon_Mainline`).\n- **AceDB data-types (`char`, `realm`, `class`, `account`, `profile`, `global`) map directly to the SavedVariables directory tree**, eliminating manual file management.\n- **OnUpdate fires every render frame** (~16.7ms at 60 FPS, ~6.9ms at 144 FPS), making it the highest-cost handler; event-driven logic or throttled accumulators are strongly preferred.\n- **`InCombatLockdown()` blocks protected function calls** outside of hardware events; the RunOrQueue/RunOrQueueMany pattern is the standard idiom for deferring actions.\n- **Blizzard's in-game Addon Profiler** (added 11.0.7, redesigned 11.1) exposes per-addon CPU and memory, establishing <5ms total addon CPU/frame as the community-accepted norm.\n\n---",
+      "1_toc_interface_version_numbers_2024_2026": "The Interface number follows a `MMiiPP` format where periods and leading zeros are stripped from the version string. Classic branches retain their era-based numbering.\n\n| Client | Era | Interface Number | Notes |\n|---|---|---|---|\n| Retail (The War Within / Midnight prepatch) | Modern | `120005` (12.0.5) and later | Cumulative numbering ([1_toc_interface_version_numbers_2024_2026[0]] [16]) |\n| Classic Era / Classic Anniversary (20th Anniversary) | Vanilla (1.15.x) | `11508` (1.15.8) | Used through 2025 |\n| Season of Discovery | Vanilla (1.15.x) | `11508` | Shares client with Classic Era |\n| Burning Crusade Classic Anniversary | TBC (2.5.x) | `20504` (2.5.4) | Launched January 2026 ([1_toc_interface_version_numbers_2024_2026[1]] [42]) |\n| Wrath Classic (and Anniversary branch) | WotLK (3.4.x) | `30405` (3.4.5) | |\n| Cataclysm Classic | Cata (4.4.x) | `40402` (4.4.2) | Live through 2025 ([1_toc_interface_version_numbers_2024_2026[2]] [31]) |\n\n**Key rules:**\n- Every client patch that changes the API bumps Interface by one.\n- `## Interface: 120005, 40402` declares compatibility with both retail and Cataclysm Classic.\n- Suffixed TOCs (`_Vanilla`, `_Classic`, `_BCC`, `_Wrath`, `_Mainline`) load only on matching clients; `_Mainline` targets retail (>=11.0.0) and `_Classic` now applies to all Classic clients per Blizzard's 2024 update.\n\n---",
+      "2_toc_metadata_directives": "The `.toc` file is mandatory. Comments begin with `#`; metadata uses `## Directive: value`; file entries list each asset in load order ([2_toc_metadata_directives[0]] [16]).\n\n### 2.1 Core Directives\n\n| Directive | Purpose | Example |\n|---|---|---|\n| `## Interface` | Client API version(s) | `## Interface: 40402` |\n| `## Title` | Display name in AddOns list | `## Title: My Addon` |\n| `## Notes` | Tooltip/description | `## Notes: Does X and Y` |\n| `## Author` | Author name | `## Author: Dev` |\n| `## Version` | Version string | `## Version: 1.2.3` |\n| `## SavedVariables` | Account-wide saved vars | `## SavedVariables: MyAddonDB` |\n| `## SavedVariablesPerCharacter` | Per-character saved vars | `## SavedVariablesPerCharacter: MyAddonCharDB` |\n| `## DefaultState` | `enabled` or `disabled` | `## DefaultState: enabled` |\n| `## LoadOnDemand` | Defer until `LoadAddOn()` | `## LoadOnDemand: 1` |\n| `## LoadWith` | Load when these addons load (implies LoadOnDemand) | `## LoadWith: LibStub` |\n| `## Dependencies` | Hard deps; addon won't load if missing | `## Dependencies: LibStub` |\n| `## OptionalDeps` | Soft deps; loaded first if present | `## OptionalDeps: AceDB-3.0` |\n| `## Category` | AddOns list category | `## Category: Combat` |\n| `## IconTexture` / `## IconAtlas` | Custom icon | `## IconTexture: Interface\\\\Icons\\\\INV_Misc_QuestionMark` |\n| `## X-*` | Custom metadata via `GetAddOnMetadata` | `## X-Website: https://example` |\n\n### 2.2 SavedVariables Patterns\n\n- `## SavedVariables: Foo` writes the global `Foo` table to `WTF/<account>/SavedVariables/Foo.lua`.\n- `## SavedVariablesPerCharacter: Bar` writes to `WTF/<account>/<realm>/<character>/SavedVariables/Bar.lua`.\n- Variables are reloaded at startup before `ADDON_LOADED` fires; declare them with `local MyAddonDB` then reassign inside the event handler.\n\n**Typical pattern:**\n\n```lua\nlocal MyAddonDB\n\nlocal frame = CreateFrame(\"Frame\")\nframe:RegisterEvent(\"ADDON_LOADED\")\nframe:SetScript(\"OnEvent\", function(self, event, name)\n    if name ~= \"MyAddon\" then return end\n    if not MyAddonDB then MyAddonDB = {} end\n    MyAddonDB.someSetting = MyAddonDB.someSetting or \"default\"\nend)\n```\n\n---",
+      "3_acedb_savedvariables_patterns": "AceDB-3.0 is the de facto database layer for WoW addons, built on raw SavedVariables ([3_acedb_savedvariables_patterns[0]] [1]).\n\n### 3.1 Data Types\n\nEach type maps to a specific SavedVariables table and directory layout:\n\n| Type | Scope | Storage Location |\n|---|---|---|\n| `char` | Per-character | `WTF/<account>/<realm>/<character>/SavedVariables/` |\n| `realm` | Per-realm, shared across characters | Same directory, shared file |\n| `class` | Per-class across all characters | Shared by class |\n| `race` | Per-race | Shared by race |\n| `faction` | Per-faction | Shared by faction |\n| `locale` | Per-client language | Shared by locale |\n| `account` | Per-account (all realms, all characters) | `WTF/<account>/SavedVariables/` |\n| `profile` | Per-profile (user-switchable) | Same scope as char |\n| `global` | Per-account, not profile-scoped | `WTF/<account>/SavedVariables/` |\n\n### 3.2 Creation and Usage\n\n```lua\nlocal AceDB = LibStub(\"AceDB-3.0\")\nlocal db = AceDB:New(\"MyAddonDB\", {\n    char = { enabled = true, scale = 1.0 },\n    class = { color = { r = 1, g = 0, b = 0 } },\n    faction = { showFactionBar = true },\n    profile = { lastZone = 0, windowPos = { x = 0, y = 0 } },\n    global = { serverFirstKill = false },\n})\n```\n\nAceDB auto-detects each type from the `defaults` table and writes to the appropriate SavedVariables file. The profile name is auto-generated from character info (e.g., \"Druid - NightElf - ...\").\n\n### 3.3 Profile Management\n\n```lua\ndb:SetProfile(\"PVE\")        -- switch profile\ndb:GetCurrentProfile()      -- returns string\ndb:CopyProfile(\"PVE\", true) -- copy PVE into current\ndb:DeleteProfile(\"Old\")     -- remove\ndb:ResetProfile()           -- reset to defaults\n```\n\nProfiles can be switched via `db:SetProfile(name)` which fires `OnProfileChanged`, `OnProfileCopied`, `OnProfileReset` callbacks for reactive updates.\n\n### 3.4 Best Practices\n\n- Declare all defaults in the `defaults` table passed to `:New()`; missing keys return `nil`.\n- Use `db.char.foo` not global tables - AceDB handles serialization automatically.\n- Register callbacks with `db.RegisterCallback(self, \"OnProfileChanged\", func)` for reactive profile switches.\n- For Classic clients (no cross-realm account-wide sharing changes), prefer `account`/`global` for things that should survive character rerolls.\n\n---",
+      "4_onupdate_vs_events_performance_guidance": "### 4.1 Frame Loop Cost\n\n`OnUpdate` fires every render frame, ~60 Hz at 60 FPS and ~144 Hz at 144 FPS ([4_onupdate_vs_events_performance_guidance[0]] [13]). Any work inside `OnUpdate` runs at the framerate, making it the most expensive handler available.\n\n### 4.2 Throttling Patterns\n\n**Time accumulator throttle:**\n\n```lua\nlocal last = 0\nframe:SetScript(\"OnUpdate\", function(self, elapsed)\n    last = last + elapsed\n    if last < 0.1 then return end  -- 10 Hz max\n    last = 0\n    -- do work\nend)\n```\n\n**`C_Timer.NewTicker` (independent of frame rate):**\n\n```lua\nlocal ticker = C_Timer.NewTicker(0.1, function()\n    -- work\nend)\n-- ticker:Cancel()\n```\n\n**Animations** for visual interpolation between frames, not logic.\n\n### 4.3 When to Use Each\n\n| Approach | Use Case |\n|---|---|\n| Events (`RegisterEvent`) | Discrete state changes (combat start/end, target change, spell cast) |\n| `OnUpdate` | Frame-locked visuals: cursor following, smooth interpolation, camera tracking |\n| `C_Timer.NewTicker` | Fixed-interval polling (e.g., updating minimap every 0.5s) |\n| `UIFrameFadeIn`/`UIFrameFadeOut` | Simple alpha animations |\n\n### 4.4 General Guidance\n\n- Prefer events for all game-state logic.\n- Use `OnUpdate` only when you need frame-perfect visuals.\n- Throttle `OnUpdate` work to ~10 Hz unless visual smoothness requires more.\n- Cache globals as locals at the top of hot functions to avoid repeated table lookups.\n- Avoid table allocation inside hot loops.\n\n---",
+      "5_incombatlockdown_protected_frames_and_secure_templates": "### 5.1 The Combat Lockdown Rule\n\n`InCombatLockdown()` returns `true` once `PLAYER_REGEN_DISABLED` fires (combat start) until `PLAYER_REGEN_ENABLED` fires (combat end). During lockdown:\n\n- Protected functions (movement, casting, targeting, secure widget attribute changes) cannot be called from addon Lua unless invoked from a hardware event handler while the player is out of combat.\n- New secure frames cannot be created; existing secure frame attributes cannot be modified arbitrarily.\n- Tainted execution paths are blocked silently ([5_incombatlockdown_protected_frames_and_secure_templates[0]] [21]).\n\n### 5.2 The RunOrQueue Pattern\n\nDefer protected operations until combat ends:\n\n```lua\nlocal frame = CreateFrame(\"Frame\")\nframe:RegisterEvent(\"PLAYER_REGEN_ENABLED\")\n\nlocal function DoProtectedWork()\n    -- safe to call protected functions here\nend\n\nframe:SetScript(\"OnEvent\", function(self)\n    DoProtectedWork()\nend)\n\nlocal function TryRun(fn)\n    if InCombatLockdown() then\n        -- queue for later\n    else\n        fn()\n    end\nend\n\n-- Usage\nTryRun(function() MySecureFrame:Hide() end)\n```\n\n### 5.3 Secure Templates\n\nSecure templates are applied via `SecureTemplates` or widget-specific mixins (e.g., `SecureActionButtonTemplate`, `SecureHandlerAttributeTemplate`). They enable:\n\n- Attribute-driven actions (`type`, `spell`, `item`, `macrotext`).\n- State machine handlers (`OnStateChanged`, `OnAttributeChanged`).\n- Click/enter/drag handlers via `SecureHandlerClickTemplate`/`SecureHandlerEnterTemplate`/`SecureHandlerDragTemplate`.\n\n**Setting attributes:**\n\n```lua\nbtn:SetAttribute(\"type\", \"spell\")\nbtn:SetAttribute(\"spell\", \"Flash Heal\")\nbtn:SetAttribute(\"target\", \"player\")\n```\n\nThese calls must occur outside combat or the client silently ignores them.\n\n### 5.4 Protected Frame Categories\n\n- Action buttons (`ActionButton*`) - spell/item/macro execution.\n- Unit frames created via `SecureUnitButtonTemplate` or `SecureAuraHeaderTemplate`.\n- Boss/arena/party/raid frames (Blizzard secure headers).\n- Macros invoked through secure action handlers.\n- Pet/multi-bar/possess bar frames bound to secure action handlers.\n\n### 5.5 Taint Propagation\n\nReading a tainted variable and using it in a protected context taints the protected function. Taint persists until UI reload or relog. To avoid:\n\n- Never assign addon-side data to `securevalue` or attributes consumed by protected code paths.\n- Wrap attribute assignments in secure handlers, not raw Lua.\n- Use `issecurevariable()` to check before assigning.\n- Use `SecureHandlerAttributeTemplate` to keep attribute-driven logic isolated.\n\n---",
+      "6_addon_performance_fps_norms_and_limits": "### 6.1 Profiler Background\n\nBlizzard shipped an in-game Addon Profiler in patch 11.0.7 and redesigned it in 11.1. The profiler reports CPU time per addon and per module, plus memory ([6_addon_performance_fps_norms_and_limits[0]] [66]). This data is used both by Blizzard to identify outliers and by authors to find hotspots.\n\n### 6.2 Soft Thresholds\n\nThere is no officially published FPS threshold, but community-observed norms:\n\n| Metric | Soft Threshold | Notes |\n|---|---|---|\n| Total addon CPU per frame | < 5 ms | Leaves headroom in a 16.6 ms (60 FPS) frame |\n| Single addon CPU per frame | < 1 ms typical; < 0.5 ms ideal | Heavy addons >5 ms are throttled historically |\n| Per-addon memory | Tens of MB; >100 MB is excessive | WeakAuras and Boss mods are typical heavy users |\n| Saved variable file size | A few MB max | Login cost scales with file size |\n| FPS impact budget | < 5 FPS drop | Players often report 5\u201315 FPS gains after disabling heavy addons |\n\n### 6.3 Observed Impact\n\n| Scenario | Typical FPS Impact | Cause |\n|---|---|---|\n| Minimal addons (3\u20135) | Negligible | \u2013 |\n| Full suite (WeakAuras, ElvUI, Details, DBM/BW) | \u22125 to \u221215 FPS at 1440p | Many OnUpdate handlers, texture redraws |\n| Combat with many boss mods | \u22123 to \u221210 FPS during encounters | CLEU event volume |\n| Heavy WeakAura animated textures | \u221210 to \u221225 FPS | GPU compositor load |\n| Single badly-written addon | \u221215 to \u221250+ FPS | Unthrottled OnUpdate, string concatenation, table churn |\n\n### 6.4 Practical Optimization Checklist\n\n1. Replace `OnUpdate` work with events or `C_Timer.NewTicker` whenever possible.\n2. Throttle remaining `OnUpdate` work with a time accumulator.\n3. Cache globals as locals at the top of hot functions.\n4. Avoid table allocation inside hot loops.\n5. Unregister one-shot events after handling.\n6. Use `UIFrameFadeIn`/`UIFrameFadeOut` and the AnimSystem for visual animations.\n7. Check `InCombatLockdown()` before protected operations.\n8. Cache `UnitName`, `UnitGUID`, `UnitClass` for the current target.\n9. Use `GetTime()` for delta calculations, not real-time clock reads.\n10. Minimize `SavedVariables` writes - they serialize on logout/UI reload.\n\n---",
+      "7_case_studies": "### Case Study 1: WeakAuras \u2014 Frame-Rate-Capped Updates\n\nWeakAuras caps its main update loop at half the screen framerate by default, trading smoothness for CPU savings. Status icons and progress bars update via events (`UNIT_HEALTH`, `UNIT_POWER`, combat log events) rather than per-frame polling. Complex animations use the AnimSystem rather than per-frame `OnUpdate` math. The result: thousands of concurrent auras with sub-millisecond per-auras CPU cost. This is the canonical example of \"use events + AnimSystem, not OnUpdate.\"\n\n### Case Study 2: BigWigs / DBM \u2014 Combat Event Throttling\n\nBigWigs subscribes to `COMBAT_LOG_EVENT` and throttles processing via a tick scheduler rather than running per-event work synchronously. Bars are updated in batches at a configurable tick rate (default ~0.05\u20130.1s). This avoids per-event allocations during high-volume raid combat where CLEU fires hundreds of times per second.\n\n### Case Study 3: ElvUI \u2014 AceDB Profile Sharing\n\nElvUI uses AceDB profiles shared across the account via the `account` data-type. Class, race, faction, and realm-specific overrides are stored in their respective buckets without custom file management. A character switching from Alliance to Horde on the same account inherits the right profile automatically. This demonstrates the recommended pattern: lean on AceDB's data-type system instead of writing manual persistence.\n\n---",
+      "8_synthesis": "### Unifying Patterns\n\n1. **TOC multi-targeting is the standard**: Cataclysm Classic, TBC Anniversary, and Classic Era all use distinct Interface numbers. Shipping suffixed TOCs with matching `## Interface` values is the canonical cross-client pattern.\n\n2. **Combat lockdown is a feature, not a bug**: Protected functions exist to prevent addons from automating gameplay. The `RunOrQueue` deferral pattern is the idiomatic solution; addons that fail to defer will silently fail or trigger taint.\n\n3. **OnUpdate is reserved for rendering**: All game-state logic belongs on events or timers. `OnUpdate` is for cursor-following widgets, smooth interpolation, and visual effects.\n\n4. **AceDB data-types mirror the SavedVariables tree**: `char` -> per-char, `account`/`global` -> account-wide, `realm` -> server-shared. Using these scopes correctly avoids manual file management.\n\n5. **The in-game profiler changed the conversation**: Since patch 11.0.7/11.1, addon CPU is transparent. The community norm is <5 ms total addon CPU per frame on mid-spec hardware. Addons exceeding this budget are profiled and refactored.\n\n### Divergences and Trade-offs\n\n| Dimension | Retail | Classic Branches |\n|---|---|---|\n| API surface | Largest, frequent additions | Frozen per expansion |\n| Combat lockdown | Same engine | Same engine |\n| SavedVariables tree | Same | Same |\n| Addon Profiler data | Available | Same engine, same data |\n| TOC versioning | Single Interface line | Multiple Interface lines required |\n\n### Failure Modes to Avoid\n\n- **Ignoring `InCombatLockdown()`**: Protected API calls during combat are silently blocked or trigger \"Action forbidden\" errors.\n- **Hot `OnUpdate` with no throttle**: Each frame triggers GC pressure; even cheap work adds up at 144 Hz.\n- **Global table pollution**: Storing addon state in `_G` causes taint when shared with Blizzard or other addons.\n- **Excessive SavedVariables writes**: Serialization happens on logout and UI reload; large or complex tables slow login.\n- **Hardcoded API versions**: Bumping the Interface number manually rather than tracking per-client changes causes \"out of date\" warnings.\n\n---"
+    },
+    "type": "json",
+    "beta_fields": null,
+    "mcp_tool_calls": null,
+    "output_schema": {
+      "type": "object",
+      "properties": {
+        "executive_insights": {
+          "type": "string",
+          "title": "Executive Insights"
+        },
+        "1_toc_interface_version_numbers_2024_2026": {
+          "type": "string",
+          "title": "1. TOC Interface Version Numbers (2024-2026)"
+        },
+        "2_toc_metadata_directives": {
+          "type": "string",
+          "title": "2. TOC Metadata Directives"
+        },
+        "3_acedb_savedvariables_patterns": {
+          "type": "string",
+          "title": "3. AceDB SavedVariables Patterns"
+        },
+        "4_onupdate_vs_events_performance_guidance": {
+          "type": "string",
+          "title": "4. OnUpdate vs Events: Performance Guidance"
+        },
+        "5_incombatlockdown_protected_frames_and_secure_templates": {
+          "type": "string",
+          "title": "5. InCombatLockdown, Protected Frames, and Secure Templates"
+        },
+        "6_addon_performance_fps_norms_and_limits": {
+          "type": "string",
+          "title": "6. Addon Performance: FPS Norms and Limits"
+        },
+        "7_case_studies": {
+          "type": "string",
+          "title": "7. Case Studies"
+        },
+        "8_synthesis": {
+          "type": "string",
+          "title": "8. Synthesis"
+        }
+      },
+      "required": [
+        "executive_insights",
+        "1_toc_interface_version_numbers_2024_2026",
+        "2_toc_metadata_directives",
+        "3_acedb_savedvariables_patterns",
+        "4_onupdate_vs_events_performance_guidance",
+        "5_incombatlockdown_protected_frames_and_secure_templates",
+        "6_addon_performance_fps_norms_and_limits",
+        "7_case_studies",
+        "8_synthesis"
+      ]
+    }
+  }
+}

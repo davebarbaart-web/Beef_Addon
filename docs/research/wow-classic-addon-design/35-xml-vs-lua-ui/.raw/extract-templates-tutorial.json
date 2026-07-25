@@ -1,0 +1,38 @@
+{
+  "extract_id": "extract_b3d91697cef2b042ff31f093cb542b77",
+  "session_id": "session_b3d91697cef2b042ff31f093cb542b77",
+  "status": "ok",
+  "results": [
+    {
+      "url": "https://addonstudio.org/wiki/WoW:UI_XML_tutorial",
+      "title": "WoW:UI XML tutorial - AddOn Studio",
+      "publish_date": "2012-03-08",
+      "excerpts": [
+        "# WoW : UI XML tutorial\n## Managing Frames\n### Using Templates\nTemplates are used when you want to create a common layout for several frames. In this way you can save on the amount of code needed to recreate each frame, as the frames will automatically take on the properties, children, and attributes from whatever template it inherits.\n\n...\n\nAs discussed above, there is a special keyword that can be used when naming something inside the template. When you inherit a frame, any object inside the template that is inherited, which has the keyword $parent, will automatically replace the keyword with the name of the parent which inherited the template. Example:\n```\n<Button name=\"MyAddonButtonTemplate\" parent=\"UIParent\" virtual=\"true\">\n     <ButtonText name=\"$parentText\"/>\n</Button>\n<Button name=\"MyAddonSpecialButton\" inherits=\"MyAddonButtonTemplate\">\n     <Size><AbsDimension x=\"40\" y=\"22\"/></Size>\n</Button>\n```\nIs the same as doing:\n```\n<Button name=\"MyAddonSpecialButton\" parent=\"UIParent\">\n     <Size><AbsDimension x=\"40\" y=\"22\"/></Size>\n     <ButtonText name=\"MyAddonSpecialButtonText\"/>\n</Button>\n```\nBe aware that any inherited attributes, properties, or children can also be overridden. Example:\n```\n<Button name=\"MyAddonButtonTemplate\" parent=\"UIParent\" movable=\"true\" virtual=\"true\">\n     <ButtonText name=\"$parentText\"/>\n</Button>\n<Button name=\"MyAddonSpecialButton\" inherits=\"MyAddonButtonTemplate\" movable=\"false\">\n     <Size><AbsDimension x=\"40\" y=\"22\"/></Size>\n</Button>\n```\nIs the same as doing:\n\n...\n\nTemplates can inherit other templates as well. When done in this way, any $parent keywords used in the template being inherited carry over to the template that inherits it. Example:\n```\n<Button name=\"MyAddonButtonTemplate1\" parent=\"UIParent\" movable=\"true\" virtual=\"true\">\n     <ButtonText name=\"$parentText\"/>\n</Button>\n<Button name=\"MyAddonButtonTemplate2\" clampedToScreen=\"true\" inherits=\"MyAddonButtonTemplate1\" virtual=\"true\">\n     <NormalFont inherits=\"GameFontNormal\"/>\n</Button>\n<Button name=\"MyAddonSpecialButton\" inherits=\"MyAddonButtonTemplate2\">\n     <Size><AbsDimension x=\"40\" y=\"22\"/></Size>\n</Button>\n```\n\n...\n\n```\n<Button name=\"MyAddonSpecialButton\" parent=\"UIParent\" clampedToScreen=\"true\" movable=\"true\">\n     <Size><AbsDimension x=\"40\" y=\"22\"/></Size>\n     <ButtonText name=\"MyAddonSpecialButtonText\"/>\n     <NormalFont inherits=\"GameFontNormal\"/>\n     <HighlightFont inherits=\"GameFontHighlight\"/>\n</Button>\n```"
+      ]
+    },
+    {
+      "url": "https://warcraft.wiki.gg/wiki/UI_escape_sequences",
+      "title": "UI escape sequences - Warcraft Wiki - Your wiki guide to the World of Warcraft",
+      "publish_date": "2006-07-16",
+      "excerpts": [
+        "# UI escape sequences\nFrom Warcraft Wiki\nJump to navigation Jump to search\n\u2191 _Widget API_\n| Main Menu |\n| * WoW API |\n* Lua API\n* FrameXML API\n* Widget API\n* Widget scripts\n* XML schema\n* Events\n* CVars\n\n...\n\n## Escape Sequences\n### Examples\n``` | Tank [[5]](https://wago.tools/files?search=interface/lfgframe/groupfinder) |\nPrevent strings from being parsed by addons by being a replacement for the actual string, for example a Kstring will be `|Kq1|k` internally but rendered on the screen as the actual displayed name.\n\n```"
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "url": "https://www.townlong-yak.com/framexml/live/SharedUIPanelTemplates.xml",
+      "error_type": "timeout",
+      "http_status_code": null,
+      "content": null
+    }
+  ],
+  "usage": [
+    {
+      "name": "sku_extract_excerpts",
+      "count": 2
+    }
+  ],
+  "warnings": []
+}

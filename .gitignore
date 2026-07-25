@@ -1,2 +1,12 @@
 .worktrees/
 .firecrawl/
+.superpowers/
+
+# Parallel / Firecrawl scrape dumps parked at repo root — not product code.
+/*.json
+/xml-vs-lua-wow-ui*.json
+/wow-*.json
+/rank-badge-*.json
+/elvui-*.json
+/freelance-*.json
+/ux-ia-*.json

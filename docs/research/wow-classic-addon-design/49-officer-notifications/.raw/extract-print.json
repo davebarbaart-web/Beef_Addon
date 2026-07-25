@@ -1,0 +1,23 @@
+{
+  "extract_id": "extract_8aa18b9816f42e12e27cf2c86317ee8d",
+  "session_id": "session_8aa18b9816f42e12e27cf2c86317ee8d",
+  "status": "ok",
+  "results": [
+    {
+      "url": "https://wowwiki-archive.fandom.com/wiki/API_print",
+      "title": "API print | WoWWiki | Fandom",
+      "publish_date": null,
+      "excerpts": [
+        "# API print\n## Contents\nPasses its arguments to the current print output handler. By default, this will output them all to the default chat frame.\n```\nprint(...)\n```\n\n## Arguments [ ]\n...\nAny - any number of any type of values.\n\n...\n\n## Details [ ]\n* This function is a securecall/forceinsecure wrapper around the current print output handler function. Instead of attempting to replace it, you can set your own output handler function using setprinthandler (func).\n* This function serves as a cleaner replacement from DEFAULT_CHAT_FRAME:AddMessage(); unlike which, it can safely be used to output nil values."
+      ]
+    }
+  ],
+  "errors": [],
+  "usage": [
+    {
+      "name": "sku_extract_excerpts",
+      "count": 1
+    }
+  ],
+  "warnings": []
+}

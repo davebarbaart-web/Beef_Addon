@@ -1,0 +1,56 @@
+{
+  "extract_id": "extract_df67639c7ad5ad7ca4b15dbbad4becce",
+  "session_id": "session_df67639c7ad5ad7ca4b15dbbad4becce",
+  "status": "ok",
+  "results": [
+    {
+      "url": "https://addonstudio.org/wiki/WoW:API_TYPE_partyCategoryType",
+      "title": "WoW API type: partyCategoryType - AddOn Studio",
+      "publish_date": "2023-08-15",
+      "excerpts": [
+        "# WoW API type: partyCategoryType\n\u2190 API types < partyCategoryType\nA common set of parameters for determining a special Group type. Added in 5.0.4.\n\n## Values\n* LE_PARTY_CATEGORY_HOME - the local or manually created group.\n* LE_PARTY_CATEGORY_INSTANCE - the player's automatic battleground, arena, or dungeon finder group.\n\n## Uses\n```\ngroupType - (optional) the type of group. Default is 'LE\\_PARTY\\_CATEGORY\\_INSTANCE' if in an instance group, otherwise 'LE\\_PARTY\\_CATEGORY\\_HOME'.\n```\n\n## Details\nThe purpose is to differentiate when a player is a member of more than one group, which group is meant. A player can be in a locally created group or an automatic group (ala Finder).\n\n### Examples\n```\n/run local x=UnitIsGroupLeader(\"Player\", LE_PARTY_CATEGORY_INSTANCE); SendChatMessage(tostring(x))\n/run local x=UnitIsGroupLeader(\"Player\", LE_PARTY_CATEGORY_HOME); SendChatMessage(tostring(x))\n```\nFor example if you logged in, then joined a normal finder dungeon group and happend to be the leader, then using 'LE_PARTY_CATEGORY_INSTANCE' on UnitIsGroupLeader for yourself, will return 'true' and using 'LE_PARTY_CATEGORY_HOME' will return 'false'.\nThis is because in your 'home world' or 'explicit group' you are not in a 'group' and you are no 'leader' there, but in the 'foriegn world' or 'automatic group' you are the 'leader'.\n\n## Changes\n* [Patch 5.0.4](https://addonstudio.org/mw1/index.php?title=WoW:Patch_5.0.4&action=edit&redlink=1 \"WoW:Patch 5.0.4 (page does not exist)\") - added."
+      ]
+    },
+    {
+      "url": "https://wowpedia.fandom.com/wiki/API_GetRaidRosterInfo",
+      "title": "GetRaidRosterInfo - Wowpedia - Your wiki guide to the World of Warcraft",
+      "publish_date": null,
+      "excerpts": [
+        "# GetRaidRosterInfo\n* [History](https://wowpedia.fandom.com/wiki/API_GetRaidRosterInfo?action=history)\n* [Purge](https://wowpedia.fandom.com/wiki/API_GetRaidRosterInfo?action=purge)\n* Talk (12)\n| Main Menu |\n| * WoW API |\n* Lua API\n* FrameXML util\n* Widget API\n* Widget scripts\n* XML schema\n* Events\n* CVars"
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "url": "https://wowpedia.fandom.com/wiki/API_UnitIsInMyGuild",
+      "error_type": "network_error",
+      "http_status_code": null,
+      "content": null
+    },
+    {
+      "url": "https://wowpedia.fandom.com/wiki/API_UnitIsAFK",
+      "error_type": "network_error",
+      "http_status_code": null,
+      "content": null
+    },
+    {
+      "url": "https://wowpedia.fandom.com/wiki/API_UnitIsConnected",
+      "error_type": "network_error",
+      "http_status_code": null,
+      "content": null
+    },
+    {
+      "url": "https://wowpedia.fandom.com/wiki/API_UnitInRange",
+      "error_type": "network_error",
+      "http_status_code": null,
+      "content": null
+    }
+  ],
+  "usage": [
+    {
+      "name": "sku_extract_excerpts",
+      "count": 2
+    }
+  ],
+  "warnings": []
+}

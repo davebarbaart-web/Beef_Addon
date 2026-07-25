@@ -1,0 +1,52 @@
+{
+  "extract_id": "extract_a7da33e961c1c1c8118a54e2fa71d2b1",
+  "session_id": "session_a7da33e961c1c1c8118a54e2fa71d2b1",
+  "status": "ok",
+  "results": [
+    {
+      "url": "https://github.com/NumyAddon/AddonProfiler",
+      "title": "GitHub - NumyAddon/AddonProfiler: UI for Blizzard's Addon Profiler \u00b7 GitHub",
+      "publish_date": "2024-12-22",
+      "excerpts": [
+        "# NumyAddon/AddonProfiler\n## Top-level files\n- .github/workflows/\n- libs/\n- media/\n- !!AddonProfiler.toc\n- .pkgmeta\n- AddonProfiler.lua\n- Bindings.xml\n- types.lua"
+      ]
+    },
+    {
+      "url": "https://wowpedia.fandom.com/wiki/UIHANDLER_OnUpdate",
+      "title": "Script OnUpdate - Wowpedia - Your wiki guide to the World of Warcraft",
+      "publish_date": "2026-06-26",
+      "excerpts": [
+        "# Script OnUpdate\n## Details [ [](https://auth.fandom.com/signin?redirect=https%3A%2F%2Fwowpedia.fandom.com%2Fwiki%2FUIHANDLER_OnUpdate%3Faction%3Dedit%26section%3D2&uselang=en&metadata=article-registration-edit-article-section \"Sign in to edit\") ]\n* OnUpdate is resource intensive because it fires as often as the client can draw new frames -- potentially\nhundreds of FPS with modern computers.\n+ It is usually better to substitute C_Timer.After ( ) or C_Timer.NewTicker ( ) to skip frames, or to apply an\n\n...\n\nperforming work as often as reasonably necessary.\n\n...\n\n## Do Not Sell or Share My Personal Data\n### Manage Consent Preferences\n#### Performance Cookies\nPerformance Cookies\nThese cookies allow us to count visits and traffic sources so we can measure and improve the performance of our site. They help us to know which pages are the most and least popular and see how visitors move around the site. All information these cookies collect is aggregated and therefore anonymous.\nIf you do not allow these cookies we will not know when you have visited our site, and will not be able to monitor its performance."
+      ]
+    },
+    {
+      "url": "https://www.curseforge.com/wow/addons/numy-addon-profiler",
+      "title": "Addon Profiler - CPU Usage - World of Warcraft Addons - CurseForge",
+      "publish_date": "2026-07-21",
+      "excerpts": [
+        "+ [Project Submission Guide](https://support.curseforge.com/en/support/solutions/articles/9000199552-project-submission-guide-and-tips)\n+ [Apply for an API Key](https://support.curseforge.com/en/support/solutions/articles/9000208346-about-the-curseforge-api-and-how-to-apply-for-a-key)\n+ [Documentation](https://docs.curseforge.com/rest-api/)\n+ [Terms & Conditions](https://support.curseforge.com/en/support/solutions/articles/9000207405-curse-forge-3rd-party-api-terms-and-conditions)\n+ [Join Our Discord!](https://www.discord.com/invite/curseforge)\n+ [Authors Discord](https://discord.gg/S3EaZArYz2)\n* [Studios](https://studios.curseforge.com/)\nGAME DEVELOPERS\n\n...\n\n# Addon Profiler - CPU Usage\n## Details\n### Flavors\n* [Retail](https://www.curseforge.com/wow/addons/numy-addon-profiler/files/all?page=1&pageSize=20&gameVersionTypeId=517&showAlphaFiles=hide)\n* [MoP Classic](https://www.curseforge.com/wow/addons/numy-addon-profiler/files/all?page=1&pageSize=20&gameVersionTypeId=79434&showAlphaFiles=hide)\n* [Classic](https://www.curseforge.com/wow/addons/numy-addon-profiler/files/all?page=1&pageSize=20&gameVersionTypeId=67408&showAlphaFiles=hide)\n* [Classic TBC](https://www.curseforge.com/wow/addons/numy-addon-profiler/files/all?page=1&pageSize=20&gameVersionTypeId=73246&showAlphaFiles=hide)\n\n...\n\n### Links\n[Source](https://github.com/NumyAddon/AddonProfiler)\n\n### Main File\n#### 12.1.0\nv1.4.33 Latest release * R * Classic + 3 * Jul 21, 2026\n\n...\n\n### Recent Files [View all](https://www.curseforge.com/wow/addons/numy-addon-profiler/files/all?page=1&pageSize=20&showAlphaFiles=hide&sortBy=dateCreated&sortOrder=desc)\n#### WoW Mists of Pandaria Classic\nv1.4.33 Latest release * R * MoP Classic + 5 * Jul 21, 2026\n\n#### WoW Classic\nv1.4.33 Latest release * R * Classic + 5 * Jul 21, 2026\n\n#### WoW Burning Crusade Classic\nv1.4.33 Latest release * R * Classic TBC + 5 * Jul 21, 2026\nReport\nDownload\n* Description\n* [Files](https://www.curseforge.com/wow/addons/numy-addon-profiler/files?page=1&pageSize=20&showAlphaFiles=hide)\n* Gallery (1)\n* Relations\n* [Issues](https://github.com/NumyAddon/AddonProfiler/issues)\n\n...\n\n# Task Manager for addons - Find out which addon is slowing down your game\n`/nap` , `/addonprofiler` or click the minimap button to toggle the UI\nWith patch 11.0.7, blizzard added in-depth information on addon performance, but the UI they added in 11.1 leaves a lot to be desired.\nVarious addons that show CPU usage use an old approach, which severely impacts your performance. The approach used by this addon has none of those problems.\nThis addon will display all the information you could ever wish for!*\n\n...\n\n1. Active Mode - actively records performance of all addons every frame, which allows creating the most thorough summaries, at the cost of some memory and CPU usage.\n2.\nPerformance Mode - records far less information to improve background CPU usage, but reduces the granularity of information. Time based historical information will no longer be available.\n3.\nPassive Mode - absolutely nothing happens in the background, no information is gathered. This limits the information you can see, but can be helpful if you have an especially slow system and even performance mode costs too much CPU time."
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "url": "https://warcraft.wiki.gg/wiki/API_GetFrameCPUUsage",
+      "error_type": "network_error",
+      "http_status_code": null,
+      "content": null
+    },
+    {
+      "url": "https://wowpedia.fandom.com/wiki/API_GetFrameCPUUsage",
+      "error_type": "network_error",
+      "http_status_code": null,
+      "content": null
+    }
+  ],
+  "usage": [
+    {
+      "name": "sku_extract_excerpts",
+      "count": 3
+    }
+  ],
+  "warnings": []
+}

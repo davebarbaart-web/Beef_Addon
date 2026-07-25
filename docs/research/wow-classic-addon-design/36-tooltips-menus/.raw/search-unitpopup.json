@@ -1,0 +1,78 @@
+{
+  "search_id": "search_3a615a7d9ec52c73e6a37df5f65047e5",
+  "session_id": "session_3a615a7d9ec52c73e6a37df5f65047e5",
+  "status": "ok",
+  "results": [
+    {
+      "url": "https://www.wowinterface.com/forums/showthread.php?s=c6ba777695a064e7f4219163d6970133&p=344209",
+      "title": "UnitPopup_ShowMenu secure function",
+      "publish_date": "2024-07-25",
+      "excerpts": [
+        "World of Warcraft Addons, Interfaces, Skins, Mods &amp; Community."
+      ]
+    },
+    {
+      "url": "https://www.wowinterface.com/forums/showthread.php?t=60000",
+      "title": "UnitPopup_ShowMenu secure function - WoWInterface",
+      "publish_date": null,
+      "excerpts": [
+        "UnitPopup_ShowMenu secure function AddOn Search/Requests"
+      ]
+    },
+    {
+      "url": "https://github.com/tekkub/wow-ui-source/blob/live/FrameXML/UnitPopup.lua",
+      "title": "wow-ui-source/FrameXML/UnitPopup.lua at live \u00b7 tekkub/wow-ui-source \u00b7 GitHub",
+      "publish_date": null,
+      "excerpts": [
+        "function UnitPopup_ShowMenu (dropdownMenu, which, unit, name, userData) \tlocal server = nil; \t-- Init variables \u00b7 \tdropdownMenu.which = which; \tdropdownMenu.unit = unit; \tif ( unit ) then \u00b7 \t\tname, server = UnitName(unit); \telseif ( name ) then \u00b7 \t\tlocal n, s = strmatch(name, &quot;^([^-]+)-(.*)&quot;); \t\tif ( n ) then \u00b7"
+      ]
+    },
+    {
+      "url": "https://stackoverflow.com/questions/78852175/wow-addon-unit-frame-menu",
+      "title": "lua - WOW addon unit frame menu - Stack Overflow",
+      "publish_date": null,
+      "excerpts": [
+        "I&#x27;m trying to open classic player unit popup (right click on player unit frame) to update my favourite addon for 11.0.0 but I&#x27;m kinda lost in the new blizzard_menu framework. Addon looks like orbs"
+      ]
+    },
+    {
+      "url": "https://warcraft.wiki.gg/wiki/Patch_11.0.0/API_changes",
+      "title": "Patch 11.0.0/API changes - Warcraft Wiki - Your wiki guide to the World of Warcraft",
+      "publish_date": "2024-04-18",
+      "excerpts": [
+        "Context menus can be spawned via the new MenuUtil.CreateContextMenu(ownerRegion, generator) function that should typically be called within an OnMouseDown handler on a button. When invoked, the context menu will be immediately populated and opened at the location of the mouse cursor."
+      ]
+    },
+    {
+      "url": "https://warcraft.wiki.gg/wiki/Blizzard_Menu_implementation_guide",
+      "title": "Blizzard Menu implementation guide - Warcraft Wiki - Your wiki guide to the World of Warcraft",
+      "publish_date": "2024-12-03",
+      "excerpts": [
+        "MenuUtil.CreateCheckboxContextMenu(ownerButton, CheckboxAPI.IsSelected, CheckboxAPI.ToggleSelected, {&quot;My Checkbox 1&quot;, 1}, {&quot;My Checkbox 2&quot;, 2}, {&quot;My Checkbox 3&quot;, 3}, {&quot;My Checkbox 4&quot;, 4}, {&quot;My Checkbox 5&quot;, 5} ); Root menu descriptions are tagged with a string identifier that addon authors can use to register a function that appends elements to the menu. A UnitPopup menu tag is in the format MENU_UNIT_&lt;UNIT_TYPE&gt;, where UNIT_TYPE is one of the unit types (SELF, RAID, PARTY1, etc.) and is accompanied by a contextData table that an addon can use to get more information about the menu."
+      ]
+    },
+    {
+      "url": "https://us.forums.blizzard.com/en/wow/t/wow-classic-blacklist-addon/346193",
+      "title": "Wow Classic - Blacklist Addon - UI and Macro - World of Warcraft Forums",
+      "publish_date": "2019-10-30",
+      "excerpts": [
+        "I have fixed the BlackList addon to work with WoW Classic. But I cannot get the drop down item when right clicking a player to not be grayed out. Looking for help. This is the code for the menu: function BlackList:AddMenuItems() UnitPopupButtons[&quot;AddtoBlacklist&quot;] = { text = &quot;BlackList&quot;, dist = 0 } hooksecurefunc(&quot;UnitPopup_OnClick&quot;, function() if (self.value == &quot;AddtoBlacklist&quot;) then local dropdownMenu = _G[&quot;UIDROPDOWNMENU_INIT_MENU&quot;] if(dropdownMenu.name ~= UnitName(&quot;player&quot;)) then"
+      ]
+    },
+    {
+      "url": "https://github.com/Ennie/wow-ui-source/blob/master/FrameXML/UnitPopup.lua",
+      "title": "wow-ui-source/FrameXML/UnitPopup.lua at master \u00b7 Ennie/wow-ui-source \u00b7 GitHub",
+      "publish_date": null,
+      "excerpts": [
+        "UnitPopupButtons[&quot;OPT_OUT_LOOT_ENABLE&quot;] = { text = YES, dist = 0, checkable = 1 };"
+      ]
+    }
+  ],
+  "usage": [
+    {
+      "name": "sku_search",
+      "count": 1
+    }
+  ],
+  "warnings": []
+}

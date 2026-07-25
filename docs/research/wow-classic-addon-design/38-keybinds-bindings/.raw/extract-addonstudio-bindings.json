@@ -1,0 +1,23 @@
+{
+  "extract_id": "extract_f1ab9cb0756a353cee0f653407e04353",
+  "session_id": "session_f1ab9cb0756a353cee0f653407e04353",
+  "status": "ok",
+  "results": [
+    {
+      "url": "https://addonstudio.org/wiki/WoW:Using_bindings.xml_to_create_key_bindings_for_your_addon",
+      "title": "WoW:Using bindings.xml to create key bindings for your addon - AddOn Studio",
+      "publish_date": "2023-08-15",
+      "excerpts": [
+        "# WoW : Using bindings.xml to create key bindings for your addon\n## Contents\n```\n<Bindings>\n  <Binding name=\"DOSTUFF\" description=\"Default description\" header=\"MYDOSTUFF\">\n    DoSomething();\n  </Binding>\n  <Binding name=\"DOOTHERSTUFF\" description=\"Other default description\" runOnUp=\"true\">\n    if ( keystate == \"down\" ) then\n      DoSomethingElse();\n    else\n      DoSomethingYetDifferent();\n    end\n  </Binding>\n  <Binding name=\"DOMORESTUFF\" description=\"Yet another default description\">\n    DoOneThing();\n  </Binding>\n</Bindings>\n```\ndostuff.lua\n```\n-- Binding Variables\nBINDING_HEADER_MYDOSTUFF = \"The header\";\nBINDING_NAME_DOSTUFF = \"a name\";\nBINDING_NAME_DOOTHERSTUFF = \"another name\";\nBINDING_NAME_DOMORESTUFF = \"yet another name\";\n```\nAs of 2.0, \"dummy\" bindings (bindings containing only a comment) can be used with names that match the Bindings.xml syntax for saving spell, item, macro and click bindings. Because these terms have spaces in them, you will need to use global name-string references to set the names that appear by them.\nBindings.xml\n```\n<Bindings>\n  <Binding name=\"SPELL Corruption\">\n    -- Corruption\n  </Binding>\n  <Binding name=\"ITEM Heavy Netherweave Bandage\">\n    -- HNB\n  </Binding>\n  <Binding name=\"MACRO RawrBomb!\">\n    -- blitz\n  </Binding>\n  <Binding name=\"CLICK TargetFrame:RightButton\">\n    -- menu!\n  </Binding>\n</Bindings>\n```\nThe above code is equivalent to the below code, except with the above, the user chooses the bindings and with the below, the coder chooses the bindings.\n\n...\n\n```\n_G[\"BINDING_NAME_SPELL Corruption\"] = \"Dot 'em up!\"\nsetglobal(\"BINDING_NAME_CLICK TargetFrame:RightButton\", \"Open your target menu\")\n```\n\n## Notes\n* The Binding attribute `runOnUp=\"true\"` is needed to use the keystate variable; unneeded otherwise.\n* A binding with no keystate will fire on key down.\n* WoW starts a new header when it finds a header=\"MYDOSTUFF\" in a binding definition.\nYou can not \"hook into\" a previous header using this way because the variables die after the Bindings.xml file has been processed.\n* WoW tries to look for a Lua variable BINDING_HEADER_MYDOSTUFF if you use header=\"MYDOSTUFF\".\nIf it can not find that, your binding will end up with the previous header.\n* If you use name=\"DOSTUFF\" then WoW tries to look for a Lua variable\nnamed BINDING_NAME_DOSTUFF. If that is not found, it uses description.\nIf description is not present, it uses the name.\nThis last case will look ugly.\n* As of **2.1** , the code blocks cannot be empty or the keybindings interface will ignore the binding.\nA comment is enough, i.e. \"-- dummy\".\n* This is, so far, the only way to get bindings to be listed on the default key bindings UI."
+      ]
+    }
+  ],
+  "errors": [],
+  "usage": [
+    {
+      "name": "sku_extract_excerpts",
+      "count": 1
+    }
+  ],
+  "warnings": []
+}

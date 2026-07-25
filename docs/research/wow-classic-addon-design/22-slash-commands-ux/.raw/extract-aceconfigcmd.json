@@ -1,0 +1,23 @@
+{
+  "extract_id": "extract_0ebb318402fff41e2fecf6529d96e5fb",
+  "session_id": "session_0ebb318402fff41e2fecf6529d96e5fb",
+  "status": "ok",
+  "results": [
+    {
+      "url": "https://www.wowace.com/projects/ace3/pages/api/ace-config-cmd-3-0",
+      "title": "api/AceConfigCmd-3.0 - api - Pages - Ace3 - Addons - Projects - WowAce ",
+      "publish_date": null,
+      "excerpts": [
+        "# Pages\n## AceConfigCmd:CreateChatCommand(slashcmd, appName)\nUtility function to create a slash command handler.\nAlso registers tab completion with AceTab\n\n### Parameters\nslashcmd\nThe slash command WITHOUT leading slash (only used for error output)\nappName\nThe application name as given to `:RegisterOptionsTable()`\n\n## AceConfigCmd:GetChatCommandOptions(slashcmd)\nUtility function that returns the options table that belongs to a slashcommand.\nDesigned to be used for the AceTab interface.\n\n### Parameters\nslashcmd\nThe slash command WITHOUT leading slash (only used for error output)\n\n### Return value\nThe options table associated with the slash command (or nil if the slash command was not registered)\n\n## AceConfigCmd:HandleCommand(slashcmd, appName, input)\nHandle the chat command.\nThis is usually called from a chat command handler to parse the command input as operations on an aceoptions table.\nAceConfigCmd uses this function internally when a slash command is registered with `:CreateChatCommand`\n\n### Parameters\nslashcmd\nThe slash command WITHOUT leading slash (only used for error output)\nappName\nThe application name as given to `:RegisterOptionsTable()` input\nThe commandline input (as given by the WoW handler, i.e. without the command itself)\n\n### Usage\n```\nMyAddon = LibStub ( \" AceAddon-3.0\" ): NewAddon ( \" MyAddon\" , \" AceConsole-3.0\" ) \n -- Use AceConsole-3.0 to register a Chat Command \n MyAddon : RegisterChatCommand ( \" mychat\" , \" ChatCommand\" ) \n\n -- Show the GUI if no input is supplied, otherwise handle the chat input. \n function MyAddon : ChatCommand ( input ) \n  -- Assuming \"MyOptions\" is the appName of a valid options table \n  if not input or input : trim () == \" \" then \n    LibStub ( \" AceConfigDialog-3.0\" ): Open ( \" MyOptions\" ) \n  else \n    LibStub ( \" AceConfigCmd-3.0\" ). HandleCommand ( MyAddon , \" mychat\" , \" MyOptions\" , input ) \n  end \n end\n```"
+      ]
+    }
+  ],
+  "errors": [],
+  "usage": [
+    {
+      "name": "sku_extract_excerpts",
+      "count": 1
+    }
+  ],
+  "warnings": []
+}

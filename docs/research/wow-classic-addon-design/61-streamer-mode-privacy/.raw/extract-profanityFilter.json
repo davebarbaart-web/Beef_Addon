@@ -1,0 +1,16 @@
+{
+  "extract_id": "extract_e8f3282ef431ecebbda03b3e0690449c",
+  "session_id": "session_e8f3282ef431ecebbda03b3e0690449c",
+  "status": "ok",
+  "results": [],
+  "errors": [
+    {
+      "url": "https://warcraft.wiki.gg/wiki/CVar_profanityFilter",
+      "error_type": "network_error",
+      "http_status_code": null,
+      "content": null
+    }
+  ],
+  "usage": [],
+  "warnings": []
+}

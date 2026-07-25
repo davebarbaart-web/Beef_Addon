@@ -1,0 +1,16 @@
+{
+  "extract_id": "extract_6252a1da29f09c4aa9d1d4b803e24594",
+  "session_id": "session_6252a1da29f09c4aa9d1d4b803e24594",
+  "status": "ok",
+  "results": [],
+  "errors": [
+    {
+      "url": "https://warcraft.wiki.gg/wiki/API_ScriptRegion_GetLeft",
+      "error_type": "network_error",
+      "http_status_code": null,
+      "content": null
+    }
+  ],
+  "usage": [],
+  "warnings": []
+}
