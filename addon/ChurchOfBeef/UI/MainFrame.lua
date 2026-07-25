@@ -1,16 +1,17 @@
 ChurchOfBeef = ChurchOfBeef or {}
 local COB = ChurchOfBeef
 
--- Product window: fully insecure CreateFrame under UIParent so /beef still opens
--- in combat. Tabs are views over Core -- nothing in UI grants points or writes
--- official ranks. Loads before the tab files so they can register on load.
+-- Product window: insecure BasicFrameTemplate under UIParent so /beef opens in
+-- combat. Template-native chrome only (glossary 78/81) — no custom Media, no
+-- brand hex paint, no uiScale writes. Tabs are views over Core.
 local UI = {}
 COB.UI = UI
 
 local FRAME_NAME = "ChurchOfBeefFrame"
-local FRAME_WIDTH, FRAME_HEIGHT = 460, 340
-local TITLE_HEIGHT = 26
-local TAB_HEIGHT, TAB_WIDTH, TAB_GAP = 22, 104, 4
+local FRAME_WIDTH, FRAME_HEIGHT = 480, 360
+local TAB_HEIGHT, TAB_WIDTH, TAB_GAP = 22, 110, 4
+local TAB_TOP_INSET = 28
+local CONTENT_TOP = TAB_TOP_INSET + TAB_HEIGHT + 8
 
 local ANCHORS = {
   TOPLEFT = true, TOP = true, TOPRIGHT = true,
@@ -47,39 +48,11 @@ local function restorePoint(frame)
   frame:ClearAllPoints()
   local relative = type(p) == "table" and (p.relativePoint or p.point) or nil
   if type(p) == "table" and ANCHORS[p.point] and ANCHORS[relative]
-    and type(p.x) == "number" and type(p.y) == "number" then
+      and type(p.x) == "number" and type(p.y) == "number" then
     frame:SetPoint(p.point, UIParent, relative, p.x, p.y)
   else
     frame:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
   end
-end
-
---------------------------------------------------------------------------------
--- Chrome built from plain textures: no backdrop template, no custom media, so a
--- missing art file can never stop /beef from opening.
---------------------------------------------------------------------------------
-
-local function paint(texture, r, g, b, a)
-  if texture.SetColorTexture then
-    texture:SetColorTexture(r, g, b, a)
-  else
-    texture:SetTexture(r, g, b, a)
-  end
-end
-
-local function addBorder(frame, r, g, b, a)
-  local function edge(p1, p2, w, h)
-    local tex = frame:CreateTexture(nil, "BORDER")
-    paint(tex, r, g, b, a)
-    tex:SetPoint(p1)
-    tex:SetPoint(p2)
-    if w then tex:SetWidth(w) end
-    if h then tex:SetHeight(h) end
-  end
-  edge("TOPLEFT", "TOPRIGHT", nil, 1)
-  edge("BOTTOMLEFT", "BOTTOMRIGHT", nil, 1)
-  edge("TOPLEFT", "BOTTOMLEFT", 1, nil)
-  edge("TOPRIGHT", "BOTTOMRIGHT", 1, nil)
 end
 
 local function localIsOfficer()
@@ -109,7 +82,6 @@ function UI:RegisterTab(def)
   tabs[#tabs + 1] = tab
   tabsByName[def.name] = tab
 
-  -- Registered after Init (hot reload of a tab file): build it immediately.
   if self.frame then
     self:_BuildTab(tab)
     self:UpdateOfficerVisibility()
@@ -149,7 +121,8 @@ function UI:_BuildTab(tab)
 end
 
 local function buildFrame()
-  local frame = CreateFrame("Frame", FRAME_NAME, UIParent)
+  -- Build-prep: BasicFrameTemplate — title/close from FrameXML; no custom TGA.
+  local frame = CreateFrame("Frame", FRAME_NAME, UIParent, "BasicFrameTemplate")
   frame:SetWidth(FRAME_WIDTH)
   frame:SetHeight(FRAME_HEIGHT)
   frame:SetFrameStrata("MEDIUM")
@@ -159,15 +132,15 @@ local function buildFrame()
   frame:SetClampedToScreen(true)
   frame:Hide()
 
-  local bg = frame:CreateTexture(nil, "BACKGROUND")
-  bg:SetAllPoints(frame)
-  paint(bg, 0.04, 0.03, 0.02, 0.92)
-  addBorder(frame, 0.45, 0.32, 0.10, 1)
+  if frame.TitleText and frame.TitleText.SetText then
+    frame.TitleText:SetText("Church of Beef")
+  end
 
+  -- Invisible drag strip under the template title (tests + Classic drag UX).
   local titleBar = CreateFrame("Frame", nil, frame)
-  titleBar:SetHeight(TITLE_HEIGHT)
-  titleBar:SetPoint("TOPLEFT", frame, "TOPLEFT", 1, -1)
-  titleBar:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -1, -1)
+  titleBar:SetHeight(24)
+  titleBar:SetPoint("TOPLEFT", frame, "TOPLEFT", 8, -2)
+  titleBar:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -28, -2)
   titleBar:EnableMouse(true)
   titleBar:RegisterForDrag("LeftButton")
   titleBar:SetScript("OnDragStart", function() frame:StartMoving() end)
@@ -176,22 +149,26 @@ local function buildFrame()
     savePoint(frame)
   end)
 
-  local titleBg = titleBar:CreateTexture(nil, "ARTWORK")
-  titleBg:SetAllPoints(titleBar)
-  paint(titleBg, 0.30, 0.16, 0.04, 0.95)
-
-  local title = titleBar:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-  title:SetPoint("LEFT", titleBar, "LEFT", 8, 0)
-  title:SetText("|cffffaa00Church of Beef|r")
-
-  -- Hook rather than replace: the template's own handler keeps the click sound.
-  local close = CreateFrame("Button", nil, frame, "UIPanelCloseButton")
-  close:SetPoint("TOPRIGHT", frame, "TOPRIGHT", 0, 0)
-  close:HookScript("OnClick", function() UI:Hide() end)
+  -- Hook rather than replace: keep template click sound if present.
+  if frame.CloseButton and frame.CloseButton.HookScript then
+    frame.CloseButton:HookScript("OnClick", function() UI:Hide() end)
+  else
+    local close = CreateFrame("Button", nil, frame, "UIPanelCloseButton")
+    close:SetPoint("TOPRIGHT", frame, "TOPRIGHT", 0, 0)
+    close:HookScript("OnClick", function() UI:Hide() end)
+  end
 
   local content = CreateFrame("Frame", nil, frame)
-  content:SetPoint("TOPLEFT", frame, "TOPLEFT", 8, -(TITLE_HEIGHT + TAB_HEIGHT + 10))
-  content:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -8, 8)
+  content:SetPoint("TOPLEFT", frame, "TOPLEFT", 12, -CONTENT_TOP)
+  content:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -12, 28)
+
+  -- One-line scripture/footer placeholder (spec §10); GameFontDisable only.
+  local footer = frame:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+  footer:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 14, 10)
+  footer:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -14, 10)
+  footer:SetJustifyH("CENTER")
+  footer:SetText("Eternal Grazing.")
+  frame.FooterText = footer
 
   restorePoint(frame)
   return frame, content
@@ -205,7 +182,6 @@ function UI:Init()
   if self.frame then return self.frame end
   if type(CreateFrame) ~= "function" then return nil end
 
-  -- Read the persisted open state before the OnHide hook below can rewrite it.
   local db = uiDb()
   local wasShown = db and db.shown
 
@@ -217,14 +193,10 @@ function UI:Init()
     self:_BuildTab(tabs[i])
   end
 
-  -- Officer+ is unknown during the login roster race; the gate fails closed and
-  -- these events re-check once the roster answers.
   frame:RegisterEvent("PLAYER_GUILD_UPDATE")
   frame:RegisterEvent("GUILD_ROSTER_UPDATE")
   frame:SetScript("OnEvent", function() UI:UpdateOfficerVisibility() end)
 
-  -- Escape (UISpecialFrames) and the close button bypass UI:Hide, so persist the
-  -- open state from the frame's own show/hide instead.
   frame:SetScript("OnShow", function()
     local ui = uiDb()
     if ui then ui.shown = true end
@@ -291,13 +263,13 @@ end
 local function layoutTabButtons(self)
   local frame = self.frame
   if not frame then return end
-  local x = 8
+  local x = 12
   for i = 1, #tabs do
     local tab = tabs[i]
     if tab.button then
       if tabIsVisible(tab) then
         tab.button:ClearAllPoints()
-        tab.button:SetPoint("TOPLEFT", frame, "TOPLEFT", x, -(TITLE_HEIGHT + 5))
+        tab.button:SetPoint("TOPLEFT", frame, "TOPLEFT", x, -TAB_TOP_INSET)
         tab.button:Show()
         x = x + TAB_WIDTH + TAB_GAP
       else
@@ -373,7 +345,7 @@ function UI:Refresh()
   self:MarkDirty()
 end
 
--- Called after a local or replicated commit changes official state.
 function UI:RefreshLadder()
   self:MarkDirty("ladder")
+  self:MarkDirty("standing")
 end

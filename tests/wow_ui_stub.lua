@@ -151,7 +151,7 @@ end
 
 local GLOBALS = {
   "CreateFrame", "UIParent", "Minimap", "UISpecialFrames",
-  "GameTooltip", "C_Timer", "GetGuildInfo",
+  "GameTooltip", "C_Timer", "GetGuildInfo", "UnitName", "IsInGuild",
 }
 
 function M.install()
@@ -160,14 +160,29 @@ function M.install()
 
   M.timers = {}
   M.guildRankIndex = nil
+  M.playerName = "Beefina"
+  M.inGuild = true
 
   UIParent = newWidget("Frame", "UIParent", nil)
   Minimap = newWidget("Frame", "Minimap", nil)
   UISpecialFrames = {}
   GameTooltip = newWidget("Frame", "GameTooltip", nil)
 
-  CreateFrame = function(frameType, name, parent, _template)
-    return newWidget(frameType, name, parent)
+  CreateFrame = function(frameType, name, parent, template)
+    local widget = newWidget(frameType, name, parent)
+    widget._template = template
+    -- BasicFrameTemplate surface used by MainFrame (TitleText / CloseButton).
+    if type(template) == "string" and template:find("BasicFrame", 1, true) then
+      widget.TitleText = widget:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+      widget.CloseButton = newWidget("Button", (name or "") .. "CloseButton", widget)
+      widget.CloseButton.HookScript = widgetMethods.HookScript
+    end
+    if type(template) == "string" and template:find("Backdrop", 1, true) then
+      widget.SetBackdrop = function() end
+      widget.SetBackdropColor = function() end
+      widget.SetBackdropBorderColor = function() end
+    end
+    return widget
   end
 
   C_Timer = {
@@ -177,6 +192,15 @@ function M.install()
   GetGuildInfo = function(_unit)
     if M.guildRankIndex == nil then return nil end
     return "Church of Beef", "Beefling", M.guildRankIndex
+  end
+
+  UnitName = function(unit)
+    if unit == "player" then return M.playerName end
+    return nil
+  end
+
+  IsInGuild = function()
+    return M.inGuild and true or false
   end
 
   return function()

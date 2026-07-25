@@ -50,11 +50,14 @@ stub.guildRankIndex = nil -- roster not answered yet: fail closed
 local frame = COB.UI:Init()
 assert_true(frame ~= nil, "Init creates the main frame")
 assert_eq(frame:GetName(), "ChurchOfBeefFrame", "frame has a global name for UISpecialFrames")
+assert_eq(frame._template, "BasicFrameTemplate", "shell inherits BasicFrameTemplate")
+assert_true(frame.TitleText ~= nil, "BasicFrame TitleText present")
 assert_eq(UISpecialFrames[1], "ChurchOfBeefFrame", "escape closes the frame")
 assert_eq(COB.UI:IsShown(), false, "frame starts hidden")
 assert_eq(COB.UI:Init(), frame, "Init is idempotent")
 assert_eq(frame._movable, true, "frame is movable")
 assert_eq(frame._clamped, true, "frame is clamped to screen")
+assert_true(frame.FooterText ~= nil, "scripture footer placeholder exists")
 
 local point, _, relativePoint, x, y = frame:GetPoint(1)
 assert_eq(point, "CENTER", "unsaved position defaults to center")
@@ -191,5 +194,42 @@ assert_eq(COB.Toasts.frame.text:GetText(), "The Prophet has spoken.", "queue adv
 assert_eq(COB.Toasts.frame:IsShown(), true, "second toast visible")
 stub.flushTimers()
 assert_eq(COB.Toasts.frame:IsShown(), false, "toast hides when the queue drains")
+
+--------------------------------------------------------------------------------
+-- Ladder / Standing tabs read Core (text thresholds; no StatusBar)
+--------------------------------------------------------------------------------
+COB.Ladder:ResetForTests()
+COB.Scoring:ResetForTests()
+COB.Ladder:SetStanding("Beefina", 50)
+COB.Ladder:Commit("Beefina", 2, 50, "Pope", 1)
+COB.Scoring:GrantGora("Beefina", "win", 2)
+
+COB.UI:Show()
+COB.UI:ShowTab("ladder")
+COB.UI:MarkDirty("ladder")
+assert_eq(COB.UI.activeTab, "ladder", "ladder tab active for refresh")
+assert_true(COB.LadderTab.rows ~= nil and #COB.LadderTab.rows == 7, "seven ladder rows")
+assert_eq(COB.LadderTab.rows[1].title:GetText(), "Beef Prophet", "top row is Prophet")
+assert_eq(COB.LadderTab.rows[7].title:GetText(), "Fresh Beef", "bottom row is Fresh Beef")
+-- Cooked Beef is rank 2 → display index 6 (7 - 2 + 1)
+local cooked = COB.LadderTab.rows[6]
+assert_eq(cooked.title:GetText():find("Cooked Beef", 1, true) ~= nil, true, "Cooked Beef title shown")
+assert_eq(cooked.occupants:GetText():find("Beefina", 1, true) ~= nil, true, "occupant listed")
+assert_eq(cooked.occupants:GetText():find("(You)", 1, true) ~= nil, true, "self dual-encoded as You")
+
+COB.UI:ShowTab("standing")
+COB.UI:MarkDirty("standing")
+assert_eq(COB.StandingTab.header:GetText():find("Cooked Beef", 1, true) ~= nil, true, "standing shows title")
+assert_eq(COB.StandingTab.standing:GetText(), "Standing: 75", "standing value from Core")
+assert_eq(COB.StandingTab.nextLine:GetText():find("Beef Knight", 1, true) ~= nil, true, "text next threshold")
+assert_eq(COB.StandingTab.nextLine:GetText():find("StatusBar", 1, true), nil, "no StatusBar copy")
+
+-- No guild → empty flock copy
+stub.inGuild = false
+COB.UI:ShowTab("ladder")
+COB.UI:MarkDirty("ladder")
+assert_eq(COB.LadderTab.empty:IsShown(), true, "no-guild empty state shown")
+assert_eq(COB.LadderTab.empty:GetText():find("outside the flock", 1, true) ~= nil, true, "COB_EMPTY_NO_GUILD copy")
+stub.inGuild = true
 
 restore()
