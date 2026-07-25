@@ -316,6 +316,10 @@ function UI:ShowTab(name)
     end
   end
 
+  -- A tab returning to the front always redraws. Core can move on while a tab is
+  -- hidden, and one extra layout pass per click is cheaper than an officer acting
+  -- on a queue that emptied behind their back.
+  tab.dirty = true
   self:_RefreshActive()
   return tab.name
 end
@@ -345,7 +349,10 @@ function UI:Refresh()
   self:MarkDirty()
 end
 
+-- Officer rides along: standing earned anywhere can queue a petition, so the
+-- pending queue and its evidence go stale on exactly the same events.
 function UI:RefreshLadder()
   self:MarkDirty("ladder")
   self:MarkDirty("standing")
+  self:MarkDirty("officer")
 end

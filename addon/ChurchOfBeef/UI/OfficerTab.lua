@@ -13,7 +13,9 @@ local OfficerTab = {}
 COB.OfficerTab = OfficerTab
 
 local QUEUE_ROWS = 4
-local RECENT_ROWS = 3
+-- Zone D sits on the panel floor (~274 px of usable height): two rows and the
+-- announce strip fit, three overflowed off the bottom edge.
+local RECENT_ROWS = 2
 local RECENT_MAX = 5
 local EVIDENCE_EVENTS = 2
 
@@ -100,6 +102,20 @@ local function record(name)
   return COB.Ladder:GetRecord(name)
 end
 
+-- A rite must land on someone who exists. GetRecord answers Fresh Beef for any
+-- string, so a mistyped subject would otherwise be seated on the Council as a
+-- brand new ghost occupant. Accept an official ladder record, or a name the guild
+-- roster answers to (a real member who simply has no record yet).
+local function subjectExists(name)
+  if COB.Ladder and COB.Ladder.HasOfficialRecord and COB.Ladder:HasOfficialRecord(name) then
+    return true
+  end
+  if COB.Officer and COB.Officer.IsGuildRosterName then
+    return COB.Officer:IsGuildRosterName(name)
+  end
+  return false
+end
+
 local function councilSeatsTaken()
   local ranks = COB.Ranks
   if not ranks then return 0, nil end
@@ -120,10 +136,15 @@ local function broadcast(committed)
   if COB.Net and COB.Net.SendRankCommit then COB.Net:SendRankCommit(committed) end
 end
 
+-- RefreshLadder already dirties the officer queue alongside ladder and standing;
+-- MarkDirty is the fallback if only the narrower API is present.
 local function refreshAll()
   if not COB.UI then return end
-  if COB.UI.RefreshLadder then COB.UI:RefreshLadder() end
-  if COB.UI.MarkDirty then COB.UI:MarkDirty("officer") end
+  if COB.UI.RefreshLadder then
+    COB.UI:RefreshLadder()
+  elseif COB.UI.MarkDirty then
+    COB.UI:MarkDirty("officer")
+  end
 end
 
 local function toast(text)
@@ -145,7 +166,16 @@ function OfficerTab:_Status(text, isError)
   end
 end
 
+-- The confirm frame parks the officer's typed reason here for the length of one
+-- rite, so every rite logs it without each call site having to thread it through.
+-- Consumed once: a later unconfirmed rite must not inherit it.
 function OfficerTab:_Remember(text)
+  local why = self.pendingReason
+  self.pendingReason = nil
+  if type(why) == "string" and why ~= "" then
+    text = string.format("%s \194\183 %s", text, why)
+  end
+
   local log = self.recent
   table.insert(log, 1, text)
   while #log > RECENT_MAX do table.remove(log) end
@@ -166,6 +196,10 @@ function OfficerTab:_Rite(name, commitFn, verb, announceFn)
   local officer = officerName()
   if not officer then
     self:_Status("your character name is not known yet", true)
+    return false
+  end
+  if not subjectExists(name) then
+    self:_Status(string.format("%s is on neither the ladder nor the guild roster", name), true)
     return false
   end
 
@@ -263,6 +297,10 @@ function OfficerTab:CorrectStanding(name, delta)
     self:_Status("your character name is not known yet", true)
     return false
   end
+  if not subjectExists(name) then
+    self:_Status(string.format("%s is on neither the ladder nor the guild roster", name), true)
+    return false
+  end
 
   local current = record(name)
   if not current then
@@ -291,17 +329,28 @@ end
 -- Confirm child frame — nuclear rites only (glossary 70)
 --------------------------------------------------------------------------------
 
+-- Fails closed: with no confirm frame there is no way to ask, so a nuclear rite is
+-- refused rather than performed unsupervised.
 function OfficerTab:_Confirm(body, acceptLabel, onAccept)
   local confirm = self.confirm
   if not confirm then
-    onAccept(nil)
-    return
+    self:_Status("the confirmation window is missing; nothing was done", true)
+    return false
   end
   confirm.body:SetText(body)
   confirm.accept:SetText(acceptLabel)
   confirm.reason:SetText("")
   confirm.onAccept = onAccept
   confirm:Show()
+  return true
+end
+
+function OfficerTab:_CancelConfirm()
+  local confirm = self.confirm
+  if not confirm then return false end
+  confirm.onAccept = nil
+  confirm:Hide()
+  return true
 end
 
 function OfficerTab:_BuildConfirm(panel)
@@ -312,6 +361,20 @@ function OfficerTab:_BuildConfirm(panel)
   confirm:SetFrameStrata("DIALOG")
   confirm:EnableMouse(true)
   confirm:Hide()
+
+  -- Escape backs out of a nuclear rite. Keyboard input propagates by default so the
+  -- reason box and the rest of the UI keep working; only Escape is swallowed.
+  confirm:EnableKeyboard(true)
+  confirm:SetScript("OnKeyDown", function(frame, key)
+    local handled = key == "ESCAPE"
+    if frame.SetPropagateKeyboardInput then
+      frame:SetPropagateKeyboardInput(not handled)
+    end
+    if handled then OfficerTab:_CancelConfirm() end
+  end)
+
+  -- Whatever closes this frame, the pending rite dies with it.
+  confirm:SetScript("OnHide", function(frame) frame.onAccept = nil end)
 
   if confirm.SetBackdrop then
     confirm:SetBackdrop({
@@ -350,9 +413,14 @@ function OfficerTab:_BuildConfirm(panel)
   accept:SetScript("OnClick", function()
     local fn = confirm.onAccept
     local why = confirm.reason:GetText()
+    if type(why) == "string" then why = why:gsub("^%s+", ""):gsub("%s+$", "") else why = "" end
     confirm.onAccept = nil
     confirm:Hide()
-    if fn then fn(why) end
+    if not fn then return end
+    -- Scoped to this one rite: _Remember consumes it, and a refused rite drops it.
+    OfficerTab.pendingReason = why ~= "" and why or nil
+    fn(why)
+    OfficerTab.pendingReason = nil
   end)
   confirm.accept = accept
 
@@ -361,10 +429,7 @@ function OfficerTab:_BuildConfirm(panel)
   cancel:SetHeight(22)
   cancel:SetPoint("BOTTOMLEFT", confirm, "BOTTOM", 6, 14)
   cancel:SetText("Cancel")
-  cancel:SetScript("OnClick", function()
-    confirm.onAccept = nil
-    confirm:Hide()
-  end)
+  cancel:SetScript("OnClick", function() OfficerTab:_CancelConfirm() end)
   confirm.cancel = cancel
 
   self.confirm = confirm
@@ -568,13 +633,13 @@ end
 
 function OfficerTab:_BuildRecent(panel)
   local header = panel:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-  header:SetPoint("TOPLEFT", panel, "TOPLEFT", 4, -228)
+  header:SetPoint("TOPLEFT", panel, "TOPLEFT", 4, -226)
   header:SetText("Recent actions")
 
   self.recentLines = {}
   for i = 1, RECENT_ROWS do
     local fs = panel:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
-    fs:SetPoint("TOPLEFT", panel, "TOPLEFT", 8, -242 - ((i - 1) * LINE))
+    fs:SetPoint("TOPLEFT", panel, "TOPLEFT", 8, -240 - ((i - 1) * LINE))
     -- Stop short of the right column: the announce strip lives there.
     fs:SetPoint("RIGHT", panel, "RIGHT", -ANNOUNCE_COLUMN, 0)
     fs:SetJustifyH("LEFT")
@@ -588,7 +653,7 @@ function OfficerTab:_BuildAnnounce(panel)
   local check = CreateFrame("CheckButton", "ChurchOfBeefAnnounceCheck", panel, "UICheckButtonTemplate")
   check:SetWidth(22)
   check:SetHeight(22)
-  check:SetPoint("TOPRIGHT", panel, "TOPRIGHT", -4, -242)
+  check:SetPoint("TOPRIGHT", panel, "TOPRIGHT", -4, -240)
   check:SetScript("OnClick", function(button)
     local enabled = button:GetChecked() and true or false
     if COB.Announce and COB.Announce.SetEnabled then COB.Announce:SetEnabled(enabled) end
@@ -608,6 +673,7 @@ end
 function OfficerTab:OnCreate(panel)
   self.recent = self.recent or {}
   self.selected = nil
+  self.pendingReason = nil
   self.demoteRankId = demotableRankIds()[1] or 1
 
   self:_BuildQueue(panel)

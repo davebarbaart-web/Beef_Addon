@@ -135,6 +135,15 @@ function Ladder:GetRecord(name)
   return copyRecord(record)
 end
 
+-- True only for a name the ladder has actually written. GetRecord answers Fresh Beef
+-- for strangers, so a caller deciding whether someone exists must ask here instead:
+-- a typo in an officer's rite box must not conjure a ladder occupant.
+function Ladder:HasOfficialRecord(name)
+  local key = normalizeName(name)
+  if not key then return false end
+  return self.records[key] ~= nil
+end
+
 -- Local advisory standing. Deliberately does not bump the revision: points are
 -- self-reported testimony, and only an officer commit creates official state.
 function Ladder:SetStanding(name, standing)

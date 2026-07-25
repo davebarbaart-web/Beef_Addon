@@ -161,6 +161,7 @@ end
 local GLOBALS = {
   "CreateFrame", "UIParent", "Minimap", "UISpecialFrames",
   "GameTooltip", "C_Timer", "GetGuildInfo", "UnitName", "IsInGuild",
+  "GetNumGuildMembers", "GetGuildRosterInfo",
   "SendChatMessage", "GetTime",
   "UnitIsInMyGuild", "UnitIsAFK", "GetNumGroupMembers", "IsInRaid",
 }
@@ -175,6 +176,10 @@ function M.install()
   M.inGuild = true
   M.chat = {}
   M.now = 0
+
+  -- Guild roster the officer rites check names against. Plain strings; entries may
+  -- carry a "-Realm" suffix the way the real roster does.
+  M.guildRoster = {}
 
   -- Group model for the ceremony sampler: M.group is keyed by unit id
   -- (M.group.party1 = { name = "Steakina", inGuild = true, afk = false }) and
@@ -214,6 +219,14 @@ function M.install()
   GetGuildInfo = function(_unit)
     if M.guildRankIndex == nil then return nil end
     return "Church of Beef", "Beefling", M.guildRankIndex
+  end
+
+  GetNumGuildMembers = function() return #M.guildRoster end
+
+  GetGuildRosterInfo = function(index)
+    local entry = M.guildRoster[index]
+    if not entry then return nil end
+    return entry, "Beefling", M.guildRankIndex or 5
   end
 
   UnitName = function(unit)

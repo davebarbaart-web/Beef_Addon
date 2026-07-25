@@ -34,6 +34,13 @@ COB.DB:Init()
 -- The acting officer, not the subject of any rite below.
 stub.playerName = "Popeina"
 
+-- Rites refuse a name the guild has never heard of, so every intended subject has
+-- to answer to a roster entry. Steakina carries a realm suffix on purpose.
+stub.guildRoster = {
+  "Popeina", "Beefina", "Steakina-Nightslayer", "Chuckina", "Fifthina",
+  "Prophetina", "Falseina", "Brisketina", "Rumpina",
+}
+
 local function chatCount() return #stub.chat end
 local function lastChat()
   local entry = stub.chat[#stub.chat]
@@ -250,6 +257,97 @@ assert_eq(rankOf("Chuckina"), 1, "a wipe does not change rank")
 Tab.standingDelta:SetText("beef")
 stub.fire(Tab.applyStanding, "OnClick")
 assert_true(Tab.statusText:find("25 or -50", 1, true) ~= nil, "a bad correction explains the format")
+
+--------------------------------------------------------------------------------
+-- A rite cannot conjure a ghost: GetRecord's synthetic Fresh Beef is not evidence
+--------------------------------------------------------------------------------
+assert_eq(COB.Ladder:HasOfficialRecord("Ghostina"), false, "an unknown name has no official record")
+assert_eq(COB.Ladder:GetRecord("Ghostina").rankId, 1, "but GetRecord still answers Fresh Beef")
+assert_eq(COB.Officer:IsGuildRosterName("Ghostina"), false, "and the roster does not know them either")
+assert_eq(COB.Officer:IsGuildRosterName("Steakina"), true, "a roster entry matches without its realm suffix")
+
+assert_eq(Tab:AppointCouncil("Ghostina"), false, "a ghost cannot be seated on the Council")
+assert_true(Tab.statusText:find("guild roster", 1, true) ~= nil, "the refusal names the missing subject")
+assert_eq(COB.Ladder:HasOfficialRecord("Ghostina"), false, "the refused seating wrote no record")
+
+assert_eq(Tab:BestowProphet("Ghostina"), false, "a ghost cannot be anointed")
+assert_eq(Tab:CorrectStanding("Ghostina", 25), false, "a ghost cannot be given standing")
+assert_eq(COB.Ladder:HasOfficialRecord("Ghostina"), false, "no refused rite left a ladder occupant")
+
+before = chatCount()
+Tab.subject:SetText("Ghostina")
+stub.fire(Tab.excommunicate, "OnClick")
+stub.fire(Tab.confirm.accept, "OnClick")
+assert_eq(COB.Ladder:HasOfficialRecord("Ghostina"), false, "excommunicating a ghost writes nothing")
+assert_eq(chatCount(), before, "a refused rite announces nothing")
+
+Tab.standingDelta:SetText("25")
+stub.fire(Tab.applyStanding, "OnClick")
+assert_eq(COB.Ladder:HasOfficialRecord("Ghostina"), false, "correcting a ghost writes nothing")
+
+--------------------------------------------------------------------------------
+-- Confirm frame: reason is kept, Escape backs out, a missing frame fails closed
+--------------------------------------------------------------------------------
+Tab.subject:SetText("Chuckina")
+Tab.standingDelta:SetText("60")
+stub.fire(Tab.applyStanding, "OnClick")
+assert_eq(COB.Ladder:GetRecord("Chuckina").standing, 60, "Chuckina has standing to wipe again")
+
+Tab.subject:SetText("Chuckina")
+Tab.standingDelta:SetText("-100")
+stub.fire(Tab.applyStanding, "OnClick")
+assert_eq(Tab.confirm:IsShown(), true, "the wipe confirm is open")
+assert_true(stub.fire(Tab.confirm, "OnKeyDown", "ESCAPE"), "the confirm listens for keys")
+assert_eq(Tab.confirm:IsShown(), false, "escape closes the confirm")
+-- rawget: the widget stub hands back a no-op for any unset field, so read past it.
+assert_eq(rawget(Tab.confirm, "onAccept"), nil, "escape drops the pending rite")
+assert_eq(COB.Ladder:GetRecord("Chuckina").standing, 60, "escape commits nothing")
+
+stub.fire(Tab.confirm.accept, "OnClick")
+assert_eq(COB.Ladder:GetRecord("Chuckina").standing, 60, "a stale accept after escape does nothing")
+
+Tab.subject:SetText("Chuckina")
+stub.fire(Tab.applyStanding, "OnClick")
+Tab.confirm.reason:SetText("  double-dipped the gora  ")
+stub.fire(Tab.confirm.accept, "OnClick")
+assert_eq(COB.Ladder:GetRecord("Chuckina").standing, 0, "the confirmed wipe lands")
+assert_true(Tab.recentLines[1]:GetText():find("Corrected Chuckina", 1, true) ~= nil,
+  "the wipe is logged in recent actions")
+assert_true(Tab.recentLines[1]:GetText():find("double-dipped the gora", 1, true) ~= nil,
+  "the typed reason rides along with the recent entry")
+
+Tab.subject:SetText("Chuckina")
+Tab.standingDelta:SetText("15")
+stub.fire(Tab.applyStanding, "OnClick")
+assert_eq(Tab.recentLines[1]:GetText():find("double-dipped", 1, true), nil,
+  "the reason is consumed once and does not stick to the next rite")
+
+local realConfirm = Tab.confirm
+Tab.confirm = nil
+Tab.subject:SetText("Chuckina")
+stub.fire(Tab.excommunicate, "OnClick")
+assert_true(Tab.statusText:find("confirmation window is missing", 1, true) ~= nil,
+  "a missing confirm frame fails closed instead of committing")
+assert_eq(rankOf("Chuckina"), 1, "the unconfirmable rite committed nothing")
+Tab.confirm = realConfirm
+
+--------------------------------------------------------------------------------
+-- The officer queue never sits stale behind a refresh it should have seen
+--------------------------------------------------------------------------------
+assert_eq(COB.UI:ShowTab("officer"), "officer", "officer tab is up front")
+Tab.overflow:SetText("STALE")
+crossThreshold("Brisketina") -- Core only: scoring does not touch the UI
+COB.UI:RefreshLadder()
+assert_true(Tab.overflow:GetText() ~= "STALE", "RefreshLadder redraws the officer queue too")
+assert_eq(Tab.selected, "Brisketina", "the new petition is selected and visible")
+
+assert_eq(COB.UI:ShowTab("ladder"), "ladder", "switch away from the officer tab")
+Tab.overflow:SetText("STALE")
+crossThreshold("Rumpina")
+assert_eq(Tab.overflow:GetText(), "STALE", "a hidden officer tab stays idle")
+assert_eq(COB.UI:ShowTab("officer"), "officer", "and comes back to the front")
+assert_true(Tab.overflow:GetText() ~= "STALE", "returning to a tab redraws it")
+assert_eq(#COB.Ladder:GetSuggestions(), 2, "both petitions are queued")
 
 --------------------------------------------------------------------------------
 -- Announce refusals in their own right
