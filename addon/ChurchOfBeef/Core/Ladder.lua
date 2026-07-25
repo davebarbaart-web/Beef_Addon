@@ -200,6 +200,7 @@ function Ladder:RejectSuggestion(name)
   if not self.suggestions[key] then return false end
   -- Standing survives a rejection; officers correct points separately.
   self.suggestions[key] = nil
+  persist()
   return true
 end
 

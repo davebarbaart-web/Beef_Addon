@@ -135,4 +135,11 @@ assert_eq(saves, 4, "a paid grant flushes the DB")
 assert_eq(S:GrantInstanceBucket("Flushed", noon, false), 0, "an AFK bucket pays nothing")
 assert_eq(saves, 4, "a zero grant does not flush")
 
+L:SetStanding("RejectSpy", 50)
+L:MaybeSuggest("RejectSpy")
+assert_true(L:RejectSuggestion("RejectSpy"), "reject succeeds")
+assert_eq(saves, 5, "a suggestion reject flushes the DB")
+assert_eq(L:RejectSuggestion("RejectSpy"), false, "rejecting again is a no-op")
+assert_eq(saves, 5, "a no-op reject does not flush")
+
 ChurchOfBeef.DB = realDb
