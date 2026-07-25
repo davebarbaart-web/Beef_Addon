@@ -26,10 +26,10 @@ officer approval is the real gate.
 
 ## Install
 
-Copy the addon folder from this repo into your TBC Anniversary client:
+Copy the addon folder from this repo into your TBC Anniversary client's AddOns directory:
 
 ```
-addon/ChurchOfBeef/  →  <WoW>/_classic_era_/Interface/AddOns/ChurchOfBeef/
+addon/ChurchOfBeef/  →  <your TBC Anniversary client folder>/Interface/AddOns/ChurchOfBeef/
 ```
 
 Install path must be exactly `Interface/AddOns/ChurchOfBeef` (the folder name has to match the
