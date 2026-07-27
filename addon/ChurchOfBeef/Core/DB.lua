@@ -1,14 +1,16 @@
 ChurchOfBeef = ChurchOfBeef or {}
 local COB = ChurchOfBeef
 
--- Per-character SavedVariables cache. Not a server: officer commits + BeefNet
--- revisions are authoritative; this file only survives /reload and logout.
+-- Per-character SavedVariables cache. Standing + suggestions are local testimony;
+-- Church titles come from the live guild roster (Core/Roster), not this file.
 -- Nest ui separately from ladder/scoring so future cosmetic profiles never own
 -- church data (research track 21).
 local DB = {}
 COB.DB = DB
 
-local SCHEMA_VERSION = 1
+-- v2: roster-backed ranks — ladder.records keep standing only.
+-- v3: advisory rite flags (knighted / goraLordWin) on standing rows.
+local SCHEMA_VERSION = 3
 
 local function defaultUi()
   return { point = nil, shown = false, announce = true }
@@ -43,16 +45,44 @@ local function applyDefaults(db)
   local version = db.version
   if type(version) ~= "number" then version = 0 end
 
-  -- Ordered migrations land here: if version < 2 then …; version = 2; end
-  if version < SCHEMA_VERSION then
-    db.version = SCHEMA_VERSION
+  -- Ordered migrations: strip legacy official rank fields from standing rows.
+  if version < 2 then
+    local ladder = db.ladder
+    if type(ladder) == "table" and type(ladder.records) == "table" then
+      local cleaned = {}
+      for _, record in pairs(ladder.records) do
+        if type(record) == "table" and type(record.name) == "string" then
+          local standing = record.standing
+          if type(standing) ~= "number" or standing < 0 then standing = 0 end
+          cleaned[#cleaned + 1] = {
+            name = record.name,
+            standing = standing,
+            rankId = 1,
+            revision = 0,
+            updatedAt = 0,
+            updatedBy = "",
+          }
+        end
+      end
+      ladder.records = cleaned
+    end
+    version = 2
   end
+  -- v3: rite flags are additive on standing rows; ImportState reads them when present.
+  if version < 3 then
+    version = 3
+  end
+  if version < SCHEMA_VERSION then
+    version = SCHEMA_VERSION
+  end
+  db.version = version
   -- Downgrade (db.version > SCHEMA_VERSION): keep the higher stamp and unknown keys.
 
   local ui = ensureTable(db, "ui", defaultUi)
   if ui.shown == nil then ui.shown = false end
   if ui.announce == nil then ui.announce = true end
-  -- ui.point may be nil (unset position).
+  -- ui.point may be nil (unset position). Announce checkbox is retained in SV for a
+  -- future roster-diff announcer; Officer UI hides it until then.
 
   local ladder = ensureTable(db, "ladder", defaultLadder)
   if type(ladder.records) ~= "table" then ladder.records = {} end

@@ -9,13 +9,16 @@ Data\Ranks.lua
 Core\Ladder.lua
 Core\Scoring.lua
 Core\Officer.lua
+Core\Roster.lua
 Core\Gora.lua
 Core\Ceremony.lua
 Core\Instance.lua
+Core\Quest.lua
 Core\DB.lua
 Net\BeefNet.lua
 Net\Sync.lua
 UI\MainFrame.lua
+UI\Status.lua
 UI\Announce.lua
 UI\LadderTab.lua
 UI\StandingTab.lua

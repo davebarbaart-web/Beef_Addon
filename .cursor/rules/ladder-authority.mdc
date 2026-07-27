@@ -1,7 +1,8 @@
 ---
-description: Ladder trust model — revisions, seats, standing vs Commit, remote apply
+description: Ladder trust model — roster ranks, standing, promote suggestions
 globs:
   - "**/Core/Ladder*.lua"
+  - "**/Core/Roster*.lua"
   - "**/Core/Scoring*.lua"
   - "**/Data/Ranks*.lua"
 alwaysApply: false
@@ -11,54 +12,46 @@ alwaysApply: false
 
 ## Non-negotiables
 
-- Never auto-promote — thresholds only create pending suggestions
-- Official state only via officer **Commit** (local or replicated) — bumps `revision`
-- Local standing is advisory testimony — does **not** bump `revision`
-- Thresholds/seats live only in `Data/Ranks.lua`
+- Church titles come from the **live guild roster** (`rankIndex` → `Ranks.ChurchRankIdForGuildIndex`) — never from SavedVariables commits
+- Never auto-promote in WoW or in the addon — thresholds only create promote **suggestions**
+- Local standing is advisory testimony — officers promote in the Blizzard guild UI
+- Thresholds live only in `Data/Ranks.lua`
+- Addon must not call guild promote/demote APIs
 
 ## Data flow (locked)
 
 ```
+GUILD_ROSTER_UPDATE
+  → Core/Roster snapshot (name → churchRankId)
+  → UI Ladder refresh
+
 events / thin Gora·Ceremony·Instance
   → Scoring (capped grants)
-    → Ladder.MaybeSuggest   -- never auto-promote
-    → Officer+ approve in UI
-    → Ladder.Commit + revision bump
-    → Net RANK_COMMIT
-    → peers: validate Officer+ → ApplyRemoteCommit → UI refresh
+    → Ladder.MaybeSuggest   -- uses mapped roster rank; never auto-promote
+    → Officer+ sees promote prompt
+    → Officer promotes in Blizzard guild UI
+    → roster refresh moves the name; suggestion auto-clears
 ```
 
 ## Two kinds of state
 
-| State | Who writes | Bumps `revision`? |
-|-------|------------|-------------------|
-| Local standing | Member / `SetStanding` | **No** |
-| Official rank/standing | Officer `Commit` | **Yes** |
-
-Officer approval is the anti-cheat — do not invent crypto or “trusted client” checks for points.
+| State | Who writes | Source of truth |
+|-------|------------|-----------------|
+| Church title | WoW guild ranks | Live roster map |
+| Local standing + suggestions | Member / officer correction | SavedVariables |
 
 ## Rank tiers (canon-driven)
 
-- Ranks 1–5 (`kind == "points"`): threshold → `MaybeSuggest` only
-- Rank 6 (`council`): appointed; seat-limited (`CouncilSeats`); not point-reachable
-- Rank 7 (`prophet`): bestowed; unique when `ProphetUnique`; not point-reachable
+- Ranks 1–5 (`kind == "points"`): threshold → `MaybeSuggest` only (prompt to promote in guild UI)
+- Rank 6 (`council`) / 7 (`prophet`): never suggested from points; displayed when guild `rankIndex` maps there
 
-Resolve via `rank.kind` / helpers — do not hardcode titles or ids in call sites.
+## Single read path for occupants
 
-## Single write path
-
-- Appointments, demotions, approvals → `Ladder:Commit`
-- Demote must target a **lower** `rankId` than current
-- `GetRecord` for unknown names returns Fresh Beef **without** inserting
+- `Roster:GetLadderView()` / `Ladder:GetLadderView()` facade — occupants from roster only
+- `GetRecord` for unknown names returns Fresh Beef **without** inserting a standing row
 - Getters return **copies**
 
-## Replication merge (locked)
+## BeefNet
 
-Higher `revision` wins; tie → later `updatedAt`; tie → lexicographically greater `updatedBy`.
-
-```lua
--- ApplyRemoteCommit: do NOT re-check seat/prophet uniqueness.
--- Rejecting a valid replicated commit forks the guild forever.
-```
-
-Replay with `revision ≤ local` → ignore. Login `SYNC_STATE` uses the same merge rules.
+- Legacy `RANK_COMMIT` / rank `SYNC_STATE` are soft-ignored — do not apply as authority
+- `SUGGESTION` fanout may still notify officers of promote prompts

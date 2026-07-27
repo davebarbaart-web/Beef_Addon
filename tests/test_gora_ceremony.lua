@@ -8,6 +8,7 @@ ChurchOfBeef = ChurchOfBeef or {}
 ChurchOfBeef._IN_TEST = true
 dofile("addon/ChurchOfBeef/Data/Ranks.lua")
 dofile("addon/ChurchOfBeef/Core/Ladder.lua")
+dofile("addon/ChurchOfBeef/Core/Roster.lua")
 dofile("addon/ChurchOfBeef/Core/Scoring.lua")
 dofile("addon/ChurchOfBeef/Core/Officer.lua")
 dofile("addon/ChurchOfBeef/Core/Gora.lua")
@@ -16,12 +17,24 @@ dofile("addon/ChurchOfBeef/Core/DB.lua")
 
 local COB = ChurchOfBeef
 local Points = COB.Scoring.Points
+local Roster = COB.Roster
+
+local function setMapped(name, churchRankId)
+  Roster.ready = true
+  local key = name:lower()
+  Roster.members[key] = {
+    name = name,
+    guildRankIndex = 0,
+    churchRankId = churchRankId,
+  }
+end
 
 local function reset()
   COB.Ladder:ResetForTests()
   COB.Scoring:ResetForTests()
   COB.Gora:ResetForTests()
   COB.Ceremony:ResetForTests()
+  Roster:ResetForTests()
 end
 
 local function standingOf(name)
@@ -222,6 +235,70 @@ for i = 1, 3 do
   COB.Ceremony:Close({ "Beefina" }, 1)
 end
 assert_eq(standingOf("Beefina"), ceremonyCap, "ceremony grants stop at the daily cap")
+
+--------------------------------------------------------------------------------
+-- Ceremony: knighting rite flag on close when the honoree attended
+--------------------------------------------------------------------------------
+reset()
+stub.guildRankIndex = 0
+COB.Ceremony:Start("Knighting", { "Squire", "Witness" }, 1)
+assert_eq(COB.Ceremony:SetHonoree("Squire"), "Squire", "officer sets the honoree while active")
+local activeKnight = COB.Ceremony:GetActive()
+assert_eq(activeKnight.honoree, "Squire", "GetActive exposes the honoree")
+
+closed = COB.Ceremony:Close({ "Squire", "Witness" }, 2)
+assert_eq(closed.honoree, "Squire", "Close echoes the honoree")
+assert_eq(closed.knighted, true, "honoree present at close is knighted")
+assert_eq(COB.Ladder:HasRiteFlag("Squire", "knighted"), true, "knighted rite flag set on honoree")
+assert_eq(COB.Ladder:HasRiteFlag("Witness", "knighted"), false, "witnesses are not knighted")
+
+-- Honoree absent at close → no flag (they left before the close sample).
+reset()
+stub.guildRankIndex = 0
+COB.Ceremony:Start("Knighting", { "Squire", "Witness" }, 1)
+COB.Ceremony:SetHonoree("Squire")
+closed = COB.Ceremony:Close({ "Witness" }, 2)
+assert_eq(closed.knighted, false, "absent honoree is not knighted")
+assert_eq(closed.honoree, "Squire", "Close still reports who was named")
+assert_eq(COB.Ladder:HasRiteFlag("Squire", "knighted"), false, "absent honoree keeps no knighted flag")
+
+-- Label matching [Kk]night is knighting intent, but still needs an honoree.
+reset()
+stub.guildRankIndex = 0
+COB.Ceremony:Start("Knighting", { "Squire" }, 1)
+closed = COB.Ceremony:Close({ "Squire" }, 2)
+assert_eq(closed.knighted, false, "Knighting label alone does not knight without an honoree")
+assert_eq(COB.Ladder:HasRiteFlag("Squire", "knighted"), false, "no honoree → no knighted flag")
+
+-- Generic ceremony + honoree must not quietly knight.
+reset()
+stub.guildRankIndex = 0
+COB.Ceremony:Start("Ceremony", { "Squire" }, 1)
+COB.Ceremony:SetHonoree("Squire")
+closed = COB.Ceremony:Close({ "Squire" }, 2)
+assert_eq(closed.knighted, false, "non-knighting label does not knight")
+assert_eq(COB.Ladder:HasRiteFlag("Squire", "knighted"), false, "generic ceremony leaves knighted unset")
+
+--------------------------------------------------------------------------------
+-- Gora: win vs a mapped Beef Lord sets goraLordWin on the winner
+--------------------------------------------------------------------------------
+reset()
+setMapped("Lordina", 4) -- Beef Lord
+setMapped("Knightina", 3) -- Beef Knight
+result = COB.Gora:RecordResult("Challenger", "Lordina", "win", 1)
+assert_eq(result.lordRite, true, "beating a mapped Lord reports lordRite")
+assert_eq(COB.Ladder:HasRiteFlag("Challenger", "goraLordWin"), true, "winner earns goraLordWin")
+
+result = COB.Gora:RecordResult("Challenger", "Knightina", "win", 1)
+assert_eq(result.lordRite, false, "beating a Knight is not the Lord rite")
+-- Flag already true from the Lord win; a Knight win must not clear it.
+assert_eq(COB.Ladder:HasRiteFlag("Challenger", "goraLordWin"), true, "prior Lord rite survives a Knight win")
+
+reset()
+setMapped("Lordina", 4)
+result = COB.Gora:RecordResult("Challenger", "Lordina", "draw", 1)
+assert_eq(result.lordRite, false, "a draw never grants the Lord rite")
+assert_eq(COB.Ladder:HasRiteFlag("Challenger", "goraLordWin"), false, "draw leaves goraLordWin unset")
 
 --------------------------------------------------------------------------------
 -- Ceremony: the live party/raid sampler is what runs in game

@@ -30,5 +30,6 @@ fi
 
 echo "Installed Church of Beef → $DST"
 echo "In-game: /reload then /beef"
-echo "Playtest: docs/phases/guild-night-playtest.md"
-echo "Checklist: docs/phases/v1-checklist.md"
+echo "Solo smoke (first): docs/phases/solo-smoke.md"
+echo "Guild night:       docs/phases/guild-night-playtest.md"
+echo "Checklist:         docs/phases/v1-checklist.md"

@@ -13,6 +13,7 @@ alwaysApply: true
 4. **In-game** (UI / Net / SV / slash touched): install → `/console scriptErrors 1` → `/reload` → exercise path. Prefer BugGrabber + BugSack. Loop: `.cursor/skills/church-of-beef-dev/SKILL.md`.
 5. **Guild/net** (BeefNet / officer / sync): two clients minimum (Officer+ and Member).
 6. **Do not claim V1 complete** until `docs/phases/v1-checklist.md` is filled and walked.
+7. **Polish / spectacle:** agents may claim **POLISH:CANDIDATE** only; **POLISH:PASS** and V1 complete are human-only. Do not call UI “polished/done” without `/reload` smoke for touched paths — guild-chat spectacle is a product pass the harness cannot prove. See UI brief + skill § Polish loop; research spine `docs/research/agent-polish-vision/00-SYNTHESIS.md`.
 
 ## Manual path (safest today)
 

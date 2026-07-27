@@ -1,70 +1,46 @@
--- Load ranks and ladder the same way the addon will, as chunks setting COB fields.
+-- Ladder standing + promote suggestions under the roster-backed model.
 ChurchOfBeef = ChurchOfBeef or {}
+ChurchOfBeef._IN_TEST = true
 dofile("addon/ChurchOfBeef/Data/Ranks.lua")
 dofile("addon/ChurchOfBeef/Core/Ladder.lua")
+dofile("addon/ChurchOfBeef/Core/Roster.lua")
+
 local L = ChurchOfBeef.Ladder
-L:ResetForTests()
+local Roster = ChurchOfBeef.Roster
 
-L:SetStanding("Beefina", 50)
-local sug = L:MaybeSuggest("Beefina")
-assert_true(sug ~= nil, "suggestion at threshold")
-assert_eq(sug.toRankId, 2, "suggest Cooked Beef")
-
-local rec, err = L:Commit("Beefina", 2, 50, "Pope", 1000)
-assert_true(rec ~= nil, "commit ok: " .. tostring(err))
-assert_eq(rec.revision, 1, "revision starts at 1")
-assert_eq(rec.rankId, 2, "committed rank")
-
--- Older revision must not overwrite
-local applied = L:ApplyRemoteCommit({
-  name = "Beefina", rankId = 1, standing = 0, revision = 1,
-  updatedAt = 999, updatedBy = "Other",
-})
-assert_eq(applied, false, "same revision rejected")
-
-applied = L:ApplyRemoteCommit({
-  name = "Beefina", rankId = 3, standing = 200, revision = 2,
-  updatedAt = 2000, updatedBy = "Pope",
-})
-assert_eq(applied, true, "higher revision applied")
-assert_eq(L:GetRecord("Beefina").rankId, 3, "remote promote")
-
--- Council seat limit
-L:ResetForTests()
-for i = 1, 4 do
-  local r, e = L:AppointCouncil("C"..i, "Pope", i)
-  assert_true(r ~= nil, "appoint " .. i .. " " .. tostring(e))
+local function setMapped(name, churchRankId)
+  Roster.ready = true
+  local key = name:lower()
+  Roster.members[key] = {
+    name = name,
+    guildRankIndex = 0,
+    churchRankId = churchRankId,
+  }
 end
-local r, e = L:AppointCouncil("C5", "Pope", 5)
-assert_true(r == nil, "fifth council blocked")
-assert_true(type(e) == "string", "error string")
 
--- Prophet unique
 L:ResetForTests()
-assert_true(L:BestowProphet("A", "Pope", 1) ~= nil, "first prophet")
-assert_true(select(1, L:BestowProphet("B", "Pope", 2)) == nil, "second prophet blocked")
+Roster:ResetForTests()
 
 --------------------------------------------------------------------------------
--- Unknown members read as Fresh Beef without being written into the ladder
+-- Unknown members read as Fresh Beef without writing a standing row
 --------------------------------------------------------------------------------
-L:ResetForTests()
 local unknown = L:GetRecord("Nobody")
 assert_eq(unknown.rankId, 1, "unknown member reads as Fresh Beef")
 assert_eq(unknown.standing, 0, "unknown member has no standing")
-assert_eq(unknown.revision, 0, "unknown member has no revision")
-assert_eq(#L:GetLadderView(), 0, "reading an unknown name does not create a record")
+assert_eq(L:HasOfficialRecord("Nobody"), false, "read does not create a standing row")
+assert_eq(#L:GetLadderView(), 0, "empty roster → empty ladder view")
 
 --------------------------------------------------------------------------------
--- Suggestion thresholds and de-duplication
+-- Suggestions require a roster mapping
 --------------------------------------------------------------------------------
-L:SetStanding("Edge", 49)
-assert_eq(L:MaybeSuggest("Edge"), nil, "one point short of the threshold, no suggestion")
-
 L:SetStanding("Edge", 50)
+assert_eq(L:MaybeSuggest("Edge"), nil, "no roster mapping → no suggestion")
+
+setMapped("Edge", 1)
 local first, firstIsNew = L:MaybeSuggest("Edge")
 assert_true(first ~= nil, "threshold reached, suggestion created")
 assert_eq(firstIsNew, true, "first suggestion reports as new")
-assert_eq(first.fromRankId, 1, "suggestion carries the current rank")
+assert_eq(first.fromRankId, 1, "suggestion carries the mapped rank")
 assert_eq(first.toRankId, 2, "suggestion targets the next rank")
 
 local again, againIsNew = L:MaybeSuggest("Edge")
@@ -72,285 +48,113 @@ assert_true(again ~= nil, "repeat call still returns the pending suggestion")
 assert_eq(againIsNew, false, "repeat call does not report a new suggestion")
 assert_eq(#L:GetSuggestions(), 1, "no duplicate suggestion queued")
 
--- A pending suggestion tracks standing earned after it was raised.
 L:SetStanding("Edge", 90)
 assert_eq(L:MaybeSuggest("Edge").standing, 90, "pending suggestion shows current standing")
-assert_eq(L:GetSuggestions()[1].standing, 90, "queued suggestion shows current standing")
 
 L:RejectSuggestion("Edge")
-assert_eq(#L:GetSuggestions(), 0, "reject clears the suggestion")
-assert_eq(L:GetRecord("Edge").standing, 90, "reject leaves standing untouched")
+assert_eq(#L:GetSuggestions(), 0, "dismiss clears the suggestion")
+assert_eq(L:GetStanding("Edge"), 90, "dismiss leaves standing untouched")
 
--- Standing far past several thresholds still only advances one rank at a time.
+--------------------------------------------------------------------------------
+-- One rank at a time; appointed bands never suggested from points
+--------------------------------------------------------------------------------
 L:ResetForTests()
+Roster:ResetForTests()
+setMapped("Rocket", 1)
 L:SetStanding("Rocket", 999999)
 assert_eq(L:MaybeSuggest("Rocket").toRankId, 2, "suggestions advance one rank at a time")
 
---------------------------------------------------------------------------------
--- Appointed ranks are never auto-suggested
---------------------------------------------------------------------------------
 L:ResetForTests()
-L:Commit("Butcher", 5, 1000, "Pope", 10)
+Roster:ResetForTests()
+setMapped("Butcher", 5)
 L:SetStanding("Butcher", 999999)
 assert_eq(L:MaybeSuggest("Butcher"), nil, "Butcher is never auto-suggested into Council")
 
-L:ResetForTests()
-L:AppointCouncil("Seated", "Pope", 10)
+setMapped("Seated", 6)
 L:SetStanding("Seated", 999999)
-assert_eq(L:MaybeSuggest("Seated"), nil, "a Council member is never auto-suggested")
-
-L:ResetForTests()
-L:BestowProphet("Anointed", "Pope", 10)
-L:SetStanding("Anointed", 999999)
-assert_eq(L:MaybeSuggest("Anointed"), nil, "the Prophet is never auto-suggested")
+assert_eq(L:MaybeSuggest("Seated"), nil, "Council is never auto-suggested")
 
 --------------------------------------------------------------------------------
--- Commit bookkeeping
+-- Rank write paths refuse; remote commits are ignored
 --------------------------------------------------------------------------------
-L:ResetForTests()
-L:SetStanding("Climb", 50)
-L:MaybeSuggest("Climb")
-assert_eq(#L:GetSuggestions(), 1, "suggestion pending before approval")
+local rec, err = L:Commit("Edge", 2, nil, "Pope", 1000)
+assert_eq(rec, nil, "Commit refused")
+assert_true(type(err) == "string" and err:find("guild", 1, true) ~= nil, "Commit names guild UI")
 
-local c1 = L:Commit("Climb", 2, 50, "Pope", 100)
-assert_eq(#L:GetSuggestions(), 0, "commit clears the pending suggestion")
-assert_eq(c1.revision, 1, "first commit is revision 1")
-assert_eq(c1.updatedBy, "Pope", "commit records the approving officer")
-assert_eq(c1.updatedAt, 100, "commit records the time")
-
-local c2 = L:Commit("Climb", 3, 200, "Pope", 200)
-assert_eq(c2.revision, 2, "second commit bumps the revision")
+assert_eq(L:Demote("Edge", 1, "Pope"), nil, "Demote refused")
+assert_eq(L:AppointCouncil("Edge", "Pope"), nil, "AppointCouncil refused")
+assert_eq(L:BestowProphet("Edge", "Pope"), nil, "BestowProphet refused")
+assert_eq(L:ApplyRemoteCommit({
+  name = "Edge", rankId = 3, standing = 200, revision = 2,
+  updatedAt = 2000, updatedBy = "Pope",
+}), false, "remote rank commit ignored")
 
 --------------------------------------------------------------------------------
--- Commit validation (bad input must not touch state)
---------------------------------------------------------------------------------
-local bad, badErr = L:Commit("Climb", 8, 0, "Pope", 300)
-assert_eq(bad, nil, "rank id above the ladder rejected")
-assert_true(type(badErr) == "string", "rejected commit returns an error string")
-assert_eq(select(1, L:Commit("Climb", 0, 0, "Pope", 300)), nil, "rank id 0 rejected")
-assert_eq(select(1, L:Commit("Climb", 2.5, 0, "Pope", 300)), nil, "fractional rank id rejected")
-assert_eq(select(1, L:Commit("Climb", "2", 0, "Pope", 300)), nil, "string rank id rejected")
-assert_eq(select(1, L:Commit("Climb", 2, -5, "Pope", 300)), nil, "negative standing rejected")
-assert_eq(select(1, L:Commit("Climb", 2, "50", "Pope", 300)), nil, "string standing rejected")
-assert_eq(select(1, L:Commit("", 2, 0, "Pope", 300)), nil, "empty name rejected")
-assert_eq(select(1, L:Commit("Climb", 2, 0, "", 300)), nil, "empty officer name rejected")
-assert_eq(select(1, L:Commit("Climb", 2, 0, nil, 300)), nil, "missing officer name rejected")
-assert_eq(L:GetRecord("Climb").revision, 2, "rejected commits do not bump the revision")
-assert_eq(L:GetRecord("Climb").rankId, 3, "rejected commits do not change the rank")
-
---------------------------------------------------------------------------------
--- Demotion
---------------------------------------------------------------------------------
-local d1 = L:Demote("Climb", 1, "Pope", 400)
-assert_true(d1 ~= nil, "demotion to a lower rank succeeds")
-assert_eq(d1.rankId, 1, "demoted to the target rank")
-assert_eq(d1.revision, 3, "demotion bumps the revision")
-assert_eq(d1.standing, 200, "demotion leaves standing alone")
-assert_eq(select(1, L:Demote("Climb", 1, "Pope", 500)), nil, "demotion to the same rank rejected")
-assert_eq(select(1, L:Demote("Climb", 3, "Pope", 500)), nil, "demotion upward rejected")
-
---------------------------------------------------------------------------------
--- Remote commit ordering: revision, then timestamp, then officer name
+-- Standing correction + export/import keep points only
 --------------------------------------------------------------------------------
 L:ResetForTests()
-assert_eq(L:ApplyRemoteCommit({
-  name = "Away", rankId = 4, standing = 500, revision = 7, updatedAt = 10, updatedBy = "Pope",
-}), true, "an unknown member accepts a remote commit")
-assert_eq(L:GetRecord("Away").revision, 7, "remote revision stored verbatim")
+Roster:ResetForTests()
+setMapped("Beefina", 1)
+local corrected = L:CorrectStanding("Beefina", 40)
+assert_eq(corrected.standing, 40, "CorrectStanding sets points")
+assert_eq(L:GetRecord("Beefina").rankId, 1, "GetRecord rank comes from roster map")
+assert_eq(#L:GetSuggestions(), 0, "below threshold → no suggestion from correction")
 
-assert_eq(L:ApplyRemoteCommit({
-  name = "Away", rankId = 5, standing = 1000, revision = 7, updatedAt = 11, updatedBy = "Aaa",
-}), true, "equal revision, later timestamp wins")
-assert_eq(L:GetRecord("Away").rankId, 5, "later timestamp applied")
+-- Solo smoke path (amendment §10): officer correction can enqueue a promote prompt.
+local heard = 0
+ChurchOfBeef.Net = {
+  OnLocalSuggestion = function(_, suggestion)
+    heard = heard + 1
+    assert_eq(suggestion.toRankId, 2, "correction fanout targets Cooked Beef")
+  end,
+}
+local atThreshold = L:CorrectStanding("Beefina", 50)
+assert_eq(atThreshold.standing, 50, "CorrectStanding can set threshold standing")
+assert_eq(#L:GetSuggestions(), 1, "correction crossing threshold enqueues suggestion")
+assert_eq(heard, 1, "new suggestion notifies Net once")
+heard = 0
+L:CorrectStanding("Beefina", 60)
+assert_eq(heard, 0, "repeat correction does not re-fanout the same petition")
+ChurchOfBeef.Net = nil
 
-assert_eq(L:ApplyRemoteCommit({
-  name = "Away", rankId = 3, standing = 200, revision = 7, updatedAt = 11, updatedBy = "Aab",
-}), true, "equal revision and timestamp, higher officer name wins")
-assert_eq(L:ApplyRemoteCommit({
-  name = "Away", rankId = 1, standing = 0, revision = 7, updatedAt = 11, updatedBy = "Aaa",
-}), false, "equal revision and timestamp, lower officer name loses")
-assert_eq(L:ApplyRemoteCommit({
-  name = "Away", rankId = 1, standing = 0, revision = 6, updatedAt = 99999, updatedBy = "Zzz",
-}), false, "a stale revision never overwrites, however new its timestamp")
-assert_eq(L:GetRecord("Away").rankId, 3, "ladder holds the winning record after the tiebreaks")
-
---------------------------------------------------------------------------------
--- Remote commit validation
---------------------------------------------------------------------------------
-assert_eq(L:ApplyRemoteCommit(nil), false, "nil remote commit rejected")
-assert_eq(L:ApplyRemoteCommit("RANK_COMMIT"), false, "non-table remote commit rejected")
-assert_eq(L:ApplyRemoteCommit({
-  name = "Away", rankId = 9, standing = 0, revision = 99, updatedAt = 99, updatedBy = "Pope",
-}), false, "out-of-range rank id rejected")
-assert_eq(L:ApplyRemoteCommit({
-  name = "Away", rankId = 2, standing = -1, revision = 99, updatedAt = 99, updatedBy = "Pope",
-}), false, "negative standing rejected")
-assert_eq(L:ApplyRemoteCommit({
-  name = "Away", rankId = 2, standing = 0, revision = 0, updatedAt = 99, updatedBy = "Pope",
-}), false, "revision 0 rejected: commits always start at 1")
-assert_eq(L:ApplyRemoteCommit({
-  rankId = 2, standing = 0, revision = 99, updatedAt = 99, updatedBy = "Pope",
-}), false, "nameless remote commit rejected")
-assert_eq(L:GetRecord("Away").rankId, 3, "malformed remote commits changed nothing")
-
---------------------------------------------------------------------------------
--- Rank-only remote commits: the member keeps the standing they earned
---------------------------------------------------------------------------------
-L:ResetForTests()
-L:SetStanding("Keeper", 300)
-assert_eq(L:ApplyRemoteCommit({
-  name = "Keeper", rankId = 3, revision = 2, updatedAt = 10, updatedBy = "Pope",
-}), true, "a commit with no standing field applies")
-assert_eq(L:GetRecord("Keeper").rankId, 3, "the rank moves")
-assert_eq(L:GetRecord("Keeper").standing, 300,
-  "and an elevation does not wipe the standing that earned it")
-
-assert_eq(L:ApplyRemoteCommit({
-  name = "Keeper", rankId = 3, standing = 0, revision = 3, updatedAt = 11, updatedBy = "Pope",
-}), true, "an explicit standing still applies")
-assert_eq(L:GetRecord("Keeper").standing, 0, "an officer wipe is a real decision and lands")
-
-assert_eq(L:ApplyRemoteCommit({
-  name = "Stranger", rankId = 2, revision = 1, updatedAt = 1, updatedBy = "Pope",
-}), true, "a rank-only commit for an unknown member applies")
-assert_eq(L:GetRecord("Stranger").standing, 0, "who starts from no standing at all")
-
---------------------------------------------------------------------------------
--- Imported petitions: the target rank comes from our ladder, not the sender
---------------------------------------------------------------------------------
-L:ResetForTests()
-local imported, importedIsNew = L:ImportSuggestion({ name = "Petitioner", toRankId = 2, standing = 120 })
-assert_true(imported ~= nil, "a well-aimed petition is queued")
-assert_eq(importedIsNew, true, "and reports as new")
-assert_eq(imported.fromRankId, 1, "the current rank comes from our own record")
-assert_eq(imported.toRankId, 2, "the target is the next rank")
-assert_eq(imported.threshold, ChurchOfBeef.Ranks.Threshold(2),
-  "the threshold is canon, not the sender's claim")
-assert_eq(imported.standing, 120, "the claimed standing rides along as evidence")
-assert_eq(L:HasOfficialRecord("Petitioner"), false, "hearing a petition seats nobody")
-
-local repeated, repeatedIsNew = L:ImportSuggestion({ name = "Petitioner", toRankId = 2, standing = 140 })
-assert_eq(repeatedIsNew, false, "a repeat petition does not queue twice")
-assert_eq(repeated.standing, 140, "but it does refresh the evidence")
-assert_eq(#L:GetSuggestions(), 1, "still one petition")
-
--- Approve commits the queued target verbatim, so a petition aimed anywhere else is
--- refused: a forged one must not become a one-click bestowal.
-assert_eq(select(1, L:ImportSuggestion({ name = "Climber", toRankId = 7, standing = 99999 })), nil,
-  "a petition for the Prophet's seat is refused")
-assert_eq(select(1, L:ImportSuggestion({ name = "Climber", toRankId = 5, standing = 99999 })), nil,
-  "so is one that skips ranks")
-assert_eq(select(1, L:ImportSuggestion({ name = "", toRankId = 2 })), nil, "a nameless petition is refused")
-assert_eq(select(1, L:ImportSuggestion("Climber")), nil, "a non-table petition is refused")
-assert_eq(#L:GetSuggestions(), 1, "none of those queued anything an officer could approve")
-
-L:ResetForTests()
-L:BestowProphet("Anointed", "Pope", 1)
-assert_eq(select(1, L:ImportSuggestion({ name = "Anointed", toRankId = 7 })), nil,
-  "the Prophet has no next rank to petition for")
-L:Commit("Topped", 5, 1000, "Pope", 1)
-assert_eq(select(1, L:ImportSuggestion({ name = "Topped" })), nil,
-  "and the top point rank cannot petition into the Council")
-
--- A commit that lands while a local suggestion is pending clears the stale suggestion.
-L:ResetForTests()
-L:SetStanding("Absent", 50)
-L:MaybeSuggest("Absent")
-assert_eq(L:ApplyRemoteCommit({
-  name = "Absent", rankId = 2, standing = 50, revision = 1, updatedAt = 5, updatedBy = "Pope",
-}), true, "remote commit for a suggested member applies")
-assert_eq(#L:GetSuggestions(), 0, "remote commit clears the now-stale suggestion")
-
---------------------------------------------------------------------------------
--- Council seats: occupancy, re-appointment, freeing a seat, direct-commit backdoor
---------------------------------------------------------------------------------
-L:ResetForTests()
-for i = 1, 4 do L:AppointCouncil("C"..i, "Pope", i) end
-assert_true(L:AppointCouncil("C1", "Pope", 9) ~= nil, "re-appointing a sitting member takes no extra seat")
-assert_eq(select(1, L:AppointCouncil("C5", "Pope", 9)), nil, "council still full after re-appointment")
-assert_true(L:Demote("C4", 5, "Pope", 10) ~= nil, "a council member can be demoted")
-assert_true(L:AppointCouncil("C5", "Pope", 11) ~= nil, "the vacated seat can be filled")
-assert_eq(select(1, L:Commit("C6", 6, 0, "Pope", 12)), nil, "a direct commit cannot exceed the seat limit")
-
---------------------------------------------------------------------------------
--- Prophet: unique, re-bestowable, successable
---------------------------------------------------------------------------------
-L:ResetForTests()
-assert_true(L:BestowProphet("First", "Pope", 1) ~= nil, "the first prophet is anointed")
-assert_true(L:BestowProphet("First", "Pope", 2) ~= nil, "re-bestowing on the sitting prophet is allowed")
-assert_eq(select(1, L:Commit("Second", 7, 0, "Pope", 3)), nil, "a direct commit cannot create a second prophet")
-assert_true(L:Demote("First", 5, "Pope", 4) ~= nil, "the prophet can be demoted")
-assert_true(L:BestowProphet("Second", "Pope", 5) ~= nil, "succession is possible once the seat is empty")
-
---------------------------------------------------------------------------------
--- Ladder view ordering: rank descending, then name ascending
---------------------------------------------------------------------------------
-L:ResetForTests()
-L:Commit("bella", 2, 50, "Pope", 1)
-L:Commit("Alpha", 2, 50, "Pope", 1)
-L:Commit("Zed", 5, 1000, "Pope", 1)
-L:SetStanding("Newbie", 0)
-
-local view = L:GetLadderView()
-assert_eq(#view, 4, "every member with a record appears in the view")
-assert_eq(view[1].name, "Zed", "highest rank sorts first")
-assert_eq(view[2].name, "Alpha", "equal ranks sort by name")
-assert_eq(view[3].name, "bella", "equal ranks sort by name, second entry")
-assert_eq(view[4].name, "Newbie", "uncommitted members sit at the bottom")
-
---------------------------------------------------------------------------------
--- Export / import round trip
---------------------------------------------------------------------------------
 local exported = L:ExportState()
-assert_eq(#exported, 4, "export covers every record")
+assert_eq(#exported, 1, "one standing row exported")
+assert_eq(exported[1].standing, 60, "standing exported")
+assert_eq(exported[1].rankId, 1, "export stamps Fresh placeholder rankId")
 
 L:ResetForTests()
-assert_eq(#L:GetLadderView(), 0, "reset empties the ladder")
+assert_eq(L:ImportState(exported), 1, "import accepts standing row")
+assert_eq(L:GetStanding("Beefina"), 60, "standing restored")
+assert_eq(L:HasOfficialRecord("Beefina"), true, "import writes a standing row")
 
-assert_eq(L:ImportState(exported), 4, "import reports how many records it took")
-local restored = L:GetRecord("Zed")
-assert_eq(restored.rankId, 5, "import restores rank")
-assert_eq(restored.standing, 1000, "import restores standing")
-assert_eq(restored.revision, 1, "import restores revision")
-assert_eq(restored.updatedBy, "Pope", "import restores the committing officer")
-assert_eq(#L:GetLadderView(), 4, "import restores every record")
-
-assert_eq(L:ImportState({
-  { name = "Solo", rankId = 3, standing = 200, revision = 2, updatedAt = 1, updatedBy = "Pope" },
-}), 1, "import replaces rather than merges")
-assert_eq(#L:GetLadderView(), 1, "previous records are gone after a replacing import")
-assert_eq(L:ImportState({
-  {},
-  { name = "Ok", rankId = 2, standing = 0, revision = 1, updatedAt = 1, updatedBy = "Pope" },
-}), 1, "malformed records are skipped on import")
-assert_eq(L:ImportState(nil), 0, "a nil import is safe")
-assert_eq(#L:GetLadderView(), 1, "a nil import does not erase the ladder")
-
--- Records handed out are copies; callers cannot corrupt official state by accident.
+--------------------------------------------------------------------------------
+-- Eligibility tags: rite flags coach Knight/Lord suggestions, never hard-block
+--------------------------------------------------------------------------------
 L:ResetForTests()
-L:Commit("Copy", 2, 50, "Pope", 1)
-local handed = L:GetRecord("Copy")
-handed.rankId = 99
-assert_eq(L:GetRecord("Copy").rankId, 2, "GetRecord hands out a copy, not live state")
+Roster:ResetForTests()
+setMapped("Squire", 2) -- Cooked Beef → next is Knight
+L:SetStanding("Squire", 200)
+local knightSug, knightNew = L:MaybeSuggest("Squire")
+assert_eq(knightNew, true, "Knight suggestion enqueues at threshold without rite")
+assert_eq(knightSug.riteKind, "knighted", "Knight suggestion names rite")
+assert_eq(knightSug.riteMet, false, "rite unmet still allows suggestion")
+assert_eq(knightSug.standingMet, true, "standingMet true at enqueue")
 
---------------------------------------------------------------------------------
--- ResetForTests is inert outside the test harness
---------------------------------------------------------------------------------
--- The flag flip lives inside pcall with a guaranteed restore: if anything in
--- the probe raises, ChurchOfBeef._IN_TEST must still come back to true so a
--- later suite never inherits a false flag (the runner also re-forces it
--- before every suite as a second line of defense).
-ChurchOfBeef._IN_TEST = false
-local probeOk, probeErr = pcall(function()
-  L:SetStanding("Survivor", 10)
-  assert_eq(L:ResetForTests(), false, "ResetForTests refuses to run outside tests")
-  assert_eq(L:GetRecord("Survivor").standing, 10, "records survive a gated reset")
-end)
-ChurchOfBeef._IN_TEST = true
-if not probeOk then
-  failed = failed + 1
-  print("FAIL: _IN_TEST=false probe raised: " .. tostring(probeErr))
-end
+L:SetRiteFlag("Squire", "knighted", true)
+assert_eq(L:HasRiteFlag("Squire", "knighted"), true, "knighted flag set")
+assert_eq(L:MaybeSuggest("Squire").riteMet, true, "checklist flips when knighted")
 
-assert_eq(L:ResetForTests(), true, "ResetForTests runs under COB._IN_TEST")
-assert_eq(#L:GetLadderView(), 0, "the ungated reset cleared the ladder")
+L:ResetForTests()
+Roster:ResetForTests()
+setMapped("Challenger", 3) -- Knight → next is Lord
+L:SetStanding("Challenger", 500)
+local lordSug = L:MaybeSuggest("Challenger")
+assert_eq(lordSug.riteKind, "goraLordWin", "Lord suggestion names Gora rite")
+assert_eq(lordSug.riteMet, false, "Lord suggestion without Gora win")
+L:SetRiteFlag("Challenger", "goraLordWin", true)
+assert_eq(L:MaybeSuggest("Challenger").riteMet, true, "Lord rite met after flag")
+
+local ritesExported = L:ExportState()
+L:ResetForTests()
+L:ImportState(ritesExported)
+assert_eq(L:HasRiteFlag("Challenger", "goraLordWin"), true, "rite flags survive export/import")

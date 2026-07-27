@@ -91,9 +91,9 @@ Advancement model: **hybrid**. The addon **suggests** promotions from standing; 
 
 Not all ranks are grindable. Prestige requires scarcity:
 
-- **Ranks 1–5 (Fresh Beef → Beef Butcher): point-driven.** Standing thresholds make you *eligible for suggestion*; officers approve.
-- **Rank 6 (Beef Council): seat-limited and appointed.** A governance body, not a grind tier. Officers appoint members directly (default 4 seats, configurable in canon data). No point threshold.
-- **Rank 7 (Beef Prophet): bestowed and unique.** Anointed by officer decree only. Default one living Prophet at a time (configurable). Reaching it should be an event, not an inevitability.
+- **Ranks 1–5 (Fresh Beef → Beef Butcher): point-driven.** Standing thresholds make you *eligible for suggestion*; officers promote in the Blizzard guild UI ([roster-backed amendment](2026-07-25-roster-backed-ladder-design.md)). Knight/Lord also carry expected rites (checklist coaches; not hard locks) — see [eligibility & rites amendment](2026-07-26-ladder-eligibility-rites-design.md).
+- **Rank 6 (Beef Council): seat-limited and appointed.** A governance body, not a grind tier. **Prophet-only appointment policy** (soft UI); seats configurable in canon data. No point threshold.
+- **Rank 7 (Beef Prophet): bestowed and unique.** Guild-master seat / decree only. Default one living Prophet at a time (configurable). Reaching it should be an event, not an inevitability.
 
 This keeps the top of the ladder from being "completed" by the most active grinder in month one, and matches the religious-institution fantasy: you earn your way up the flock, but the clergy chooses the clergy.
 
@@ -207,26 +207,29 @@ The design stance, stated plainly: **standings are advisory testimony; officer a
 
 | Source | What counts | Weight intent |
 |--------|-------------|-----------------|
-| Shared instance | In dungeon / raid / BG with ≥1 other **guildmate** in the party/raid (they need not run the addon for you to earn local credit) | Small drip per active time bucket + completion bonus; strict anti-farm caps |
-| Ceremony | Officer starts a ceremony; attendees get credit when it closes | Medium flat grant |
-| Beef Gora | Challenge issued → outcome recorded (win / loss / draw) | Win > draw > loss participation |
+| Shared instance | In dungeon / raid / BG with ≥1 other **guildmate** in the party/raid (they need not run the addon for you to earn local credit) | Dungeon/BG: small drip + completion bonus; **raid: heavy** toward Butcher capstone; strict anti-farm caps |
+| Quest fellowship | Party with ≥1 guildmate in the open world; activity-gated buckets | Medium-small drip; **strict daily/weekly cap** below raid so questing cannot outpace the capstone path |
+| Ceremony | Officer starts a ceremony; attendees get credit when it closes; Knighting sets rite flag on honoree | Medium flat grant |
+| Beef Gora | Challenge issued → outcome recorded (win / loss / draw); win vs a Beef Lord sets Lord rite flag | Win > draw > loss participation |
 
 **Gora losses must pay.** Losing a duel grants small participation points. If losses pay nothing, members dodge challenges and the competition system dies; the ladder should reward showing up for the spectacle, not just winning it.
 
+**Supersession:** full eligibility/rite model and quest fellowship detail live in [2026-07-26-ladder-eligibility-rites-design.md](2026-07-26-ladder-eligibility-rites-design.md). Rank authority is roster-backed ([2026-07-25-roster-backed-ladder-design.md](2026-07-25-roster-backed-ladder-design.md)).
+
 ### 7.2 Anti-abuse (V1)
 
-- **Anti-AFK:** an instance time bucket only pays if the player entered combat during that bucket. Standing at a dungeon entrance with a guildmate earns nothing.
-- **Completion bonus:** a flat grant on dungeon completion / BG end rewards finishing content rather than loitering in it.
-- Per-day caps per source (especially instance drip)
-- No points from cities / open-world loops — **instance types only** for the co-play source
+- **Anti-AFK:** an instance or quest-fellowship time bucket only pays if the player entered combat (or, for quest fellowship, a quest turn-in when that signal is reliable) during that bucket. Idle grouping earns nothing.
+- **Completion bonus:** a flat grant on dungeon completion / BG end rewards finishing content rather than loitering in it (when detection is reliable).
+- Per-day caps per source (especially instance drip and quest fellowship)
+- No points from cities / solo open-world loops — co-play requires a guildmate in the correct group; quest fellowship is the only capped open-world path
 - Officer manual adjust / wipe for standing corrections
 
 ### 7.3 Suggestions
 
 - Crossing the next rank’s threshold creates a **pending suggestion**, never an auto-promote
-- Officers see: player, current rank, suggested rank, point breakdown, recent contributing events
-- **Approve** → official rank updates and syncs
-- **Reject** → suggestion clears; points remain unless officer corrects
+- Officers see: player, current rank, suggested rank, point breakdown, recent contributing events; Knight/Lord also show rite checklist status
+- **Promote** happens in Blizzard’s guild UI; roster refresh moves the name; suggestion auto-clears when mapped title ≥ suggested
+- **Dismiss** → suggestion clears; points remain unless officer corrects
 
 ---
 
@@ -339,24 +342,24 @@ Canon ranks, scoring policy, and UI information architecture should transfer wit
 
 ## 13. Success criteria
 
-V1 succeeds when:
+V1 succeeds when (roster-backed amendment §11; walkable list in `docs/phases/v1-checklist.md`):
 
 1. Addon loads on TBC Classic Anniversary and appears as **Church of Beef**
 2. `/beef` opens a real frame (not chat-only)
-3. All seven ranks display; local title/standing is visible
+3. Ladder occupants come from the live guild roster via the fixed `rankIndex`→Church map; local title/standing is visible
 4. Shared dungeon/raid/BG time with a guildmate can grant capped standing
 5. Thin Gora and ceremony actions can grant standing
-6. Crossing a threshold creates an officer-visible suggestion
-7. Officer+ can approve → rank updates locally and via BeefNet for other addon users when present
-8. A player who was offline during a promotion sees the correct ladder after logging in (login sync works)
-9. Non-officers cannot successfully apply a forged `RANK_COMMIT`
+6. Crossing a threshold creates an officer-visible promote suggestion (never auto-promotes; never suggests Council/Prophet from points)
+7. Officer tab is Dismiss + standing correction only — officers promote in the Blizzard guild UI
+8. Promoting in the guild UI updates the Ladder on roster refresh; satisfied suggestions auto-clear
+9. Addon never calls guild promote/demote APIs; legacy `RANK_COMMIT` is soft-ignored
 10. No Retail-only APIs; no combat automation
-11. **Social check:** during a real guild night, at least one promotion happens and gets a visible reaction in guild chat. V1's goal is spectacle; if rank changes pass unnoticed, the feature has failed even if every function works.
+11. **Social check (deferred `/g`):** during a real session, at least one suggestion is fulfilled via the guild UI and the Ladder visibly moves. Guild-chat promote announce waits on a future roster-diff announcer.
 
 ### 13.1 Verification approach
 
-- In-game checklist on a TBC Anniversary client (ideally two characters: member + officer)
-- BeefNet check: approve on officer → member sees update
+- Prefer [`docs/phases/solo-smoke.md`](../../phases/solo-smoke.md) on one Anniversary client (GM/Officer+)
+- Optional second client for `SUGGESTION` fanout only
 - Load-with-missing-assets smoke test
 - Doc review: canon ranks match UI; deferred features marked as later-phase
 
@@ -366,8 +369,8 @@ V1 succeeds when:
 
 | Phase | Focus |
 |-------|--------|
-| **V1** | Rank ladder, hybrid suggestions, thin Gora/ceremony, instance co-play scoring, BeefNet commits, basic UI |
-| **V2** | Ceremonial dashboard spectacle, confessions feed, richer scripture, stream contrast pass |
+| **V1** | Roster-backed ladder, standing suggestions, thin Gora/ceremony, instance co-play scoring, suggestion fanout, basic UI |
+| **V2** | Ceremonial dashboard spectacle, confessions feed, richer scripture, stream contrast pass; optional roster-diff `/g` announce |
 | **V3** | Full Beef Gora presentation (favor meter theatrical layer, match history theater) |
 | **V4** | Classic+ port as primary platform |
 
@@ -377,21 +380,22 @@ V1 succeeds when:
 
 | Topic | Decision |
 |-------|----------|
-| V1 centerpiece | Rank ladder + titles |
-| Advancement | Hybrid: suggest → Officer+ approve |
-| Approvers | Real WoW guild Officer+ (roster rank-index check, configurable threshold) |
-| Suggestion fuel | Gora + ceremonies + shared instance presence |
-| Co-play definition | Qualifying instance (dungeon/raid/BG) ∧ connected guildmate in the correct group category; combat-gated buckets for anti-AFK; no proximity / CLEU (research tracks 59, 63) |
+| V1 centerpiece | Rank ladder + titles (roster-backed) |
+| Advancement | Hybrid: standing suggests → Officer+ promotes in Blizzard guild UI |
+| Approvers | Real WoW guild Officer+ (roster rank-index check); addon = Dismiss + standing correction only |
+| Suggestion fuel | Gora + ceremonies + shared instance presence + quest fellowship (see eligibility amendment) |
+| Co-play definition | Qualifying instance (dungeon/raid/BG) or capped quest fellowship ∧ connected guildmate in the correct group category; combat-gated buckets for anti-AFK; no proximity / CLEU for scoring (research tracks 59, 63) |
 | Platform | TBC Classic Anniversary first (`## Interface: 20506`, `_anniversary_` tree) |
 | Classic+ | Future port, not V1 |
 | Ladder | Fresh Beef → Cooked Beef → Beef Knight → Beef Lord → Beef Butcher → Beef Council → Beef Prophet |
-| Rank tiers | Ranks 1–5 point-driven; Beef Council seat-limited appointed; Beef Prophet bestowed, unique |
-| Demotion | No automatic decay in V1; manual officer demotion is first-class |
-| Anti-cheat stance | Standings are self-reported advisory testimony; officer approval is the real gate |
-| Sync ordering | Per-record revision numbers; login sync reconciliation; replay-safe |
-| Promotion visibility | Throttled guild-chat announcement from approving officer's client only (`GUILD`, not `/o`) |
-| Announce opt-out UX | Officer-tab checkbox “Announce promotions to guild chat”; `ChurchOfBeefDB.ui.announce`; default ON; procedural label |
-| V1 settings budget | Position + minimap hide + announce opt-out; toast mute only if playtest demands; no scale/strata/per-event announce filters |
+| Rank tiers | Ranks 1–5 point-driven (Knight/Lord + rite checklists); Beef Council seat-limited Prophet-appointed (soft); Beef Prophet unique GM seat |
+| Rank source | Live guild roster via fixed `rankIndex`→Church map (roster-backed amendment) |
+| Demotion | No automatic decay in V1; demote in Blizzard guild UI |
+| Anti-cheat stance | Standings are self-reported advisory testimony; officer guild-UI judgment is the real gate |
+| BeefNet ranks | Legacy `RANK_COMMIT` / rank `SYNC_STATE` soft-ignored; `SUGGESTION` fanout may remain |
+| Promotion visibility | Deferred guild-chat announce until roster-diff announcer; edge toast + officer queue remain |
+| Announce opt-out UX | SV key retained; Officer-tab checkbox **hidden** until roster-diff announcer |
+| V1 settings budget | Position + minimap hide; announce control dormant; toast mute only if playtest demands |
 | My Standing progress | Text thresholds only for Task 8; thin 1–5 track optional post-playtest; no meter-dashboard chrome |
 | Streamer Mode | Not in V1 code; coexistence note only; V1.1 SV preset later; must not kill guild announce |
 | Brand hex / chrome tint | Template-native V1; lock research hex only after Anniversary screenshot pass |
@@ -404,8 +408,29 @@ V1 succeeds when:
 | Machine canon location | `addon/ChurchOfBeef/Data/Ranks.lua` (inside addon folder; TOC constraint) |
 | Cross-realm | None; each guild (Dreamscythe Alliance, Doomhowl Horde) runs an independent ladder |
 | Repo approach | Knowledge-first + light canon/engine split |
-| SavedVariables | Per-character `ChurchOfBeefDB` (cache of officer commits + local testimony) |
+| SavedVariables | Per-character `ChurchOfBeefDB` (local standing, suggestions, UI prefs — not official ranks) |
 | Implementer index | Research glossary: `docs/research/wow-classic-addon-design/74-v1-decision-glossary/` |
+
+### 2026-07-26 — Agent polish vision Accepted
+
+User **Accepted** the `docs/research/agent-polish-vision/` synthesis ([00-SYNTHESIS.md](../../research/agent-polish-vision/00-SYNTHESIS.md)). Celebration tiers **T0/T1**; default polish loop = **BIR** (research pack / skill path). After the roster-backed Accept the same day, T1 guild-chat promote announce is **deferred**; V1 spectacle budget for playtest = private edge toast + officer queue + visible Ladder move after guild-UI promote. ADR-0006 superseded. Does not claim V1 complete.
+
+### 2026-07-26 — Roster-backed ladder Accepted
+
+User **Accepted** [2026-07-25-roster-backed-ladder-design.md](2026-07-25-roster-backed-ladder-design.md). Church titles mirror the live WoW guild roster via fixed `rankIndex`→Church map (GM→Prophet … 6+→Fresh Beef). Standing still creates promote **suggestions**; officers promote in Blizzard’s guild UI (Dismiss + standing correction only). Addon `RANK_COMMIT` / rank sync are soft-ignored. Guild-chat promote announce deferred until a future roster-diff announcer.
+
+### 2026-07-26 — Ladder eligibility & rites Accepted
+
+User **Accepted** [2026-07-26-ladder-eligibility-rites-design.md](2026-07-26-ladder-eligibility-rites-design.md). Approach = eligibility tags (standing enqueues suggestions; Knight/Lord show rite checklists that coach, not hard-block). Cooked = standing + addon on-ramp (Discord not a rank lock). Knight = standing + Knighting rite. Lord = standing + Gora win vs a Beef Lord. Butcher = pure standing capstone (raid heavily weighted). Quest fellowship added as capped co-play. Council = Prophet-only appointment policy (soft UI). Does not claim V1 complete.
+
+| Topic | Decision |
+|-------|----------|
+| Rank eligibility approach | Standing thresholds enqueue; Knight/Lord rite checklists coach only |
+| Cooked Beef gate | Standing + addon use; Discord demoted to community follow-up |
+| Beef Knight / Lord rites | Knighting ceremony; Gora win vs seated Beef Lord |
+| Beef Butcher | Pure standing guild capstone; no rite lock |
+| Co-play sources | Instance + raid (heavy) + quest fellowship (capped) + ceremony + Gora |
+| Council appointment policy | Soft Prophet-only (UI copy); Blizzard UI not locked |
 
 ---
 
@@ -419,3 +444,4 @@ Tracked here so they don't silently become assumptions:
 4. **Instance completion detection.** No reliable Classic “dungeon complete” event (track 15). Ship combat-gated drip as primary; treat completion bonus / BG winner / encounter IDs as optional—drop if flaky in Anniversary playtest.
 5. **Suggestion queue sharing.** **Closed for V1** (see §15): local-persist + live fanout; no shared store. Reopen as V1.1 only if officers miss petitions in playtests.
 6. **Threshold tuning.** All numbers in §4.2 are placeholders until one instrumented guild night (research track 51 playbook).
+7. **Quest fellowship signal.** Turn-in vs combat-only buckets on Anniversary — see eligibility amendment open questions.

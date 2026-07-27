@@ -10,9 +10,8 @@ alwaysApply: false
 ## Non-negotiables
 
 - Prefix `COB`; channel **`GUILD`** always (default is PARTY)
-- Never apply `RANK_COMMIT` without verifying sender Officer+ via roster `rankIndex`
-- If roster not loaded: queue or drop — **never** apply unverified
-- Net validates shape then calls Core — Net does not invent ranks
+- **Soft-ignore** legacy `RANK_COMMIT` / rank `SYNC_STATE` — roster is the only rank authority
+- Net does not invent ranks; suggestion fanout may notify officers
 - Custom `CHANNEL` addon chat is **forbidden** on Classic
 
 ## Wire defaults
@@ -31,11 +30,11 @@ Do not use `RAID`/`PARTY` for ladder state.
 | Type | Who emits | Receiver duty |
 |------|-----------|---------------|
 | `HELLO` | Anyone | Soft version warn; no ladder mutate |
-| `RANK_COMMIT` | Officer+ only | Roster rank-index gate, then Core apply |
+| `RANK_COMMIT` | Legacy | Soft-ignore (do not apply) |
 | `SUGGESTION` | Member | Officers filter; never auto-promote |
 | `SCORE_EVENT` | Prefer local | Off-wire by default; never high-frequency |
 | `SYNC_REQUEST` | Login/reload | Once per settle + backoff |
-| `SYNC_STATE` | Prefer one peer (officer first) | Chunk + suppress duplicates |
+| `SYNC_STATE` | Prefer one peer | Soft-ignore rank payloads; standing hints optional |
 
 ## Trust & sync
 
@@ -48,5 +47,5 @@ Do not use `RAID`/`PARTY` for ladder state.
 - ~10 msgs/prefix regenerating ~1/s — CTL must prevent `AddonMessageThrottle`
 - Login sync: random reply delay + suppress if another peer already answered `reqId`
 - Prefer revision diffs / chunks over dumping the whole guild in one frame
-- Guild spectacle: **one** throttled line from the approving officer’s client only
-- Do not broadcast every score tick — official path is officer Commit (+ sync types)
+- Guild-chat promote announce is **deferred** (roster-diff announcer later)
+- Do not broadcast every score tick — ranks come from the guild roster

@@ -40,6 +40,11 @@ return type(rankIndex) == "number" and rankIndex <= COB.Ranks.OfficerRankIndexMa
 - Each guild is an **independent** ladder — no cross-realm church state
 - Not in a guild → empty ladder UI; pause scoring and BeefNet sends
 
-## Commit path
+## Rank path (roster-backed)
 
-Only Officer+ clicks create official state (`RANK_COMMIT`).
+Church titles come from the live guild roster map — not addon commits.
+
+- Officer+ may **Dismiss** promote suggestions and **correct standing** in the addon
+- Officers change ranks in the **Blizzard guild UI**
+- Addon must not call guild promote/demote APIs
+- Legacy `RANK_COMMIT` on the wire is soft-ignored

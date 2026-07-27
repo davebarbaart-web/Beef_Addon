@@ -26,6 +26,7 @@ end
 local suites = {
   "test_ranks",
   "test_ladder",
+  "test_roster",
   "test_scoring",
   "test_officer",
   "test_db",
@@ -34,6 +35,7 @@ local suites = {
   "test_officer_ui",
   "test_gora_ceremony",
   "test_instance",
+  "test_quest",
 }
 
 for _, name in ipairs(suites) do

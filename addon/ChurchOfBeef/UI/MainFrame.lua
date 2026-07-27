@@ -170,6 +170,15 @@ local function buildFrame()
   footer:SetText("Eternal Grazing.")
   frame.FooterText = footer
 
+  -- L0 mesh status chip (research 20/45). Yields the scripture line while active.
+  local statusChip = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+  statusChip:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 14, 10)
+  statusChip:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -14, 10)
+  statusChip:SetJustifyH("CENTER")
+  statusChip:SetText("")
+  statusChip:Hide()
+  frame.StatusChip = statusChip
+
   restorePoint(frame)
   return frame, content
 end
@@ -188,6 +197,7 @@ function UI:Init()
   local frame, content = buildFrame()
   self.frame = frame
   self.content = content
+  self.statusChip = frame.StatusChip
 
   for i = 1, #tabs do
     self:_BuildTab(tabs[i])
@@ -195,11 +205,27 @@ function UI:Init()
 
   frame:RegisterEvent("PLAYER_GUILD_UPDATE")
   frame:RegisterEvent("GUILD_ROSTER_UPDATE")
-  frame:SetScript("OnEvent", function() UI:UpdateOfficerVisibility() end)
+  frame:SetScript("OnEvent", function()
+    if COB.Roster and COB.Roster.Refresh then COB.Roster:Refresh() end
+    UI:UpdateOfficerVisibility()
+    UI:OnSyncStatusChanged()
+    UI:RefreshLadder()
+  end)
 
   frame:SetScript("OnShow", function()
     local ui = uiDb()
     if ui then ui.shown = true end
+    -- Opening /beef should not sit on "Waiting for guild roster…" if a query
+    -- can be kicked (or a client cache already has names).
+    if COB.Roster then
+      if COB.Roster.AttachLibrary then COB.Roster:AttachLibrary() end
+      if COB.Roster.Refresh then COB.Roster:Refresh() end
+    end
+    if COB.Roster and not COB.Roster:IsReady() and COB.Net and COB.Net.RequestRoster then
+      COB.Net:RequestRoster(nil, true)
+    end
+    UI:OnSyncStatusChanged()
+    UI:RefreshLadder()
   end)
   frame:SetScript("OnHide", function()
     local ui = uiDb()
@@ -212,6 +238,7 @@ function UI:Init()
 
   self:UpdateOfficerVisibility()
   self:ShowTab(self.activeTab)
+  self:OnSyncStatusChanged()
 
   if COB.Minimap and COB.Minimap.Init then
     COB.Minimap:Init()
@@ -221,6 +248,13 @@ function UI:Init()
     self:Show()
   end
   return frame
+end
+
+-- Net/Sync → UI status chip. Presentation only; never invents ranks.
+function UI:OnSyncStatusChanged()
+  if self.Status and self.Status.Refresh then
+    self.Status:Refresh()
+  end
 end
 
 function UI:Show()
@@ -355,4 +389,6 @@ function UI:RefreshLadder()
   self:MarkDirty("ladder")
   self:MarkDirty("standing")
   self:MarkDirty("officer")
+  -- Minimap petition cue / open tip; no OnUpdate (research 47).
+  if COB.Minimap and COB.Minimap.Refresh then COB.Minimap:Refresh() end
 end

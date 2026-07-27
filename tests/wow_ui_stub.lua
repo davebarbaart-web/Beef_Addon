@@ -166,7 +166,7 @@ local GLOBALS = {
   "C_ChatInfo", "SendAddonMessage", "RegisterAddonMessagePrefix",
   "C_GuildInfo", "GuildRoster",
   "UnitIsInMyGuild", "UnitIsAFK", "GetNumGroupMembers", "IsInRaid",
-  "IsInInstance", "GetInstanceInfo", "UnitAffectingCombat", "GetBattlefieldWinner",
+  "IsInInstance", "IsResting", "GetInstanceInfo", "UnitAffectingCombat", "GetBattlefieldWinner",
 }
 
 function M.install()
@@ -193,11 +193,13 @@ function M.install()
   M.playerInGuild = true
   M.playerAfk = false
 
-  -- Instance model for the co-play tracker: where the player is, whether they are
-  -- fighting, and whether a battleground has locked in a winner.
+  -- Instance / quest-fellowship model for the co-play trackers: where the player
+  -- is, whether they are resting or fighting, and whether a battleground has
+  -- locked in a winner.
   M.inInstance = false
   M.instanceType = "none"
   M.instanceId = nil
+  M.playerResting = false
   M.playerInCombat = false
   M.battlefieldWinner = nil
   M.tickers = {}
@@ -243,10 +245,18 @@ function M.install()
 
   GetNumGuildMembers = function() return #M.guildRoster end
 
+  -- Entries may be a plain name string, or { name = "...", rankIndex = N }.
+  -- Per-member rankIndex drives the roster-backed Church title map.
   GetGuildRosterInfo = function(index)
     local entry = M.guildRoster[index]
     if not entry then return nil end
-    return entry, "Beefling", M.guildRankIndex or 5
+    if type(entry) == "table" then
+      local name = entry.name or entry[1]
+      local rankIndex = tonumber(entry.rankIndex or entry[2])
+      if not rankIndex then rankIndex = M.guildRankIndex or 6 end
+      return name, "Beefling", rankIndex
+    end
+    return entry, "Beefling", M.guildRankIndex or 6
   end
 
   UnitName = function(unit)
@@ -274,6 +284,8 @@ function M.install()
   end
 
   IsInInstance = function() return M.inInstance and true or false, M.instanceType end
+
+  IsResting = function() return M.playerResting and true or false end
 
   -- Only the 8th return (instanceID) is read by the tracker; the rest matches the
   -- shape of the real call so a positional unpack behaves the same.

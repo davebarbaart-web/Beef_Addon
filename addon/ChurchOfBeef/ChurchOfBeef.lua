@@ -10,11 +10,11 @@ function COB:OnLoad()
   COB.loaded = true
 end
 
--- Core/Instance.lua decides *when* co-play buckets close; frames are not its job, so
--- the client events it needs are registered here and routed straight into it.
--- RegisterEvent raises on an event a host does not know, so each registration is
--- pcall'd: losing one costs responsiveness (the 60s tick re-checks qualification
--- anyway), never the whole tracker.
+-- Core/Instance.lua and Core/Quest.lua decide *when* co-play buckets close; frames
+-- are not their job, so the client events they need are registered here and routed
+-- straight into them. RegisterEvent raises on an event a host does not know, so
+-- each registration is pcall'd: losing one costs responsiveness (the 60s tick
+-- re-checks qualification anyway), never the whole tracker.
 function COB:WireInstanceEvents()
   local instance = COB.Instance
   if not instance then return nil end
@@ -35,6 +35,26 @@ function COB:WireInstanceEvents()
   return frame
 end
 
+function COB:WireQuestEvents()
+  local quest = COB.Quest
+  if not quest then return nil end
+  if COB.questFrame then return COB.questFrame end
+  if type(CreateFrame) ~= "function" then return nil end
+
+  local frame = CreateFrame("Frame")
+  COB.questFrame = frame
+
+  for event in pairs(quest.Events or {}) do
+    pcall(function() frame:RegisterEvent(event) end)
+  end
+
+  frame:SetScript("OnEvent", function(_, event)
+    quest:OnEvent(event)
+  end)
+
+  return frame
+end
+
 function COB:OnLogin()
   if COB.UI and COB.UI.Init then
     COB.UI:Init()
@@ -48,6 +68,10 @@ function COB:OnLogin()
   COB:WireInstanceEvents()
   if COB.Instance and COB.Instance.Init then
     COB.Instance:Init()
+  end
+  COB:WireQuestEvents()
+  if COB.Quest and COB.Quest.Init then
+    COB.Quest:Init()
   end
 end
 

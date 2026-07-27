@@ -25,6 +25,7 @@
 - BeefNet prefix `COB`, channel `GUILD`; commits carry per-player revision numbers; login sync required.
 - Filename casing: `ChurchOfBeef*.lua` consistently.
 - Each Dreamscythe / Doomhowl guild runs an independent ladder (no cross-realm state).
+- **UI polish:** Tasks 7–10 stay Classic shell + edge toast + officer `/g` — no custom Media/SFX/WA center pulses. Polish claims need critique evidence (UI brief + skill § Polish loop); agents claim `POLISH:CANDIDATE` only. Kill-list governor: `docs/research/agent-polish-vision/49-adversarial-overengineering.md`. Polish evidence ≠ functional complete ≠ V1 complete.
 
 ---
 
@@ -638,6 +639,8 @@ git commit -m "feat: add per-character SavedVariables persistence"
 - `COB.Toasts:Show(text)`
 - Frame: movable title bar, `StartMoving`/`StopMovingOrSizing`, `SetClampedToScreen(true)`, save position into `ChurchOfBeefDB.ui.point`
 
+> Acceptance: offline (if Core/Data touched) + in-game `/reload` path + UI brief anti-patterns. No Media/SFX. Polish taste loops use skill § Polish loop — not “chore then claim polished.”
+
 - [ ] **Step 1: Implement MainFrame** with three tab buttons (Ladder / My Standing / Officer). Officer tab button hidden unless `COB.Officer:LocalIsOfficer()`.
 
 - [ ] **Step 2: Minimap button** toggles frame (use a basic `Minimap` child button; no external lib).
@@ -809,6 +812,8 @@ git commit -m "feat: BeefNet commits and login ladder sync"
 **Files:**
 - Modify: README, TOC file list completeness, remove or harden debug commands
 - Modify: ensure missing-media fallbacks (default fonts only in V1 — no custom font required)
+
+> Not an art/Media commission. Gated polish slices + human social check (§13.11). Agent polish evidence (`POLISH:CANDIDATE`) does not tick V1 complete — walk the checklist with a human.
 
 - [ ] **Step 1: Walk `docs/phases/v1-checklist.md`** against a real guild night or two-client test; fix blockers only.
 

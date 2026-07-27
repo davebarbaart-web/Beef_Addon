@@ -37,23 +37,22 @@ end
 -- rite during a login race is refused rather than aimed at a name nobody answers to.
 -- Roster entries may carry a realm suffix; match on the character part either way.
 function Officer:IsGuildRosterName(name)
+  if COB.Roster and COB.Roster.IsReady and COB.Roster:IsReady() and COB.Roster.HasMember then
+    return COB.Roster:HasMember(name)
+  end
   if type(name) ~= "string" or name == "" then return false end
   if type(GetNumGuildMembers) ~= "function" or type(GetGuildRosterInfo) ~= "function" then
     return false
   end
 
-  local wanted = name:lower()
+  local wanted = rosterKey(name)
+  if not wanted then return false end
   local count = GetNumGuildMembers()
   if type(count) ~= "number" then return false end
 
   for i = 1, count do
     local rosterName = GetGuildRosterInfo(i)
-    if type(rosterName) == "string" and rosterName ~= "" then
-      rosterName = rosterName:lower()
-      if rosterName == wanted or (rosterName:match("^([^%-]+)") or rosterName) == wanted then
-        return true
-      end
-    end
+    if rosterKey(rosterName) == wanted then return true end
   end
   return false
 end
@@ -76,7 +75,13 @@ end
 --
 -- An empty or unreadable roster clears the cache rather than caching "nobody is an
 -- officer": a login race must leave callers unsure, not confidently wrong.
+-- Prefer Core/Roster as the single guild walk; fall back to a local cache if
+-- Roster is not loaded yet (TOC order / desktop suites that only dofile Officer).
 function Officer:RefreshRosterCache()
+  if COB.Roster and COB.Roster.Refresh then
+    return COB.Roster:Refresh()
+  end
+
   self.rosterCache = nil
   if type(GetNumGuildMembers) ~= "function" or type(GetGuildRosterInfo) ~= "function" then
     return false

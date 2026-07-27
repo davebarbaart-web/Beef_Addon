@@ -4,7 +4,7 @@ Short map for coding agents. Policy lives in `.cursor/rules/`; the operational l
 
 ## What this is
 
-**Church of Beef** — social guild / streamer-event add-on for **WoW TBC Classic Anniversary** (`## Interface: 20506`). Rank ladder, standing, officer **Commit**, guild spectacle. Not combat/raid tooling.
+**Church of Beef** — social guild / streamer-event add-on for **WoW TBC Classic Anniversary** (`## Interface: 20506`). Roster-backed rank ladder, standing suggestions, officer Dismiss / standing correction; officers promote in the Blizzard guild UI. Not combat/raid tooling.
 
 Stack (V1): Lua 5.1, plain global `ChurchOfBeef` / `COB`, no AceAddon. Installable unit: `addon/ChurchOfBeef/` → `Interface/AddOns/ChurchOfBeef`.
 
@@ -28,6 +28,9 @@ Do **not** open `.worktrees/feat-church-of-beef-v1` as a separate workspace — 
 | Editor defaults (Lua 5.1) | [`.vscode/`](.vscode/) |
 | DevEx backlog (needs approval) | [`OPTIMIZATIONS.md`](OPTIMIZATIONS.md) |
 | Research library | `docs/research/wow-classic-addon-design/` |
+| Agent polish research (process + juice; ≠ law) | [`docs/research/agent-polish-vision/`](docs/research/agent-polish-vision/) — start at [`00-SYNTHESIS.md`](docs/research/agent-polish-vision/00-SYNTHESIS.md), [`00-SYNTHESIS-ADVERSARIAL.md`](docs/research/agent-polish-vision/00-SYNTHESIS-ADVERSARIAL.md), [`00-ADR-log.md`](docs/research/agent-polish-vision/00-ADR-log.md), [`00-PROMOTE-STATUS.md`](docs/research/agent-polish-vision/00-PROMOTE-STATUS.md), wiring: [`00-CURSOR-WIRING-AUDIT.md`](docs/research/agent-polish-vision/00-CURSOR-WIRING-AUDIT.md) |
+
+Research guidance is not product law. On conflict, design spec / glossary / `Data/Ranks.lua` / [`ui-polished-direction-for-agents.md`](docs/superpowers/ui-polished-direction-for-agents.md) win. Major UI polish: UI brief + skill § Polish loop (Accepted ADRs 2026-07-26); do not install a parallel polish OS.
 
 ### UI work is agent-executed
 
@@ -55,7 +58,7 @@ cd .worktrees/feat-church-of-beef-v1   # addon checkout
 lua tests/run.lua                      # exit 0 required for Core/Data changes
 ```
 
-In-game: set `WOW_ADDONS_DIR`, install `addon/ChurchOfBeef/` → `Interface/AddOns/ChurchOfBeef/`, `/reload`, `/beef`. Details: the skill above.
+In-game: agents may reinstall `addon/ChurchOfBeef/` → Anniversary `Interface/AddOns/ChurchOfBeef/` after polish (or `$WOW_ADDONS_DIR`); `/reload`, `/beef`. Details: the skill above; path note `docs/research/agent-polish-vision/00-INSTALL-PATH.md`.
 
 CI: `.github/workflows/lua-tests.yml` runs the harness when `tests/run.lua` is on the branch; on `main` (docs-only) it skips with a clear log. Remaining tooling ideas: `OPTIMIZATIONS.md`.
 ## Rules at a glance
@@ -67,8 +70,9 @@ CI: `.github/workflows/lua-tests.yml` runs the harness when `tests/run.lua` is o
 | Canon / packaging | `canon-data`, `build-packaging`, `packaging-assets` |
 | Domain | `ladder-authority`, `scoring-coplay`, `officer-guild-roster`, `beefnet-messaging` |
 | Client | `wow-ui-taint-lockdown`, `wow-performance`, `testing` |
+| UI juice (glob) | `ui-juice-standards` — toasts / announce / motion bans when editing `UI/**` |
 
-Trust the rule picker. When research changes a product decision, update the **design spec decisions log** — do not silently fork policy into research tracks.
+Trust the rule picker. When research changes a product decision, update the **design spec decisions log** — do not silently fork policy into research tracks. Polish / juice / spectacle / “make UI nicer” asks: UI brief + skill § Polish loop (+ `ui-juice-standards` on UI files); Goal anatomy ([30](docs/research/agent-polish-vision/30-writing-effective-agent-goals.md)); stop/governor ([31](docs/research/agent-polish-vision/31-loop-stop-conditions.md), [49](docs/research/agent-polish-vision/49-adversarial-overengineering.md)). Research ≠ product law. Wiring audit: [`00-CURSOR-WIRING-AUDIT.md`](docs/research/agent-polish-vision/00-CURSOR-WIRING-AUDIT.md).
 
 ## Key don'ts
 

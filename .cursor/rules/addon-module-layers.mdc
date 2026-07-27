@@ -20,9 +20,10 @@ alwaysApply: false
 |-----------|------|------|
 | `Ranks` | `Data/Ranks.lua` | ids, titles, thresholds, seats, officer index max |
 | `DB` | `Core/DB.lua` | `ChurchOfBeefDB` shape, defaults, migrate |
-| `Officer` | `Core/Officer.lua` | roster rank-index gate (sole commit authority check) |
+| `Officer` | `Core/Officer.lua` | roster rank-index gate (Officer+ check) |
+| `Roster` | `Core/Roster.lua` | live guild snapshot → Church ladder view |
 | `Scoring` | `Core/Scoring.lua` | grants, caps, anti-AFK buckets |
-| `Ladder` | `Core/Ladder.lua` | records, suggestions, commits, demote, seats |
+| `Ladder` | `Core/Ladder.lua` | standing + promote suggestions |
 | `Gora` / `Ceremony` / `Instance` | matching `Core/*.lua` | thin domain → Scoring |
 | `Net` | `Net/BeefNet.lua` | send/recv, validate, dispatch into Core |
 | `Sync` | `Net/Sync.lua` | `SYNC_REQUEST` / `SYNC_STATE` |
@@ -31,12 +32,13 @@ alwaysApply: false
 ## Coupling
 
 ```
-✅ Officer approve: UI → Ladder:Commit → Net broadcast
-✅ Peer apply: Net validate Officer+ → Ladder:ApplyRemoteCommit → UI refresh
-✅ After commit: direct COB.UI refresh (no AceEvent bus in V1)
+✅ Roster update: GUILD_ROSTER_UPDATE → Roster:Refresh → UI refresh
+✅ Promote prompt: Scoring → Ladder:MaybeSuggest → Officer tab Dismiss
+✅ Standing correction: UI → Ladder:CorrectStanding (points only)
 
 ❌ Core → UI / CreateFrame / SendAddonMessage / slash
 ❌ Points granted in Toasts, Announce, or tab files
-❌ Net inventing rank/standing without Core apply APIs
+❌ Net inventing ranks; RANK_COMMIT must not apply under roster-backed model
 ❌ Second officer-gate outside Core/Officer.lua
+❌ Guild promote/demote API calls from the addon
 ```

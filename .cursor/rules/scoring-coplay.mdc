@@ -3,6 +3,7 @@ description: Standing sources, anti-AFK caps, suggestion eligibility (not auto-p
 globs:
   - "**/Core/Scoring*.lua"
   - "**/Core/Instance*.lua"
+  - "**/Core/Quest*.lua"
   - "**/Core/Gora*.lua"
   - "**/Core/Ceremony*.lua"
 alwaysApply: false
@@ -15,22 +16,24 @@ alwaysApply: false
 - Crossing a threshold creates a **pending suggestion**, never an auto-promote
 - Council / Prophet are never suggestion targets from points
 - Threshold numbers live only in `Data/Ranks.lua`
-- Cities / open-world loops grant **nothing**
+- Cities / solo open-world / idle resting areas grant **nothing**
+- Knight/Lord rites **coach** via checklists — they do not hard-block suggestions
 
 ## Sources (V1)
 
 | Source | Counts when | Intent |
 |--------|-------------|--------|
-| Shared instance | Dungeon / raid / BG with ≥1 **guildmate** in party/raid | Capped drip + completion bonus |
-| Ceremony | Officer starts; credit on clean close | Medium flat grant |
-| Beef Gora | Challenge → recorded win/loss/draw | Win > draw > loss; **losses still pay** |
+| Shared instance | Dungeon / raid / BG with ≥1 **guildmate** in party/raid | Dungeon/BG drip; **raid weighted heavier** toward Butcher; shared instance daily cap |
+| Quest fellowship | Open-world party with ≥1 guildmate; not resting; combat or quest turn-in in bucket | Medium-small drip; **strict daily quest cap** below instance |
+| Ceremony | Officer starts; credit on clean close; Knighting label + honoree sets `knighted` | Medium flat grant |
+| Beef Gora | Challenge → recorded win/loss/draw; win vs mapped Beef Lord sets `goraLordWin` | Win > draw > loss; **losses still pay** |
 
 Guildmates need not run the addon for local co-play credit.
 
 ## Anti-abuse (locked intent)
 
-- **Anti-AFK:** instance bucket pays only if the player entered combat in that bucket
-- Per-day caps per source (especially instance drip)
+- **Anti-AFK:** instance/quest buckets pay only if combat (or quest turn-in for fellowship) occurred in that bucket
+- Per-day caps per source (instance, quest, ceremony, gora)
 - Completion bonus is best-effort — Classic dungeon-complete signals can be flaky
 - Officer manual adjust/wipe remains the correction tool
 
@@ -38,12 +41,13 @@ Guildmates need not run the addon for local co-play credit.
 
 ```text
 points accrue locally → MaybeSuggest (next point-driven rank only)
-                     → officer Approve/Reject
-                     → Commit / RANK_COMMIT
+                     → Officer sees promote prompt (+ Knight/Lord rite checklist)
+                     → Officer promotes in Blizzard guild UI
+                     → roster refresh moves the name; suggestion auto-clears
 ```
 
-Reject clears suggestion; standing remains unless officer corrects.
+Dismiss clears suggestion; standing remains unless officer corrects.
 
 ## Pacing
 
-A new member’s first full dungeon night with guildmates should be able to earn Fresh → Cooked eligibility.
+A new member’s first full dungeon night with guildmates should be able to earn Fresh → Cooked eligibility. Butcher is a standing capstone — raid loyalty is the intended main fuel.

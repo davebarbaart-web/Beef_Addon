@@ -10,3 +10,11 @@
 /elvui-*.json
 /freelance-*.json
 /ux-ia-*.json
+# Research scrape dumps (not product law)
+docs/research/**/.raw/
+docs/research/**/.raw-deepen/
+docs/research/**/_search-*.json
+docs/research/**/_deep-*.json
+docs/research/**/_deep-*.md
+docs/research/**/_extract-*.json
+docs/research/**/_wave-*.md

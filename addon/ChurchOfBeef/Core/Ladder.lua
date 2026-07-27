@@ -1,31 +1,13 @@
 ChurchOfBeef = ChurchOfBeef or {}
 local COB = ChurchOfBeef
 
--- Official ladder state: one record per member, plus the pending suggestion queue.
--- Records are only ever changed by an officer commit (local or replicated); standing
--- is advisory testimony that a member's own client accumulates.
+-- Standing + promote-suggestion store. Church titles come from Core/Roster
+-- (live guild rankIndex map). This module never invents official ranks.
 local Ladder = {
-  records = {},
+  records = {}, -- name → { name, standing }
   suggestions = {},
 }
 COB.Ladder = Ladder
-
-local kindCache = {}
-
--- Rank ids come from canon rather than literals so a canon reorder cannot desync
--- the seat and uniqueness rules from the titles they police.
-local function rankIdByKind(kind)
-  if kindCache[kind] then return kindCache[kind] end
-  local ranks = COB.Ranks
-  if not ranks then return nil end
-  for _, rank in ipairs(ranks.List) do
-    if rank.kind == kind then
-      kindCache[kind] = rank.id
-      return rank.id
-    end
-  end
-  return nil
-end
 
 local function normalizeName(name)
   if type(name) ~= "string" then return nil end
@@ -49,13 +31,6 @@ local function resolveTime(now)
   return 0
 end
 
--- PLAYER_LOGOUT is a last flush, not the only one: a client crash between commits
--- would otherwise lose officer decisions the guild has already seen announced.
--- Commits are rare enough that flushing on each one costs nothing.
---
--- Login sync is the exception: it can apply a whole guild's records in one frame,
--- and a Save per record would export the entire ladder N times. Callers that apply
--- in bulk wrap the run in BeginBatch/EndBatch to collapse that into one write.
 local batchDepth = 0
 local batchDirty = false
 
@@ -76,7 +51,6 @@ function Ladder:BeginBatch()
   return batchDepth
 end
 
--- Returns true when this call was the one that actually flushed.
 function Ladder:EndBatch()
   if batchDepth == 0 then return false end
   batchDepth = batchDepth - 1
@@ -87,96 +61,94 @@ function Ladder:EndBatch()
   return true
 end
 
-local function newRecord(name)
-  return {
-    name = name,
-    rankId = 1,
-    standing = 0,
-    revision = 0,
-    updatedAt = 0,
-    updatedBy = "",
-  }
+local function mappedRankId(name)
+  local roster = COB.Roster
+  if roster and roster.IsReady and roster:IsReady() and roster.GetChurchRankId then
+    return roster:GetChurchRankId(name)
+  end
+  return nil
 end
 
-local function copyRecord(record)
-  return {
-    name = record.name,
-    rankId = record.rankId,
-    standing = record.standing,
-    revision = record.revision,
-    updatedAt = record.updatedAt,
-    updatedBy = record.updatedBy,
-  }
+local RITE_FLAGS = { knighted = true, goraLordWin = true }
+
+local function newStanding(name)
+  return { name = name, standing = 0, knighted = false, goraLordWin = false }
 end
 
-local function copySuggestion(suggestion)
-  return {
+local function recordHasRite(record, flag)
+  if not record or not RITE_FLAGS[flag] then return false end
+  return record[flag] and true or false
+end
+
+local function enrichSuggestion(suggestion, record)
+  local copy = {
     name = suggestion.name,
     fromRankId = suggestion.fromRankId,
     toRankId = suggestion.toRankId,
     standing = suggestion.standing,
     threshold = suggestion.threshold,
     createdAt = suggestion.createdAt,
+    standingMet = true,
   }
-end
-
-function Ladder:_ensure(name)
-  local record = self.records[name]
-  if not record then
-    record = newRecord(name)
-    self.records[name] = record
-  end
-  return record
-end
-
--- Returns an error string when the target rank is a limited seat that is already taken.
--- The holder themselves is excluded, so re-committing a sitting member (a standing
--- correction, say) never looks like a new claim on their own seat.
-function Ladder:_seatError(name, rankId)
   local ranks = COB.Ranks
-  local councilId = rankIdByKind("council")
-  local prophetId = rankIdByKind("prophet")
-
-  if rankId == councilId and type(ranks.CouncilSeats) == "number" then
-    local taken = 0
-    for holder, record in pairs(self.records) do
-      if record.rankId == councilId and holder ~= name then taken = taken + 1 end
-    end
-    if taken >= ranks.CouncilSeats then
-      return "the Beef Council is full (" .. ranks.CouncilSeats .. " seats)"
-    end
-  elseif rankId == prophetId and ranks.ProphetUnique then
-    for holder, record in pairs(self.records) do
-      if record.rankId == prophetId and holder ~= name then
-        return "a Beef Prophet already lives: " .. holder
-      end
-    end
+  local riteKind = ranks and ranks.NeedsRite and ranks.NeedsRite(suggestion.toRankId) or nil
+  copy.riteKind = riteKind
+  if riteKind then
+    copy.riteMet = recordHasRite(record, riteKind)
+  else
+    copy.riteMet = nil
   end
-
-  return nil
+  return copy
 end
 
+local function copySuggestion(suggestion)
+  local record = suggestion and suggestion.name and Ladder.records[suggestion.name] or nil
+  return enrichSuggestion(suggestion, record)
+end
+
+-- Public shape kept for Standing/Officer tabs: rankId is roster-mapped when known,
+-- else Fresh Beef for display only (does not write a ladder occupant).
 function Ladder:GetRecord(name)
   local key = normalizeName(name)
   if not key then return nil end
   local record = self.records[key]
-  -- Unknown members read as Fresh Beef without being written into the ladder,
-  -- so a UI lookup can never conjure an occupant.
-  if not record then return newRecord(key) end
-  return copyRecord(record)
+  local standing = record and record.standing or 0
+  local rankId = mappedRankId(key) or 1
+  return {
+    name = key,
+    rankId = rankId,
+    standing = standing,
+    knighted = recordHasRite(record, "knighted"),
+    goraLordWin = recordHasRite(record, "goraLordWin"),
+    revision = 0,
+    updatedAt = 0,
+    updatedBy = "",
+  }
 end
 
--- True only for a name the ladder has actually written. GetRecord answers Fresh Beef
--- for strangers, so a caller deciding whether someone exists must ask here instead:
--- a typo in an officer's rite box must not conjure a ladder occupant.
+function Ladder:GetStanding(name)
+  local key = normalizeName(name)
+  if not key then return 0 end
+  local record = self.records[key]
+  return record and record.standing or 0
+end
+
+-- True when standing has been written for this name (ceremony, grant, correction).
 function Ladder:HasOfficialRecord(name)
   local key = normalizeName(name)
   if not key then return false end
   return self.records[key] ~= nil
 end
 
--- Local advisory standing. Deliberately does not bump the revision: points are
--- self-reported testimony, and only an officer commit creates official state.
+function Ladder:_ensure(name)
+  local record = self.records[name]
+  if not record then
+    record = newStanding(name)
+    self.records[name] = record
+  end
+  return record
+end
+
 function Ladder:SetStanding(name, standing)
   local key = normalizeName(name)
   if not key then return nil, "invalid name" end
@@ -185,52 +157,76 @@ function Ladder:SetStanding(name, standing)
 
   local record = self:_ensure(key)
   record.standing = standing
-  return copyRecord(record)
+  persist()
+  return self:GetRecord(key)
 end
 
--- Returns suggestion, isNew. Only ever suggests the single next point-driven rank,
--- so Council and Prophet stay appointed/bestowed and cannot be reached by grinding.
+-- Advisory rite flags for Officer eligibility checklists (never write Church titles).
+function Ladder:HasRiteFlag(name, flag)
+  local key = normalizeName(name)
+  if not key or not RITE_FLAGS[flag] then return false end
+  return recordHasRite(self.records[key], flag)
+end
+
+function Ladder:SetRiteFlag(name, flag, value)
+  local key = normalizeName(name)
+  if not key then return nil, "invalid name" end
+  if not RITE_FLAGS[flag] then return nil, "unknown rite flag" end
+
+  local record = self:_ensure(key)
+  record[flag] = value and true or false
+
+  local pending = self.suggestions[key]
+  if pending then
+    -- Refresh checklist fields on any open petition for this member.
+    pending.standing = record.standing
+  end
+  persist()
+  return self:GetRecord(key)
+end
+
+-- Suggest the next point-driven Church title above the member's *mapped* guild rank.
+-- Does not enqueue until the roster knows the member (spec §9).
 function Ladder:MaybeSuggest(name)
   local key = normalizeName(name)
   if not key then return nil end
-  local record = self.records[key]
-  if not record then return nil end
+
+  local fromRankId = mappedRankId(key)
+  if not fromRankId then return nil end
 
   local ranks = COB.Ranks
-  if ranks.IsPointDriven(record.rankId) ~= true then return nil end
+  if not ranks then return nil end
+  if ranks.IsPointDriven(fromRankId) ~= true then return nil end
 
-  local nextId = record.rankId + 1
+  local nextId = fromRankId + 1
   if ranks.IsPointDriven(nextId) ~= true then return nil end
+
+  local record = self.records[key]
+  if not record then return nil end
 
   local threshold = ranks.Threshold(nextId)
   if type(threshold) ~= "number" or record.standing < threshold then return nil end
 
   local pending = self.suggestions[key]
   if pending and pending.toRankId == nextId then
-    -- Keep the queued suggestion showing what the member has actually earned so far
-    -- rather than their standing at the moment they first crossed the line.
     pending.standing = record.standing
+    pending.fromRankId = fromRankId
     return copySuggestion(pending), false
   end
 
   local suggestion = {
     name = key,
-    fromRankId = record.rankId,
+    fromRankId = fromRankId,
     toRankId = nextId,
     standing = record.standing,
     threshold = threshold,
     createdAt = resolveTime(nil),
   }
   self.suggestions[key] = suggestion
-  return copySuggestion(suggestion), true
+  persist()
+  return enrichSuggestion(suggestion, record), true
 end
 
--- A petition that arrived over BeefNet. Returns suggestion, isNew like MaybeSuggest.
---
--- Suggestions are not authority — an officer still approves — but Approve commits the
--- queued target rank verbatim, so the target is derived from *our* official record
--- instead of being trusted from the wire. Otherwise a forged petition claiming
--- "Pleb is one step from Beef Prophet" would hand an officer a one-click bestowal.
 function Ladder:ImportSuggestion(suggestion)
   if type(suggestion) ~= "table" then return nil, "no suggestion" end
   local key = normalizeName(suggestion.name)
@@ -239,27 +235,23 @@ function Ladder:ImportSuggestion(suggestion)
   local ranks = COB.Ranks
   if not ranks then return nil, "no rank canon" end
 
-  -- An unknown petitioner reads as Fresh Beef without being written into the ladder:
-  -- hearing about someone must not seat them.
-  local record = self.records[key] or newRecord(key)
-  local fromRankId = record.rankId
+  local fromRankId = mappedRankId(key)
+  if not fromRankId then return nil, "roster does not know this member" end
   if ranks.IsPointDriven(fromRankId) ~= true then return nil, "rank is not point-driven" end
 
   local toRankId = fromRankId + 1
   if ranks.IsPointDriven(toRankId) ~= true then return nil, "next rank is not point-driven" end
-  -- A petition aimed anywhere but the next rank disagrees with our ladder; the
-  -- safe reading is that one of the two clients is stale, not that we should jump.
   if suggestion.toRankId ~= nil and suggestion.toRankId ~= toRankId then
     return nil, "petition does not match the local record"
   end
 
   local threshold = ranks.Threshold(toRankId)
-  -- Standing is the petitioner's own testimony; the threshold is canon, never theirs.
   local claimed = isValidStanding(suggestion.standing) and suggestion.standing or 0
 
   local pending = self.suggestions[key]
   if pending and pending.toRankId == toRankId then
     if claimed > (pending.standing or 0) then pending.standing = claimed end
+    pending.fromRankId = fromRankId
     return copySuggestion(pending), false
   end
 
@@ -269,12 +261,10 @@ function Ladder:ImportSuggestion(suggestion)
     toRankId = toRankId,
     standing = claimed,
     threshold = type(threshold) == "number" and threshold or 0,
-    -- Receipt time, not the sender's clock: the officer queue drains oldest first,
-    -- and a backdated petition must not be able to jump it.
     createdAt = resolveTime(nil),
   }
   persist()
-  return copySuggestion(self.suggestions[key]), true
+  return enrichSuggestion(self.suggestions[key], self.records[key]), true
 end
 
 function Ladder:GetSuggestions()
@@ -286,144 +276,86 @@ function Ladder:GetSuggestions()
   return out
 end
 
+-- Dismiss a promote prompt. Alias kept as RejectSuggestion for existing call sites.
 function Ladder:RejectSuggestion(name)
   local key = normalizeName(name)
   if not key then return false end
   if not self.suggestions[key] then return false end
-  -- Standing survives a rejection; officers correct points separately.
   self.suggestions[key] = nil
   persist()
   return true
 end
 
--- The single write path for official state. Appointments and demotions route through
--- here so seat limits, validation and revision bumping cannot be bypassed.
--- A nil standing leaves the member's existing standing alone.
-function Ladder:Commit(name, rankId, standing, officerName, now)
-  local key = normalizeName(name)
-  if not key then return nil, "invalid name" end
-  if not isValidRankId(rankId) then return nil, "invalid rank id" end
+Ladder.DismissSuggestion = Ladder.RejectSuggestion
 
-  local officer = normalizeName(officerName)
-  if not officer then return nil, "invalid officer name" end
-  if standing ~= nil and not isValidStanding(standing) then
-    return nil, "standing must be a non-negative number"
+-- Standing correction path used by the Officer tab. Does not change Church title.
+-- Crossing a threshold still only queues a promote suggestion (same boundary as Scoring).
+function Ladder:CorrectStanding(name, standing, _officerName, _now)
+  local record, err = self:SetStanding(name, standing)
+  if not record then return nil, err end
+
+  local suggestion, isNew = self:MaybeSuggest(name)
+  if isNew and suggestion then
+    local net = COB.Net
+    if net and net.OnLocalSuggestion then net:OnLocalSuggestion(suggestion) end
   end
 
-  local seatError = self:_seatError(key, rankId)
-  if seatError then return nil, seatError end
-
-  local record = self:_ensure(key)
-  record.rankId = rankId
-  if standing ~= nil then record.standing = standing end
-  record.revision = record.revision + 1
-  record.updatedAt = resolveTime(now)
-  record.updatedBy = officer
-  self.suggestions[key] = nil
-
-  -- Demote/AppointCouncil/BestowProphet route through here, so this is the one
-  -- flush point for every local officer decision.
-  persist()
-  return copyRecord(record)
+  return record
 end
 
-function Ladder:Demote(name, rankId, officerName, now)
-  local key = normalizeName(name)
-  if not key then return nil, "invalid name" end
-  if not isValidRankId(rankId) then return nil, "invalid rank id" end
-
-  local record = self.records[key]
-  local currentRankId = record and record.rankId or 1
-  if rankId >= currentRankId then
-    return nil, "a demotion must target a lower rank"
+-- Retired product paths (roster-backed amendment). Kept as explicit refusals so
+-- stale UI/tests fail closed instead of writing fake ranks into SV.
+function Ladder:Commit(_name, _rankId, standing, _officerName, _now)
+  if standing ~= nil then
+    return nil, "use CorrectStanding for points; ranks come from the guild roster"
   end
-
-  return self:Commit(key, rankId, nil, officerName, now)
+  return nil, "ranks come from the guild roster — promote in the guild UI"
 end
 
-function Ladder:AppointCouncil(name, officerName, now)
-  local councilId = rankIdByKind("council")
-  if not councilId then return nil, "no council rank in canon" end
-  return self:Commit(name, councilId, nil, officerName, now)
+function Ladder:Demote()
+  return nil, "ranks come from the guild roster — demote in the guild UI"
 end
 
-function Ladder:BestowProphet(name, officerName, now)
-  local prophetId = rankIdByKind("prophet")
-  if not prophetId then return nil, "no prophet rank in canon" end
-  return self:Commit(name, prophetId, nil, officerName, now)
+function Ladder:AppointCouncil()
+  return nil, "ranks come from the guild roster — change guild ranks in the guild UI"
 end
 
--- Higher revision wins; ties break on timestamp, then officer name, so every client
--- converges on the same record no matter what order commits arrive in.
-local function beatsLocal(revision, updatedAt, updatedBy, localRecord)
-  if revision ~= localRecord.revision then return revision > localRecord.revision end
-  if updatedAt ~= localRecord.updatedAt then return updatedAt > localRecord.updatedAt end
-  return updatedBy > (localRecord.updatedBy or "")
+function Ladder:BestowProphet()
+  return nil, "ranks come from the guild roster — change guild ranks in the guild UI"
 end
 
--- Seat and uniqueness limits are deliberately not re-checked here. A replicated commit
--- is already-decided history; rejecting it would leave clients permanently disagreeing.
---
--- A nil standing means the sender replicated a rite that did not touch points, so the
--- local advisory standing is kept. That matters most on the promoted member's own
--- client: their earned points live only there, and an officer's copy of them is
--- usually zero, so applying it would wipe the very testimony that was just rewarded.
-function Ladder:ApplyRemoteCommit(record)
-  if type(record) ~= "table" then return false end
-
-  local key = normalizeName(record.name)
-  if not key then return false end
-  if not isValidRankId(record.rankId) then return false end
-  if record.standing ~= nil and not isValidStanding(record.standing) then return false end
-  if type(record.revision) ~= "number" or record.revision < 1 then return false end
-
-  local updatedAt = type(record.updatedAt) == "number" and record.updatedAt or 0
-  local updatedBy = normalizeName(record.updatedBy) or ""
-
-  local localRecord = self.records[key]
-  if localRecord and not beatsLocal(record.revision, updatedAt, updatedBy, localRecord) then
-    return false
-  end
-
-  local target = self:_ensure(key)
-  target.rankId = record.rankId
-  if record.standing ~= nil then target.standing = record.standing end
-  target.revision = record.revision
-  target.updatedAt = updatedAt
-  target.updatedBy = updatedBy
-  self.suggestions[key] = nil
-
-  persist()
-  return true
+-- Legacy BeefNet: ignored. Roster is the only rank authority.
+function Ladder:ApplyRemoteCommit(_record)
+  return false
 end
 
 function Ladder:GetLadderView()
-  local out = {}
-  for _, record in pairs(self.records) do
-    out[#out + 1] = copyRecord(record)
+  if COB.Roster and COB.Roster.GetLadderView then
+    return COB.Roster:GetLadderView()
   end
-  table.sort(out, function(a, b)
-    if a.rankId ~= b.rankId then return a.rankId > b.rankId end
-    return a.name < b.name
-  end)
-  return out
+  return {}
 end
 
--- Name-sorted so a SavedVariables write is stable between sessions.
+-- Persist standing only. Legacy rankId/revision fields are dropped on save.
 function Ladder:ExportState()
   local out = {}
   for _, record in pairs(self.records) do
-    out[#out + 1] = copyRecord(record)
+    out[#out + 1] = {
+      name = record.name,
+      standing = record.standing or 0,
+      knighted = record.knighted and true or false,
+      goraLordWin = record.goraLordWin and true or false,
+      rankId = 1,
+      revision = 0,
+      updatedAt = 0,
+      updatedBy = "",
+    }
   end
   table.sort(out, function(a, b) return a.name < b.name end)
   return out
 end
 
--- Replaces the record store; malformed entries are dropped rather than poisoning
--- the ladder. Returns how many records were accepted. Suggestions are left alone:
--- restore those separately via ImportSuggestions from SavedVariables.
 function Ladder:ImportState(records)
-  -- A non-table argument is a caller bug, not an instruction to erase the ladder.
   if type(records) ~= "table" then return 0 end
   self.records = {}
 
@@ -431,26 +363,27 @@ function Ladder:ImportState(records)
   for _, record in pairs(records) do
     if type(record) == "table" then
       local key = normalizeName(record.name)
-      if key and isValidRankId(record.rankId) then
-        local restored = newRecord(key)
-        restored.rankId = record.rankId
-        if isValidStanding(record.standing) then restored.standing = record.standing end
-        if type(record.revision) == "number" and record.revision > 0 then
-          restored.revision = record.revision
-        end
-        if type(record.updatedAt) == "number" then restored.updatedAt = record.updatedAt end
-        restored.updatedBy = normalizeName(record.updatedBy) or ""
-        self.records[key] = restored
+      if key and isValidStanding(record.standing) then
+        self.records[key] = {
+          name = key,
+          standing = record.standing,
+          knighted = record.knighted and true or false,
+          goraLordWin = record.goraLordWin and true or false,
+        }
         accepted = accepted + 1
+      elseif key and record.standing == nil then
+        -- Legacy row with rank but no standing: keep a zero standing marker only if
+        -- revision proves it was an official seat — still standing-only store.
+        if type(record.revision) == "number" and record.revision > 0 then
+          self.records[key] = newStanding(key)
+          accepted = accepted + 1
+        end
       end
     end
   end
-
   return accepted
 end
 
--- Pending suggestions are local testimony of crossed thresholds; persist them so a
--- /reload does not re-queue someone an officer already rejected (standing remains).
 function Ladder:ImportSuggestions(suggestions)
   if type(suggestions) ~= "table" then return 0 end
   self.suggestions = {}
@@ -472,11 +405,9 @@ function Ladder:ImportSuggestions(suggestions)
       end
     end
   end
-
   return accepted
 end
 
--- Test-only. Gated so a stray call in game cannot erase a guild's ladder.
 function Ladder:ResetForTests()
   if not COB._IN_TEST then return false end
   self.records = {}

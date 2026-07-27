@@ -14,6 +14,27 @@ local LIST = {
 local BY_ID = {}
 for _, r in ipairs(LIST) do BY_ID[r.id] = r end
 
+-- Fixed experiment map (roster-backed ladder amendment): WoW guild rankIndex →
+-- Church rank id. Index 0 = Guild Master = Beef Prophet; 6+ collapse to Fresh Beef.
+local function churchRankIdForGuildIndex(rankIndex)
+  if type(rankIndex) ~= "number" then return nil end
+  if rankIndex <= 0 then return 7 end
+  if rankIndex == 1 then return 6 end
+  if rankIndex == 2 then return 5 end
+  if rankIndex == 3 then return 4 end
+  if rankIndex == 4 then return 3 end
+  if rankIndex == 5 then return 2 end
+  return 1
+end
+
+-- Expected rite flag for a *target* point-driven rank (eligibility checklist).
+-- Missing rite does not block suggestions — officers are coached only.
+local function needsRite(toRankId)
+  if toRankId == 3 then return "knighted" end
+  if toRankId == 4 then return "goraLordWin" end
+  return nil
+end
+
 COB.Ranks = {
   List = LIST,
   ById = BY_ID,
@@ -33,4 +54,6 @@ COB.Ranks = {
     local r = BY_ID[id]
     return r and r.title or "Unknown"
   end,
+  NeedsRite = needsRite,
+  ChurchRankIdForGuildIndex = churchRankIdForGuildIndex,
 }

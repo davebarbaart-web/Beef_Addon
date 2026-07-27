@@ -1,0 +1,50 @@
+---
+description: >-
+  V1 UI juice & spectacle — polish, toast, announce, motion, celebration tiers.
+  Use when editing UI frames, edge toasts, officer /g craft, empty states, or
+  juice/feel asks. Classic shell; silent; no Media/SFX/WA center.
+globs:
+  - "**/addon/**/UI/**/*.lua"
+  - "**/addon/**/UI/**/*.xml"
+  - "**/ChurchOfBeef/ChurchOfBeef.lua"
+alwaysApply: false
+---
+
+# UI juice standards (V1)
+
+**Doctrine:** Classic Blizzard shell for process UI; brand in words (guild chat + private toasts). Research ≠ product law — design spec §10/§15 and glossary win.
+
+Before any `CreateFrame` / toast / announce work: read `docs/superpowers/ui-polished-direction-for-agents.md`. Polish loops: `.cursor/skills/church-of-beef-dev/SKILL.md` § Polish loop (not a second skill).
+
+## Non-negotiables
+
+- Classic templates + opaque high-contrast + `GameFont*`; dual-encode status; class color on **names** only
+- **UI ≠ points** — tabs/toasts display Core outcomes; never award standing or invent ranks
+- **T0** private (suggestion / credit) = edge toast only — coalesce; no guild chat on suggestion/score/sync
+- **T1** social `/g` promote announce = **deferred** (roster-backed); playtest spectacle = toast + Ladder move after guild-UI promote
+- No peer echo, no multi-line liturgy, no announce on suggestion/score/sync
+- Announce checkbox stays hidden until a roster-diff announcer lands
+- Scarce seats = stronger **T1** copy only — never T2+/Epic / center pulses
+- **V1 silent** — no SFX; missing media must not fail load
+- Standing: **text thresholds** only (no hero StatusBar / HP meter)
+
+## Motion / timing
+
+- Prefer show/hide + short alpha on Beef-owned **insecure** frames
+- **No permanent `OnUpdate`** for juice — disable scripts when idle (`wow-performance.mdc`)
+- **No center-screen** alert frames / WA-style pulses for social ranks
+- Stagger only inside Beef toast stack; never hitch combat
+- Guest on player `uiScale` — never set `uiScale` / `UIParent:SetScale`
+
+## Anti-patterns (reject)
+
+WA center pulses · permanent animation directors · Details!-dense rosters · item-quality rainbow for ranks · glass/low-alpha panels · SecureActionButton for panels · tip jars · standing-as-castbar · Retail templates unverified on Anniversary · custom Media/SFX as “polish” · juice OS / tween bus
+
+## Critique (before done)
+
+1. Does the Ladder move when an officer promotes in the guild UI (no addon required on peers)?
+2. Does this still read as Blizzard chrome if custom tint fails?
+3. Can an officer open `/beef` and Dismiss / correct standing in combat without taint pain?
+4. Are promote prompts honest (“guild roster”) with announce still deferred/hidden?
+
+Harness ≠ spectacle — claim **POLISH:CANDIDATE** only; human signs PASS. See `verification.mdc`.

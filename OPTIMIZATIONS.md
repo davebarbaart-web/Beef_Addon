@@ -25,6 +25,12 @@ Do **not** implement these until someone opts in — they touch CI secrets, hook
 - [ ] **Pre-commit / Cursor hook:** run `scripts/run-tests.sh` (or `lua tests/run.lua`) before commit when `addon/**` or `tests/**` change. Approve command allowlist first.
 - [ ] **TOC drift check:** fail if `ChurchOfBeef.toc` lists a missing file or omits a new `addon/ChurchOfBeef/**/*.lua` (except intentional).
 - [ ] **Secret scan:** block `CF_API_KEY`, Wago/WoWI tokens, and accidental commit of `.firecrawl/` or research `.raw/`.
+- [ ] **`stop` hook grind (Core/Data only):** follow-up until harness green or `loop_limit` — from research [28](docs/research/agent-polish-vision/28-hands-off-cursor-workflows.md). **Needs human approval;** do not enable overnight UI Ralph.
+
+### Cloud Agents — audit P1 (from research 28)
+
+- [ ] **`.cursor/environment.json` (or Cloud setup):** Lua 5.1 + `bash scripts/run-tests.sh` on a branch that has `tests/run.lua`. Core/Data/docs only until env ships; human owns `/reload` + guild-night. **Needs human approval** — do not implement without opt-in.
+- [ ] **Cloud scope ban:** no packager publish secrets; no claiming in-game smoke or spectacle PASS from Cloud alone.
 
 ### CI / packaging — audit P1
 

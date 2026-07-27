@@ -22,6 +22,7 @@ local Instance = {
   combatSeen = false,
   bucketStartedAt = nil,
   instanceId = nil,
+  instanceType = nil,
   completed = false,
   buckets = 0,
 }
@@ -189,6 +190,7 @@ function Instance:_Begin(snapshot, at)
   self.combatSeen = snapshot.inCombat
   self.bucketStartedAt = at
   self.instanceId = snapshot.instanceId
+  self.instanceType = snapshot.instanceType
   self.completed = false
   self:_StartTicker()
 end
@@ -201,6 +203,7 @@ function Instance:Stop()
   self.combatSeen = false
   self.bucketStartedAt = nil
   self.instanceId = nil
+  self.instanceType = nil
   self.completed = false
   self:_StopTicker()
   return true
@@ -225,6 +228,7 @@ function Instance:Update(state, now)
   -- A different instance is a different run: fresh bucket, fresh completion bonus.
   if snapshot.instanceId ~= nil and self.instanceId ~= nil and snapshot.instanceId ~= self.instanceId then
     self.instanceId = snapshot.instanceId
+    self.instanceType = snapshot.instanceType
     self.bucketStartedAt = at
     self.combatSeen = snapshot.inCombat
     self.completed = false
@@ -232,6 +236,7 @@ function Instance:Update(state, now)
   end
 
   if snapshot.instanceId ~= nil then self.instanceId = snapshot.instanceId end
+  self.instanceType = snapshot.instanceType
   if snapshot.inCombat then self.combatSeen = true end
   return true
 end
@@ -251,10 +256,11 @@ function Instance:_Grant(complete)
   if not name then return 0 end
   -- No timestamp: Scoring resolves the wall-clock day key itself, and the bucket
   -- clock above is monotonic seconds, which would be a nonsense day.
+  -- instanceType selects raid vs dungeon/BG weights; both spend the instance cap.
   if complete then
-    return scoring:GrantInstanceComplete(name) or 0
+    return scoring:GrantInstanceComplete(name, nil, self.instanceType) or 0
   end
-  return scoring:GrantInstanceBucket(name, nil, true) or 0
+  return scoring:GrantInstanceBucket(name, nil, true, self.instanceType) or 0
 end
 
 -- Closes at most one bucket per call. If the timer drifted and several bucket
@@ -348,6 +354,7 @@ function Instance:ResetForTests()
   self.combatSeen = false
   self.bucketStartedAt = nil
   self.instanceId = nil
+  self.instanceType = nil
   self.completed = false
   self.buckets = 0
   return true

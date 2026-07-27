@@ -9,22 +9,28 @@ local Scoring = {
   Points = {
     InstanceBucket = 5,
     InstanceComplete = 20,
+    RaidBucket = 12,
+    RaidComplete = 45,
+    QuestBucket = 3,
     Ceremony = 40,
     GoraWin = 25,
     GoraDraw = 10,
     GoraLoss = 8,
   },
-  -- One cap per source, not per grant type: dungeon buckets and the completion bonus
-  -- share the instance budget so finishing runs back-to-back cannot outrun the drip cap.
+  -- One cap per source, not per grant type: dungeon/raid buckets and the completion
+  -- bonus share the instance budget so finishing runs back-to-back cannot outrun the
+  -- drip cap. Quest fellowship is a separate, stricter daily ceiling.
   DailyCaps = {
     instance = 60,
     ceremony = 80,
     gora = 100,
+    quest = 24,
   },
   Sources = {
     Instance = "instance",
     Ceremony = "ceremony",
     Gora = "gora",
+    Quest = "quest",
   },
   dayKey = "",
   granted = {},
@@ -170,13 +176,25 @@ end
 
 -- Anti-AFK: a time bucket the player never fought in pays nothing and spends no cap,
 -- so parking at a dungeon entrance next to a guildmate earns exactly zero.
-function Scoring:GrantInstanceBucket(name, now, inCombat)
+-- Raids pay more per bucket/complete than dungeon/BG, but still spend the instance cap.
+function Scoring:GrantInstanceBucket(name, now, inCombat, instanceType)
   if not inCombat then return 0 end
-  return self:Grant(name, self.Sources.Instance, self.Points.InstanceBucket, now)
+  local amount = self.Points.InstanceBucket
+  if instanceType == "raid" then amount = self.Points.RaidBucket end
+  return self:Grant(name, self.Sources.Instance, amount, now)
 end
 
-function Scoring:GrantInstanceComplete(name, now)
-  return self:Grant(name, self.Sources.Instance, self.Points.InstanceComplete, now)
+function Scoring:GrantInstanceComplete(name, now, instanceType)
+  local amount = self.Points.InstanceComplete
+  if instanceType == "raid" then amount = self.Points.RaidComplete end
+  return self:Grant(name, self.Sources.Instance, amount, now)
+end
+
+-- Quest fellowship is a separate capped source (Task 3 wires when a bucket is active).
+-- inactive / AFK buckets pay nothing and spend no quest cap.
+function Scoring:GrantQuestBucket(name, now, active)
+  if not active then return 0 end
+  return self:Grant(name, self.Sources.Quest, self.Points.QuestBucket, now)
 end
 
 -- Losses pay: if showing up for a Gora and losing earned nothing, members would dodge

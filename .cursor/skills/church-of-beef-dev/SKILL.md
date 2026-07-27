@@ -1,12 +1,14 @@
 ---
 name: church-of-beef-dev
 description: >-
-  Install, reload, and offline-test the Church of Beef WoW addon. Use when
-  developing or verifying the addon, running lua tests/run.lua, copying into
-  Interface/AddOns, /reload smoke checks, or when the user mentions install,
-  AddOns path, /beef, WOW_ADDONS_DIR, or offline Core tests. Before any UI
-  CreateFrame / visual work, also read
-  docs/superpowers/ui-polished-direction-for-agents.md.
+  Install, reload, offline-test, and run the UI polish loop for Church of Beef.
+  Use when developing or verifying the addon, running lua tests/run.lua, copying
+  into Interface/AddOns, /reload smoke, polish/juice/spectacle/critique,
+  toasts/announce feel, empty states, “make UI nicer,” or when the user mentions
+  install, AddOns path, /beef, WOW_ADDONS_DIR, or offline Core tests. Before any
+  UI CreateFrame / visual work, read
+  docs/superpowers/ui-polished-direction-for-agents.md and follow § Polish loop.
+  Do not install a second polish skill — this skill § is enough (ADR-0002).
 ---
 
 # Church of Beef — install / reload / test
@@ -55,35 +57,32 @@ lua tests/run.lua      # exit 0 required
 
 Green harness ≠ V1 done (UI / BeefNet / spectacle need the client).
 
-## 2. Install into the client
+## 2. Install into the client (agents own this)
 
-Folder name must match the `.toc` basename (`ChurchOfBeef`).
+After UI / Net / SV / slash changes that need in-game smoke, **reinstall** the addon into the player's Anniversary AddOns folder — do not leave install to the user. Prefer `_anniversary_` over Retail / `_retail_`. **Never** touch `WTF/` or player `ChurchOfBeefDB.lua`.
+
+Folder name must match the `.toc` basename (`ChurchOfBeef`). Known-good path for this machine: `docs/research/agent-polish-vision/00-INSTALL-PATH.md`.
 
 ```bash
-# Set once per machine (do not commit real paths with usernames if sensitive)
-# export WOW_ADDONS_DIR="/path/to/TBC Anniversary/Interface/AddOns"
+# Prefer env if set; else known-good Anniversary AddOns (see 00-INSTALL-PATH.md)
+: "${WOW_ADDONS_DIR:=/Applications/World of Warcraft/_anniversary_/Interface/AddOns}"
 
-test -n "${WOW_ADDONS_DIR:-}" || {
-  echo "Set WOW_ADDONS_DIR to .../Interface/AddOns and re-run"
-  exit 1
-}
+# Source: workspace addon/ when present, else ADDON_ROOT checkout
+SRC="$ADDON_ROOT/addon/ChurchOfBeef"
+test -d "/Volumes/AI_Design_Drive/Beef_Addon/addon/ChurchOfBeef" \
+  && SRC="/Volumes/AI_Design_Drive/Beef_Addon/addon/ChurchOfBeef"
 
-test -d "$ADDON_ROOT/addon/ChurchOfBeef" || {
-  echo "Missing $ADDON_ROOT/addon/ChurchOfBeef"
-  exit 1
-}
+test -d "$SRC" || { echo "Missing $SRC"; exit 1; }
 
-rsync -a --delete "$ADDON_ROOT/addon/ChurchOfBeef/" "$WOW_ADDONS_DIR/ChurchOfBeef/"
-# or: cp -R "$ADDON_ROOT/addon/ChurchOfBeef" "$WOW_ADDONS_DIR/ChurchOfBeef"
+rsync -a --delete "$SRC/" "$WOW_ADDONS_DIR/ChurchOfBeef/"
+# or: cp -R "$SRC" "$WOW_ADDONS_DIR/ChurchOfBeef"
 ```
 
 | Symptom | Likely cause | Fix |
 |---------|--------------|-----|
-| `WOW_ADDONS_DIR` unset | Env not configured | Ask user for Anniversary `Interface/AddOns` path; export it |
-| Addon missing in client | Wrong client / wrong folder name | Confirm Anniversary AddOns dir; basename must be `ChurchOfBeef` |
+| Addon missing in client | Wrong client / wrong folder name | Confirm `_anniversary_` AddOns; basename `ChurchOfBeef` |
 | Stale files after delete | Used `cp` without replace | Prefer `rsync -a --delete` |
-
-Never invent a specific `_classic_*/` client folder — Anniversary layout varies.
+| Edits not visible in-game | Installed from empty/stale checkout | Prefer workspace `addon/ChurchOfBeef/` per 00-INSTALL-PATH.md |
 
 ## 3. In-game reload smoke
 
@@ -118,7 +117,7 @@ Zip root must be `ChurchOfBeef/`, not the monorepo root. No packager upload with
 - [ ] ADDON_ROOT resolved (tests/run.lua present)
 - [ ] lua tests/run.lua → 0 failed
 - [ ] TOC lists only existing files; Interface 20506 unless intentionally bumping
-- [ ] WOW_ADDONS_DIR set; installed to Interface/AddOns/ChurchOfBeef
+- [ ] Reinstalled to Anniversary AddOns/ChurchOfBeef (see 00-INSTALL-PATH.md; never WTF/)
 - [ ] /reload + /beef smoke (and two-client if Net/officer)
 - [ ] No gameplay automation / Retail-only APIs introduced
 ```
@@ -128,12 +127,26 @@ Zip root must be `ChurchOfBeef/`, not the monorepo root. No packager upload with
 UI and art direction are implemented by coding agents. Before scaffolding frames
 or Media:
 
-1. Read `docs/superpowers/ui-polished-direction-for-agents.md` (authority order + V1 bans).
+1. Read `docs/superpowers/ui-polished-direction-for-agents.md` (authority order + V1 bans + juice vocabulary).
 2. Follow design spec §10 / §15 and glossary rows 68–71, 74–81.
 3. Prefer Cursor canvas `cob-v1-ui-build-prep` as the day-to-day checklist when available.
 4. Do **not** add custom `Media/` or SFX in V1 Tasks 7–10.
 
 Green harness still does not prove UI polish — complete step 3 (in-game smoke) for UI changes.
+
+## Polish loop (UI / toast / announce / empty states)
+
+Use for juice/critique asks after the functional path exists. Pointer-heavy; product law stays in the UI brief + design spec.
+
+1. **Goal** — name the surface, acceptance evidence, max **2** critique→revise rounds (research [30](docs/research/agent-polish-vision/30-writing-effective-agent-goals.md)). Refuse “make it nicer” without a Goal.
+2. **One V1-IN slice** — shell/tabs/toasts/announce craft/minimap/empty honesty/short fades only ([42](docs/research/agent-polish-vision/42-v1-vs-v2-juice-scope.md)). Refuse Media/SFX/WA center/StatusBar/juice OS.
+3. **Hard verify** — this skill §§1–3 (harness if Core/Data; TOC; install → `/reload` → path).
+4. **Separate critique** — against UI brief (hierarchy, T0/T1, ToS corridor, 4 critique questions). Gates + brief anti-patterns first; [25](docs/research/agent-polish-vision/25-ui-polish-critique-rubric.md) optional depth only — never paste composite score math. Fix P0/P1 only.
+5. **Stop** — clean / plateau / max rounds / reopen-locked ([31](docs/research/agent-polish-vision/31-loop-stop-conditions.md), [49](docs/research/agent-polish-vision/49-adversarial-overengineering.md)). Role budget: **1** implementer + **0–1** critic; no UI swarm.
+6. **Claim `POLISH:CANDIDATE` only** — human signs `POLISH:PASS`; never claim V1 complete from harness or taste.
+7. **No** WoW process control, pixel CI, or overnight unattended UI Ralph.
+
+Brief after Step 2 promote: `docs/superpowers/ui-polished-direction-for-agents.md`. Synthesis: `docs/research/agent-polish-vision/00-SYNTHESIS.md`.
 
 ## Do not duplicate
 

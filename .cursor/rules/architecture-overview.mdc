@@ -60,3 +60,4 @@ SV = per-character `ChurchOfBeefDB`. BeefNet prefix `COB` / channel `GUILD`.
 - Expand TOC only when the file exists; never list missing files
 - Keep `ChurchOfBeef*.lua` casing consistent (case-sensitive packaging)
 - Prefer `docs/superpowers/` + `Data/Ranks.lua` over inventing policy from `docs/research/`
+- Major UI polish / juice follows the UI brief + skill § Polish loop + glob `ui-juice-standards.mdc` (`docs/superpowers/ui-polished-direction-for-agents.md`, `.cursor/skills/church-of-beef-dev/SKILL.md`) — not a new always-on rule factory ([34] four-rule pack stays deferred)

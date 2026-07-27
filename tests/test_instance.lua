@@ -145,6 +145,29 @@ assert_eq(I:Tick(105, inDungeon({ instanceId = 200 })), 0, "the previous run's c
 assert_eq(standingOf("Beefina"), 0, "zoning between dungeons pays nothing on its own")
 
 --------------------------------------------------------------------------------
+-- Raid weights: tracker passes instanceType into Scoring
+--------------------------------------------------------------------------------
+reset()
+local raid = inDungeon({ instanceType = "raid", instanceId = 544 })
+I:Update(raid, 0)
+I:NoteCombat()
+assert_eq(I.instanceType, "raid", "Begin stores the live instance type")
+assert_eq(I:Tick(60, raid), Points.RaidBucket, "a fought raid bucket pays the raid weight")
+assert_eq(standingOf("Beefina"), Points.RaidBucket, "raid standing landed at 12")
+
+assert_eq(I:GrantCompletion(raid), Points.RaidComplete, "finishing a raid pays the raid completion")
+assert_eq(standingOf("Beefina"), Points.RaidBucket + Points.RaidComplete, "raid complete stacks on buckets")
+
+I:Stop()
+assert_eq(I.instanceType, nil, "Stop clears the remembered instance type")
+
+reset()
+I:Update(inDungeon({ instanceType = "pvp" }), 0)
+I:NoteCombat()
+assert_eq(I:Tick(60, inDungeon({ instanceType = "pvp" })), Points.InstanceBucket,
+  "a battleground still uses the dungeon/BG bucket weight")
+
+--------------------------------------------------------------------------------
 -- Completion bonus: best effort, once per run
 --------------------------------------------------------------------------------
 reset()

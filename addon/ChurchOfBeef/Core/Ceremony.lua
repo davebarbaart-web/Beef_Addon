@@ -120,7 +120,9 @@ function Ceremony:GetActive()
   local tracked = {}
   for name in pairs(active.seen) do tracked[#tracked + 1] = name end
   table.sort(tracked)
-  return { label = active.label, startedAt = active.startedAt, tracked = tracked }
+  local out = { label = active.label, startedAt = active.startedAt, tracked = tracked }
+  if active.honoree then out.honoree = active.honoree end
+  return out
 end
 
 function Ceremony:Start(label, roster, now)
@@ -132,8 +134,21 @@ function Ceremony:Start(label, roster, now)
   local seen = {}
   for i = 1, #present do seen[present[i]] = at end
 
-  self.active = { label = normalizeLabel(label), startedAt = at, seen = seen }
+  self.active = { label = normalizeLabel(label), startedAt = at, seen = seen, honoree = nil }
   return self:GetActive()
+end
+
+-- Optional knighting recipient. Officer-gated like Start/Close; cleared with Reset/Cancel.
+-- A label matching [Kk]night is also knighting intent, but the flag still needs an honoree.
+function Ceremony:SetHonoree(name)
+  local active = self.active
+  if not active then return nil, "no ceremony is under way" end
+  if not localIsOfficer() then return nil, "only an officer may set the ceremony honoree" end
+
+  local honoree = normalizeName(name)
+  if not honoree then return nil, "name the honoree" end
+  active.honoree = honoree
+  return honoree
 end
 
 -- Fold another sample into the tracked set. Not wired to a roster event yet:
@@ -151,6 +166,23 @@ function Ceremony:Mark(roster, now)
     active.seen[name] = at
   end
   return added
+end
+
+-- Knighting requires a knighting-labeled ceremony *and* an honoree. A filled
+-- honoree on a generic "Ceremony" must not quietly set the knighted rite.
+local function isKnightingIntent(active)
+  local label = active.label
+  return type(label) == "string" and label:find("[Kk]night") ~= nil
+end
+
+local function attendeePresent(attendees, honoree)
+  if not honoree then return false end
+  local key = honoree:lower()
+  for i = 1, #attendees do
+    local name = attendees[i].name
+    if type(name) == "string" and name:lower() == key then return true end
+  end
+  return false
 end
 
 -- Credit needs both halves: tracked since Start *and* still present at close.
@@ -180,6 +212,17 @@ function Ceremony:Close(roster, now)
     end
   end
 
+  -- Knighting: honoree set (or label matching [Kk]night as intent) + honoree credited.
+  local honoree = active.honoree
+  local knighted = false
+  if honoree and isKnightingIntent(active) and attendeePresent(attendees, honoree) then
+    local ladder = COB.Ladder
+    if ladder and ladder.SetRiteFlag then
+      ladder:SetRiteFlag(honoree, "knighted", true)
+    end
+    knighted = true
+  end
+
   self.active = nil
   return {
     label = active.label,
@@ -188,6 +231,8 @@ function Ceremony:Close(roster, now)
     attendees = attendees,
     latecomers = latecomers,
     total = total,
+    honoree = honoree,
+    knighted = knighted,
   }
 end
 

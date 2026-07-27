@@ -31,4 +31,4 @@ Kinds: `points` (1–5), `council`, `prophet`. Seat/uniqueness via `kind` (see `
 
 ## SavedVariables are not canon
 
-`ChurchOfBeefDB` (`Core/DB.lua`) caches official records, suggestions, prefs, local standing. Standing is advisory testimony; official ranks require officer **Commit** + revision merge.
+`ChurchOfBeefDB` (`Core/DB.lua`) caches local standing, promote suggestions, and UI prefs. Church titles come from the live guild roster (`Core/Roster` + `Ranks.ChurchRankIdForGuildIndex`), not from SV.

@@ -10,6 +10,7 @@ dofile("addon/ChurchOfBeef/Data/Ranks.lua")
 dofile("addon/ChurchOfBeef/Core/Ladder.lua")
 dofile("addon/ChurchOfBeef/Core/Scoring.lua")
 dofile("addon/ChurchOfBeef/Core/Officer.lua")
+dofile("addon/ChurchOfBeef/Core/Roster.lua")
 dofile("addon/ChurchOfBeef/Core/DB.lua")
 
 local COB = ChurchOfBeef
@@ -17,6 +18,7 @@ local COB = ChurchOfBeef
 -- TOC order: MainFrame owns COB.UI, tab files register into it on load.
 local function loadUi()
   dofile("addon/ChurchOfBeef/UI/MainFrame.lua")
+  dofile("addon/ChurchOfBeef/UI/Status.lua")
   dofile("addon/ChurchOfBeef/UI/Announce.lua")
   dofile("addon/ChurchOfBeef/UI/LadderTab.lua")
   dofile("addon/ChurchOfBeef/UI/StandingTab.lua")
@@ -59,6 +61,8 @@ assert_eq(COB.UI:Init(), frame, "Init is idempotent")
 assert_eq(frame._movable, true, "frame is movable")
 assert_eq(frame._clamped, true, "frame is clamped to screen")
 assert_true(frame.FooterText ~= nil, "scripture footer placeholder exists")
+assert_true(frame.StatusChip ~= nil, "L0 mesh status chip exists on main frame")
+assert_true(COB.UI.Status ~= nil, "UI.Status presenter loaded")
 
 local point, _, relativePoint, x, y = frame:GetPoint(1)
 assert_eq(point, "CENTER", "unsaved position defaults to center")
@@ -197,13 +201,51 @@ stub.flushTimers()
 assert_eq(COB.Toasts.frame:IsShown(), false, "toast hides when the queue drains")
 
 --------------------------------------------------------------------------------
--- Ladder / Standing tabs read Core (text thresholds; no StatusBar)
+-- Toast priority / dedupe / Celebrate (V1 edge toast polish)
+--------------------------------------------------------------------------------
+COB.Toasts:ResetForTests()
+assert_eq(COB.Toasts:Push({ kind = "credit", text = "Gora win: +8 standing" }), true, "credit accepted")
+assert_eq(COB.Toasts:ShowingKind(), "credit", "showing credit")
+assert_eq(COB.Toasts:Celebrate("promote", {
+  name = "Beefina", title = "Cooked Beef", dedupeKey = "promote:Beefina:2",
+}), true, "promote accepted")
+assert_eq(COB.Toasts:ShowingKind(), "promote", "promote interrupts credit")
+assert_eq(COB.Toasts.frame.text:GetText(), "Beefina is now Cooked Beef.", "promote copy")
+local dupOk, dupReason = COB.Toasts:Celebrate("promote", {
+  name = "Beefina", title = "Cooked Beef", dedupeKey = "promote:Beefina:2",
+})
+assert_eq(dupOk, false, "duplicate promote deduped")
+assert_eq(dupReason, "deduped", "dedupe reason")
+COB.Toasts:HideAll()
+assert_eq(COB.Toasts:PendingCount(), 0, "HideAll clears pending")
+assert_eq(COB.Toasts:ShowingKind(), nil, "HideAll clears showing")
+
+-- Regression: wow_ui_stub __index-caches noops; cobFadeIn must not look Play()-able.
+COB.Toasts:ResetForTests()
+local wasTest = COB._IN_TEST
+COB._IN_TEST = false
+assert_eq(COB.Toasts:Push({ kind = "system", text = "motion fallback ok" }), true,
+  "toast works when AnimationGroup is absent")
+assert_eq(rawget(COB.Toasts.frame, "cobFadeIn"), nil, "cobFadeIn not stored as stub noop")
+assert_eq(COB.Toasts.frame:IsShown(), true, "C_Timer fade path still shows toast")
+stub.flushTimers()
+COB._IN_TEST = wasTest
+COB.Toasts:ResetForTests()
+
+--------------------------------------------------------------------------------
+-- Ladder / Standing tabs read roster + standing (text thresholds; no StatusBar)
 --------------------------------------------------------------------------------
 COB.Ladder:ResetForTests()
 COB.Scoring:ResetForTests()
-COB.Ladder:SetStanding("Beefina", 50)
-COB.Ladder:Commit("Beefina", 2, 50, "Pope", 1)
-COB.Scoring:GrantGora("Beefina", "win", 2)
+COB.Roster:ResetForTests()
+stub.playerName = "Beefina"
+stub.guildRoster = {
+  { name = "Popeina", rankIndex = 0 },
+  { name = "Beefina", rankIndex = 5 }, -- Cooked Beef via guild map
+}
+stub.guildRankIndex = 5
+COB.Roster:Refresh()
+COB.Ladder:SetStanding("Beefina", 75)
 
 COB.UI:Show()
 COB.UI:ShowTab("ladder")
@@ -217,6 +259,8 @@ local cooked = COB.LadderTab.rows[6]
 assert_eq(cooked.title:GetText():find("Cooked Beef", 1, true) ~= nil, true, "Cooked Beef title shown")
 assert_eq(cooked.occupants:GetText():find("Beefina", 1, true) ~= nil, true, "occupant listed")
 assert_eq(cooked.occupants:GetText():find("(You)", 1, true) ~= nil, true, "self dual-encoded as You")
+assert_true(COB.LadderTab.rows[1].occupants:GetText():find("Popeina", 1, true) ~= nil,
+  "GM listed under Prophet from roster")
 
 COB.UI:ShowTab("standing")
 COB.UI:MarkDirty("standing")
@@ -232,5 +276,125 @@ COB.UI:MarkDirty("ladder")
 assert_eq(COB.LadderTab.empty:IsShown(), true, "no-guild empty state shown")
 assert_eq(COB.LadderTab.empty:GetText():find("outside the flock", 1, true) ~= nil, true, "COB_EMPTY_NO_GUILD copy")
 stub.inGuild = true
+
+--------------------------------------------------------------------------------
+-- BeefNet / sync L0 status chip (research 20 + 45)
+--------------------------------------------------------------------------------
+dofile("addon/ChurchOfBeef/Net/BeefNet.lua")
+dofile("addon/ChurchOfBeef/Net/Sync.lua")
+local Status = COB.UI.Status
+local Sync = COB.Sync
+-- Prefer live UI.frame: loadUi()/Init reload replaces the first `frame` local.
+local function chip()
+  return COB.UI.statusChip or (COB.UI.frame and COB.UI.frame.StatusChip)
+end
+
+Status:ResetForTests()
+Sync:ResetForTests()
+COB.Ladder:ResetForTests()
+stub.inGuild = true
+COB.Net.rosterLookup = function()
+  return function() return 0 end
+end
+
+Sync.pendingRequest = "r1"
+Sync.requestSent = false
+Sync.sessionMergeCount = 0
+Sync.consumeEnded = false
+COB.UI:OnSyncStatusChanged()
+assert_eq(Status.state, "settling", "login settle is settling")
+assert_true(Status:ChipText():find("Starting Church", 1, true) ~= nil, "settling chip copy")
+assert_true(chip():GetText():find("Starting Church", 1, true) ~= nil, "settling text on chip")
+assert_eq(chip():IsShown(), true, "chip visible while settling")
+
+Sync.requestSent = true
+COB.UI:OnSyncStatusChanged()
+assert_eq(Status.state, "syncing", "sent request is syncing")
+assert_eq(Status:ChipText(), "Checking for peers…", "syncing chip copy")
+
+COB.Ladder:SetStanding("Beefina", 75)
+Sync.sessionMergeCount = 2
+COB.UI:OnSyncStatusChanged()
+assert_eq(Status.state, "synced", "useful merge is synced")
+assert_eq(Status:ChipText(), "Synced", "synced chip copy")
+COB.UI:ShowTab("ladder")
+COB.UI:MarkDirty("ladder")
+assert_eq(COB.LadderTab.empty:IsShown(), false, "sync success never blanks ladder into empty")
+assert_eq(COB.LadderTab.rows[6].occupants:GetText():find("Beefina", 1, true) ~= nil, true,
+  "cached occupants stay visible during sync success")
+
+stub.flushTimers()
+assert_eq(Status.state, "ready", "synced auto-advances to ready")
+assert_eq(Status:ChipText(), "", "ready hides the chip")
+
+-- Solo GM with a live roster: consume-end with no peer merge is ready (not no_peers).
+Status:ResetForTests()
+Sync.pendingRequest = nil
+Sync.requestSent = true
+Sync.sessionMergeCount = 0
+Sync.consumeEnded = true
+assert_true(#COB.Roster:GetLadderView() > 0, "roster still has occupants")
+COB.UI:OnSyncStatusChanged()
+assert_eq(Status.state, "ready", "roster occupants → ready even with no addon peers")
+assert_eq(Status:ChipText(), "", "ready hides the chip when roster fills the ladder")
+COB.UI:ShowTab("ladder")
+COB.UI:MarkDirty("ladder")
+assert_eq(COB.LadderTab.banner:IsShown(), false, "roster-filled ladder hides learning banner")
+
+-- Ready roster with zero occupants + local standing → soft "local standing" chip.
+Status:ResetForTests()
+COB.Roster:ResetForTests()
+COB.Roster.ready = true
+COB.Roster.members = {}
+stub.guildRoster = {}
+COB.Ladder:SetStanding("Beefina", 75)
+Sync.pendingRequest = nil
+Sync.requestSent = true
+Sync.sessionMergeCount = 0
+Sync.consumeEnded = true
+assert_true(#COB.Ladder:ExportState() > 0, "standing cache present for cached chip")
+COB.UI:OnSyncStatusChanged()
+assert_eq(Status.state, "cached", "timeout with standing cache and empty roster is cached")
+assert_true(Status:ChipText():find("local standing", 1, true) ~= nil, "cached chip copy")
+
+Status:ResetForTests()
+Sync:ResetForTests()
+COB.Ladder:ResetForTests()
+COB.Roster:ResetForTests()
+COB.Roster.ready = true
+COB.Roster.members = {}
+stub.guildRoster = {}
+Sync.consumeEnded = true
+Sync.sessionMergeCount = 0
+COB.UI:OnSyncStatusChanged()
+assert_eq(Status.state, "no_peers", "timeout with empty cache and empty roster is no_peers")
+assert_eq(Status:ChipText(), "No addon peers", "no_peers chip copy")
+COB.UI:ShowTab("ladder")
+COB.UI:MarkDirty("ladder")
+assert_eq(COB.LadderTab.banner:IsShown(), true, "no_peers shows L1 learning banner")
+assert_true(COB.LadderTab.banner:GetText():find("guild roster", 1, true) ~= nil,
+  "roster-backed learning copy")
+assert_eq(COB.LadderTab.rows[1].frame:IsShown(), true, "empty shelves stay visible for no_peers")
+
+stub.inGuild = false
+Status:ResetForTests()
+COB.UI:OnSyncStatusChanged()
+assert_eq(Status.state, "unguilded", "not in guild is unguilded")
+assert_eq(Status:ChipText(), "Not in a guild", "unguilded chip copy")
+COB.UI:ShowTab("ladder")
+COB.UI:MarkDirty("ladder")
+assert_eq(COB.LadderTab.empty:IsShown(), true, "unguilded L1 empty body")
+assert_eq(COB.LadderTab.banner:IsShown(), false, "unguilded does not use no_peers banner")
+stub.inGuild = true
+
+local reqId = Sync:OnLogin()
+local sig = Sync:GetStatus()
+assert_eq(sig.pendingRequest, reqId, "GetStatus exposes pending request")
+assert_eq(sig.requestSent, false, "settle window has not sent yet")
+assert_eq(sig.mergeCount, 0, "merge count starts at zero")
+assert_eq(sig.consumeEnded, false, "consume has not ended")
+stub.flushTimers()
+sig = Sync:GetStatus()
+assert_eq(sig.requestSent, true, "after settle, requestSent is true")
 
 restore()

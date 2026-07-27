@@ -103,6 +103,13 @@ local function refreshUI()
   if COB.UI and COB.UI.RefreshLadder then COB.UI:RefreshLadder() end
 end
 
+-- Mesh honesty only — never invents ranks. UI maps these signals to UIStatus.
+local function notifyStatus()
+  if COB.UI and COB.UI.OnSyncStatusChanged then
+    COB.UI:OnSyncStatusChanged()
+  end
+end
+
 --------------------------------------------------------------------------------
 -- Wire format: name,rankId,standing,revision,updatedAt,updatedBy — records by ";"
 --------------------------------------------------------------------------------
@@ -172,22 +179,42 @@ function Sync:NewRequestId()
   return string.format("%s%d", tostring(salt), #tostring(name))
 end
 
+-- Read-only mesh signals for the UI status chip. No frames; no rank invention.
+function Sync:GetStatus()
+  return {
+    pendingRequest = self.pendingRequest,
+    requestSent = self.requestSent and true or false,
+    mergeCount = self.sessionMergeCount or 0,
+    consumeEnded = self.consumeEnded and true or false,
+  }
+end
+
 function Sync:OnLogin()
   if not COB.Net then return nil end
 
   local reqId = self:NewRequestId()
   self.pendingRequest = reqId
+  self.requestSent = false
+  self.sessionMergeCount = 0
+  self.consumeEnded = false
   self.answered = {}
   self.replying = {}
+  notifyStatus()
 
   after(self.RequestDelay, function()
     -- A /reload during the settle window supersedes this request.
     if Sync.pendingRequest ~= reqId then return end
     COB.Net:SendSyncRequest(reqId)
+    Sync.requestSent = true
+    notifyStatus()
     -- And the window closes on its own. Leaving pendingRequest set for the session
     -- would let a SYNC_STATE arriving an hour later merge as if we had just asked.
     after(Sync.ConsumeSeconds, function()
-      if Sync.pendingRequest == reqId then Sync.pendingRequest = nil end
+      if Sync.pendingRequest == reqId then
+        Sync.pendingRequest = nil
+        Sync.consumeEnded = true
+        notifyStatus()
+      end
     end)
   end)
   return reqId
@@ -201,17 +228,9 @@ function Sync:OnSyncRequest(reqId, sender)
   reqId = trim(reqId)
   if not reqId then return false end
   if COB.Net and COB.Net:IsSelf(sender) then return false end
-  if self.answered[reqId] or self.replying[reqId] then return false end
-
-  -- An empty ladder has nothing to teach anyone; staying silent leaves the floor to
-  -- a peer who does.
-  local records = (COB.Ladder and COB.Ladder.ExportState) and COB.Ladder:ExportState() or {}
-  if #records == 0 then return false end
-
-  self.replying[reqId] = true
-  local window = localIsOfficer() and self.OfficerReplyDelay or self.MemberReplyDelay
-  after(roll(self, window[1], window[2]), function() Sync:Reply(reqId) end)
-  return true
+  -- Roster-backed amendment: Church titles are not replicated. Stay silent so
+  -- older clients do not treat standing rows as authoritative rank state.
+  return false
 end
 
 function Sync:Reply(reqId)
@@ -243,28 +262,10 @@ end
 -- Records signed by someone the roster does not answer for as Officer+ are dropped
 -- silently. Fails closed with no roster: nothing merges, which is why callers hold
 -- the answer for the roster instead of calling straight through.
-function Sync:MergeState(body)
-  local ladder = COB.Ladder
-  if not ladder then return 0 end
-  if not rosterReady() then return 0 end
-
-  local records = self:DecodeRecords(body)
-  if #records == 0 then return 0 end
-
-  local lookup = rosterLookup()
-  if ladder.BeginBatch then ladder:BeginBatch() end
-  local merged = 0
-  for i = 1, #records do
-    -- ApplyRemoteCommit owns the merge: higher revision wins, ties break on time
-    -- then officer name. Sync does not get its own opinion about who is newer.
-    if committedByOfficer(records[i], lookup) and ladder:ApplyRemoteCommit(records[i]) then
-      merged = merged + 1
-    end
-  end
-  if ladder.EndBatch then ladder:EndBatch() end
-
-  if merged > 0 then refreshUI() end
-  return merged
+function Sync:MergeState(_body)
+  -- Roster-backed amendment: Church titles are not replicated over BeefNet.
+  -- Soft-ignore SYNC_STATE rank payloads from older clients.
+  return 0
 end
 
 function Sync:_HoldState(reqId, body)
@@ -330,6 +331,9 @@ function Sync:ResetForTests()
   self.replying = {}
   self.heldStates = {}
   self.pendingRequest = nil
+  self.requestSent = nil
+  self.sessionMergeCount = nil
+  self.consumeEnded = nil
   self.rand = nil
   return true
 end

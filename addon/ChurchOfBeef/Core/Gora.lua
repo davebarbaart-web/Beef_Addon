@@ -155,14 +155,32 @@ function Gora:RecordResult(winner, loser, outcome, now)
   local challenged = self.pending[key] ~= nil
   self.pending[key] = nil
 
+  -- Advisory Lord rite: beating a roster-mapped Beef Lord (rank id 4) on a win.
+  local outcomeKey = outcome:lower()
+  local lordRite = false
+  if outcomeKey == "win" then
+    local roster = COB.Roster
+    if roster and roster.GetChurchRankId and roster:IsReady() then
+      local loserRank = roster:GetChurchRankId(b)
+      if loserRank == 4 then
+        local ladder = COB.Ladder
+        if ladder and ladder.SetRiteFlag then
+          ladder:SetRiteFlag(a, "goraLordWin", true)
+        end
+        lordRite = true
+      end
+    end
+  end
+
   return {
     winner = a,
     loser = b,
-    outcome = outcome:lower(),
+    outcome = outcomeKey,
     winnerPoints = winnerPoints,
     loserPoints = loserPoints,
     challenged = challenged,
     at = at,
+    lordRite = lordRite,
   }
 end
 

@@ -94,8 +94,15 @@ local function refreshUI()
   if COB.UI.RefreshLadder then COB.UI:RefreshLadder() end
 end
 
-local function toast(text)
-  if COB.Toasts and COB.Toasts.Show then COB.Toasts:Show(text) end
+-- Prefer Celebrate/Push so kind priority + dedupe apply; fall back to Show for
+-- harness mocks that only stub Show.
+local function toastCelebrate(kind, fields, fallbackText)
+  if COB.Toasts and COB.Toasts.Celebrate then
+    return COB.Toasts:Celebrate(kind, fields)
+  end
+  if COB.Toasts and COB.Toasts.Show and fallbackText then
+    return COB.Toasts:Show(fallbackText)
+  end
 end
 
 -- Injectable clock so the outbound throttle is provable offline. GetTime is the
@@ -225,13 +232,17 @@ end
 -- ready; the live path is only ready once a roster snapshot exists.
 function Net:RosterReady()
   if type(self.rosterLookup) == "function" then return true end
+  -- Prefer the roster-backed snapshot; Officer cache is kept in sync by Roster:Refresh.
+  if COB.Roster and COB.Roster.IsReady and COB.Roster:IsReady() then return true end
   if not (COB.Officer and COB.Officer.HasRosterCache) then return false end
   return COB.Officer:HasRosterCache() and true or false
 end
 
-function Net:RequestRoster(nowSeconds)
+-- force=true bypasses our client throttle. Blizzard still ignores calls <10s apart;
+-- we must not block login retries ourselves (that was stranding the ladder empty).
+function Net:RequestRoster(nowSeconds, force)
   local t = now(self, nowSeconds)
-  if self.rosterRequestedAt and (t - self.rosterRequestedAt) < ROSTER_REQUEST_INTERVAL then
+  if not force and self.rosterRequestedAt and (t - self.rosterRequestedAt) < ROSTER_REQUEST_INTERVAL then
     return false
   end
   self.rosterRequestedAt = t
@@ -359,9 +370,13 @@ function Net:OnLocalSuggestion(suggestion)
 
   local title = COB.Ranks and COB.Ranks.Title(suggestion.toRankId) or nil
   if title then
-    -- COB_TOAST_SUGGEST (copy guidelines): the earner learns their standing was
-    -- recognized, and that a petition — not a promotion — now exists.
-    toast(string.format("Standing recognized \226\128\148 %s suggested.", title))
+    -- COB_TOAST_SUGGEST: eligible for guild-UI promote — not a promotion itself.
+    local name = suggestion.name or ""
+    local rankId = suggestion.toRankId or 0
+    toastCelebrate("suggest", {
+      title = title,
+      dedupeKey = "suggest-self:" .. name .. ":" .. tostring(rankId),
+    }, string.format("Eligible for %s \226\128\148 officers can promote you in the guild roster.", title))
   end
 
   -- Best effort: a guildless or Net-less client still queued the petition locally,
@@ -388,7 +403,7 @@ function Net:_WarnVersion(version)
   if self.warnedVersion then return false end
   self.warnedVersion = true
   chat(string.format(
-    "a guildmate is running BeefNet v%s; this client speaks v%d. Update to share ranks.",
+    "a guildmate is running BeefNet v%s; this client speaks v%d. Update for matching addon messages.",
     tostring(version), self.PROTOCOL))
   return true
 end
@@ -438,25 +453,10 @@ function Net:ReleaseHeld()
   return applied
 end
 
-function Net:HandleRankCommit(message, sender)
-  -- Never apply unverified. An unread roster means hold and retry, not trust.
-  if not self:RosterReady() then
-    self:_Hold(message, sender)
-    return false, "roster not loaded"
-  end
-
-  local record, err = self:ValidateRankCommit(message, sender, self:RosterLookup())
-  if not record then return false, err end
-
-  if not (COB.Ladder and COB.Ladder:ApplyRemoteCommit(record)) then
-    -- A replay or an older revision. Silent: this is the normal cost of fanout.
-    return false, "record did not beat the local copy"
-  end
-
-  local title = COB.Ranks and COB.Ranks.Title(record.rankId) or nil
-  if title then toast(string.format("%s is now %s.", record.name, title)) end
-  refreshUI()
-  return true
+function Net:HandleRankCommit(_message, _sender)
+  -- Roster-backed ladder amendment: Church titles come from the live guild roster.
+  -- Legacy RANK_COMMIT payloads are soft-ignored so mixed-version guilds do not fork.
+  return false, "rank commits ignored (roster-backed ladder)"
 end
 
 function Net:HandleHello(message, sender)
@@ -492,7 +492,11 @@ function Net:HandleSuggestion(message, sender)
   if not suggestion then return false, err end
 
   local title = COB.Ranks and COB.Ranks.Title(suggestion.toRankId) or "?"
-  toast(string.format("%s petitions for %s.", suggestion.name, title))
+  toastCelebrate("suggest", {
+    name = suggestion.name,
+    title = title,
+    dedupeKey = "suggest:" .. suggestion.name .. ":" .. tostring(suggestion.toRankId),
+  }, string.format("Promote %s to %s in the guild roster.", suggestion.name, title))
   refreshUI()
   return true
 end
@@ -527,12 +531,41 @@ function Net:OnAddonMessage(prefix, payload, channel, sender)
 end
 
 function Net:OnRosterUpdate()
-  if COB.Officer and COB.Officer.RefreshRosterCache then COB.Officer:RefreshRosterCache() end
+  local ready = false
+  if COB.Roster and COB.Roster.Refresh then
+    ready = COB.Roster:Refresh() and true or false
+  elseif COB.Officer and COB.Officer.RefreshRosterCache then
+    ready = COB.Officer:RefreshRosterCache() and true or false
+  end
+  -- Empty login race: ask again (force). Blizzard may ignore within 10s; later
+  -- events / scheduled retries pick it up — same pattern as LibGuildRoster.
+  if not ready then
+    self:RequestRoster(nil, true)
+  end
+  -- Legacy held RANK_COMMITs are drained as no-ops (HandleRankCommit ignores them).
   local applied = self:ReleaseHeld()
-  -- A login sync answer that beat the roster in is held by Sync for the same reason
-  -- a commit is: the officer who signed each record cannot be checked yet.
   if COB.Sync and COB.Sync.ReleaseHeldStates then COB.Sync:ReleaseHeldStates() end
+  refreshUI()
   return applied
+end
+
+-- Classic often answers the first GuildRoster() with an empty snapshot. Blizzard
+-- also ignores requests <10s apart, so we retry past that window until ready.
+function Net:_ScheduleRosterRetries()
+  if type(C_Timer) ~= "table" or type(C_Timer.After) ~= "function" then return end
+  local delays = { 0.5, 2, 5, 10.5, 21 }
+  for i = 1, #delays do
+    local delay = delays[i]
+    C_Timer.After(delay, function()
+      if COB.Roster and COB.Roster.IsReady and COB.Roster:IsReady() then return end
+      if COB.Roster and COB.Roster.Refresh then COB.Roster:Refresh() end
+      if COB.Roster and COB.Roster.IsReady and COB.Roster:IsReady() then
+        refreshUI()
+        return
+      end
+      Net:RequestRoster(nil, true)
+    end)
+  end
 end
 
 --------------------------------------------------------------------------------
@@ -564,7 +597,16 @@ function Net:Init()
     self.frame = frame
   end
 
-  self:RequestRoster()
+  -- Prefer any already-cached roster before kicking a server query.
+  if COB.Roster then
+    if COB.Roster.AttachLibrary then COB.Roster:AttachLibrary() end
+    if COB.Roster.SetOnChanged then
+      COB.Roster:SetOnChanged(function() refreshUI() end)
+    end
+    if COB.Roster.Refresh then COB.Roster:Refresh() end
+  end
+  self:RequestRoster(nil, true)
+  self:_ScheduleRosterRetries()
   self:SendHello()
   return true
 end

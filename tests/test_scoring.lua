@@ -3,11 +3,24 @@ ChurchOfBeef = ChurchOfBeef or {}
 ChurchOfBeef._IN_TEST = true
 dofile("addon/ChurchOfBeef/Data/Ranks.lua")
 dofile("addon/ChurchOfBeef/Core/Ladder.lua")
+dofile("addon/ChurchOfBeef/Core/Roster.lua")
 dofile("addon/ChurchOfBeef/Core/Scoring.lua")
 local S = ChurchOfBeef.Scoring
 local L = ChurchOfBeef.Ladder
+local Roster = ChurchOfBeef.Roster
+
+local function mapRank(name, churchRankId)
+  Roster.ready = true
+  Roster.members[name:lower()] = {
+    name = name,
+    guildRankIndex = 6,
+    churchRankId = churchRankId,
+  }
+end
+
 L:ResetForTests()
 S:ResetForTests()
+Roster:ResetForTests()
 
 --------------------------------------------------------------------------------
 -- The brief's block
@@ -29,6 +42,9 @@ assert_eq(L:GetRecord("B").standing, 8, "loss still pays")
 --------------------------------------------------------------------------------
 assert_eq(S.Points.InstanceBucket, 5, "instance bucket is 5 points")
 assert_eq(S.Points.InstanceComplete, 20, "instance completion is 20 points")
+assert_eq(S.Points.RaidBucket, 12, "raid bucket is 12 points")
+assert_eq(S.Points.RaidComplete, 45, "raid completion is 45 points")
+assert_eq(S.Points.QuestBucket, 3, "quest bucket is 3 points")
 assert_eq(S.Points.Ceremony, 40, "ceremony is 40 points")
 assert_eq(S.Points.GoraWin, 25, "gora win is 25 points")
 assert_eq(S.Points.GoraDraw, 10, "gora draw is 10 points")
@@ -36,6 +52,9 @@ assert_eq(S.Points.GoraLoss, 8, "gora loss is 8 points")
 assert_eq(S.DailyCaps.instance, 60, "instance daily cap is 60")
 assert_eq(S.DailyCaps.ceremony, 80, "ceremony daily cap is 80")
 assert_eq(S.DailyCaps.gora, 100, "gora daily cap is 100")
+assert_eq(S.DailyCaps.quest, 24, "quest daily cap is 24")
+assert_eq(S.Sources.Quest, "quest", "quest source key is quest")
+assert_true(S.DailyCaps.quest < S.DailyCaps.instance, "quest cap stays below instance")
 
 --------------------------------------------------------------------------------
 -- Anti-AFK: a bucket with no combat pays nothing and spends no cap
@@ -74,6 +93,39 @@ assert_eq(S:GrantInstanceComplete("Runner", 1000), 20, "a second run still pays"
 assert_eq(S:GrantInstanceComplete("Runner", 1000), 20, "a third run reaches the cap")
 assert_eq(S:GrantInstanceComplete("Runner", 1000), 0, "a fourth run is capped out")
 assert_eq(S:GrantInstanceBucket("Runner", 1000, true), 0, "buckets share the exhausted instance cap")
+
+--------------------------------------------------------------------------------
+-- Raid weights more than dungeon/BG, but still spends the instance cap
+--------------------------------------------------------------------------------
+L:ResetForTests(); S:ResetForTests()
+assert_eq(S:GrantInstanceBucket("Raider", 1000, true, "raid"), 12, "a raid bucket pays 12")
+assert_eq(S:GrantInstanceBucket("Raider", 1000, true, "party"), 5, "a dungeon bucket still pays 5")
+assert_eq(S:GrantInstanceBucket("Raider", 1000, true, "pvp"), 5, "a battleground bucket pays 5")
+assert_eq(S:GrantInstanceBucket("Raider", 1000, false, "raid"), 0, "an AFK raid bucket pays nothing")
+assert_eq(S:GetGranted("Raider", "instance", 1000), 22, "raid and dungeon/BG buckets share the instance source")
+
+L:ResetForTests(); S:ResetForTests()
+assert_eq(S:GrantInstanceComplete("Raider", 1000, "raid"), 45, "a raid completion pays 45")
+assert_eq(S:GrantInstanceComplete("Raider", 1000, "party"), 15, "dungeon completion clamps to remaining instance cap")
+assert_eq(S:GrantInstanceComplete("Raider", 1000, "raid"), 0, "the shared instance cap then holds")
+assert_eq(L:GetRecord("Raider").standing, 60, "raid complete still cannot outrun the instance cap")
+
+--------------------------------------------------------------------------------
+-- Quest fellowship is a separate capped source
+--------------------------------------------------------------------------------
+L:ResetForTests(); S:ResetForTests()
+assert_eq(S:GrantQuestBucket("Quester", 1000, false), 0, "an inactive quest bucket pays 0")
+assert_eq(S:GrantQuestBucket("Quester", 1000, nil), 0, "a nil activity flag pays 0")
+assert_eq(S:GrantQuestBucket("Quester", 1000, true), 3, "an active quest bucket pays 3")
+assert_eq(S:GetGranted("Quester", "quest", 1000), 3, "quest spends the quest source")
+assert_eq(S:GetGranted("Quester", "instance", 1000), 0, "quest does not spend the instance cap")
+
+for i = 1, 7 do
+  assert_eq(S:GrantQuestBucket("Quester", 1000 + i, true), 3, "quest bucket " .. i .. " pays in full")
+end
+assert_eq(L:GetRecord("Quester").standing, 24, "eight quest buckets reach the quest cap")
+assert_eq(S:GrantQuestBucket("Quester", 1100, true), 0, "the ninth quest bucket pays nothing")
+assert_eq(S:GrantInstanceBucket("Quester", 1100, true), 5, "an exhausted quest cap does not block instance")
 
 --------------------------------------------------------------------------------
 -- Ceremony and Gora sources
@@ -141,7 +193,8 @@ assert_eq(S:GrantInstanceBucket("Clock", nextNoon + 86400, true), 5, "a genuinel
 --------------------------------------------------------------------------------
 -- Grants feed the suggestion queue but never promote
 --------------------------------------------------------------------------------
-L:ResetForTests(); S:ResetForTests()
+L:ResetForTests(); S:ResetForTests(); Roster:ResetForTests()
+mapRank("Climber", 1)
 S:GrantGora("Climber", "win", 1000)
 assert_eq(#L:GetSuggestions(), 0, "25 points is short of Cooked Beef")
 S:GrantGora("Climber", "win", 1000)
@@ -151,16 +204,16 @@ assert_eq(L:GetSuggestions()[1].toRankId, 2, "the suggestion targets Cooked Beef
 assert_eq(L:GetRecord("Climber").rankId, 1, "scoring never promotes on its own")
 assert_eq(L:GetRecord("Climber").revision, 0, "advisory standing does not bump the revision")
 
--- A member who cannot be suggested any higher still banks points safely.
-L:ResetForTests(); S:ResetForTests()
-L:BestowProphet("Anointed", "Pope", 10)
+-- A member already at Prophet via guild rank still banks points safely.
+L:ResetForTests(); S:ResetForTests(); Roster:ResetForTests()
+mapRank("Anointed", 7)
 assert_eq(S:GrantCeremony("Anointed", 1000), 40, "an appointed rank still earns standing")
 assert_eq(#L:GetSuggestions(), 0, "an appointed rank is never suggested")
 
 --------------------------------------------------------------------------------
 -- Bad input pays nothing and changes nothing
 --------------------------------------------------------------------------------
-L:ResetForTests(); S:ResetForTests()
+L:ResetForTests(); S:ResetForTests(); Roster:ResetForTests()
 assert_eq(S:Grant(nil, "instance", 5, 1000), 0, "a nil name pays nothing")
 assert_eq(S:Grant("", "instance", 5, 1000), 0, "an empty name pays nothing")
 assert_eq(S:Grant("   ", "instance", 5, 1000), 0, "a whitespace name pays nothing")
@@ -172,7 +225,7 @@ assert_eq(S:Grant("Bad", "instance", "5", 1000), 0, "a string amount pays nothin
 assert_eq(S:Grant("Bad", "instance", nil, 1000), 0, "a nil amount pays nothing")
 assert_true(type(select(2, S:Grant("Bad", "chores", 5, 1000))) == "string", "a rejected grant explains itself")
 assert_eq(L:GetRecord("Bad").standing, 0, "no bad grant touched standing")
-assert_eq(#L:GetLadderView(), 0, "no bad grant created a record")
+assert_eq(#L:ExportState(), 0, "no bad grant created a standing row")
 
 -- A grant that is capped out is not an error, just a zero.
 assert_eq(S:Grant("Full", "instance", 60, 1000), 60, "fill the cap")
