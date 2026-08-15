@@ -1,35 +1,42 @@
 ChurchOfBeef = ChurchOfBeef or {}
 local COB = ChurchOfBeef
 
--- Per-character SavedVariables cache. Standing + suggestions are local testimony;
--- Church titles come from the live guild roster (Core/Roster), not this file.
--- Nest ui separately from ladder/scoring so future cosmetic profiles never own
--- church data (research track 21).
+-- SavedVariables cache. Schema 7 is { version, ui, store, event, decree }.
+-- Store persist: Save writes Store:Snapshot() (a table, not an Archive stamp).
+-- Init Restores store only when it looks like a Snapshot (humans + characters).
+-- Event persist: Save writes Runtime:Snapshot() when Runtime exists. Init
+-- Restores event only when state is a string. Empty {} / missing does not
+-- Restore. Decree persist: Save writes Decree:Snapshot() when Decree exists.
+-- Init Restores decree only when line is a string. Empty {} / missing does
+-- not Restore. Leftover demo keys stay at the SV root (Law 7).
 local DB = {}
 COB.DB = DB
 
--- v2: roster-backed ranks — ladder.records keep standing only.
--- v3: advisory rite flags (knighted / goraLordWin) on standing rows.
-local SCHEMA_VERSION = 3
+local SCHEMA_VERSION = 7
 
 local function defaultUi()
   return { point = nil, shown = false, announce = true }
 end
 
-local function defaultLadder()
-  return { records = {}, suggestions = {} }
+local function defaultStore()
+  return {}
 end
 
-local function defaultScoring()
-  return { dayKey = "", granted = {} }
+local function defaultEvent()
+  return {}
+end
+
+local function defaultDecree()
+  return {}
 end
 
 local function defaultDb()
   return {
     version = SCHEMA_VERSION,
     ui = defaultUi(),
-    ladder = defaultLadder(),
-    scoring = defaultScoring(),
+    store = defaultStore(),
+    event = defaultEvent(),
+    decree = defaultDecree(),
   }
 end
 
@@ -40,38 +47,11 @@ local function ensureTable(parent, key, factory)
   return parent[key]
 end
 
--- Fill missing known keys only. Never delete unknown future fields.
+-- Fill missing known keys only. Never delete unknown future fields, and never
+-- require or import leftover ladder / scoring / suggestions.
 local function applyDefaults(db)
   local version = db.version
   if type(version) ~= "number" then version = 0 end
-
-  -- Ordered migrations: strip legacy official rank fields from standing rows.
-  if version < 2 then
-    local ladder = db.ladder
-    if type(ladder) == "table" and type(ladder.records) == "table" then
-      local cleaned = {}
-      for _, record in pairs(ladder.records) do
-        if type(record) == "table" and type(record.name) == "string" then
-          local standing = record.standing
-          if type(standing) ~= "number" or standing < 0 then standing = 0 end
-          cleaned[#cleaned + 1] = {
-            name = record.name,
-            standing = standing,
-            rankId = 1,
-            revision = 0,
-            updatedAt = 0,
-            updatedBy = "",
-          }
-        end
-      end
-      ladder.records = cleaned
-    end
-    version = 2
-  end
-  -- v3: rite flags are additive on standing rows; ImportState reads them when present.
-  if version < 3 then
-    version = 3
-  end
   if version < SCHEMA_VERSION then
     version = SCHEMA_VERSION
   end
@@ -81,54 +61,113 @@ local function applyDefaults(db)
   local ui = ensureTable(db, "ui", defaultUi)
   if ui.shown == nil then ui.shown = false end
   if ui.announce == nil then ui.announce = true end
-  -- ui.point may be nil (unset position). Announce checkbox is retained in SV for a
-  -- future roster-diff announcer; Officer UI hides it until then.
+  -- ui.point may be nil (unset position).
 
-  local ladder = ensureTable(db, "ladder", defaultLadder)
-  if type(ladder.records) ~= "table" then ladder.records = {} end
-  if type(ladder.suggestions) ~= "table" then ladder.suggestions = {} end
-
-  local scoring = ensureTable(db, "scoring", defaultScoring)
-  if type(scoring.dayKey) ~= "string" then scoring.dayKey = "" end
-  if type(scoring.granted) ~= "table" then scoring.granted = {} end
+  ensureTable(db, "store", defaultStore)
+  ensureTable(db, "event", defaultEvent)
+  ensureTable(db, "decree", defaultDecree)
 end
 
-local function loadIntoModules(db, now)
-  if COB.Ladder then
-    COB.Ladder:ImportState(db.ladder.records)
-    COB.Ladder:ImportSuggestions(db.ladder.suggestions)
-  end
-  if COB.Scoring and COB.Scoring.ImportState then
-    -- Optional now keeps desktop tests off the harness epoch-0 clock.
-    COB.Scoring:ImportState(db.scoring, now)
-  end
+-- Snapshot shape is Store's table (humans + characters). {} is the Lane D hook.
+local function isSnapshot(store)
+  return type(store) == "table"
+    and type(store.humans) == "table"
+    and type(store.characters) == "table"
+end
+
+local function storeModule()
+  local store = COB.Store
+  if type(store) ~= "table" then return nil end
+  return store
+end
+
+-- Runtime snapshot gate: state is a string. {} / missing is not a snapshot.
+local function isEventSnapshot(event)
+  return type(event) == "table" and type(event.state) == "string"
+end
+
+local function runtimeModule()
+  local runtime = COB.Runtime
+  if type(runtime) ~= "table" then return nil end
+  return runtime
+end
+
+-- Restore only a Snapshot-shaped table. Empty {} must not replace live memory.
+local function restoreFromSv(db)
+  local store = storeModule()
+  if not store or type(store.Restore) ~= "function" then return end
+  if not isSnapshot(db.store) then return end
+  store:Restore(db.store)
+end
+
+-- Persist the in-memory Pope store. Never copy leftover root keys into store.
+local function snapshotToSv(db)
+  local store = storeModule()
+  if not store or type(store.Snapshot) ~= "function" then return end
+  db.store = store:Snapshot()
+end
+
+-- Restore only a Runtime snapshot. Empty {} / missing must not replace live event.
+local function restoreEventFromSv(db)
+  local runtime = runtimeModule()
+  if not runtime or type(runtime.Restore) ~= "function" then return end
+  if not isEventSnapshot(db.event) then return end
+  runtime:Restore(db.event)
+end
+
+-- Persist the in-memory event object. Never copy leftover root keys into event.
+local function snapshotEventToSv(db)
+  local runtime = runtimeModule()
+  if not runtime or type(runtime.Snapshot) ~= "function" then return end
+  db.event = runtime:Snapshot()
+end
+
+-- Decree snapshot gate: line is a string. {} / missing is not a snapshot.
+local function isDecreeSnapshot(decree)
+  return type(decree) == "table" and type(decree.line) == "string"
+end
+
+local function decreeModule()
+  local decree = COB.Decree
+  if type(decree) ~= "table" then return nil end
+  return decree
+end
+
+-- Restore only a Decree snapshot. Empty {} / missing must not replace live.
+local function restoreDecreeFromSv(db)
+  local decree = decreeModule()
+  if not decree or type(decree.Restore) ~= "function" then return end
+  if not isDecreeSnapshot(db.decree) then return end
+  decree:Restore(db.decree)
+end
+
+-- Persist the in-memory Decree. Never copy leftover root keys into decree.
+local function snapshotDecreeToSv(db)
+  local decree = decreeModule()
+  if not decree or type(decree.Snapshot) ~= "function" then return end
+  db.decree = decree:Snapshot()
 end
 
 -- Call only from ADDON_LOADED for ChurchOfBeef — SV is not ready at file load.
--- Optional now is forwarded to Scoring:ImportState (injectable clock for tests).
-function DB:Init(now)
+function DB:Init(_now)
   if type(ChurchOfBeefDB) ~= "table" then
     ChurchOfBeefDB = defaultDb()
   else
     applyDefaults(ChurchOfBeefDB)
   end
-  loadIntoModules(ChurchOfBeefDB, now)
+  restoreFromSv(ChurchOfBeefDB)
+  restoreEventFromSv(ChurchOfBeefDB)
+  restoreDecreeFromSv(ChurchOfBeefDB)
   return ChurchOfBeefDB
 end
 
--- Flush live Core state into the SV table. UI writes ChurchOfBeefDB.ui in place;
--- this only refreshes ladder + scoring caches. Client persists on logout.
+-- UI writes ChurchOfBeefDB.ui in place. No leftover-key import into store/event/decree.
 function DB:Save()
   local db = ChurchOfBeefDB
   if type(db) ~= "table" then return false end
   applyDefaults(db)
-
-  if COB.Ladder then
-    db.ladder.records = COB.Ladder:ExportState()
-    db.ladder.suggestions = COB.Ladder:GetSuggestions()
-  end
-  if COB.Scoring and COB.Scoring.ExportState then
-    db.scoring = COB.Scoring:ExportState()
-  end
+  snapshotToSv(db)
+  snapshotEventToSv(db)
+  snapshotDecreeToSv(db)
   return true
 end

@@ -1,0 +1,50 @@
+---
+description: Ban points/XP/thresholds; records are stories; ranks listed
+globs:
+  - "**/Core/**/*.lua"
+  - "**/Data/**/*.lua"
+  - "**/Net/**/*.lua"
+  - "**/UI/**/*.lua"
+  - "**/UI/**/*.xml"
+alwaysApply: false
+---
+
+# Records, not points
+
+Product law: `docs/design/Game_Design_Bible_v1.1.1.md`. On conflict the Bible wins. Laws 1, 2, 9. Audit V1, V2. Do not rebalance a points system.
+
+## Banned — do not rebuild
+
+No points, XP, currencies, dailies, streaks-as-economy, thresholds, engagement scores, contribution numbers, hours or combat-minutes, activity leaderboards, ELO/MMR, or Grant / standing / suggestion machinery.
+
+Regression tells (grep; refuse and delete — do not rebalance): `standing`, `Grant`, `Grant(`, `threshold`, `suggestion`, `elo`, `leaderboard`, `prophet`.
+
+## Ranks (exactly these; no thresholds)
+
+Fresh Beef, Cooked Beef, Beef Knight, Beef Lord, Beef Butcher (raid-team role, display-only this phase), Beef Council. No Beef Prophet. The Pope is not a rank.
+
+Attainment (§5, §10.4):
+
+- **Fresh Beef** — recruitment (guild invite). This addon does not own recruit or purge.
+- **Cooked Beef** — Discord/community step outside the addon; reflected when Council promotes.
+- **Beef Knight** — Pope ceremony: KNIGHT THIS BEEF.
+- **Beef Lord** — a Beef Knight who wins a sanctioned Gora the Pope judges fair; Pope elevates. Attainable.
+- **Beef Butcher** — human raid-team designation. Display-only this phase.
+- **Beef Council** — human judgment; prunable by the same judgment.
+
+Ranks are relationships, not a linear ladder. After Lord: records, rivalries, defenses, narrative streaks, honorifics — not more ranks.
+
+## Records are stories (§10.9)
+
+Character-level: wins/losses, **sanctioned-Gora W/L streaks only** (narrative record, not an economy), defenses, head-to-heads, notable victims, rulings received. No damage meters, duration stats, or per-class win rates. Engagement, login, daily, favor, and accuracy streaks remain banned (§4.6, §10.6).
+
+**Records Book** = parchment superlatives, not a sortable ranked ladder. Bible MVP categories (veto: OPEN_QUESTIONS #3): Most Sanctioned Victories; Longest Streak; Most Successful Defenses; The Iron Chin; Greatest Rivalry; Famous Upsets (Pope-flagged); The Undefeated; The Glorious Martyr; Tournament Champions.
+
+## Recognition (§15, §17)
+
+- Honorifics: Pope-granted, named, cosmetic text only. No mechanical benefits.
+- Quiet Knights: witnessed history plus human recognition. No service scores, no achievement tracks.
+- Different contributions stay distinguishable — no single number may collapse them.
+- Record events, never behavior. No activity leaderboards. Ever.
+
+Do not invent product answers. Unanswered items go to `docs/design/OPEN_QUESTIONS.md`.

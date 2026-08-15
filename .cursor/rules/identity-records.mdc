@@ -1,0 +1,81 @@
+---
+description: account-level identity, human-confirmed linking, never-delete, Archive
+globs:
+  - "**/Core/**/*.lua"
+  - "**/Data/**/*.lua"
+  - "**/UI/**/*.lua"
+  - "**/ChurchOfBeef.toc"
+  - "docs/design/**"
+  - "docs/**/*record*"
+  - "docs/**/*identity*"
+  - "docs/**/*archive*"
+alwaysApply: false
+---
+
+# Identity and records (never-delete)
+
+Product law: Bible §12, §13.5, §17; Law 7. Audit V6 is the failure this rule exists to prevent.
+
+## Non-negotiables
+
+- **Human owns:** Church rank, Council status, honorifics / major accolades, membership history, aggregate identity
+- **Character owns:** name, class, level, professions, **Gora record**, gameplay history
+- **Profile aggregates** those character stories onto the human (MVP stays simple, §12.5)
+- **No self-service linking.** Rite of Recognition only: Pope or Council confirms with the **logged-in** character. Bible shape: ~thirty seconds; the alt kneels; is acknowledged; is formally bound. Not a silent admin bind. Council may confirm; the store write remains the Pope's (Law 5). Do not invent widgets.
+- **History is never deleted.** Tombstones / inactive flags only. No prune, no departed-member sweep, no record expiry
+- **Account-level SavedVariables:** `ChurchOfBeefDB` is per account (`## SavedVariables:`), not per character (Audit V6; handoff Phase 2). Per-character SV / "alts start fresh" is **not law**
+- Identity is more than a name string. `COB.Names.Key` / `Display` normalize a **spelling**. They are **not** the human and **not** durable character identity (§12.4 name reuse). Do not invent a replacement key (schema is out of scope).
+- **Church rank lives on the human, never on the character row.** Do not default an unlinked alt to Fresh Beef as if rank were per-character. Do not invent unlinked-character rank display.
+- Shared accounts / two humans: **no machinery.** The Pope resolves socially
+- Sacred Archive: one-action export/import (file/string), restore, integrity. Weekly reminder in **cold** state only (never mid-ceremony). Council cold mirror is read-only disaster recovery — **not a second writer**
+- Privacy: record **events**, not behavior; **no activity leaderboards**; members see their own record; Curtain opt-out covers *displayed* witnessed activity except rank / Knighting / sanctioned Gora results
+- Pope's Notebook is private (§18.3 / §17) — never public, never auto-published
+
+## Banned (do not rebuild)
+
+| Pattern | Why |
+|---------|-----|
+| `SweepDeparted`, 14-day grace, departed purge, record expiry | Law 7 / §12.3 |
+| `SavedVariablesPerCharacter` as product law; "alts start fresh" | §12.1; Audit V6 |
+| Self-link, same-account auto-link, player-claimed alt without rite | §12.2 |
+| Treating a name string (or `Names.Key`) as the human **or** as durable character identity | §12.4 name reuse / impersonation |
+| Prune / wipe on leave, character delete, or inactivity | §12.3 — records survive the character |
+| Auto-restore rank on return | §12.3 — restoration is a human call |
+| Activity hours, combat minutes, contribution scores, activity leaderboards | §4.9 / §17 |
+| Second Archive writer; mid-ceremony Archive nag | §13.5 |
+| Curtain hiding rank, Knighting, or sanctioned Gora results | §17 |
+
+```lua
+-- ❌ BAD — departed sweep / per-character standing / self-link
+Ladder:SweepDeparted(now)
+-- TOC: ## SavedVariablesPerCharacter: ChurchOfBeefDB
+-- "alts start fresh"; auto-bind alts on the same WoW account
+
+-- ✅ GOOD — never-delete; account store; human-confirmed rite
+-- TOC direction: ## SavedVariables: ChurchOfBeefDB
+-- leave + inactive/tombstone; record remains
+-- link only after Pope or Council Rite of Recognition with that character logged in
+```
+
+## Linking (Rite of Recognition)
+
+WoW cannot prove alt ownership. A linking claim is confirmed by the Pope or Council interacting with the logged-in character — a ~thirty-second Rite of Recognition in which the alt kneels, is acknowledged, and is formally bound to the human's Church identity. Impersonation is answered the same way. Transfers / faction changes are a **re-link confirmation**, not a new identity (§12.4). Do not invent a BattleNet/account-id auto-linker or a silent Link button.
+
+## Permanence and edges
+
+Members who leave and return find the record intact. Character records survive deletion, death, and abandonment. §12.6 Fallen memorials are deferred; permanence means nothing is lost by waiting. Do not add expiry "to keep SV small."
+
+## Sacred Archive
+
+The Church's history cannot depend on one SavedVariables file. **Pope console** one-action export and restorable import, plus an integrity check. The cold mirror never imports into authority. Weekly reminder only while **cold** (never mid-ceremony): Pope console, Quiet Mode, never a congregation toast or pip. One writer remains the Pope's store. **Do not invent** the export file format or reminder widgets.
+
+## Privacy and the Curtain
+
+Generally public: rank, Gora records, honorifics, ceremony / dungeon / raid participation, profession capabilities (self-reported), significant contributions, Chronicle history. Private: moderation notes, disciplinary context, officer commentary, the Notebook. Members see everything witnessed about them. Curtain = member opt-out of *displayed* witnessed activity — **display only; the witnessed record remains** (Law 7). Rank, Knighting, and sanctioned Gora results are not curtainable. **Do not invent** Curtain UX (OPEN_QUESTIONS #4). Free-typed player text is never auto-published.
+
+## Out of scope (do not invent)
+
+- Curtain widgets or interaction details
+- Archive export encoding / file format
+- Migration of the old per-character `ChurchOfBeefDB` (Phase 2)
+- Human-id storage key / schema (Phase 1 store)

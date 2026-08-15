@@ -10,68 +10,12 @@ function COB:OnLoad()
   COB.loaded = true
 end
 
--- Core/Instance.lua and Core/Quest.lua decide *when* co-play buckets close; frames
--- are not their job, so the client events they need are registered here and routed
--- straight into them. RegisterEvent raises on an event a host does not know, so
--- each registration is pcall'd: losing one costs responsiveness (the 60s tick
--- re-checks qualification anyway), never the whole tracker.
-function COB:WireInstanceEvents()
-  local instance = COB.Instance
-  if not instance then return nil end
-  if COB.instanceFrame then return COB.instanceFrame end
-  if type(CreateFrame) ~= "function" then return nil end
-
-  local frame = CreateFrame("Frame")
-  COB.instanceFrame = frame
-
-  for event in pairs(instance.Events or {}) do
-    pcall(function() frame:RegisterEvent(event) end)
-  end
-
-  frame:SetScript("OnEvent", function(_, event)
-    instance:OnEvent(event)
-  end)
-
-  return frame
-end
-
-function COB:WireQuestEvents()
-  local quest = COB.Quest
-  if not quest then return nil end
-  if COB.questFrame then return COB.questFrame end
-  if type(CreateFrame) ~= "function" then return nil end
-
-  local frame = CreateFrame("Frame")
-  COB.questFrame = frame
-
-  for event in pairs(quest.Events or {}) do
-    pcall(function() frame:RegisterEvent(event) end)
-  end
-
-  frame:SetScript("OnEvent", function(_, event)
-    quest:OnEvent(event)
-  end)
-
-  return frame
-end
-
 function COB:OnLogin()
   if COB.UI and COB.UI.Init then
     COB.UI:Init()
   end
   if COB.Net and COB.Net.Init then
     COB.Net:Init()
-  end
-  if COB.Sync and COB.Sync.OnLogin then
-    COB.Sync:OnLogin()
-  end
-  COB:WireInstanceEvents()
-  if COB.Instance and COB.Instance.Init then
-    COB.Instance:Init()
-  end
-  COB:WireQuestEvents()
-  if COB.Quest and COB.Quest.Init then
-    COB.Quest:Init()
   end
 end
 
@@ -97,13 +41,74 @@ frame:SetScript("OnEvent", function(_, event, arg1)
 end)
 
 SLASH_CHURCHOFBEEF1 = "/beef"
--- No subcommands in V1, debug included: arguments are ignored rather than parsed so
--- there is no verbose or force-send path shipping to a guild. In-game forging for
--- checklist box 9 goes through /run and the public Net:Send.
-SlashCmdList["CHURCHOFBEEF"] = function()
+-- Subcommands: minimap (restore the hideable button) and console (player-opened
+-- Director Console — Bible §18 names the tool, not the slash; OPEN_QUESTIONS #11).
+-- Unrecognised arguments open the Records Book. No verbose/debug guild noise.
+SlashCmdList["CHURCHOFBEEF"] = function(msg)
+  local argument = type(msg) == "string" and string.lower((string.gsub(msg, "%s", ""))) or ""
+
+  if argument == "minimap" then
+    local minimap = COB.Minimap
+    if not (minimap and minimap.SetShown) then
+      DEFAULT_CHAT_FRAME:AddMessage("|cffffaa00Church of Beef|r: minimap button not ready yet.")
+      return
+    end
+    local show = not minimap:IsShown()
+    minimap:SetShown(show)
+    if show then
+      DEFAULT_CHAT_FRAME:AddMessage("|cffffaa00Church of Beef|r: minimap button shown.")
+    else
+      DEFAULT_CHAT_FRAME:AddMessage("|cffffaa00Church of Beef|r: minimap button hidden — /beef minimap brings it back.")
+    end
+    return
+  end
+
+  if argument == "console" then
+    local console = COB.Console
+    if not (console and console.Show) then
+      DEFAULT_CHAT_FRAME:AddMessage("|cffffaa00Church of Beef|r: Director Console not ready yet.")
+      return
+    end
+    console:Show()
+    return
+  end
+
   if COB.UI and COB.UI.Toggle then
     COB.UI:Toggle()
     return
   end
   DEFAULT_CHAT_FRAME:AddMessage("|cffffaa00Church of Beef|r: UI not ready yet. (" .. COB.VERSION .. ")")
+end
+
+-- Owner inspection only. Not a slash. Not #8. Does not write Store Gora
+-- rows. Sets a Decree (persists) and opens the built surfaces so they can
+-- be seen. Runtime is returned to QUIET. Rituals stay fail-closed.
+function COB:InspectProgress()
+  if COB.Decree and COB.Decree.Set then
+    COB.Decree:Set({
+      line = "Goldshire Inn — Sunday, 7:00 PM",
+      flavor = "The Gathering.",
+    })
+  end
+  if COB.DecreeBanner and COB.DecreeBanner.Show then
+    COB.DecreeBanner:Show()
+  end
+  if COB.RecordsBook and COB.RecordsBook.Show then
+    COB.RecordsBook:Show()
+  end
+  if COB.Console and COB.Console.Show then
+    COB.Console:Show()
+  end
+  if COB.Runtime and COB.Runtime.StartEvent then
+    COB.Runtime:StartEvent()
+    if COB.Sound and COB.Sound.Play then
+      COB.Sound:Play("sanction")
+    end
+    if COB.Runtime.EndEvent then
+      COB.Runtime:EndEvent()
+    end
+  end
+  if DEFAULT_CHAT_FRAME and DEFAULT_CHAT_FRAME.AddMessage then
+    DEFAULT_CHAT_FRAME:AddMessage("|cffffaa00Church of Beef|r: Records Book, Decree, and Director Console are open. Buttons still refuse — no registered Pope. Fight HUD needs a sanctioned pair.")
+  end
 end

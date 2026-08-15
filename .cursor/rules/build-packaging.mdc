@@ -12,7 +12,7 @@ alwaysApply: false
 
 ## Non-negotiables
 
-- V1 host: **TBC Classic Anniversary** only — `## Interface: 20506`
+- Host: **TBC Classic Anniversary** only — `## Interface: 20506`
 - Folder basename must match TOC: `ChurchOfBeef/ChurchOfBeef.toc`
 - Expand TOC only for files that exist; never list missing files
 - No packager upload / store publish without explicit approval
@@ -21,31 +21,33 @@ alwaysApply: false
 
 No BigWigs packager, `.pkgmeta`, Makefile, or `.github/workflows` yet. Research: `docs/research/wow-classic-addon-design/33-packager-ci-releases/`. Do not invent CI or upload tokens without a task. Backlog: `OPTIMIZATIONS.md`.
 
+Bible §21.3 recommends dual-publish CurseForge + Wago from the first public build. That is a recommendation, not a configured pipeline.
+
 ## TOC / host
 
 - Re-verify after patches: `/dump select(4, GetBuildInfo())`
-- No Retail / Era / Cata / DF multi-TOC for V1
+- No Retail / Era / Cata / DF multi-TOC
 - Prefer backslashes in TOC paths (`Data\Ranks.lua`)
 - Keep `ChurchOfBeef*.lua` / TOC casing consistent (case-sensitive packaging)
 
-## SavedVariables (product-load-bearing)
+## SavedVariables (packaging law)
 
 ```toc
-## SavedVariablesPerCharacter: ChurchOfBeefDB
+## SavedVariables: ChurchOfBeefDB
 ```
 
-Per-character is intentional (alts start Fresh Beef). Do not switch to account-wide. SV caches officer-committed state + local testimony — not a server.
+Account-level `ChurchOfBeefDB` (not `SavedVariablesPerCharacter`). Church rank belongs to the human; Gora records belong to the character (§12.1). Do not ship per-character SV as product law. SV is a local store — not a server.
 
-## Phase 0 install / zip
+## Install / zip
 
-From checkout that has `addon/` (often `.worktrees/feat-church-of-beef-v1/`):
+From the checkout that has `addon/` (workspace root when present; otherwise a worktree):
 
 ```bash
 cp -R addon/ChurchOfBeef "$WOW_ADDONS_DIR/ChurchOfBeef"
 cd addon && zip -r ../ChurchOfBeef.zip ChurchOfBeef
 ```
 
-Zip/install root = `ChurchOfBeef/` (not the monorepo). Wrong name → silent “addon missing.” Keep `docs/canon/` out of the zip. Numbers only in `Data/Ranks.lua`. Operational loop: `.cursor/skills/church-of-beef-dev/SKILL.md`.
+Zip/install root = `ChurchOfBeef/` (not the monorepo). Wrong name → silent “addon missing.” Keep `docs/` out of the zip. Operational loop: `.cursor/skills/church-of-beef-dev/SKILL.md`.
 
 ## Secrets & release
 

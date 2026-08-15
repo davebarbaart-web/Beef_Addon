@@ -1,50 +1,49 @@
 ---
-description: Officer+ gate via guild roster rank index — Classic API edges
+description: Classic guild roster sensing — Presence desk and display-vs-truth; not an Officer+ ritual gate
 globs:
+  - "**/Core/Roster*.lua"
   - "**/Core/Officer*.lua"
-  - "**/Net/**/*.lua"
-  - "**/UI/Officer*.lua"
+  - "**/UI/**/*.lua"
 alwaysApply: false
 ---
 
-# Officer / guild roster (domain)
+# Guild roster (sensing)
 
-## Non-negotiables
+Roster APIs sense presence and public display rank. They do not confer Church authority. Theater and canonical writes: `pope-authority.mdc` (registered-Pope senders; designated Council for the operational subset the Bible names). Do **not** invent registered-Pope configuration UX.
 
-- Officer+ = roster `rankIndex ≤ COB.Ranks.OfficerRankIndexMax` (default `1` → GM + top officer)
+## Authority (not this module)
+
+- Do **not** gate rituals or canonical writes on `rankIndex ≤ OfficerRankIndexMax` (default `1`).
+- `CanGuildInvite`, `CanEditOfficerNote`, and opaque `IsGuildOfficer()` are not Church authority.
+- A guild-rank **write** permission check is capability, not sovereignty — only the Pope verb `KNIGHT THIS BEEF` may use it, and only where the API permits.
+
+## Roster timing (Classic edges)
+
 - `rankIndex` is **0-based** (`0` = Guild Master)
-- **Never** gate on `rankName` strings
-- Receivers re-check the **sender’s** rank index — UI “I am officer” is not enough on the wire
-
-## Gate implementation
-
-```lua
--- ✅ configurable index after roster lookup
-local _, _, rankIndex = GetGuildRosterInfo(i) -- or GetGuildInfo for local
-return type(rankIndex) == "number" and rankIndex <= COB.Ranks.OfficerRankIndexMax
-```
-
-**Not** Officer+ substitutes: `CanGuildInvite`, `CanEditOfficerNote`, opaque `IsGuildOfficer()` alone.
-
-## Roster timing
-
+- Never map Church **truth** from `rankName` strings or from `rankIndex`. Guild `rankIndex` is public display only — use it for Presence and display-vs-truth **drift detection**, not as the Church rank id.
 - Prefer `C_GuildInfo.GuildRoster()` on Anniversary; do not call it per incoming message
 - Client ignores GuildRoster if last request was < **10 seconds** ago — validate against cache when fresh
 - On login / `PLAYER_GUILD_UPDATE` / stale cache: request, then wait for `GUILD_ROSTER_UPDATE`
-- Until local `guildRankIndex` known: treat as **not** Officer+ (hide Officer tab; approve no-ops)
-- Do **not** flip `SetGuildRosterShowOffline` as a side effect of validation
+- Until a snapshot exists: Presence is empty / unknown — do not treat that as a ritual or write gate
+- Do **not** flip `SetGuildRosterShowOffline` as a side effect of sensing
+
+```lua
+-- ✅ 0-based rankIndex after roster lookup — display / Presence only
+local name, _, rankIndex = GetGuildRosterInfo(i)
+-- Church store is truth; rankIndex is public display (§5)
+```
 
 ## Names and realms
 
 - Roster names often include realm (`Name-Realm`) — normalize consistently with BeefNet sender matching
-- Each guild is an **independent** ladder — no cross-realm church state
-- Not in a guild → empty ladder UI; pause scoring and BeefNet sends
+- A roster snapshot is per-guild API data, not an independent product ladder
 
-## Rank path (roster-backed)
+## What roster is for
 
-Church titles come from the live guild roster map — not addon commits.
+- Presence desk: who is here, displayed guild rank, needs-Knighting flags (§18.1)
+- Display-vs-truth: guild rank is public display; Church store is truth; reconcile per `pope-authority.mdc` (§5)
+- Not in a guild → empty Presence; no scoring pause (there is no scoring)
 
-- Officer+ may **Dismiss** promote suggestions and **correct standing** in the addon
-- Officers change ranks in the **Blizzard guild UI**
-- Addon must not call guild promote/demote APIs
-- Legacy `RANK_COMMIT` on the wire is soft-ignored
+## Guild-rank writes
+
+`KNIGHT THIS BEEF` on the Pope client may call guild promote / set-rank APIs **where the API permits**. Guard the call; do not forbid the verb. Congregation clients never write guild rank. Do not add Officer+ promote/demote ritual verbs. Officers may still change ranks in the Blizzard guild UI; the console reconciles drift.

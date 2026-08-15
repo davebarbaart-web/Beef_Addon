@@ -1,104 +1,91 @@
--- Roster-backed ladder: guild rankIndex → Church title, ladder view from roster.
+-- Guild roster sensing: names, guildRankIndex, completeness, local-player seed.
+-- ChurchRankIdForGuildIndex is a nil stub (Bible §5). Members must still land
+-- so the Quiet shell can leave "Reading the guild roster…".
+-- Do not dofile Ladder or Scoring.
 ChurchOfBeef = ChurchOfBeef or {}
 ChurchOfBeef._IN_TEST = true
 
 local stub = require("wow_ui_stub")
 local restore = stub.install()
 
+dofile("addon/ChurchOfBeef/Core/Common.lua")
 dofile("addon/ChurchOfBeef/Data/Ranks.lua")
-dofile("addon/ChurchOfBeef/Core/Ladder.lua")
-dofile("addon/ChurchOfBeef/Core/Officer.lua")
 dofile("addon/ChurchOfBeef/Core/Roster.lua")
 
 local COB = ChurchOfBeef
 local Ranks = COB.Ranks
 local Roster = COB.Roster
-local Ladder = COB.Ladder
 
-assert_eq(Ranks.ChurchRankIdForGuildIndex(0), 7, "GM → Prophet")
-assert_eq(Ranks.ChurchRankIdForGuildIndex(1), 6, "index 1 → Council")
-assert_eq(Ranks.ChurchRankIdForGuildIndex(2), 5, "index 2 → Butcher")
-assert_eq(Ranks.ChurchRankIdForGuildIndex(3), 4, "index 3 → Lord")
-assert_eq(Ranks.ChurchRankIdForGuildIndex(4), 3, "index 4 → Knight")
-assert_eq(Ranks.ChurchRankIdForGuildIndex(5), 2, "index 5 → Cooked")
-assert_eq(Ranks.ChurchRankIdForGuildIndex(6), 1, "index 6 → Fresh")
-assert_eq(Ranks.ChurchRankIdForGuildIndex(9), 1, "index 9 → Fresh")
-assert_eq(Ranks.ChurchRankIdForGuildIndex(nil), nil, "nil index maps to nil")
+assert_eq(Roster.GetLadderView, nil, "GetLadderView is deleted")
+assert_eq(Roster.ClearSatisfiedSuggestions, nil, "ClearSatisfiedSuggestions is deleted")
+assert_eq(Roster.SweepDeparted, nil, "no departed sweep")
 
-Ladder:ResetForTests()
+assert_eq(Ranks.ChurchRankIdForGuildIndex(0), nil, "GM index is not a Church rank")
+assert_eq(Ranks.ChurchRankIdForGuildIndex(6), nil, "no 0→7 map")
+
+assert_eq(Roster.NameKey("Steakina-Nightslayer"), "steakina", "NameKey folds realm and case")
+assert_eq(Roster.NameKey("Popeina"), "popeina", "NameKey is the spelling key")
+
 Roster:ResetForTests()
+assert_eq(Roster:IsReady(), false, "unread before Refresh")
+assert_eq(Roster:IsComplete(), false, "unread is not complete")
+assert_eq(Roster:GetOccupantCount(), 0, "no occupants before a snapshot")
+assert_eq(Roster:GetGeneration(), 0, "generation starts at 0")
+assert_eq(Roster:HasMember("Popeina"), false, "HasMember fails closed while unread")
+assert_eq(Roster:GetGuildRankIndex("Popeina"), nil, "no display index while unread")
+assert_eq(Roster:GetChurchRankId("Popeina"), nil, "no Church id while unread")
 
+stub.inGuild = true
 stub.guildRoster = {
   { name = "Popeina", rankIndex = 0 },
-  { name = "Cardinal", rankIndex = 1 },
-  { name = "Butcherina", rankIndex = 2 },
   { name = "Beefina", rankIndex = 6 },
   { name = "Steakina-Nightslayer", rankIndex = 6 },
 }
 
-assert_eq(Roster:IsReady(), false, "unread before Refresh")
-assert_true(Roster:Refresh(), "Refresh reads stub roster")
-assert_eq(Roster:IsReady(), true, "ready after Refresh")
-assert_eq(Roster:GetChurchRankId("Popeina"), 7, "Popeina is Prophet")
-assert_eq(Roster:GetChurchRankId("Cardinal"), 6, "Cardinal is Council")
-assert_eq(Roster:GetChurchRankId("Butcherina"), 5, "Butcherina is Butcher")
-assert_eq(Roster:GetChurchRankId("Beefina"), 1, "Beefina is Fresh Beef")
-assert_eq(Roster:GetChurchRankId("Steakina"), 1, "realm suffix stripped for lookup")
+assert_true(Roster:Refresh(), "Refresh reads stub roster without a Church-rank map")
+assert_eq(Roster:IsReady(), true, "ready after a guild walk even when every Church id is nil")
+assert_eq(Roster:IsComplete(), true, "a full walk is complete")
+assert_eq(Roster:GetOccupantCount(), 3, "all three names are kept")
+assert_true(Roster:GetGeneration() > 0, "accepted snapshot bumps generation")
+assert_eq(Roster:HasMember("Popeina"), true, "HasMember sees the GM")
+assert_eq(Roster:HasMember("popeina"), true, "HasMember folds case")
 assert_eq(Roster:HasMember("Steakina-Nightslayer"), true, "HasMember accepts realm form")
-
-Ladder:SetStanding("Beefina", 12)
-local view = Roster:GetLadderView()
-assert_eq(#view, 5, "all five roster members appear")
-local byName = {}
-for i = 1, #view do byName[view[i].name] = view[i] end
-assert_eq(byName.Popeina.rankId, 7, "view maps GM to Prophet")
-assert_eq(byName.Beefina.standing, 12, "view merges Ladder standing")
-assert_eq(byName.Steakina.rankId, 1, "display name drops realm")
-
--- Suggestion clears when roster rank already meets the target.
-Ladder:SetStanding("Beefina", 50)
-stub.guildRoster[4] = { name = "Beefina", rankIndex = 6 } -- still Fresh
-Roster:Refresh()
-local sug = Ladder:MaybeSuggest("Beefina")
-assert_true(sug ~= nil, "Fresh Beef at 50 suggests Cooked")
-assert_eq(sug.toRankId, 2, "target Cooked Beef")
-
-stub.guildRoster[4] = { name = "Beefina", rankIndex = 5 } -- promoted in guild UI
-Roster:Refresh()
-assert_eq(Roster:GetChurchRankId("Beefina"), 2, "promoted to Cooked in roster")
-assert_eq(#Ladder:GetSuggestions(), 0, "satisfied suggestion auto-cleared")
-
--- No suggest without a roster snapshot for the name.
-Ladder:ResetForTests()
-Roster:ResetForTests()
-Ladder:SetStanding("Ghost", 999)
-assert_eq(Ladder:MaybeSuggest("Ghost"), nil, "unknown to roster → no suggestion")
+assert_eq(Roster:HasMember("Steakina"), true, "HasMember matches the character part")
+assert_eq(Roster:HasMember("Nobody"), false, "unknown name is not a member")
+assert_eq(Roster:GetGuildRankIndex("Popeina"), 0, "guild rankIndex is display only")
+assert_eq(Roster:GetGuildRankIndex("Beefina"), 6, "display index 6 is kept")
+assert_eq(Roster:GetChurchRankId("Popeina"), nil, "Church store is empty this phase")
+assert_eq(Roster:GetChurchRankId("Beefina"), nil, "no invented Fresh Beef from index 6")
+assert_eq(Roster:GetChurchRankId("Nobody"), nil, "unknown name has no Church id")
 
 -- A failed/empty read must not wipe a good snapshot (Classic empty-update race).
-stub.guildRoster = {
-  { name = "Popeina", rankIndex = 0 },
-  { name = "Beefina", rankIndex = 6 },
-}
-assert_true(Roster:Refresh(), "seed a good snapshot")
-assert_eq(Roster:IsReady(), true, "ready after seed")
 stub.guildRoster = {}
 assert_eq(Roster:Refresh(), true, "empty update reports prior readiness")
 assert_eq(Roster:IsReady(), true, "prior snapshot kept")
-assert_eq(Roster:GetChurchRankId("Popeina"), 7, "GM still mapped after empty update")
+assert_eq(Roster:IsComplete(), true, "prior complete walk is not forgotten")
+assert_eq(Roster:HasMember("Popeina"), true, "names survive an empty update")
+assert_eq(Roster:GetOccupantCount(), 3, "occupant count survives an empty update")
 
--- String rank indices still map (some client stubs coerce oddly).
-stub.guildRoster = { { name = "Stringina", rankIndex = "5" } }
-assert_true(Roster:Refresh(), "string rankIndex accepted via tonumber")
-assert_eq(Roster:GetChurchRankId("Stringina"), 2, "string 5 → Cooked Beef")
+-- Leaving the guild clears the snapshot. History prune is not this module.
+stub.inGuild = false
+assert_eq(Roster:Refresh(), false, "unguilded Refresh reports empty")
+assert_eq(Roster:IsReady(), false, "unguilded snapshot is cleared")
+assert_eq(Roster:IsComplete(), false, "unguilded is not complete")
+assert_eq(Roster:GetOccupantCount(), 0, "unguilded has no occupants")
+assert_eq(Roster:HasMember("Popeina"), false, "guild names do not linger after leave")
 
 -- Local player seeds from GetGuildInfo when the roster walk is still empty.
 Roster:ResetForTests()
+stub.inGuild = true
 stub.guildRoster = {}
 stub.playerName = "Popeina"
 stub.guildRankIndex = 0
-stub.inGuild = true
-assert_true(Roster:Refresh(), "GetGuildInfo seed makes a snapshot")
-assert_eq(Roster:GetChurchRankId("Popeina"), 7, "seeded GM maps to Prophet")
-assert_eq(#Roster:GetLadderView(), 1, "seeded ladder has the local player")
+assert_true(Roster:Refresh(), "GetGuildInfo seed makes a snapshot without a Church id")
+assert_eq(Roster:IsReady(), true, "seeded player is enough to leave roster_wait")
+assert_eq(Roster:IsComplete(), false, "a seed is not a full guild walk")
+assert_eq(Roster:GetOccupantCount(), 1, "seed is one occupant")
+assert_eq(Roster:HasMember("Popeina"), true, "seeded local player is present")
+assert_eq(Roster:GetChurchRankId("Popeina"), nil, "seed does not invent a Church rank")
+assert_eq(Roster:GetGuildRankIndex("Popeina"), 0, "seed keeps display rankIndex")
 
 restore()

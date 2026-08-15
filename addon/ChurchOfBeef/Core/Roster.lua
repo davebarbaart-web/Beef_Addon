@@ -1,8 +1,9 @@
 ChurchOfBeef = ChurchOfBeef or {}
 local COB = ChurchOfBeef
 
--- Live guild roster snapshot → Church ladder view. Ranks are never written to
--- SavedVariables; standing still lives on Ladder. UI reads GetLadderView here.
+-- Live guild roster snapshot. Guild rankIndex is public display only (Bible §5).
+-- ChurchRankIdForGuildIndex is a nil stub this phase — members are still kept
+-- so the Quiet shell can leave roster_wait. Church rank is not invented here.
 --
 -- Prefers LibGuildRoster-1.0 when present (common with FastGuildInvite /
 -- GuildRoster installs), otherwise walks GetGuildRosterInfo directly. Always
@@ -10,24 +11,29 @@ local COB = ChurchOfBeef
 -- full roster is still streaming in.
 local Roster = {
   ready = false,
-  members = {}, -- key → { name, guildRankIndex, churchRankId }
+  -- ready means "we have something to show" (the local player alone counts).
+  -- complete means "a full guild walk answered", which is the only state where
+  -- "this name is not in the guild" is a safe conclusion.
+  complete = false,
+  members = {}, -- key → { name, guildRankIndex, churchRankId, classFile? }
+  generation = 0,
   _libWired = false,
   _onChanged = nil,
 }
 COB.Roster = Roster
 
 local function rosterKey(name)
-  if type(name) ~= "string" then return nil end
-  name = name:gsub("^%s+", ""):gsub("%s+$", ""):lower()
-  if name == "" then return nil end
-  return name:match("^([^%-]+)") or name
+  return COB.Names and COB.Names.Key(name) or nil
+end
+
+-- Pure static (dot-call): the shared identity law, re-exported here because UI and
+-- Net were written against Roster.NameKey.
+function Roster.NameKey(name)
+  return rosterKey(name)
 end
 
 local function displayName(rosterName)
-  if type(rosterName) ~= "string" then return nil end
-  local trimmed = rosterName:gsub("^%s+", ""):gsub("%s+$", "")
-  if trimmed == "" then return nil end
-  return trimmed:match("^([^%-]+)") or trimmed
+  return COB.Names and COB.Names.Display(rosterName) or nil
 end
 
 local function inGuild()
@@ -50,16 +56,19 @@ end
 
 local function clearSnapshot(self)
   self.ready = false
+  self.complete = false
   self.members = {}
+  self.generation = (self.generation or 0) + 1
   clearOfficerCache()
 end
 
-local function applySnapshot(self, members, officerCache, seen)
+local function applySnapshot(self, members, officerCache, seen, complete)
   if seen == 0 then return false end
   self.members = members
   self.ready = true
+  self.complete = complete and true or false
+  self.generation = (self.generation or 0) + 1
   if COB.Officer then COB.Officer.rosterCache = officerCache end
-  self:ClearSatisfiedSuggestions()
   return true
 end
 
@@ -79,9 +88,7 @@ local function seedLocalPlayer(members, officerCache, seen)
   if type(guildName) ~= "string" or guildName == "" or not rankIndex then return seen end
 
   local ranks = COB.Ranks
-  if not (ranks and ranks.ChurchRankIdForGuildIndex) then return seen end
-  local churchRankId = ranks.ChurchRankIdForGuildIndex(rankIndex)
-  if not churchRankId then return seen end
+  local churchRankId = ranks and ranks.ChurchRankIdForGuildIndex and ranks.ChurchRankIdForGuildIndex(rankIndex) or nil
 
   members[key] = {
     name = shown,
@@ -97,8 +104,6 @@ local function buildFromLib(lib)
   if not (lib.GetAllMembers and lib.GetMember) then return nil, nil, 0 end
 
   local ranks = COB.Ranks
-  if not (ranks and ranks.ChurchRankIdForGuildIndex) then return nil, nil, 0 end
-
   local names = lib:GetAllMembers()
   if type(names) ~= "table" then return nil, nil, 0 end
 
@@ -110,16 +115,17 @@ local function buildFromLib(lib)
       local shown = displayName(member.name or names[i])
       local key = rosterKey(shown)
       if key and shown and rankIndex then
-        local churchRankId = ranks.ChurchRankIdForGuildIndex(rankIndex)
-        if churchRankId then
-          members[key] = {
-            name = shown,
-            guildRankIndex = rankIndex,
-            churchRankId = churchRankId,
-          }
-          officerCache[key] = rankIndex
-          seen = seen + 1
-        end
+        local churchRankId = ranks and ranks.ChurchRankIdForGuildIndex and ranks.ChurchRankIdForGuildIndex(rankIndex) or nil
+        local classFile = member.classFile or member.class
+        if type(classFile) ~= "string" then classFile = nil end
+        members[key] = {
+          name = shown,
+          guildRankIndex = rankIndex,
+          churchRankId = churchRankId,
+          classFile = classFile,
+        }
+        officerCache[key] = rankIndex
+        seen = seen + 1
       end
     end
   end
@@ -135,25 +141,23 @@ local function buildFromApi()
   if type(count) ~= "number" or count < 1 then return nil, nil, 0 end
 
   local ranks = COB.Ranks
-  if not (ranks and ranks.ChurchRankIdForGuildIndex) then return nil, nil, 0 end
-
   local members, officerCache, seen = {}, {}, 0
   for i = 1, count do
-    local rosterName, _, rankIndex = GetGuildRosterInfo(i)
+    local rosterName, _, rankIndex, _, _, _, _, _, _, _, classFile = GetGuildRosterInfo(i)
     rankIndex = tonumber(rankIndex)
     local key = rosterKey(rosterName)
     local shown = displayName(rosterName)
     if key and shown and rankIndex then
-      local churchRankId = ranks.ChurchRankIdForGuildIndex(rankIndex)
-      if churchRankId then
-        members[key] = {
-          name = shown,
-          guildRankIndex = rankIndex,
-          churchRankId = churchRankId,
-        }
-        officerCache[key] = rankIndex
-        seen = seen + 1
-      end
+      local churchRankId = ranks and ranks.ChurchRankIdForGuildIndex and ranks.ChurchRankIdForGuildIndex(rankIndex) or nil
+      if type(classFile) ~= "string" then classFile = nil end
+      members[key] = {
+        name = shown,
+        guildRankIndex = rankIndex,
+        churchRankId = churchRankId,
+        classFile = classFile,
+      }
+      officerCache[key] = rankIndex
+      seen = seen + 1
     end
   end
   return members, officerCache, seen
@@ -161,6 +165,28 @@ end
 
 function Roster:IsReady()
   return self.ready == true
+end
+
+-- True only when a full guild walk answered. Callers that turn "not in members"
+-- into a refusal (petition imports, membership checks) must ask this instead of
+-- IsReady, or they spend the login window rejecting real guildmates because the
+-- only name we had was the player's own seed.
+function Roster:IsComplete()
+  return self.ready == true and self.complete == true
+end
+
+function Roster:GetGeneration()
+  return self.generation or 0
+end
+
+-- How many names the current snapshot holds. Derived, not a running total:
+-- `members` is replaced wholesale by each snapshot, so a stored count would
+-- be one missed update away from lying. A counting walk allocates nothing.
+function Roster:GetOccupantCount()
+  if not self.ready then return 0 end
+  local count = 0
+  for _ in pairs(self.members) do count = count + 1 end
+  return count
 end
 
 function Roster:GetChurchRankId(name)
@@ -225,66 +251,23 @@ function Roster:Refresh()
     members, officerCache, seen = {}, {}, 0
   end
 
+  -- Counted before the seed: one member who happens to be you is not a guild walk.
+  local walked = seen > 0
   seen = seedLocalPlayer(members, officerCache, seen)
 
-  if applySnapshot(self, members, officerCache, seen) then
+  if applySnapshot(self, members, officerCache, seen, walked) then
     return true
   end
 
   return self.ready
 end
 
-function Roster:ClearSatisfiedSuggestions()
-  local ladder = COB.Ladder
-  if not (ladder and ladder.GetSuggestions and ladder.RejectSuggestion) then return 0 end
-  if not self.ready then return 0 end
-
-  local cleared = 0
-  local list = ladder:GetSuggestions()
-  for i = 1, #list do
-    local suggestion = list[i]
-    local churchRankId = self:GetChurchRankId(suggestion.name)
-    if churchRankId and churchRankId >= (suggestion.toRankId or 0) then
-      if ladder:RejectSuggestion(suggestion.name) then cleared = cleared + 1 end
-    end
-  end
-  return cleared
-end
-
-function Roster:GetLadderView()
-  local out = {}
-  if not self.ready then return out end
-
-  local ladder = COB.Ladder
-  for _, entry in pairs(self.members) do
-    local standing = 0
-    if ladder and ladder.GetStanding then
-      standing = ladder:GetStanding(entry.name) or 0
-    elseif ladder and ladder.GetRecord then
-      local rec = ladder:GetRecord(entry.name)
-      standing = rec and rec.standing or 0
-    end
-    out[#out + 1] = {
-      name = entry.name,
-      rankId = entry.churchRankId,
-      standing = standing,
-      revision = 0,
-      updatedAt = 0,
-      updatedBy = "",
-    }
-  end
-
-  table.sort(out, function(a, b)
-    if a.rankId ~= b.rankId then return a.rankId > b.rankId end
-    return a.name < b.name
-  end)
-  return out
-end
-
 function Roster:ResetForTests()
   if not COB._IN_TEST then return false end
   self.ready = false
+  self.complete = false
   self.members = {}
+  self.generation = 0
   self._libWired = false
   self._onChanged = nil
   return true

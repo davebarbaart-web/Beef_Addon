@@ -12,18 +12,18 @@ alwaysApply: false
 ## Non-negotiables
 
 - Product windows are **fully insecure** `CreateFrame` under `UIParent` (or Beef-owned root)
+- Director Console and theatrical surfaces are still insecure frames
 - Toggle with `:Show()` / `:Hide()` — not `ShowUIPanel` / `HideUIPanel` in combat
-- Tabs are views: read Core, never own ladder tables or grant points
-- Never inherit `SecureActionButtonTemplate` / secure headers “to open a panel”
+- Views read Core; they never record official outcomes
+- No secure templates to open panels. Appendix A item 6 (targeting-by-name assist) is a later validation — do not invent secure buttons now
 
-## Frame policy (V1)
+## Frame policy
 
-- Prefer Lua `CreateFrame` over XML; tabs register into `MainFrame`
+- Prefer Lua `CreateFrame` over XML; frames register into a Beef-owned root
 - Do not parent Beef chrome under raid frames, action bars, or other protected trees
 - Missing fonts/textures → default UI fallbacks; frame must exist on load or first `/beef`
-- Toasts/Announce display outcomes; Scoring owns grants
-- Confirm destructive actions (demote, Prophet bestowal, Council changes)
-- After Commit: `COB.UI:RefreshLadder()` (or equivalent) — no AceEvent bus in V1
+- Confirm destructive actions
+- After Core writes: dirty-flag UI refresh (or equivalent) — no AceEvent bus
 
 ## Taint footguns
 
@@ -40,12 +40,11 @@ alwaysApply: false
 |--------------|---------------|
 | Update own FontStrings/textures | SetPoint/SetParent on protected widgets |
 | Process BeefNet; mutate Core tables | Opening Blizzard options / guild panels |
-| Officer approve → SV + addon message | `SetBinding` / `EditMacro` / secure attributes |
-| Show insecure `/beef` window | Creating secure-template frames |
+| Core store write + addon message | `SetBinding` / `EditMacro` / secure attributes |
+| Show insecure `/beef` window, Director Console, theatrical surfaces | Creating secure-template frames to open panels |
 
-## Product UX edges
+## UX edges
 
-- Officer tab visible only when local Officer+ is known
 - Movable, clamped-to-screen; save position in `ChurchOfBeefDB.ui`
 - One hideable minimap button; `/beef` is the real entry — no Retail Addon Compartment
 - No ads, tip jars, or donation CTAs in the game UI

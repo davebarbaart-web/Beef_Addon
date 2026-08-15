@@ -1,0 +1,1 @@
+Attic code is not shipped. `Core/Instance.lua` and `Core/Quest.lua` keep instance/group sensing (type detection, guildmate counting, API guards) as a head start on later-phase Church Expedition witnessing (Bible §14.3); their scoring wiring is dead and must not return. Do not list attic files in `ChurchOfBeef.toc` or load them from the bootstrap.

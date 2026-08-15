@@ -1,59 +1,34 @@
--- BeefNet validation, login sync and outbound pacing. Everything the wire decides
--- before Core is asked is proven here: payload shape, the officer gate, the revision
--- merge, reply suppression and the one-message-per-half-second throttle.
+-- BeefNet: the wire decides before anyone else is asked. Payload shape, HELLO
+-- presence, the retired-message discard, inbound pacing per sender, and the
+-- burst-then-one-per-second outbound throttle.
 -- Whether a real TBC client actually delivers CHAT_MSG_ADDON still needs the game.
 local stub = require("wow_ui_stub")
 local restore = stub.install()
 
 ChurchOfBeef = ChurchOfBeef or {}
 ChurchOfBeef._IN_TEST = true
-dofile("addon/ChurchOfBeef/Data/Ranks.lua")
-dofile("addon/ChurchOfBeef/Core/Ladder.lua")
-dofile("addon/ChurchOfBeef/Core/Officer.lua")
+dofile("addon/ChurchOfBeef/Core/Common.lua")
 dofile("addon/ChurchOfBeef/Net/BeefNet.lua")
-dofile("addon/ChurchOfBeef/Net/Sync.lua")
 
 local COB = ChurchOfBeef
 local N = COB.Net
-local S = COB.Sync
-local L = COB.Ladder
-local O = COB.Officer
-
--- Count SavedVariables writes instead of performing them: the batching claim is
--- "one Save per sync answer", which is only observable as a call count.
-local realDB = COB.DB
-local saves = 0
-COB.DB = { Save = function() saves = saves + 1 return true end }
 
 stub.playerName = "Beefina"
-
--- Officer+ is rank index <= 1 in canon; Pleb is a member, Ghost is not in the guild.
-local function roster(name)
-  if type(name) ~= "string" then return nil end
-  local key = name:lower():match("^([^%-]+)") or name:lower()
-  if key == "pope" then return 0 end
-  if key == "cardinal" then return 1 end
-  if key == "pleb" then return 4 end
-  return nil
-end
+COB.VERSION = COB.VERSION or "0.1.0"
 
 local function reset()
   N:ResetForTests()
-  S:ResetForTests()
-  L:ResetForTests()
-  O:ResetForTests()
-  N.rosterLookup = roster
   stub.timers = {}
   stub.addonMessages = {}
-  saves = 0
+  stub.oversizeMessages = {}
 end
 
-local function commit(name, rankId, standing, revision, updatedAt, updatedBy)
-  return N:Encode("RANK_COMMIT", name, rankId, standing, revision, updatedAt, updatedBy)
+local function helloPayload(version)
+  return N:Encode("HELLO", version or "0.1.0")
 end
 
 local function deliver(payload, sender)
-  return N:OnAddonMessage(N.Prefix, payload, N.Channel, sender or "Pope")
+  return N:OnAddonMessage(N.Prefix, payload, N.Channel, sender or "Steakina")
 end
 
 reset()
@@ -62,175 +37,133 @@ reset()
 -- Wire format: VERSION:TYPE:fields...
 --------------------------------------------------------------------------------
 assert_eq(N.Prefix, "COB", "the prefix is COB")
-assert_eq(N.Channel, "GUILD", "ladder state travels on GUILD, never PARTY")
+assert_eq(N.Channel, "GUILD", "addon messages travel on GUILD, never PARTY")
+assert_eq(N.PROTOCOL, 1, "this cut does not invent a v2 protocol number")
 
-local encoded = commit("Beefina", 3, 300, 4, 1700, "Pope")
-assert_eq(encoded, "1:RANK_COMMIT:Beefina:3:300:4:1700:Pope", "payload is version, type, then fields")
-assert_true(#encoded < 240, "a commit payload fits well inside the 255-byte body limit")
+local encoded = helloPayload("0.1.0")
+assert_eq(encoded, "1:HELLO:0.1.0", "payload is version, type, then fields")
+assert_true(#encoded < 240, "a HELLO fits well inside the 255-byte body limit")
 
 local message = N:Decode(encoded)
 assert_eq(message.version, 1, "the version is read back")
-assert_eq(message.type, "RANK_COMMIT", "the type is read back")
-assert_eq(message.fields[1], "Beefina", "the first field is the subject")
+assert_eq(message.type, "HELLO", "the type is read back")
+assert_eq(message.fields[1], "0.1.0", "the first field is the addon version")
 
 assert_eq(N:Decode(""), nil, "an empty payload decodes to nothing")
 assert_eq(N:Decode(nil), nil, "a nil payload decodes to nothing")
-assert_eq(N:Decode("RANK_COMMIT:Beefina"), nil, "a payload with no version is refused")
+assert_eq(N:Decode("HELLO:0.1.0"), nil, "a payload with no version is refused")
 
 --------------------------------------------------------------------------------
--- Parsing a valid RANK_COMMIT
---------------------------------------------------------------------------------
-local parsed = N:ValidateRankCommit(N:Decode(encoded), "Pope", roster)
-assert_true(parsed ~= nil, "an officer's well-formed commit validates")
-assert_eq(parsed.name, "Beefina", "name survives the wire")
-assert_eq(parsed.rankId, 3, "rank id survives the wire")
-assert_eq(parsed.standing, 300, "standing survives the wire")
-assert_eq(parsed.revision, 4, "revision survives the wire")
-assert_eq(parsed.updatedAt, 1700, "timestamp survives the wire")
-assert_eq(parsed.updatedBy, "Pope", "committing officer survives the wire")
-
---------------------------------------------------------------------------------
--- Shape refusals: rank id, standing, revision, name
---------------------------------------------------------------------------------
-local function refuse(payload, sender)
-  local record, err = N:ValidateRankCommit(N:Decode(payload), sender or "Pope", roster)
-  return record, err
-end
-
-local _, err = refuse(commit("Beefina", 0, 300, 4, 1700, "Pope"))
-assert_eq(err, "invalid rank id", "rank id 0 is not in canon")
-_, err = refuse(commit("Beefina", 8, 300, 4, 1700, "Pope"))
-assert_eq(err, "invalid rank id", "a rank past the ladder is refused")
-_, err = refuse(commit("Beefina", "Prophet", 300, 4, 1700, "Pope"))
-assert_eq(err, "invalid rank id", "a rank title in the id field is refused")
-
-_, err = refuse(commit("Beefina", 3, -1, 4, 1700, "Pope"))
-assert_eq(err, "invalid standing", "negative standing is refused")
-_, err = refuse(commit("Beefina", 3, "lots", 4, 1700, "Pope"))
-assert_eq(err, "invalid standing", "non-numeric standing is refused")
-assert_true(refuse(commit("Beefina", 3, 0, 4, 1700, "Pope")) ~= nil,
-  "zero standing is legal: a wipe is a real officer decision")
-
-_, err = refuse(commit("Beefina", 3, 300, 0, 1700, "Pope"))
-assert_eq(err, "invalid revision", "revision 0 never came from a commit")
-_, err = refuse(commit("Beefina", 3, 300, -2, 1700, "Pope"))
-assert_eq(err, "invalid revision", "a negative revision is refused")
-
-_, err = refuse(commit("", 3, 300, 4, 1700, "Pope"))
-assert_eq(err, "missing name", "a commit with no subject is refused")
-_, err = refuse(commit("   ", 3, 300, 4, 1700, "Pope"))
-assert_eq(err, "missing name", "a whitespace subject is refused")
-
-_, err = N:ValidateRankCommit(N:Decode("2:RANK_COMMIT:Beefina:3:300:4:1700:Pope"), "Pope", roster)
-assert_eq(err, "protocol mismatch", "another protocol major is discarded, not guessed at")
-_, err = N:ValidateRankCommit(N:Decode(N:Encode("HELLO", "0.1.0")), "Pope", roster)
-assert_eq(err, "not a rank commit", "only RANK_COMMIT validates as a commit")
-
---------------------------------------------------------------------------------
--- The officer gate: the sender's roster rank index, not their claim
---------------------------------------------------------------------------------
-_, err = refuse(commit("Beefina", 5, 9999, 9, 1700, "Pleb"), "Pleb")
-assert_eq(err, "sender is not an officer", "a member cannot forge a commit")
-_, err = refuse(commit("Beefina", 5, 9999, 9, 1700, "Pope"), "Ghost")
-assert_eq(err, "sender is not an officer", "a name the roster does not answer to is refused")
-_, err = N:ValidateRankCommit(N:Decode(commit("Beefina", 3, 300, 4, 1700, "Pope")), nil, roster)
-assert_eq(err, "no sender", "an unsigned message has no rank index to check")
-assert_true(refuse(commit("Beefina", 3, 300, 4, 1700, "Pope"), "Cardinal") ~= nil,
-  "the first officer tier is Officer+ too")
-assert_true(refuse(commit("Beefina", 3, 300, 4, 1700, "Pope"), "Pope-Whitemane") ~= nil,
-  "a realm suffix on the wire still matches the roster")
-
--- The forged commit must not reach Core at all.
-reset()
-assert_eq(deliver(commit("Pleb", 7, 5000, 3, 100, "Pleb"), "Pleb"), false,
-  "a forged commit is refused at validation")
-assert_eq(L:HasOfficialRecord("Pleb"), false, "and it writes nothing to the ladder")
-
---------------------------------------------------------------------------------
--- Envelope: wrong prefix, wrong channel, unknown type
+-- The live vocabulary is HELLO. Retired types die by name and are never acted on.
 --------------------------------------------------------------------------------
 reset()
-assert_eq(N:OnAddonMessage("XYZ", commit("Beefina", 3, 300, 4, 1700, "Pope"), "GUILD", "Pope"), false,
+assert_eq(N.SendSuggestion, nil, "SUGGESTION send is gone")
+assert_eq(N.OnLocalSuggestion, nil, "local suggestion fanout is gone")
+assert_eq(N.HandleSuggestion, nil, "SUGGESTION is not handled")
+assert_eq(N.ReleaseHeld, nil, "petition hold/replay is gone")
+assert_eq(N.MaxHeld, nil, "no petition hold budget")
+
+local _, why = deliver("1:RANK_COMMIT:Beefina:3:300:4:1700:Pope", "Pope")
+assert_eq(why, "retired message type", "an old build's rank commit is discarded by name")
+assert_eq(N:PeerCount(), 0, "and seats no peer")
+
+_, why = deliver("1:SYNC_REQUEST:req1", "Pope")
+assert_eq(why, "retired message type", "so is a state-sync request")
+_, why = deliver("1:SYNC_STATE:req1:1:1:payload", "Pope")
+assert_eq(why, "retired message type", "and a state-sync answer")
+_, why = deliver("1:SUGGESTION:Beefina:1:2:300:250", "Beefina")
+assert_eq(why, "retired message type", "and a standing petition")
+
+_, why = deliver(N:Encode("SCORE_EVENT", "Beefina", 5), "Cardinal")
+assert_eq(why, "unknown message type", "a type this protocol never had is just unknown")
+_, why = deliver(N:Encode("SNAPSHOT", "x"), "Chuckina")
+assert_eq(why, "unknown message type", "a v2 snapshot codec is not invented here")
+_, why = deliver(N:Encode("STATE", "QUIET"), "Porkina")
+assert_eq(why, "unknown message type", "nor a Pope state broadcast")
+
+--------------------------------------------------------------------------------
+-- Envelope: wrong prefix, wrong channel, wrong protocol major
+--------------------------------------------------------------------------------
+reset()
+assert_eq(N:OnAddonMessage("XYZ", helloPayload(), "GUILD", "Steakina"), false,
   "another addon's prefix is not our traffic")
-assert_eq(N:OnAddonMessage(N.Prefix, commit("Beefina", 3, 300, 4, 1700, "Pope"), "RAID", "Pope"), false,
-  "ladder state is not accepted off the guild channel")
-assert_eq(N:OnAddonMessage(N.Prefix, N:Encode("SCORE_EVENT", "Beefina", 5), "GUILD", "Pope"), false,
-  "SCORE_EVENT is not a V1 type")
-assert_eq(L:HasOfficialRecord("Beefina"), false, "none of those touched the ladder")
+assert_eq(N:OnAddonMessage(N.Prefix, helloPayload(), "RAID", "Steakina"), false,
+  "HELLO is not accepted off the guild channel")
+assert_eq(N:PeerCount(), 0, "none of those counted as peers")
+
+_, why = deliver("2:HELLO:9.9.9", "Steakina")
+assert_eq(why, "protocol mismatch", "another protocol major is discarded, not guessed at")
+assert_eq(N.warnedVersion, true, "the first mismatch is the Quiet version notice")
+assert_eq(N:PeerCount(), 0, "and a mismatched HELLO is not a peer")
+
+local warnedAgain = N:_WarnVersion(2)
+assert_eq(warnedAgain, false, "the version notice fires once")
 
 --------------------------------------------------------------------------------
--- Roster-backed amendment: RANK_COMMIT / SYNC_STATE never mutate ranks
+-- HELLO: version/presence, never authority
 --------------------------------------------------------------------------------
 reset()
-dofile("addon/ChurchOfBeef/Core/Roster.lua")
-local applied, why = deliver(commit("Beefina", 3, 300, 4, 1700, "Pope"))
-assert_eq(applied, false, "a valid commit is soft-ignored")
-assert_eq(why, "rank commits ignored (roster-backed ladder)", "and names the roster-backed policy")
-assert_eq(L:HasOfficialRecord("Beefina"), false, "ignored commits write no standing row")
-assert_eq(L:GetRecord("Beefina").rankId, 1, "display rank stays Fresh without a roster map")
+assert_eq(deliver(helloPayload("0.1.0"), "Steakina"), true, "a peer HELLO is accepted")
+assert_eq(N:PeerCount(), 1, "and that sender is one peer")
+assert_eq(N.peers.steakina, "0.1.0", "keyed by the shared name law, carrying their version")
 
+assert_eq(deliver(helloPayload("0.1.1"), "STEAKINA-Whitemane"), true,
+  "casing and a realm suffix still read as the same member")
+assert_eq(N:PeerCount(), 1, "so a re-spelled HELLO does not invent a second peer")
+assert_eq(N.peers.steakina, "0.1.1", "the later version overwrites the presence note")
+
+assert_eq(deliver(helloPayload("0.1.0"), "Beefina"), false,
+  "our own echo is not a peer")
+assert_eq(N:PeerCount(), 1, "self never joins the peer table")
+
+assert_eq(deliver(helloPayload("0.2.0"), "Cardinal"), true, "a second guildmate is a second peer")
+assert_eq(N:PeerCount(), 2, "presence is a count of distinct senders")
+
+--------------------------------------------------------------------------------
+-- Inbound pacing: one loud guildmate cannot spend the whole guild's attention
+--------------------------------------------------------------------------------
 reset()
-N.rosterLookup = nil
-O:ResetForTests()
-applied, why = deliver(commit("Beefina", 3, 300, 4, 1700, "Pope"))
-assert_eq(applied, false, "commits are ignored even before the roster is ready")
-assert_eq(why, "rank commits ignored (roster-backed ladder)", "hold-for-roster is gone")
-assert_eq(#N.held, 0, "ignored commits are not held")
+local inClock = 0
+N.clock = function() return inClock end
 
--- Live roster cache still powers Officer+ lookups for SUGGESTION / HELLO paths.
-local guild = {
-  { "Pope-Whitemane", 0 },
-  { "Cardinal", 1 },
-  { "Pleb", 4 },
-}
-GetNumGuildMembers = function() return #guild end
-GetGuildRosterInfo = function(index)
-  local entry = guild[index]
-  if not entry then return nil end
-  return entry[1], "Beefling", entry[2]
+local accepted = 0
+for _ = 1, 12 do
+  local ok = N:OnAddonMessage(N.Prefix, helloPayload(), N.Channel, "Steakina")
+  if ok then accepted = accepted + 1 end
 end
-assert_true(O:RefreshRosterCache(), "a readable roster caches")
-local lookup = O:GetRosterLookup()
-assert_eq(lookup("Pope"), 0, "a realm suffix in the roster still matches a bare wire name")
-assert_eq(lookup("Cardinal"), 1, "the first officer tier reads back")
-assert_eq(O:IsOfficerName("Pope", lookup), true, "the cached lookup gates officers in")
-assert_eq(O:IsOfficerName("Pleb", lookup), false, "and members out")
+assert_eq(accepted, N.InboundBurst, "a burst is heard exactly as far as the burst budget")
 
---------------------------------------------------------------------------------
--- Login sync: rank payloads merge nothing
---------------------------------------------------------------------------------
-reset()
-L:SetStanding("Beefina", 300)
-assert_eq(S:MergeState("anything"), 0, "SYNC_STATE merges no ranks")
-assert_eq(S:OnSyncRequest("peerReq", "Steakina"), false, "peers get no rank sync answer")
-assert_eq(S:OnSyncRequest("emptyReq", "Steakina"), false, "empty standing still stays silent for ranks")
+local _, tooFast = N:OnAddonMessage(N.Prefix, helloPayload(), N.Channel, "Steakina")
+assert_eq(tooFast, "sender is talking too fast", "and the rest are dropped unread")
 
-assert_true(S.OfficerReplyDelay[2] < S.MemberReplyDelay[1],
-  "an officer's whole jitter window closes before a member's opens")
+assert_eq(N:OnAddonMessage(N.Prefix, helloPayload(), N.Channel, "Cardinal"), true,
+  "a different sender still gets through")
 
---------------------------------------------------------------------------------
--- Sync chunking stays inside the body limit (payload helpers still exist)
---------------------------------------------------------------------------------
-reset()
-local many = {}
-for i = 1, 40 do
-  many[i] = { name = "Beefling" .. i, rankId = 3, standing = 250, revision = i,
-    updatedAt = 1700, updatedBy = "Cardinal" }
+inClock = 5
+assert_eq(N:OnAddonMessage(N.Prefix, helloPayload(), N.Channel, "Steakina"), true,
+  "one token regenerates after five quiet seconds")
+
+-- Our own guild-channel traffic echoes back to us and is not somebody else's budget.
+inClock = 5
+for _ = 1, 20 do
+  N:OnAddonMessage(N.Prefix, helloPayload(), N.Channel, "Beefina")
 end
-local chunks = S:Chunks(many)
-assert_true(#chunks > 1, "a guild-sized answer is split across messages")
-local widest = 0
-for i = 1, #chunks do
-  local payload = N:Encode("SYNC_STATE", "req1", i, #chunks, chunks[i])
-  if #payload > widest then widest = #payload end
-end
-assert_true(widest <= 240, "every chunk fits inside the addon message body limit")
+local _, selfWhy = N:OnAddonMessage(N.Prefix, helloPayload(), N.Channel, "Beefina")
+assert_eq(selfWhy, nil, "the echo of our own messages is never throttled")
 
-assert_eq(#S:Chunks({ { name = "Bad:Name", rankId = 3, standing = 1, revision = 1 } }), 0,
-  "a record carrying a delimiter is dropped rather than corrupting the batch")
+reset()
+N.clock = function() return 0 end
+N.MaxInboundSenders = 4
+for i = 1, 12 do
+  N:OnAddonMessage(N.Prefix, helloPayload(), N.Channel, "Beefling" .. i)
+end
+local tracked = 0
+for _ in pairs(N.inbound) do tracked = tracked + 1 end
+assert_true(tracked <= 4, "the per-sender table stays inside its cap")
+N.MaxInboundSenders = 200
 
 --------------------------------------------------------------------------------
--- Outbound throttle: one message per half second
+-- Outbound pacing: burst of ten, refilling one per second
 --------------------------------------------------------------------------------
 reset()
 local clock = 0
@@ -239,40 +172,41 @@ local wire = {}
 N.transmit = function(payload) wire[#wire + 1] = payload end
 
 for i = 1, 5 do N:Send(N:Encode("HELLO", "0.1." .. i)) end
-assert_eq(#wire, 1, "a burst of five sends only puts one on the wire")
-assert_eq(#N.queue, 4, "the rest wait in the queue")
+assert_eq(#wire, 5, "a login-sized burst goes out at once")
+assert_eq(#N.queue, 0, "with nothing left waiting")
 
-clock = 0.4
-assert_eq(N:Pump(), 0, "pumping inside the interval sends nothing")
-assert_eq(#wire, 1, "still one message on the wire")
+for i = 1, 8 do N:Send(N:Encode("HELLO", "0.2." .. i)) end
+assert_eq(#wire, 10, "the burst allowance stops at ten")
+assert_eq(#N.queue, 3, "and the overflow waits in the queue")
 
-clock = 0.5
-assert_eq(N:Pump(), 1, "the interval opens the gate for exactly one more")
-assert_eq(#wire, 2, "two messages after half a second")
+assert_eq(N:Pump(), 0, "pumping an empty bucket sends nothing")
+assert_eq(#wire, 10, "still ten on the wire")
 
-clock = 1.0
-N:Pump()
-clock = 1.5
-N:Pump()
-clock = 2.0
-N:Pump()
-assert_eq(#wire, 5, "the queue drains at one message per interval")
+clock = 1
+assert_eq(N:Pump(), 1, "a second buys exactly one more")
+assert_eq(#wire, 11, "eleven on the wire")
+
+clock = 3
+assert_eq(N:Pump(), 2, "two quiet seconds buy two")
+assert_eq(#wire, 13, "the queue drains at the refill rate")
 assert_eq(#N.queue, 0, "and empties")
 assert_eq(N:Pump(), 0, "an empty queue sends nothing")
 
+clock = 600
+N:_Refill(clock)
+assert_eq(N.tokens, N.OutboundBurst, "a long silence refills to the burst cap, no further")
+
 --------------------------------------------------------------------------------
--- Sending HELLO still works; RANK_COMMIT helper rejects nil / bad shapes
+-- Outbound shapes: HELLO goes out; a guildless client sends nothing
 --------------------------------------------------------------------------------
 reset()
 N.transmit = function() end
-assert_eq(N:SendRankCommit(nil), false, "there is nothing to broadcast without a record")
-assert_eq(N:SendRankCommit({ name = "Ghostina", rankId = 99, standing = 0, revision = 1 }), false,
-  "a record with a rank outside canon is not sendable")
-assert_eq(N:SendRankCommit({ name = "Ghostina", rankId = 3, standing = 0, revision = 0 }), false,
-  "an uncommitted record (revision 0) is not sendable")
+assert_true(N:SendHello(), "a well-formed HELLO goes out")
+assert_true(N.lastSent ~= nil and N.lastSent:find("HELLO", 1, true) ~= nil,
+  "SendHello encodes HELLO")
 
 stub.inGuild = false
-assert_eq(N:Send(N:Encode("HELLO", "0.1.0")), false, "a guildless client sends nothing")
+assert_eq(N:Send(helloPayload()), false, "a guildless client sends nothing")
 stub.inGuild = true
 
 --------------------------------------------------------------------------------
@@ -285,80 +219,13 @@ assert_true(N.frame._events["CHAT_MSG_ADDON"], "and CHAT_MSG_ADDON is listened f
 assert_true(N.frame._events["GUILD_ROSTER_UPDATE"], "along with roster updates")
 assert_eq(N:Init(), false, "a second Init is a no-op")
 
-N.rosterLookup = roster
-L:ResetForTests()
 stub.fire(N.frame, "OnEvent", "CHAT_MSG_ADDON", N.Prefix,
-  commit("Beefina", 5, 1200, 3, 1700, "Pope"), N.Channel, "Pope")
-assert_eq(L:HasOfficialRecord("Beefina"), false, "an officer commit off the wire is ignored")
+  "1:RANK_COMMIT:Beefina:5:1200:3:1700:Pope", N.Channel, "Pope")
+assert_eq(N:PeerCount(), 0, "an old build's commit off the wire seats nobody")
 
---------------------------------------------------------------------------------
--- Suggestion fanout: a crossing reaches the officers who can act on it
---------------------------------------------------------------------------------
-dofile("addon/ChurchOfBeef/Core/Scoring.lua")
-dofile("addon/ChurchOfBeef/Core/Roster.lua")
-
-local realToasts = COB.Toasts
-local toasts = {}
-COB.Toasts = { Show = function(_, text) toasts[#toasts + 1] = text return true end }
+stub.fire(N.frame, "OnEvent", "CHAT_MSG_ADDON", N.Prefix,
+  helloPayload("0.1.0"), N.Channel, "Steakina")
+assert_eq(N:PeerCount(), 1, "a HELLO off the listener still counts as presence")
 
 reset()
-COB.Scoring:ResetForTests()
-COB.Roster:ResetForTests()
-COB.Roster.ready = true
-COB.Roster.members.beefina = { name = "Beefina", guildRankIndex = 6, churchRankId = 1 }
-stub.guildRankIndex = 5 -- the earner is a plain member
-
-COB.Scoring:GrantGora("Beefina", "win")
-assert_eq(#L:GetSuggestions(), 0, "one win is short of the threshold")
-assert_eq(#toasts, 0, "and says nothing")
-
-COB.Scoring:GrantGora("Beefina", "win")
-assert_eq(#L:GetSuggestions(), 1, "crossing the threshold queues the petition locally")
-assert_eq(#toasts, 1, "and tells the earner once")
-assert_eq(toasts[1], "Eligible for Cooked Beef \226\128\148 officers can promote you in the guild roster.",
-  "COB_TOAST_SUGGEST names the rank that is now within reach")
-
-local petition = N.lastSent
-assert_true(petition ~= nil and petition:find("SUGGESTION", 1, true) ~= nil,
-  "the petition also goes out on the wire")
-
-COB.Scoring:GrantGora("Beefina", "win")
-assert_eq(#toasts, 1, "more standing on the same petition does not announce it again")
-
--- The officer's client: the petition has to land in the queue Dismiss reads from.
-reset()
-COB.Roster:ResetForTests()
-COB.Roster.ready = true
-COB.Roster.members.beefina = { name = "Beefina", guildRankIndex = 6, churchRankId = 1 }
-stub.guildRankIndex = 0
-assert_eq(#L:GetSuggestions(), 0, "the officer's queue starts empty")
-assert_eq(deliver(petition, "Beefina"), true, "a member's petition is accepted")
-
-local queued = L:GetSuggestions()
-assert_eq(#queued, 1, "and the officer can see it")
-assert_eq(queued[1].name, "Beefina", "the petitioner is named")
-assert_eq(queued[1].toRankId, 2, "aimed at the next rank")
-assert_eq(L:HasOfficialRecord("Beefina"), false, "hearing the petition seated nobody")
-
-assert_true(L:RejectSuggestion(queued[1].name), "the queued petition can be dismissed")
-assert_eq(#L:GetSuggestions(), 0, "and the queue drains")
-
-reset()
-COB.Roster:ResetForTests()
-COB.Roster.ready = true
-COB.Roster.members.pleb = { name = "Pleb", guildRankIndex = 6, churchRankId = 1 }
-stub.guildRankIndex = 0
-assert_eq(deliver(N:Encode("SUGGESTION", "Pleb", 6, 7, 99999, 0), "Pleb"), false,
-  "a petition aimed at the Prophet's seat is refused")
-assert_eq(#L:GetSuggestions(), 0, "and queues nothing an officer could click")
-
-stub.guildRankIndex = 5
-assert_eq(deliver(petition, "Beefina"), false, "a member has no use for someone else's petition")
-assert_eq(#L:GetSuggestions(), 0, "so nothing is queued on a member's client")
-
-COB.Toasts = realToasts
-stub.guildRankIndex = nil
-
-reset()
-COB.DB = realDB
 restore()

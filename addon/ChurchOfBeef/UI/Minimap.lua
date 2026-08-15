@@ -1,9 +1,10 @@
 ChurchOfBeef = ChurchOfBeef or {}
 local COB = ChurchOfBeef
 
--- One plain Minimap child button, no LibDBIcon: /beef stays the real entry point.
--- Hover = standing glance (title · standing · next/appointed · petition); left-click = Toggle.
--- No StatusBar on the map (glossary 76 / research 47).
+-- Quiet Mode: minimap presence + Decree replay (Law 6 / Bible §14.1).
+-- No grant pip, no petition cue, no standing glance. Left-click shows the
+-- Decree banner when one is active; otherwise Toggle. Drag = move around
+-- the ring. Event Mode is not this surface. No StatusBar on the map.
 local MinimapButton = {}
 COB.Minimap = MinimapButton
 
@@ -12,7 +13,6 @@ local DEFAULT_ANGLE = 200
 local RADIUS = 80
 
 local HINT_R, HINT_G, HINT_B = 0.8, 0.8, 0.8
-local PETITION_R, PETITION_G, PETITION_B = 1.0, 0.82, 0.0
 
 local function minimapDb()
   if type(ChurchOfBeefDB) ~= "table" then return nil end
@@ -20,163 +20,89 @@ local function minimapDb()
   return ChurchOfBeefDB.ui
 end
 
-local function playerName()
-  if type(UnitName) == "function" then
-    local name = UnitName("player")
-    if type(name) == "string" and name ~= "" then return name end
-  end
-  return nil
-end
-
-local function inGuild()
-  if type(IsInGuild) == "function" then
-    return IsInGuild() and true or false
-  end
-  return true
-end
-
-local function localPendingSuggestion(name)
-  if type(name) ~= "string" or name == "" then return nil end
-  if not (COB.Ladder and COB.Ladder.GetSuggestions) then return nil end
-  local list = COB.Ladder:GetSuggestions()
-  if type(list) ~= "table" then return nil end
-  local key = string.lower(name)
-  for i = 1, #list do
-    local s = list[i]
-    if type(s) == "table" and type(s.name) == "string" and string.lower(s.name) == key then
-      return s
-    end
-  end
-  return nil
-end
-
--- Short next-line for the glance tip. Same math as StandingTab (point-driven
--- remaining / appointed-only); denser copy for ≤5 tip lines.
-local function nextGlanceCopy(rankId, standing)
-  local ranks = COB.Ranks
-  if not ranks then return nil end
-
-  if not ranks.IsPointDriven(rankId) then
-    return "Appointed ranks only"
-  end
-
-  local nextId = rankId + 1
-  if not ranks.IsPointDriven(nextId) then
-    return "Appointed ranks only"
-  end
-
-  local need = ranks.Threshold(nextId)
-  local title = ranks.Title(nextId)
-  if type(need) ~= "number" or type(title) ~= "string" then
-    return "Appointed ranks only"
-  end
-  local remain = need - (standing or 0)
-  if remain < 0 then remain = 0 end
-  return string.format("%d to %s", remain, title)
-end
-
--- Shared glance payload for minimap (and any later LDB OnTooltipShow).
--- Returns { lines = { { text, r, g, b }, ... }, petitionPending = bool }.
-function MinimapButton.StandingGlanceLines()
-  local lines = {}
-  local petitionPending = false
-
-  lines[#lines + 1] = { text = "Church of Beef" }
-
-  if not inGuild() then
-    lines[#lines + 1] = { text = "Not in a guild", r = 1, g = 1, b = 1 }
-    lines[#lines + 1] = {
-      text = "Left-click: open ladder  ·  /beef",
-      r = HINT_R, g = HINT_G, b = HINT_B,
-    }
-    return { lines = lines, petitionPending = false }
-  end
-
-  local name = playerName()
-  local record = (name and COB.Ladder and COB.Ladder.GetRecord)
-    and COB.Ladder:GetRecord(name) or nil
-  local rankId = (record and record.rankId) or 1
-  local standing = (record and record.standing) or 0
-  if type(standing) ~= "number" then standing = 0 end
-
-  local title = (COB.Ranks and COB.Ranks.Title) and COB.Ranks.Title(rankId) or "Fresh Beef"
-  lines[#lines + 1] = {
-    text = string.format("%s · %d standing", title, standing),
-    r = 1, g = 1, b = 1,
-  }
-
-  local nextLine = nextGlanceCopy(rankId, standing)
-  if nextLine then
-    lines[#lines + 1] = { text = nextLine, r = 1, g = 1, b = 1 }
-  end
-
-  if name and localPendingSuggestion(name) then
-    petitionPending = true
-    lines[#lines + 1] = {
-      text = "Petition pending officers",
-      r = PETITION_R, g = PETITION_G, b = PETITION_B,
-    }
-  end
-
-  lines[#lines + 1] = {
-    text = "Left-click: open ladder  ·  /beef",
-    r = HINT_R, g = HINT_G, b = HINT_B,
-  }
-
-  return { lines = lines, petitionPending = petitionPending }
-end
-
--- Prefer COB.UI.StandingGlanceLines when MainFrame already owns COB.UI.
-if COB.UI then
-  COB.UI.StandingGlanceLines = MinimapButton.StandingGlanceLines
-end
-
-local function placeButton(button)
+local function savedAngle()
   local db = minimapDb()
   local angle = db and db.minimapAngle
-  if type(angle) ~= "number" then angle = DEFAULT_ANGLE end
+  if type(angle) ~= "number" then return DEFAULT_ANGLE end
+  return angle
+end
+
+local function placeButton(button, angle)
+  if type(angle) ~= "number" then angle = savedAngle() end
   local rad = math.rad(angle)
   button:ClearAllPoints()
   button:SetPoint("CENTER", Minimap, "CENTER", math.cos(rad) * RADIUS, math.sin(rad) * RADIUS)
 end
 
-local function paintPetitionCue(button, pending)
-  if not button or not button.petitionPip then return end
-  if pending then
-    button.petitionPip:Show()
-    if button.border then
-      button.border:SetVertexColor(1.0, 0.82, 0.0)
-    end
-  else
-    button.petitionPip:Hide()
-    if button.border then
-      button.border:SetVertexColor(1, 1, 1)
-    end
-  end
+-- Where the cursor currently sits on the ring, in degrees. GetCursorPosition
+-- answers in raw screen units while GetCenter answers in the minimap's own
+-- coordinate space, so the cursor has to come through the scale of that same
+-- widget — not UIParent's — or a player who has scaled their minimap drags the
+-- icon to the wrong spoke. Anything missing (an older client without the call, a
+-- minimap the layout engine has not placed yet) returns nil rather than snapping
+-- the icon to zero degrees.
+local function cursorAngle()
+  if type(GetCursorPosition) ~= "function" then return nil end
+  if not (Minimap and Minimap.GetCenter) then return nil end
+
+  local centerX, centerY = Minimap:GetCenter()
+  if type(centerX) ~= "number" or type(centerY) ~= "number" then return nil end
+
+  local scale = Minimap:GetEffectiveScale()
+  if type(scale) ~= "number" or scale <= 0 then scale = 1 end
+
+  local cursorX, cursorY = GetCursorPosition()
+  if type(cursorX) ~= "number" or type(cursorY) ~= "number" then return nil end
+
+  return math.deg(math.atan2(cursorY / scale - centerY, cursorX / scale - centerX)) % 360
 end
 
+-- Runs only while the button is held. The angle is written straight to the saved
+-- variable as it moves so a /reload mid-drag keeps the icon where the player last
+-- saw it; the same key is what placeButton reads on the next login.
+local function followCursor(button)
+  local angle = cursorAngle()
+  if type(angle) ~= "number" then return end
+  local db = minimapDb()
+  if db then db.minimapAngle = angle end
+  placeButton(button, angle)
+end
+
+local function activeDecree()
+  if not (COB.Decree and COB.Decree.Get) then return nil end
+  local row = COB.Decree:Get()
+  if type(row) ~= "table" or type(row.line) ~= "string" or row.line == "" then
+    return nil
+  end
+  return row
+end
+
+-- Presence label only. Not a standing glance, not a petition feed.
+-- When a Decree is active the tooltip may name it (Bible §14.1).
 local function fillTooltip(owner)
   if not GameTooltip or not GameTooltip.AddLine then return end
   GameTooltip:SetOwner(owner, "ANCHOR_LEFT")
   GameTooltip:ClearLines()
-
-  local glance = MinimapButton.StandingGlanceLines()
-  local rows = glance and glance.lines or {}
-  for i = 1, #rows do
-    local row = rows[i]
-    if row and type(row.text) == "string" then
-      if row.r then
-        GameTooltip:AddLine(row.text, row.r, row.g, row.b)
-      else
-        GameTooltip:AddLine(row.text)
-      end
+  GameTooltip:AddLine("Church of Beef")
+  local decree = activeDecree()
+  if decree then
+    local header = "A GATHERING HAS BEEN DECREED"
+    if COB.DecreeBanner and COB.DecreeBanner.HEADER then
+      header = COB.DecreeBanner.HEADER
     end
+    GameTooltip:AddLine(header, HINT_R, HINT_G, HINT_B)
+    GameTooltip:AddLine(decree.line, HINT_R, HINT_G, HINT_B)
+    GameTooltip:AddLine("Left-click: Decree", HINT_R, HINT_G, HINT_B)
+  else
+    GameTooltip:AddLine("Left-click: /beef", HINT_R, HINT_G, HINT_B)
   end
   GameTooltip:Show()
-  paintPetitionCue(owner, glance and glance.petitionPending)
 end
 
 function MinimapButton:Init()
+  if COB.DecreeBanner and COB.DecreeBanner.Init then
+    COB.DecreeBanner:Init()
+  end
   if self.button then return self.button end
   if type(CreateFrame) ~= "function" or not Minimap then return nil end
 
@@ -185,8 +111,11 @@ function MinimapButton:Init()
   button:SetHeight(31)
   button:SetFrameStrata("MEDIUM")
   button:SetFrameLevel(8)
-  -- V1: left = /beef toggle only. No right-click menu (research 47).
+  -- Left = Decree replay when active, else /beef toggle. No right-click menu.
   button:RegisterForClicks("LeftButtonUp")
+  -- Drag is registered apart from clicks so the client can tell them apart: a
+  -- press that never moves stays a click and still opens the window.
+  button:RegisterForDrag("LeftButton")
 
   local icon = button:CreateTexture(nil, "BACKGROUND")
   icon:SetWidth(20)
@@ -204,38 +133,38 @@ function MinimapButton:Init()
   border:SetTexture("Interface\\Minimap\\MiniMap-TrackingBorder")
   button.border = border
 
-  -- Quiet dual-encoded petition cue: corner pip + gold border tint (not hue-only).
-  local pip = button:CreateTexture(nil, "OVERLAY")
-  pip:SetWidth(6)
-  pip:SetHeight(6)
-  pip:SetPoint("TOPRIGHT", button, "TOPRIGHT", -2, -2)
-  pip:SetTexture("Interface\\Buttons\\WHITE8X8")
-  pip:SetVertexColor(PETITION_R, PETITION_G, PETITION_B)
-  pip:Hide()
-  button.petitionPip = pip
-
   button:SetHighlightTexture("Interface\\Minimap\\UI-Minimap-ZoomButton-Highlight")
 
   button:SetScript("OnClick", function(_, mouseButton)
     if mouseButton and mouseButton ~= "LeftButton" then return end
+    local decree = activeDecree()
+    local banner = COB.DecreeBanner
+    if decree and banner and banner.Show then
+      banner:Show()
+      return
+    end
     if COB.UI and COB.UI.Toggle then COB.UI:Toggle() end
+  end)
+
+  -- The follow script lives exactly as long as the drag does. An icon resting on
+  -- the ring must not be running anything per frame, so mouse-up tears it down.
+  button:SetScript("OnDragStart", function(self)
+    self:SetScript("OnUpdate", followCursor)
+  end)
+  button:SetScript("OnDragStop", function(self)
+    self:SetScript("OnUpdate", nil)
+    followCursor(self)
   end)
 
   button:SetScript("OnEnter", function(self)
     fillTooltip(self)
   end)
-  button:SetScript("OnLeave", function(self)
+  button:SetScript("OnLeave", function()
     if GameTooltip then GameTooltip:Hide() end
-    -- Keep petition cue after leave; refresh from Core on next enter / paint.
-    local glance = MinimapButton.StandingGlanceLines()
-    paintPetitionCue(self, glance and glance.petitionPending)
   end)
 
   placeButton(button)
   self.button = button
-
-  local glance = MinimapButton.StandingGlanceLines()
-  paintPetitionCue(button, glance and glance.petitionPending)
 
   local db = minimapDb()
   if db and db.minimapHide then
@@ -244,7 +173,8 @@ function MinimapButton:Init()
   return button
 end
 
--- Lets a player hide the icon without unloading the addon. /beef always works.
+-- Lets a player hide the icon without unloading the addon. /beef still opens the
+-- window, and /beef minimap is the way back once the button itself is gone.
 function MinimapButton:SetShown(show)
   local db = minimapDb()
   if db then db.minimapHide = not show end
@@ -252,10 +182,19 @@ function MinimapButton:SetShown(show)
   if show then self.button:Show() else self.button:Hide() end
 end
 
+-- The preference outlives the widget: the slash toggle has to answer correctly
+-- before UI:Init has built anything, so the saved variable wins where it exists.
+function MinimapButton:IsShown()
+  local db = minimapDb()
+  if db then return not db.minimapHide end
+  if self.button then return self.button:IsShown() and true or false end
+  return true
+end
+
+-- Presence only. Callers (shell refresh) may still invoke this; it never paints
+-- a grant or petition cue.
 function MinimapButton:Refresh()
   if not self.button then return end
-  local glance = MinimapButton.StandingGlanceLines()
-  paintPetitionCue(self.button, glance and glance.petitionPending)
   if GameTooltip and GameTooltip:IsOwned(self.button) then
     fillTooltip(self.button)
   end

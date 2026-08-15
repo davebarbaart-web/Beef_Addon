@@ -1,0 +1,71 @@
+---
+description: Pope/Council split — ceremonial sovereignty, star authority, registered-Pope senders
+globs:
+  - "**/Core/**/*.lua"
+  - "**/Net/**/*.lua"
+  - "**/UI/**/*.lua"
+alwaysApply: false
+---
+
+# Pope authority (domain)
+
+Ceremonial sovereignty and star-authority. Roster sensing and Classic API edges live in `officer-guild-roster.mdc`. Do **not** invent registered-Pope (or designated-Council) configuration UX.
+
+## Non-negotiables
+
+- The Beef Pope holds ceremonial sovereignty. Council and officers support operations; they do not perform rituals (§6).
+- Software proposes; the Pope ratifies. The software never narrates (§4.2, §4.4, §18.2).
+- One writer: the Pope's client. Congregation clients are display terminals plus input devices (§13.1).
+- Theatrical UI renders **only** from messages whose server-provided sender is a registered Pope character (§13.4).
+- Player-typed free text renders **only** on the Pope's console. Inputs never trigger public theater.
+- Guild rank is public display; the Church store is truth (§5).
+- No Pope, no rituals. Data does not decay while he is offline (§6).
+
+## Rituals (Pope only; not delegable)
+
+Knighting, sanctioning Goras, verdicts, elevation, canonization, major proclamations.
+
+These are one-click verbs on the Director Console (§18.1). Officers and Council do **not** close ceremonies, knight, sanction, declare verdicts, elevate, or canonize.
+
+## Operations (Council / officers)
+
+Logistics, activities (dungeons, raids, informal fights), and **non-ceremonial** record correction as §13.3 allows (Pope; designated Council for non-ceremonial records).
+
+They do not inherit ceremonial sovereignty. `rankIndex ≤ 1` / Officer+ is **not** the Church and is **not** a ritual gate.
+
+## Software proposes; Pope ratifies
+
+Never:
+
+- auto-declare outcomes
+- auto-advance queues
+- auto-announce in the Pope's voice
+- generate narration, flavor text, or Chronicle scripture
+
+The stage manager may surface who is next. Anything with a verb happens in the Pope's voice.
+
+## Star topology
+
+- Pope client: single writer and source of truth (ranks, records, ceremony state, Chronicle).
+- Congregation: render broadcasts; send inputs (petitions, favor, confession text) **to the Pope console only**.
+- Witnesses report; they never rule. No distributed consensus. No peer self-reported authority.
+- Receivers trust theater and canonical writes only from a registered Pope character sender. UI "I am the Pope" is not enough on the wire.
+
+## KNIGHT THIS BEEF (§8)
+
+One Pope-commanded action. On command (never auto) it performs everything the API legally permits:
+
+1. Church record (store is truth)
+2. Guild-rank promotion **where the API permits** (display)
+3. Proclamation to installed clients
+4. Queue advance — only because the Pope clicked
+
+Guild-rank write is a **capability** guard on the Pope client (Appendix A item 4), not an Officer+ ritual gate. Do not blanket-ban promote APIs; do not call them from congregation clients or as a Council ritual. Other elevations write the Church store; do not invent extra guild-rank write verbs.
+
+## Display vs truth (§5)
+
+- Blizzard guild rank = public display
+- Church store = truth
+- Reconcile silently when the mapping is unambiguous
+- Ask the Pope one clear question when it is not
+- Never treat live roster rank as authority to knight, sanction, or write canon

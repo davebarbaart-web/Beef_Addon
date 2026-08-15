@@ -20,7 +20,7 @@ alwaysApply: false
 1. TOC scripts load top-to-bottom
 2. Client restores `ChurchOfBeefDB` (may be nil first run)
 3. `ADDON_LOADED` + `arg1 == "ChurchOfBeef"` → `COB:OnLoad()` (DB init/migrate)
-4. `PLAYER_LOGIN` → `COB:OnLogin()` (UI, Net, Sync)
+4. `PLAYER_LOGIN` → `COB:OnLogin()` (UI, Net)
 5. `PLAYER_LOGOUT` → last flush only; do not rely on it for normal writes
 
 ```lua
@@ -41,7 +41,7 @@ end
 
 ## Combat deferral
 
-- Data paths (scoring, BeefNet apply) may run in combat
+- Core store writes and BeefNet apply may run in combat
 - Queue show/hide/create/layout that touches **protected** widgets until `PLAYER_REGEN_ENABLED`
 
 ## Slash / prefix

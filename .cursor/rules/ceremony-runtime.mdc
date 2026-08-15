@@ -1,0 +1,86 @@
+---
+description: Pope-owned state machine, broadcasts, snapshots, degradation
+globs:
+  - "**/Core/**/*.lua"
+  - "**/Net/**/*.lua"
+alwaysApply: false
+---
+
+# Ceremony runtime + BeefNet v2 (domain)
+
+Product law: Bible §20.1–20.4, §13.1, §13.4, §4.11, §7 (SUMMON kind). Audit V5 and V7 are the failures this rule exists to stop. Presentation contract: `quiet-event-modes.mdc`. Star / registered-Pope: `pope-authority.mdc`.
+
+Do **not** invent opcode strings, hold-timeout seconds, or a snapshot schema.
+
+## Non-negotiables
+
+- The Pope's client **owns every transition**. No other client writes ceremony state. No peer consensus. No self-reported authority (Law 5, §13.1).
+- **Zero-setup start.** A Tuesday Knighting begins as a single Pope action with **no event configuration** (§4.11, §20.2). If the addon makes a small ceremony feel not-worth-doing, it has damaged the Church.
+- Software proposes; the Pope ratifies. **Nothing auto-advances** the queue, auto-declares outcomes, auto-announces in the Pope's voice, or generates narration (Law 4, §18.2).
+- **Ban the demo ceremony (Audit V5):** no attendance timesheet, no start/close group sampling, no ceremony points, no officer-close credit ledger. A Knighting writes a Church record only as the result of a Pope verb in this runtime.
+- **Ban peer-authority sync (Audit V7):** do not rebuild `SYNC_STATE` / `SYNC_REQUEST` as gossip, catch-up, or a source of truth. Congregation theater **is** local truth — a peer body stored then painted later is V7. The only catch-up is a **whisper snapshot from the Pope's client**. A Pope snapshot response is not a “peer reply.”
+- **No generic ceremony builder** (Adjudication §5; Bible §22.2). Rite types are the closed set below. Do not add a rite-kind factory, free-text "kind," or officer-invented ceremony types.
+- Custom `CHANNEL` addon chat remains **forbidden**.
+
+## States (§20.1)
+
+**QUIET** → **ASSEMBLY** (event live; Decree / summon context; congregation gathering) → **RITE** (typed: **Knighting** / **Gora** / **Confession** / **Proclamation** — a Gathering may chain several) → **CONSEQUENCE** (verdict / elevation / reaction beat) → **ASSEMBLY** (next rite) or **QUIET** (event ends).
+
+Event Mode is entered and exited **only** through this machine (§4.8, §19.2). Net does not invent ranks, verdicts, or transitions.
+
+Starting an event, opening a rite, closing a rite, and ending the event are **Pope console actions** (one click each). Starting a **small** ceremony is a **single action with zero configuration** (§20.2, §4.11) — not a four-step wizard. That is not auto-advance.
+
+## Broadcast and catch-up (§13.1, §20.2–20.3)
+
+**Kinds** (not opcode names):
+
+| Kind | Direction | Channel kind | Duty |
+|------|-----------|--------------|------|
+| State broadcast | Pope → congregation, one-way | Guild addon channel | Sequence-numbered. Clients reconcile to the latest **Pope** sequence. |
+| Snapshot request / response | Late join or UI reload | Whisper **to the Pope's client only** | Client asks the Pope; it receives a snapshot and lands in the current theater. Not GUILD fan-out. No Officer+/Council answer. On Pope disconnect, no one else answers. |
+| Congregation inputs | Member → Pope console only | (channel unspecified — do not invent) | Named kinds only: petition, favor, confession text. **Never** trigger public theater. No generic input opcode. |
+
+Broadcast state **carries** (Bible-named fields, not a snapshot schema): event id, state, rite type, active subjects (candidate, fighters), sequence number.
+
+Every message carries a **protocol version**. Stale clients drop to Quiet Mode with a gentle update notice ("the Church's software has advanced") rather than misrendering theater (§13.4, §20.3, §21.3).
+
+Net/Core **discard** messages whose server-provided sender is not a registered Pope character (state, snapshot, theater). Do not store them for later paint. Theatrical UI renders **only** from those Pope-originated messages. Do not invent registered-Pope configuration UX.
+
+Player-typed free text renders **only** on the Pope's console. Official theater renders only Pope-originated content.
+
+## Disconnect, reload, inputs (§20.3)
+
+- **Pope disconnect:** clients hold last state briefly, then degrade to a quiet-leaning **"awaiting the Pope"** presentation. That is **Event Mode degraded** — not a sixth state, not Quiet chrome, not a toast/pip. **No client promotes itself.** On reconnect, the Pope console resumes from the persisted event object in his SavedVariables.
+- Hold duration is **unspecified**. Do not invent seconds. §20.4's "five seconds / thirty seconds" is a **chaos-test quality bar**, not a hold timer.
+- **Congregation crash** mid-favor or petition: inputs are re-sendable; the console **deduplicates by character**.
+- Snapshot **schema is unspecified**. Do not invent one.
+
+## Transport keepers (Audit §4 BeefNet)
+
+Keep the existing `Net/BeefNet.lua` transport skeleton. **Rework messages**; do not throw away the wire.
+
+**Keep:** prefix and explicit **GUILD** channel; body-size / framing discipline; outbound throttle bucket; inbound per-sender rate limits; protocol-version field; version-mismatch **discard**; API guards; server-provided sender as identity.
+
+**Do not keep at all:** peer `SYNC_STATE` / `SYNC_REQUEST` (not even as non-authoritative gossip), `RANK_COMMIT`, suggestion fanout as product, officer-close ceremony credit.
+
+**SUMMON THE FAITHFUL** is one button that pings installed clients with the gathering point — **nothing more** (§7). Stretch-MVP / later phase (§22.1). Do not invent a summon protocol or extra assembly features.
+
+## Chaos test (§20.4)
+
+The runtime must survive, on stream: late arrival, reload, disconnect (including the Pope's), no-show petitioner, disputed outcome. A confused client is acceptable for five seconds and embarrassing for thirty. That is the quality bar — not a timeout constant to code.
+
+## Do not rebuild
+
+```text
+❌ Officer start/close attendance ledger + GrantCeremony / points
+❌ Peer SYNC_STATE / SYNC_REQUEST in any role (gossip, catch-up, or authority)
+❌ Snapshot request on GUILD / Officer+ fan-out / Council answer
+❌ Auto-advance, auto-declare, auto-announce, generated narration
+❌ Generic ceremony builder / free-text rite kinds
+❌ Theatrical UI from non-Pope senders
+❌ Congregation input that paints public theater
+❌ Client self-promotion on Pope disconnect
+❌ Custom CHANNEL addon chat
+❌ Invented opcode strings, hold-timeout seconds, or snapshot schema
+❌ Attendance tracking, RSVP, or timesheet sampling as ceremony
+```

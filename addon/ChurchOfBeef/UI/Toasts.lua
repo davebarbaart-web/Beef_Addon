@@ -1,9 +1,11 @@
 ChurchOfBeef = ChurchOfBeef or {}
 local COB = ChurchOfBeef
 
--- Private edge toast. Displays Core / Net outcomes only — never grants standing,
--- never guild-chats, never center-screen pulses. Silent V1 (glossary 79).
--- Architecture: docs/research/agent-polish-vision/46-toast-celebration-system.md
+-- Event Mode toast engine. Quiet Mode does not drive this file (Law 6).
+-- Grant-driven kinds (suggest, credit, demote, excommunicate) are gone.
+-- Promote / rite copy builders and those KINDS are gone — nothing live
+-- called them. Engine remains: system / debug and Push. Do not invent
+-- Event Mode kinds here (Phase 4).
 local Toasts = {}
 COB.Toasts = Toasts
 
@@ -15,16 +17,15 @@ local EXIT_DUR = 0.18
 local INTERRUPT_DUR = 0.08
 local ANCHOR_Y = -160
 
--- Kind defaults: priority, hold (s), interrupt lower?, combat soft-defer (V1: unused).
+-- Kind defaults: priority, hold (s), may it interrupt a lower toast.
+--
+-- Combat soft-defer is deliberately not here. It was carried as a per-kind flag that
+-- no code read, which is worse than not having it: the table looked like policy while
+-- toasts popped mid-pull regardless. The hook point is documented at its call site in
+-- Push, and the flag comes back with the code that honours it.
 local KINDS = {
-  promote = { priority = 90, hold = 7.0, interrupt = true,  deferInCombat = false },
-  demote  = { priority = 85, hold = 7.0, interrupt = true,  deferInCombat = false },
-  excommunicate = { priority = 85, hold = 7.0, interrupt = true, deferInCombat = false },
-  suggest = { priority = 70, hold = 6.0, interrupt = true,  deferInCombat = false },
-  rite    = { priority = 65, hold = 4.5, interrupt = true,  deferInCombat = false },
-  credit  = { priority = 40, hold = 4.0, interrupt = false, deferInCombat = true },
-  system  = { priority = 30, hold = 3.5, interrupt = false, deferInCombat = true },
-  debug   = { priority = 10, hold = 2.0, interrupt = false, deferInCombat = true },
+  system  = { priority = 30, hold = 3.5, interrupt = false },
+  debug   = { priority = 10, hold = 2.0, interrupt = false },
 }
 
 local pending = {}
@@ -94,7 +95,9 @@ local function tryBackdrop(frame)
       frame:SetBackdropColor(0, 0, 0, 1)
     end
     if frame.SetBackdropBorderColor then
-      frame:SetBackdropBorderColor(0.65, 0.55, 0.35, 1)
+      local edge = (COB.UI and COB.UI.Palette and COB.UI.Palette.HeavyEdge)
+        or { 0.65, 0.55, 0.35, 1 }
+      frame:SetBackdropBorderColor(edge[1], edge[2], edge[3], edge[4] or 1)
     end
     return true
   end
@@ -116,36 +119,26 @@ local function probeAlpha(anim, fromA, toA)
   end
 end
 
+-- Motion groups are stored on the frame itself, so read them back with rawget: an
+-- inherited key would not be one of ours.
 local function animGroup(frame, key)
-  -- rawget only: desktop stubs __index-cache a noop function for unknown keys,
-  -- which is truthy and must never be treated as an AnimationGroup (cobFadeIn).
   local g = rawget(frame, key)
   if type(g) == "table" then return g end
   return nil
 end
 
-local function clearStubNoop(frame, key)
-  local g = rawget(frame, key)
-  if type(g) == "function" then
-    rawset(frame, key, nil)
-  end
-end
-
+-- Every probe below is a real portability check, not a test accommodation: a client
+-- without AnimationGroup support has to fall through to the stepped C_Timer fade
+-- rather than error, and the toast still has to appear.
 local function ensureMotion(frame)
   if rawget(frame, "_cobMotionReady") then return end
-  -- Mark ready first so a failed probe does not re-enter and re-pollute keys.
+  -- Mark ready first so a failed probe does not re-enter.
   rawset(frame, "_cobMotionReady", true)
-  clearStubNoop(frame, "cobFadeIn")
-  clearStubNoop(frame, "cobFadeOut")
-  clearStubNoop(frame, "cobSnapOut")
 
-  -- Desktop stubs answer unknown methods with noops that return nil — only a
-  -- real AnimationGroup table means the client supports motion groups.
   local create = frame.CreateAnimationGroup
   if type(create) ~= "function" then return end
   local gin = create(frame)
   if type(gin) ~= "table" then return end
-  -- CreateAnimation must also yield a real anim table (stub groups return nil).
   local ain = gin.CreateAnimation and gin:CreateAnimation("Alpha")
   if type(ain) ~= "table" then return end
 
@@ -242,7 +235,6 @@ local function normalize(envelope)
     dedupeKey = type(envelope.dedupeKey) == "string" and envelope.dedupeKey or nil,
     hold = hold,
     interrupt = interrupt and true or false,
-    deferInCombat = envelope.deferInCombat,
     motion = motion,
     _arrival = arrivalSeq,
   }
@@ -409,7 +401,7 @@ local function interruptShowing(self)
   if not cur then return end
   bumpGen()
   stopMotion(self.frame)
-  -- V1: discard interrupted toast (credits/system); never re-queue.
+  -- Discard the interrupted toast; never re-queue.
   self.showing = nil
   if self.frame then
     if self.frame.SetAlpha then self.frame:SetAlpha(1) end
@@ -484,23 +476,9 @@ function Toasts:Push(envelope)
   if e.dedupeKey then
     local idx = findPendingKey(e.dedupeKey)
     if idx then
-      -- Coalesce pending credits (burst totals); other kinds drop as deduped.
-      if pending[idx].kind == "credit" or e.kind == "credit" then
-        pending[idx].text = e.text
-        pending[idx].hold = e.hold
-        pending[idx].priority = math.max(pending[idx].priority, e.priority)
-        return true, "deduped"
-      end
       return false, "deduped"
     end
     if self.showing and self.showing.dedupeKey == e.dedupeKey then
-      if e.kind == "credit" then
-        self.showing.text = e.text
-        if self.frame and self.frame.text then
-          self.frame.text:SetText(e.text)
-        end
-        return true, "deduped"
-      end
       return false, "deduped"
     end
     local seen = recentKeys[e.dedupeKey]
@@ -509,8 +487,8 @@ function Toasts:Push(envelope)
     end
   end
 
-  -- Soft-defer credits/system in combat is intentionally OFF for V1.
-  -- Hook point: enqueue to a deferList and drain on PLAYER_REGEN_ENABLED.
+  -- Soft-defer while in combat is intentionally OFF. Hook point: enqueue to a
+  -- deferList here and drain it on PLAYER_REGEN_ENABLED.
 
   if self.showing and e.interrupt and e.priority > self.showing.priority then
     interruptShowing(self)
@@ -540,12 +518,12 @@ function Toasts:Show(text)
   return ok and true or false
 end
 
---- Convenience ceremony entry. Builds UI-owned copy; never touches Core.
+--- Convenience entry. Builds UI-owned copy; never touches Core.
 --- Forms:
 ---   Celebrate(text)                         → system
----   Celebrate(kind, fieldsTable)            → structured
---- fields: { name?, title?, detail?, text?, standingDelta?, attendees?,
----           verb?, dedupeKey?, hold?, priority? }
+---   Celebrate(kind, fieldsTable)            → system / debug only
+--- fields: { detail?, text?, dedupeKey?, hold?, priority? }
+--- Unknown / excised kinds (promote, rite, grant family) do not mint copy.
 function Toasts:Celebrate(kind, fields)
   -- Plain string → system toast (back-compat for early call sites).
   if type(kind) == "string" and fields == nil then
@@ -560,30 +538,7 @@ function Toasts:Celebrate(kind, fields)
 
   local text = fields.text
   if type(text) ~= "string" or text == "" then
-    if kind == "promote" or kind == "demote" or kind == "excommunicate" then
-      if fields.name and fields.title then
-        text = string.format("%s is now %s.", fields.name, fields.title)
-      end
-    elseif kind == "suggest" then
-      if fields.name and fields.title then
-        text = string.format("Promote %s to %s in the guild roster.", fields.name, fields.title)
-      elseif fields.title then
-        -- UTF-8 em dash (same bytes as Net local-eligibility copy).
-        text = string.format("Eligible for %s \226\128\148 officers can promote you in the guild roster.", fields.title)
-      end
-    elseif kind == "credit" then
-      if type(fields.attendees) == "number" then
-        text = string.format("Ceremony closed: %d attendee(s) credited", fields.attendees)
-      elseif fields.detail and type(fields.standingDelta) == "number" then
-        text = string.format("Gora %s: %+d standing", fields.detail, fields.standingDelta)
-      end
-    elseif kind == "rite" then
-      if fields.name and type(fields.standingDelta) == "number" then
-        text = string.format("%s: %d standing", fields.name, fields.standingDelta)
-      elseif fields.verb and fields.name and fields.title then
-        text = string.format("%s: %s → %s", fields.verb, fields.name, fields.title)
-      end
-    elseif kind == "system" or kind == "debug" then
+    if kind == "system" or kind == "debug" then
       text = fields.detail
     end
   end

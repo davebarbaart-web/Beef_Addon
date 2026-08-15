@@ -29,10 +29,10 @@ Zip/install/CI: `build-packaging.mdc`. This rule covers files **inside** the add
 ## Fallbacks / media
 
 - `/beef` frame must still exist if custom media is missing
+- Custom Media is permitted and expected **on theatrical surfaces** (Law 10 / Bible §19.3)
 - Do not bundle ripped Blizzard soundtrack files
 
-## Consent / spectacle
+## Consent / hygiene
 
-- Promotion announce = one throttled guild line from the approving officer only
 - Stream-safe defaults: no surprise dumps of officer notes or alt lists
 - No ads, tip jars, or donation CTAs in the game UI

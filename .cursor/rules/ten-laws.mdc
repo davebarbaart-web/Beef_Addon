@@ -1,0 +1,25 @@
+---
+description: Ten Laws of the Reformation — banned economies, Pope sovereignty, Quiet Mode, star topology
+alwaysApply: true
+---
+
+# Ten Laws
+
+Product law is `docs/design/Game_Design_Bible_v1.1.1.md`. On conflict, the Bible wins.
+
+1. **No points economy.** No points, XP, currencies, dailies, streaks, thresholds, or engagement scoring of any kind. The points economy is banned, not rebalanced. (Bible §4.6, §4.9, §10.6, §10.9)
+   Streaks in this law means engagement and favor economies, not fight-record streaks or Records Book Longest Streak (narrative record, not an economy). Currencies means XP/points/engagement wallets, not Records Book superlatives or Pope-granted honorifics (§5, §10.4).
+2. **Record events, never behavior.** No hours, combat minutes, activity levels, or generalized contribution numbers. No activity leaderboards. (Bible §4.9, §17)
+3. **The Beef Pope holds ceremonial sovereignty.** Knighting, sanctioning Goras, verdicts, elevation, canonization: Pope actions via one-click verbs on the Director Console. Officers/Council support operations; they do not perform rituals. (Bible §6)
+4. **Software proposes; the Pope ratifies.** Nothing auto-declares outcomes, auto-advances queues, auto-announces in the Pope's voice, or generates narration or flavor text. The software never narrates. (Bible §4.2, §4.4)
+5. **Pope-authoritative star.** One writer: the Pope's client. Congregation clients are display terminals plus input devices. Witnesses report, never rule. No distributed consensus. No peer self-reported authority. (Bible §13.1)
+6. **Quiet Mode contract.** Outside events: at most a minimap presence and the active Decree. No feeds, dashboards, bars, toasts, pips, sound, or ambient surfaces. Every UI feature declares Quiet Mode or Event Mode. The only Quiet notice is the §13.4 version-mismatch drop (`quiet-event-modes.mdc`). (Bible §4.8, §19.1, §19.4)
+7. **Church history is never deleted.** No pruning, no departed-member sweeps, no record expiry. Account-level identity; rank belongs to the human; Gora records belong to the character. (Bible §12, §5)
+   History is never deleted. Human Council exit is a role change, not a record wipe. Fresh Beef guild purges are other addons; this addon does not sweep Church records. Guild-roster removal is not history deletion.
+8. **Combat is WoW's.** A Beef Gora is an unmodified duel in the world. No ELO/MMR, no rated matchmaking, no combat analytics, no betting. (Bible §10)
+9. **Rank structure is exactly:** Fresh Beef, Cooked Beef, Beef Knight, Beef Lord, Beef Butcher (Raiding Team role designation — display-only in this phase), Beef Council. No thresholds. No Beef Prophet. The Pope is not a rank. (Bible §5)
+10. **Hybrid visual law.** Functional surfaces stay stock-template pragmatic. Theatrical surfaces (proclamations, fighter cards, seals, verdicts, Records Book, Decree) get the full ecclesiastical parchment-and-dark-iron identity. The UI itself never tells jokes. (Bible §19.3)
+
+**Hard safety:** no gameplay automation, no injection, no protected-action circumvention. Lua/XML only. Target `## Interface: 20506` (TBC Anniversary). Classic+ portability via guarded API reads.
+
+Do not invent product answers. If the Bible and the Reformation handoff do not answer a question, append a named, bounded item to `docs/design/OPEN_QUESTIONS.md`. Do not resolve it.

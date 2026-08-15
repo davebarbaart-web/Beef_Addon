@@ -1,8 +1,8 @@
 ---
 description: >-
-  V1 UI juice & spectacle — polish, toast, announce, motion, celebration tiers.
-  Use when editing UI frames, edge toasts, officer /g craft, empty states, or
-  juice/feel asks. Classic shell; silent; no Media/SFX/WA center.
+  Hybrid visual law — stock functional chrome vs ecclesiastical theater.
+  Use when editing UI frames, Event Mode theater, Quiet Mode presence,
+  or juice/feel asks. Bible §19; UI never jokes; custom media only on theater.
 globs:
   - "**/addon/**/UI/**/*.lua"
   - "**/addon/**/UI/**/*.xml"
@@ -10,41 +10,44 @@ globs:
 alwaysApply: false
 ---
 
-# UI juice standards (V1)
+# UI juice standards (hybrid visual law)
 
-**Doctrine:** Classic Blizzard shell for process UI; brand in words (guild chat + private toasts). Research ≠ product law — design spec §10/§15 and glossary win.
+**Doctrine:** Bible §19 and Law 10. Mode contract: `quiet-event-modes.mdc` (Bible §19.1–19.2, §19.4). Research ≠ product law.
 
-Before any `CreateFrame` / toast / announce work: read `docs/superpowers/ui-polished-direction-for-agents.md`. Polish loops: `.cursor/skills/church-of-beef-dev/SKILL.md` § Polish loop (not a second skill).
+Before any `CreateFrame` / theater / juice work: read Bible §19 and `quiet-event-modes.mdc`. Do not treat archived pre-reformation UI briefs as law.
 
-## Non-negotiables
+## Hybrid visual law
 
-- Classic templates + opaque high-contrast + `GameFont*`; dual-encode status; class color on **names** only
-- **UI ≠ points** — tabs/toasts display Core outcomes; never award standing or invent ranks
-- **T0** private (suggestion / credit) = edge toast only — coalesce; no guild chat on suggestion/score/sync
-- **T1** social `/g` promote announce = **deferred** (roster-backed); playtest spectacle = toast + Ladder move after guild-UI promote
-- No peer echo, no multi-line liturgy, no announce on suggestion/score/sync
-- Announce checkbox stays hidden until a roster-diff announcer lands
-- Scarce seats = stronger **T1** copy only — never T2+/Epic / center pulses
-- **V1 silent** — no SFX; missing media must not fail load
-- Standing: **text thresholds** only (no hero StatusBar / HP meter)
+- **Functional** (Director Console desks, lists, settings): stock Blizzard templates, pragmatic, opaque high-contrast, `GameFont*`. Working tools stay working tools.
+- **Theatrical** (proclamations, fighter cards, seals, verdicts, Records Book, Decree): full ecclesiastical identity — dark iron, charcoal, aged parchment, muted gold; gothic/ecclesiastical typography; Warcraft-compatible ornamentation; official seals. **Non-negotiable.**
+- The contrast between the plain desk and the dignified theater is the comedy engine. **The UI itself never tells jokes.** No meme clutter. The software never narrates (Law 4).
+- Custom media is permitted and expected **only where theater lives**. Missing media must not fail load — fall back to default UI.
+- Dual-encode status (color + text). Class color on **names** only.
+- UI displays Core / Pope-ratified outcomes; never awards points, standing, or ranks (Law 1).
+
+## Mode (juice)
+
+- **Quiet Mode:** no toasts, no sound, no pips, no ambient surfaces. At most minimap presence and the active Decree. The **only** Quiet notice is the Bible’s gentle version-mismatch drop (§13.4 / §20.3) — see `quiet-event-modes.mdc`. Not a toast-kind family.
+- **Event Mode:** consequence beats and §19.4 ceremonial cues only. Rhythm: Quiet → Ritual Begins → Spectacle → Consequence → Quiet.
+- Sound is sparse and meaningful: Sanction bell, Verdict, Elevation, Knighting, Cowardice Recorded; later, Canonization seal. Quiet Mode is silent, absolutely. No ambient audio, UI clicks-and-whooshes, or notification sounds.
 
 ## Motion / timing
 
 - Prefer show/hide + short alpha on Beef-owned **insecure** frames
 - **No permanent `OnUpdate`** for juice — disable scripts when idle (`wow-performance.mdc`)
-- **No center-screen** alert frames / WA-style pulses for social ranks
-- Stagger only inside Beef toast stack; never hitch combat
+- **No center-screen** alert frames / WA-style pulses. The Fight HUD is **not** an alert pulse: Event Mode only, top-center default, movable (§10.7, §19.2). Do not ban it as “center-screen.”
+- Never hitch combat
 - Guest on player `uiScale` — never set `uiScale` / `UIParent:SetScale`
 
 ## Anti-patterns (reject)
 
-WA center pulses · permanent animation directors · Details!-dense rosters · item-quality rainbow for ranks · glass/low-alpha panels · SecureActionButton for panels · tip jars · standing-as-castbar · Retail templates unverified on Anniversary · custom Media/SFX as “polish” · juice OS / tween bus
+WA center pulses · permanent animation directors · juice OS / tween bus · hex palette token systems · Details!-dense working desks · item-quality rainbow for ranks · glass/low-alpha panels · SecureActionButton for panels · tip jars · Retail templates unverified on Anniversary · custom media on functional surfaces · ambient SFX / UI whooshes · meme clutter · jokes in chrome copy
 
 ## Critique (before done)
 
-1. Does the Ladder move when an officer promotes in the guild UI (no addon required on peers)?
-2. Does this still read as Blizzard chrome if custom tint fails?
-3. Can an officer open `/beef` and Dismiss / correct standing in combat without taint pain?
-4. Are promote prompts honest (“guild roster”) with announce still deferred/hidden?
+1. Is this surface functional (stock) or theatrical (ecclesiastical) — and did we apply the matching law?
+2. Does Quiet Mode stay silent (no toast, sound, or pip) aside from the single §13.4 version-mismatch notice?
+3. Does the UI itself tell a joke or add meme clutter?
+4. If custom theater media is missing, does the addon still load?
 
 Harness ≠ spectacle — claim **POLISH:CANDIDATE** only; human signs PASS. See `verification.mdc`.

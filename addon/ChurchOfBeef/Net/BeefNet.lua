@@ -1,10 +1,16 @@
 ChurchOfBeef = ChurchOfBeef or {}
 local COB = ChurchOfBeef
 
--- BeefNet: the wire, and nothing more. It parses a payload, proves the sender is an
--- Officer+ against the guild roster, and then hands the record to Core. It never
--- decides a rank itself: every accepted commit goes through Ladder:ApplyRemoteCommit,
--- which owns the revision merge.
+-- BeefNet: the wire, and nothing more.
+--
+-- The transport vocabulary is HELLO: version/presence discovery (Bible §21.3 /
+-- §13.4 version-skew). STATE (GUILD) and SNAPSHOT (WHISPER) are Codec types
+-- routed when COB.Codec is loaded. They are not added to the HELLO TYPES set:
+-- a body Codec will not decode stays unknown, so HELLO-only suites stay green.
+-- Older builds may still broadcast SUGGESTION, RANK_COMMIT, SYNC_REQUEST, or
+-- SYNC_STATE; those are named so they die quietly and are never acted on.
+-- INPUT is not a live channel. Outbound STATE / SNAPSHOT send only if the local
+-- player is a registered Pope (always false until the #8 list — do not code it).
 --
 -- Classic+ port notes: the client APIs read here are behind type() guards and listed
 -- below, so a host that renames one degrades to "cannot send" instead of erroring on
@@ -19,16 +25,24 @@ local Net = {
   -- GUILD always. The client default is PARTY, and custom CHANNEL addon chat is
   -- forbidden on Classic, so this is passed explicitly on every send.
   Channel = "GUILD",
-  -- ChatThrottleLib-class pacing without the library: the client drops a prefix at
-  -- roughly ten messages regenerating one per second, and a login sync is the one
-  -- moment we would otherwise blow straight through that.
-  SendInterval = 0.5,
+  -- ChatThrottleLib-class pacing without the library, and shaped like the thing it
+  -- is protecting: the client's addon-message allowance is a bucket of about ten
+  -- that refills at one per second, so that is what we model. A login HELLO goes
+  -- out at once; a client that keeps talking settles to one per second instead of
+  -- the old fixed half-second gap, which sustained twice the refill rate and
+  -- eventually got messages dropped by the server with no way for us to know.
+  OutboundBurst = 10,
+  OutboundPerSecond = 1,
   MaxQueued = 60,
-  -- Commits that arrived before the roster did. Bounded: a flood while the roster
-  -- is unread must not grow without limit.
-  MaxHeld = 24,
+  -- Inbound pacing, per sender. A peer may burst a few messages (a login HELLO
+  -- plus a couple of retries) and then sustains one every five seconds. Everything
+  -- past that is dropped unread: one client with a stuck loop, or a hostile one
+  -- with /run, must not be able to spend every peer's decode budget.
+  InboundBurst = 5,
+  InboundPerSecond = 0.2,
+  MaxInboundSenders = 200,
   queue = {},
-  held = {},
+  inbound = {},
   sentCount = 0,
 }
 COB.Net = Net
@@ -41,10 +55,15 @@ local ROSTER_REQUEST_INTERVAL = 10
 
 local TYPES = {
   HELLO = true,
-  SUGGESTION = true,
+}
+
+-- Types an older build may still be broadcasting. Recognized so they are discarded
+-- quietly instead of counted as garbage, and never acted on.
+local RETIRED_TYPES = {
   RANK_COMMIT = true,
   SYNC_REQUEST = true,
   SYNC_STATE = true,
+  SUGGESTION = true,
 }
 
 --------------------------------------------------------------------------------
@@ -84,24 +103,6 @@ end
 local function chat(text)
   if type(DEFAULT_CHAT_FRAME) == "table" and DEFAULT_CHAT_FRAME.AddMessage then
     DEFAULT_CHAT_FRAME:AddMessage("|cffffaa00Church of Beef|r: " .. text)
-  end
-end
-
--- Net reports outcomes to the private toast and asks the open window to redraw; it
--- never builds a frame or writes a widget itself.
-local function refreshUI()
-  if not COB.UI then return end
-  if COB.UI.RefreshLadder then COB.UI:RefreshLadder() end
-end
-
--- Prefer Celebrate/Push so kind priority + dedupe apply; fall back to Show for
--- harness mocks that only stub Show.
-local function toastCelebrate(kind, fields, fallbackText)
-  if COB.Toasts and COB.Toasts.Celebrate then
-    return COB.Toasts:Celebrate(kind, fields)
-  end
-  if COB.Toasts and COB.Toasts.Show and fallbackText then
-    return COB.Toasts:Show(fallbackText)
   end
 end
 
@@ -151,60 +152,11 @@ function Net:IsCompatible(version)
 end
 
 --------------------------------------------------------------------------------
--- Record shape (shared with Sync)
---------------------------------------------------------------------------------
-
--- Order is load-bearing: name, rankId, standing, revision, updatedAt, updatedBy.
--- An absent standing is encoded as an empty field, which every receiver reads as
--- "rank only, keep your own standing".
-function Net:EncodeRecordFields(record)
-  return record.name, record.rankId, record.standing, record.revision,
-    record.updatedAt or 0, record.updatedBy or ""
-end
-
--- Shape validation only — authority is the caller's job. Rank ids come from canon,
--- so a canon reorder cannot leave a stale 1-7 literal here.
-function Net:ParseRecord(fields)
-  if type(fields) ~= "table" then return nil, "no record fields" end
-
-  local name = trim(fields[1])
-  if not name then return nil, "missing name" end
-
-  local rankId = finite(fields[2])
-  local ranks = COB.Ranks
-  if not rankId or not ranks or not ranks.ById[rankId] then return nil, "invalid rank id" end
-
-  -- Empty standing field: a rank-only rite. Nil travels through to Core, which
-  -- then leaves the member's advisory standing alone. A present-but-nonsense
-  -- standing is still a refusal — silence and garbage are different claims.
-  local standing = nil
-  if trim(tostring(fields[3] == nil and "" or fields[3])) ~= nil then
-    standing = finite(fields[3])
-    if not standing or standing < 0 then return nil, "invalid standing" end
-  end
-
-  local revision = finite(fields[4])
-  if not revision or revision < 1 then return nil, "invalid revision" end
-
-  return {
-    name = name,
-    rankId = rankId,
-    standing = standing,
-    revision = revision,
-    updatedAt = finite(fields[5]) or 0,
-    updatedBy = trim(fields[6]) or "",
-  }
-end
-
---------------------------------------------------------------------------------
 -- Identity and roster
 --------------------------------------------------------------------------------
 
 local function nameKey(name)
-  if type(name) ~= "string" then return nil end
-  name = name:gsub("^%s+", ""):gsub("%s+$", ""):lower()
-  if name == "" then return nil end
-  return name:match("^([^%-]+)") or name
+  return COB.Names and COB.Names.Key(name) or nil
 end
 
 function Net:PlayerName()
@@ -213,33 +165,16 @@ function Net:PlayerName()
   return trim(name)
 end
 
--- Our own guild-channel traffic comes back to us. Commits from self are harmless
--- (equal revision loses the merge) but a sync request answered by its own sender
--- would be pure noise.
+-- Our own guild-channel traffic comes back to us. Counting a self-HELLO as a peer
+-- would make a lone user look like they had company.
 function Net:IsSelf(sender)
   local me = nameKey(self:PlayerName())
   if not me then return false end
   return nameKey(sender) == me
 end
 
-function Net:RosterLookup()
-  if type(self.rosterLookup) == "function" then return self.rosterLookup end
-  if COB.Officer and COB.Officer.GetRosterLookup then return COB.Officer:GetRosterLookup() end
-  return nil
-end
-
--- An injected lookup (tests, and any future non-guild source) is always considered
--- ready; the live path is only ready once a roster snapshot exists.
-function Net:RosterReady()
-  if type(self.rosterLookup) == "function" then return true end
-  -- Prefer the roster-backed snapshot; Officer cache is kept in sync by Roster:Refresh.
-  if COB.Roster and COB.Roster.IsReady and COB.Roster:IsReady() then return true end
-  if not (COB.Officer and COB.Officer.HasRosterCache) then return false end
-  return COB.Officer:HasRosterCache() and true or false
-end
-
 -- force=true bypasses our client throttle. Blizzard still ignores calls <10s apart;
--- we must not block login retries ourselves (that was stranding the ladder empty).
+-- we must not block login retries ourselves (that was stranding the roster unread).
 function Net:RequestRoster(nowSeconds, force)
   local t = now(self, nowSeconds)
   if not force and self.rosterRequestedAt and (t - self.rosterRequestedAt) < ROSTER_REQUEST_INTERVAL then
@@ -286,6 +221,31 @@ function Net:_Transmit(payload)
   return false
 end
 
+-- Whisper only. Target is the destination given to us (request sender, or an
+-- explicit SendSnapshot target). Do not look up a Pope name.
+function Net:_TransmitWhisper(payload, target)
+  if type(payload) ~= "string" or payload == "" then return false, "empty payload" end
+  if #payload > MAX_BODY then return false, "payload too large" end
+  if type(target) ~= "string" or target == "" then return false, "no target" end
+
+  self.sentCount = self.sentCount + 1
+  self.lastSent = payload
+
+  if type(self.transmit) == "function" then
+    self.transmit(payload, "WHISPER", target)
+    return true
+  end
+  if type(C_ChatInfo) == "table" and type(C_ChatInfo.SendAddonMessage) == "function" then
+    C_ChatInfo.SendAddonMessage(self.Prefix, payload, "WHISPER", target)
+    return true
+  end
+  if type(SendAddonMessage) == "function" then
+    SendAddonMessage(self.Prefix, payload, "WHISPER", target)
+    return true
+  end
+  return false
+end
+
 function Net:_Arm(delay)
   if self.armed then return false end
   if type(C_Timer) ~= "table" or type(C_Timer.After) ~= "function" then return false end
@@ -297,33 +257,52 @@ function Net:_Arm(delay)
   return true
 end
 
--- Sends at most one queued message, then arms a timer for whatever is left.
--- Returns how many went out, so the throttle can be counted without a client.
+-- Outbound allowance, refilled by the clock. Separate from Pump so a test (and a
+-- future /beef debug line) can read the budget without spending it.
+function Net:_Refill(t)
+  local tokens = self.tokens
+  if type(tokens) ~= "number" then tokens = self.OutboundBurst end
+  local at = self.tokensAt or t
+  local elapsed = t - at
+  if elapsed > 0 then
+    tokens = tokens + elapsed * self.OutboundPerSecond
+    if tokens > self.OutboundBurst then tokens = self.OutboundBurst end
+  end
+  self.tokens = tokens
+  self.tokensAt = t
+  return tokens
+end
+
+-- Spends whatever allowance is available on the head of the queue, then arms a
+-- timer for the next token. Returns how many went out, so pacing is countable
+-- without a client.
 function Net:Pump(nowSeconds)
   if #self.queue == 0 then return 0 end
   local t = now(self, nowSeconds)
+  local tokens = self:_Refill(t)
 
-  if self.lastSentAt then
-    local waited = t - self.lastSentAt
-    if waited < self.SendInterval then
-      self:_Arm(self.SendInterval - waited)
-      return 0
-    end
+  local sent = 0
+  while #self.queue > 0 and tokens >= 1 do
+    local payload = table.remove(self.queue, 1)
+    tokens = tokens - 1
+    self.tokens = tokens
+    self.lastSentAt = t
+    self:_Transmit(payload)
+    sent = sent + 1
   end
 
-  local payload = table.remove(self.queue, 1)
-  self.lastSentAt = t
-  self:_Transmit(payload)
-  if #self.queue > 0 then self:_Arm(self.SendInterval) end
-  return 1
+  if #self.queue > 0 then
+    self:_Arm((1 - tokens) / self.OutboundPerSecond)
+  end
+  return sent
 end
 
 function Net:Send(payload, nowSeconds)
   if type(payload) ~= "string" or payload == "" then return false, "empty payload" end
   if #payload > MAX_BODY then return false, "payload too large" end
   if not self:CanSend() then return false, "not in a guild" end
-  -- Dropping the newest is right for a queue this size: the tail is sync chunks,
-  -- and an unanswered sync retries on the next login rather than lying.
+  -- Dropping the newest keeps the oldest HELLO in a stuck queue. A queue this
+  -- deep already means something is wrong upstream.
   if #self.queue >= self.MaxQueued then return false, "outbound queue full" end
 
   self.queue[#self.queue + 1] = payload
@@ -335,64 +314,40 @@ function Net:SendHello()
   return self:Send(self:Encode("HELLO", COB.VERSION or "?"))
 end
 
--- Called by the Officer tab after Ladder:Commit has already written official state.
--- The UI never forges a record here: it forwards what Core returned.
---
--- includeStanding must be asked for. Elevations, demotions and appointments are
--- rank-only rites, and shipping the officer's copy of an advisory point total with
--- them would overwrite the standing the member actually earned. Only a deliberate
--- standing correction sets the flag.
-function Net:SendRankCommit(record, includeStanding)
-  if type(record) ~= "table" then return false, "no record" end
-  local standing = includeStanding and record.standing or nil
-  local parsed = self:ParseRecord({ record.name, record.rankId, standing,
-    record.revision, record.updatedAt, record.updatedBy })
-  if not parsed then return false, "record is not committable" end
-  return self:Send(self:Encode("RANK_COMMIT", self:EncodeRecordFields(parsed)))
-end
-
--- V1 keeps no shared suggestion store (spec §16 track 67): this is live fanout so a
--- watching officer hears about a petition, not a second queue to reconcile.
-function Net:SendSuggestion(suggestion)
-  if type(suggestion) ~= "table" then return false, "no suggestion" end
-  local name = trim(suggestion.name)
-  local toRankId = finite(suggestion.toRankId)
-  if not name or not toRankId then return false, "suggestion is not sendable" end
-  return self:Send(self:Encode("SUGGESTION", name, suggestion.fromRankId or 0, toRankId,
-    suggestion.standing or 0, suggestion.threshold or 0))
-end
-
--- The local client just crossed a threshold. One place decides what that means on
--- the wire and on screen, so Core only has to say "this happened" and stays free of
--- both SendAddonMessage and the UI.
-function Net:OnLocalSuggestion(suggestion)
-  if type(suggestion) ~= "table" then return false, "no suggestion" end
-
-  local title = COB.Ranks and COB.Ranks.Title(suggestion.toRankId) or nil
-  if title then
-    -- COB_TOAST_SUGGEST: eligible for guild-UI promote — not a promotion itself.
-    local name = suggestion.name or ""
-    local rankId = suggestion.toRankId or 0
-    toastCelebrate("suggest", {
-      title = title,
-      dedupeKey = "suggest-self:" .. name .. ":" .. tostring(rankId),
-    }, string.format("Eligible for %s \226\128\148 officers can promote you in the guild roster.", title))
+-- Fail-closed until the registered-Pope list exists. Do not invent that list.
+function Net:_LocalPope()
+  if not (COB.Sender and COB.Sender.IsRegisteredPope) then
+    return false
   end
-
-  -- Best effort: a guildless or Net-less client still queued the petition locally,
-  -- and the officer will see it at the next login sync or the next grant.
-  local sent = self:SendSuggestion(suggestion) and true or false
-  return sent
+  return COB.Sender:IsRegisteredPope(self:PlayerName()) and true or false
 end
 
-function Net:SendSyncRequest(reqId)
-  if not trim(reqId) then return false, "no request id" end
-  return self:Send(self:Encode("SYNC_REQUEST", reqId))
+function Net:SendState(fields, nowSeconds)
+  if not self:_LocalPope() then
+    return false, "not a registered pope"
+  end
+  if not (COB.Codec and COB.Codec.EncodeState) then
+    return false, "no codec"
+  end
+  local payload, err = COB.Codec:EncodeState(fields)
+  if not payload then
+    return false, err
+  end
+  return self:Send(payload, nowSeconds)
 end
 
-function Net:SendSyncState(reqId, index, total, body)
-  if not trim(reqId) then return false, "no request id" end
-  return self:Send(self:Encode("SYNC_STATE", reqId, index, total, body))
+function Net:SendSnapshot(fields, target)
+  if not self:_LocalPope() then
+    return false, "not a registered pope"
+  end
+  if not (COB.Codec and COB.Codec.EncodeSnapshot) then
+    return false, "no codec"
+  end
+  local payload, err = COB.Codec:EncodeSnapshot(fields)
+  if not payload then
+    return false, err
+  end
+  return self:_TransmitWhisper(payload, target)
 end
 
 --------------------------------------------------------------------------------
@@ -408,55 +363,39 @@ function Net:_WarnVersion(version)
   return true
 end
 
--- Returns record, nil when the commit should be applied; nil, reason otherwise.
--- Pure: no state changes here, so every refusal is provable offline.
-function Net:ValidateRankCommit(message, sender, rosterLookup)
-  if type(message) ~= "table" then return nil, "no message" end
-  if not self:IsCompatible(message.version) then return nil, "protocol mismatch" end
-  if message.type ~= "RANK_COMMIT" then return nil, "not a rank commit" end
-  if not trim(sender) then return nil, "no sender" end
+--------------------------------------------------------------------------------
+-- Inbound pacing
+--------------------------------------------------------------------------------
 
-  local record, err = self:ParseRecord(message.fields)
-  if not record then return nil, err end
+-- One token bucket per sender. Answers "may this client speak right now", which is
+-- a different question from "is this message well formed": a peer that floods is
+-- silenced without any of its payloads being parsed, so the cost of abuse stays flat.
+function Net:_AllowInbound(sender, nowSeconds)
+  local key = nameKey(sender)
+  if not key then return false end
 
-  -- The one authority check on the wire. A member's client claiming officer rights
-  -- in its own UI means nothing here: the guild roster answers, or we refuse.
-  if not (COB.Officer and COB.Officer:IsOfficerName(sender, rosterLookup)) then
-    return nil, "sender is not an officer"
+  local t = now(self, nowSeconds)
+  local bucket = self.inbound[key]
+  if not bucket then
+    -- Bounded: a guild-sized burst of first-time senders must not grow this table
+    -- without limit. Everyone starts full again, which is the harmless direction.
+    local count = 0
+    for _ in pairs(self.inbound) do count = count + 1 end
+    if count >= self.MaxInboundSenders then self.inbound = {} end
+    bucket = { tokens = self.InboundBurst, at = t }
+    self.inbound[key] = bucket
+  else
+    local elapsed = t - bucket.at
+    if elapsed > 0 then
+      bucket.tokens = bucket.tokens + elapsed * self.InboundPerSecond
+      if bucket.tokens > self.InboundBurst then bucket.tokens = self.InboundBurst end
+      bucket.at = t
+    end
   end
-  return record
-end
 
-function Net:_Hold(message, sender)
-  if #self.held >= self.MaxHeld then return false end
-  self.held[#self.held + 1] = { message = message, sender = sender }
-  self:RequestRoster()
+  if bucket.tokens < 1 then return false end
+  bucket.tokens = bucket.tokens - 1
   return true
-end
-
--- Applies the commits that arrived before the roster did. One batch, one Save.
-function Net:ReleaseHeld()
-  local held = self.held
-  if #held == 0 then return 0 end
-  if not self:RosterReady() then return 0 end
-
-  self.held = {}
-  local ladder = COB.Ladder
-  if ladder and ladder.BeginBatch then ladder:BeginBatch() end
-
-  local applied = 0
-  for i = 1, #held do
-    if self:HandleRankCommit(held[i].message, held[i].sender) then applied = applied + 1 end
-  end
-
-  if ladder and ladder.EndBatch then ladder:EndBatch() end
-  return applied
-end
-
-function Net:HandleRankCommit(_message, _sender)
-  -- Roster-backed ladder amendment: Church titles come from the live guild roster.
-  -- Legacy RANK_COMMIT payloads are soft-ignored so mixed-version guilds do not fork.
-  return false, "rank commits ignored (roster-backed ladder)"
 end
 
 function Net:HandleHello(message, sender)
@@ -464,68 +403,124 @@ function Net:HandleHello(message, sender)
     self:_WarnVersion(message.version)
     return false
   end
+  -- Our own HELLO comes back to us off the guild channel. Counting it would make a
+  -- lone user look like they had company.
+  if self:IsSelf(sender) then return false end
+
   self.peers = self.peers or {}
   local key = nameKey(sender)
   if key then self.peers[key] = message.fields[1] or "?" end
   return true
 end
 
--- A member's petition. Never a promotion and never an official record: it lands in
--- the local pending queue so the officer tab has something to approve, and Core
--- re-derives the target rank from our own ladder rather than trusting the wire.
---
--- Members drop these on the floor: only the client that can act on a petition has
--- any reason to keep one.
-function Net:HandleSuggestion(message, sender)
-  if not self:IsCompatible(message.version) then return false, "protocol mismatch" end
-  local name = trim(message.fields[1])
-  local toRankId = finite(message.fields[3])
-  if not name or not toRankId then return false, "malformed suggestion" end
-  if not (COB.Officer and COB.Officer:LocalIsOfficer()) then return false, "not an officer" end
-  if not (COB.Ladder and COB.Ladder.ImportSuggestion) then return false, "ladder unavailable" end
-
-  local suggestion, err = COB.Ladder:ImportSuggestion({
-    name = name,
-    toRankId = toRankId,
-    standing = finite(message.fields[4]),
-  })
-  if not suggestion then return false, err end
-
-  local title = COB.Ranks and COB.Ranks.Title(suggestion.toRankId) or "?"
-  toastCelebrate("suggest", {
-    name = suggestion.name,
-    title = title,
-    dedupeKey = "suggest:" .. suggestion.name .. ":" .. tostring(suggestion.toRankId),
-  }, string.format("Promote %s to %s in the guild roster.", suggestion.name, title))
-  refreshUI()
-  return true
+-- Guildmates we have heard a HELLO from this session. Informational only:
+-- version/presence discovery, not authority.
+function Net:PeerCount()
+  local count = 0
+  for _ in pairs(self.peers or {}) do count = count + 1 end
+  return count
 end
 
-function Net:OnAddonMessage(prefix, payload, channel, sender)
+function Net:OnAddonMessage(prefix, payload, channel, sender, nowSeconds)
   if prefix ~= self.Prefix then return false end
-  -- Ladder state travels on GUILD only; anything else is not our protocol.
-  if channel ~= self.Channel then return false end
+  -- HELLO and STATE travel on GUILD. SNAPSHOT catch-up is whisper only.
+  if channel ~= self.Channel and channel ~= "WHISPER" then return false end
+
+  -- Our own guild-channel traffic comes straight back to us and is not somebody
+  -- else's budget to spend. Whisper senders share the same inbound budget.
+  if not self:IsSelf(sender) and not self:_AllowInbound(sender, nowSeconds) then
+    return false, "sender is talking too fast"
+  end
 
   local message = self:Decode(payload)
   if not message then return false, "undecodable payload" end
-  if not TYPES[message.type] then return false, "unknown message type" end
-  if not self:IsCompatible(message.version) then
-    self:_WarnVersion(message.version)
-    return false, "protocol mismatch"
+  if RETIRED_TYPES[message.type] then return false, "retired message type" end
+
+  if TYPES[message.type] then
+    if channel ~= self.Channel then return false end
+    if not self:IsCompatible(message.version) then
+      self:_WarnVersion(message.version)
+      return false, "protocol mismatch"
+    end
+    if message.type == "HELLO" then
+      return self:HandleHello(message, sender)
+    end
+    return false
   end
 
-  if message.type == "RANK_COMMIT" then
-    return self:HandleRankCommit(message, sender)
-  elseif message.type == "HELLO" then
-    return self:HandleHello(message, sender)
-  elseif message.type == "SUGGESTION" then
-    return self:HandleSuggestion(message, sender)
-  elseif message.type == "SYNC_REQUEST" then
-    if not (COB.Sync and COB.Sync.OnSyncRequest) then return false end
-    return COB.Sync:OnSyncRequest(message.fields[1], sender)
-  elseif message.type == "SYNC_STATE" then
-    if not (COB.Sync and COB.Sync.OnSyncState) then return false end
-    return COB.Sync:OnSyncState(message.fields[1], message.fields[4], sender)
+  return self:_HandleV2(payload, channel, sender)
+end
+
+function Net:_HandleV2(payload, channel, sender)
+  if not (COB.Codec and COB.Codec.Decode) then
+    return false, "unknown message type"
+  end
+  local decoded = COB.Codec:Decode(payload)
+  if not decoded or (decoded.type ~= "STATE" and decoded.type ~= "SNAPSHOT") then
+    return false, "unknown message type"
+  end
+  if not COB.Codec:IsCompatible(decoded.version) then
+    self:_WarnVersion(decoded.version)
+    return false, "protocol mismatch"
+  end
+  if decoded.type == "STATE" then
+    return self:_HandleState(decoded, channel, sender)
+  end
+  return self:_HandleSnapshot(decoded, channel, sender, payload)
+end
+
+function Net:_HandleState(decoded, channel, sender)
+  if channel ~= self.Channel then
+    return false
+  end
+  if not (COB.Sender and COB.Sender.Accept) then
+    return false
+  end
+  if not COB.Sender:Accept(sender, "STATE") then
+    return false, "not accepted"
+  end
+  if not (COB.Runtime and COB.Runtime.Restore) then
+    return false
+  end
+  -- Bible fields only. Do not encode or Restore awaitingPope.
+  return COB.Runtime:Restore({
+    eventId = decoded.eventId,
+    state = decoded.state,
+    riteType = decoded.riteType,
+    subjects = decoded.subjects,
+    sequence = decoded.sequence,
+  })
+end
+
+function Net:_HandleSnapshot(decoded, channel, sender, payload)
+  if channel ~= "WHISPER" then
+    return false
+  end
+  if decoded.role == "response" then
+    if not (COB.Sender and COB.Sender.Accept) then
+      return false
+    end
+    if not COB.Sender:Accept(sender, "SNAPSHOT") then
+      return false, "not accepted"
+    end
+    if not (COB.Snapshot and COB.Snapshot.ApplyResponse) then
+      return false
+    end
+    return COB.Snapshot:ApplyResponse(payload)
+  end
+  if decoded.role == "request" then
+    -- Congregation → Pope. Not the theater Accept gate. No one else answers.
+    if not self:_LocalPope() then
+      return false, "not a registered pope"
+    end
+    if not (COB.Snapshot and COB.Snapshot.BuildResponse) then
+      return false
+    end
+    local blob = COB.Snapshot:BuildResponse()
+    if not blob then
+      return false
+    end
+    return self:_TransmitWhisper(blob, sender)
   end
   return false
 end
@@ -542,11 +537,14 @@ function Net:OnRosterUpdate()
   if not ready then
     self:RequestRoster(nil, true)
   end
-  -- Legacy held RANK_COMMITs are drained as no-ops (HandleRankCommit ignores them).
-  local applied = self:ReleaseHeld()
-  if COB.Sync and COB.Sync.ReleaseHeldStates then COB.Sync:ReleaseHeldStates() end
-  refreshUI()
-  return applied
+  self:NotifyStatus()
+  return ready
+end
+
+-- Roster readiness and peer presence are the only mesh facts this addon has; the
+-- status chip is a view of them. Presentation lives in UI/Status.lua.
+function Net:NotifyStatus()
+  if COB.UI and COB.UI.OnStatusChanged then COB.UI:OnStatusChanged() end
 end
 
 -- Classic often answers the first GuildRoster() with an empty snapshot. Blizzard
@@ -560,7 +558,7 @@ function Net:_ScheduleRosterRetries()
       if COB.Roster and COB.Roster.IsReady and COB.Roster:IsReady() then return end
       if COB.Roster and COB.Roster.Refresh then COB.Roster:Refresh() end
       if COB.Roster and COB.Roster.IsReady and COB.Roster:IsReady() then
-        refreshUI()
+        Net:NotifyStatus()
         return
       end
       Net:RequestRoster(nil, true)
@@ -601,7 +599,7 @@ function Net:Init()
   if COB.Roster then
     if COB.Roster.AttachLibrary then COB.Roster:AttachLibrary() end
     if COB.Roster.SetOnChanged then
-      COB.Roster:SetOnChanged(function() refreshUI() end)
+      COB.Roster:SetOnChanged(function() Net:NotifyStatus() end)
     end
     if COB.Roster.Refresh then COB.Roster:Refresh() end
   end
@@ -614,15 +612,16 @@ end
 function Net:ResetForTests()
   if not COB._IN_TEST then return false end
   self.queue = {}
-  self.held = {}
+  self.inbound = {}
   self.peers = nil
   self.lastSentAt = nil
   self.lastSent = nil
+  self.tokens = nil
+  self.tokensAt = nil
   self.sentCount = 0
   self.armed = nil
   self.warnedVersion = nil
   self.rosterRequestedAt = nil
-  self.rosterLookup = nil
   self.clock = nil
   self.transmit = nil
   self.initialized = nil

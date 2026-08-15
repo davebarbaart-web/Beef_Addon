@@ -1,12 +1,200 @@
--- Widget stubs for desktop UI tests. Models only the behaviour the suite asserts
--- on (shown state, anchors, scripts, children); every other widget method is an
--- accepted no-op, the same way the real client ignores what we never call.
+-- Widget stubs for desktop UI tests.
+--
+-- This stub is deliberately *strict*. An earlier version answered any method name
+-- at all with a silent no-op, which meant the suite happily proved that code using
+-- Retail-only APIs worked — the one class of bug an offline harness exists to catch
+-- for an addon that ships against TBC Classic 2.5.x. Now every widget class carries
+-- the method list that client actually has:
+--
+--   * a method the client has        → modelled behaviour, or an accepted no-op
+--   * a method a *later* client has  → nil, exactly as the real 2.5.x client leaves
+--                                      it, so `if frame.SetResizeBounds then` picks
+--                                      the branch that will really run in game
+--   * anything else                  → a hard error naming the widget type
+--
+-- Only capitalised keys are policed. Widget methods are all UpperCamelCase, so
+-- lowercase and underscore-prefixed reads stay ordinary nil lookups and the addon's
+-- own bookkeeping fields keep working.
 local M = {}
+
+--------------------------------------------------------------------------------
+-- What a 2.5.x widget can do
+--------------------------------------------------------------------------------
+
+local function set(list, ...)
+  local out = {}
+  for _, source in ipairs({ list, ... }) do
+    for i = 1, #source do out[source[i]] = true end
+  end
+  return out
+end
+
+local REGION = {
+  "GetName", "GetObjectType", "IsObjectType", "GetParent", "SetParent",
+  "Show", "Hide", "IsShown", "IsVisible", "SetShown",
+  "SetAlpha", "GetAlpha", "SetIgnoreParentAlpha",
+  "SetPoint", "SetAllPoints", "ClearAllPoints", "GetPoint", "GetNumPoints",
+  "SetWidth", "SetHeight", "SetSize", "GetWidth", "GetHeight", "GetSize",
+  "GetLeft", "GetRight", "GetTop", "GetBottom", "GetCenter", "GetRect",
+  "SetScale", "GetScale", "GetEffectiveScale",
+}
+
+local LAYERED = { "SetDrawLayer", "GetDrawLayer", "SetVertexColor", "GetVertexColor" }
+
+local FONTSTRING = {
+  "SetText", "GetText", "SetFormattedText", "SetTextColor", "GetTextColor",
+  "SetFont", "GetFont", "SetFontObject", "GetFontObject",
+  "SetJustifyH", "GetJustifyH", "SetJustifyV", "GetJustifyV",
+  "SetWordWrap", "SetNonSpaceWrap", "SetMaxLines", "GetNumLines",
+  "GetStringWidth", "GetStringHeight", "SetSpacing", "GetSpacing",
+  "SetShadowColor", "SetShadowOffset", "SetTextHeight",
+}
+
+local TEXTURE = {
+  "SetTexture", "GetTexture", "SetTexCoord", "GetTexCoord", "SetBlendMode",
+  "SetColorTexture", "SetDesaturated", "SetGradient", "SetGradientAlpha",
+  "SetRotation", "SetAtlas", "GetAtlas", "SetHorizTile", "SetVertTile",
+}
+
+local FRAME = {
+  "CreateTexture", "CreateFontString", "CreateAnimationGroup",
+  "GetChildren", "GetNumChildren", "GetRegions", "GetNumRegions",
+  "RegisterEvent", "UnregisterEvent", "UnregisterAllEvents", "IsEventRegistered",
+  "RegisterUnitEvent", "RegisterAllEvents",
+  "SetScript", "GetScript", "HookScript", "HasScript",
+  "EnableMouse", "IsMouseEnabled", "EnableMouseWheel", "EnableKeyboard",
+  "SetPropagateKeyboardInput",
+  "SetFrameStrata", "GetFrameStrata", "SetFrameLevel", "GetFrameLevel",
+  "SetToplevel", "IsToplevel", "Raise", "Lower",
+  "SetMovable", "IsMovable", "SetResizable", "IsResizable",
+  "SetClampedToScreen", "SetClampRectInsets", "SetHitRectInsets",
+  "RegisterForDrag", "StartMoving", "StartSizing", "StopMovingOrSizing",
+  -- The 2.5.x resize-bounds pair. Their Retail replacement is listed as absent
+  -- below, so MainFrame's feature detection lands here in tests as in game.
+  "SetMinResize", "SetMaxResize", "GetMinResize", "GetMaxResize",
+  "SetUserPlaced", "IsUserPlaced", "SetClipsChildren", "SetDontSavePosition",
+  "SetID", "GetID", "SetAttribute", "GetAttribute",
+}
+
+local BUTTON = {
+  "SetText", "GetText", "GetFontString", "SetFontString",
+  "SetNormalTexture", "GetNormalTexture", "SetPushedTexture", "GetPushedTexture",
+  "SetHighlightTexture", "GetHighlightTexture", "SetDisabledTexture",
+  "SetNormalFontObject", "SetHighlightFontObject", "SetDisabledFontObject",
+  "SetTextFontObject", "RegisterForClicks", "Click",
+  "Enable", "Disable", "IsEnabled", "LockHighlight", "UnlockHighlight",
+  "SetButtonState", "GetButtonState", "SetMotionScriptsWhileDisabled",
+  "GetTextWidth", "GetTextHeight",
+}
+
+local CHECKBUTTON = { "SetChecked", "GetChecked", "SetCheckedTexture", "GetCheckedTexture" }
+
+local EDITBOX = {
+  "SetText", "GetText", "SetAutoFocus", "ClearFocus", "SetFocus", "HasFocus",
+  "SetMaxLetters", "GetMaxLetters", "SetNumeric", "IsNumeric",
+  "SetMultiLine", "IsMultiLine", "Insert", "HighlightText",
+  "SetCursorPosition", "GetCursorPosition", "GetNumLetters",
+  "SetTextInsets", "GetTextInsets", "SetFontObject", "SetFont",
+  "SetJustifyH", "SetJustifyV", "SetTextColor",
+  "Enable", "Disable", "IsEnabled", "SetAltArrowKeyMode",
+}
+
+local SLIDER = {
+  "SetMinMaxValues", "GetMinMaxValues", "SetValue", "GetValue",
+  "SetValueStep", "GetValueStep", "SetOrientation", "GetOrientation",
+  "SetThumbTexture", "GetThumbTexture", "SetObeyStepOnDrag", "SetStepsPerPage",
+  "Enable", "Disable", "IsEnabled",
+}
+
+local SCROLLFRAME = {
+  "SetScrollChild", "GetScrollChild",
+  "SetVerticalScroll", "GetVerticalScroll", "GetVerticalScrollRange",
+  "SetHorizontalScroll", "GetHorizontalScroll", "GetHorizontalScrollRange",
+  "UpdateScrollChildRect",
+}
+
+local STATUSBAR = {
+  "SetMinMaxValues", "GetMinMaxValues", "SetValue", "GetValue",
+  "SetStatusBarTexture", "GetStatusBarTexture", "SetStatusBarColor",
+  "SetOrientation", "SetRotatesTexture", "SetFillStyle",
+}
+
+local TOOLTIP = {
+  "SetOwner", "GetOwner", "IsOwned", "AddLine", "AddDoubleLine", "ClearLines",
+  "SetText", "NumLines", "SetMinimumWidth", "ClearAllPoints",
+}
+
+local ANIM_GROUP = {
+  "CreateAnimation", "Play", "Stop", "Pause", "Finish", "Restart",
+  "IsPlaying", "IsPaused", "IsDone", "SetLooping", "GetLooping",
+  "SetScript", "GetScript", "HookScript", "HasScript",
+  "GetProgress", "GetDuration", "GetAnimations", "RemoveAnimations",
+  "SetToFinalAlpha", "GetParent",
+}
+
+local ANIMATION = {
+  "SetDuration", "GetDuration", "SetOrder", "GetOrder",
+  "SetStartDelay", "GetStartDelay", "SetEndDelay", "GetEndDelay",
+  "SetSmoothing", "GetSmoothing", "SetParent", "GetParent",
+  "Play", "Stop", "Pause", "IsPlaying", "IsDone", "GetProgress",
+  "SetScript", "GetScript", "HookScript",
+  "SetChildKey", "SetTarget", "SetTargetKey",
+  -- Alpha / Translation / Scale / Rotation setters. One flat list: the client
+  -- would refuse the wrong one at runtime, but the suite has no interest in
+  -- proving Blizzard validates its own animation types.
+  "SetFromAlpha", "GetFromAlpha", "SetToAlpha", "GetToAlpha",
+  "SetOffset", "GetOffset", "SetFromScale", "SetToScale", "SetOrigin",
+  "SetDegrees", "SetRadians",
+}
+
+local ALLOWED = {
+  Frame = set(REGION, FRAME),
+  Button = set(REGION, FRAME, BUTTON),
+  CheckButton = set(REGION, FRAME, BUTTON, CHECKBUTTON),
+  EditBox = set(REGION, FRAME, EDITBOX),
+  Slider = set(REGION, FRAME, SLIDER),
+  ScrollFrame = set(REGION, FRAME, SCROLLFRAME),
+  StatusBar = set(REGION, FRAME, STATUSBAR),
+  GameTooltip = set(REGION, FRAME, TOOLTIP),
+  Texture = set(REGION, LAYERED, TEXTURE),
+  FontString = set(REGION, LAYERED, FONTSTRING),
+  AnimationGroup = set(ANIM_GROUP),
+  Animation = set(ANIMATION),
+}
+
+-- Methods this addon is known to reach for that 2.5.x does not have. They are
+-- listed rather than merely omitted so the failure message can say *why* the name
+-- is missing instead of accusing the caller of a typo, and so a future client bump
+-- has one obvious place to move a name from.
+local LATER_CLIENT_ONLY = {
+  SetResizeBounds = "10.0 — 2.5.x uses SetMinResize / SetMaxResize",
+  GetResizeBounds = "10.0 — 2.5.x uses GetMinResize / GetMaxResize",
+  SetChange = "removed in 7.0 — Alpha animations use SetFromAlpha / SetToAlpha",
+  SetPassThroughButtons = "10.0",
+  SetEnabled = "not on 2.5.x widgets — use Enable() / Disable()",
+}
 
 local widgetMethods = {}
 
+local function allowedFor(widget, key)
+  local allowed = ALLOWED[widget._type]
+  -- An unmodelled frame type is a gap in this stub, not a bug in the addon; let it
+  -- behave like the permissive base rather than failing every call.
+  if not allowed then return true end
+  return allowed[key] == true
+end
+
 local widgetMeta = {
   __index = function(widget, key)
+    if type(key) ~= "string" or not key:match("^%u") then return nil end
+
+    if LATER_CLIENT_ONLY[key] then return nil end
+
+    if not allowedFor(widget, key) then
+      error(("%s:%s() does not exist on a TBC Classic 2.5.x %s")
+        :format(widget._name or widget._type, key, widget._type), 2)
+    end
+
     local method = widgetMethods[key]
     if method then return method end
     local noop = function() end
@@ -50,8 +238,12 @@ function widgetMethods:Hide()
   if fn then fn(self) end
 end
 function widgetMethods:IsShown() return self._shown end
+function widgetMethods:IsVisible() return self._shown end
 function widgetMethods:SetShown(shown) self._shown = shown and true or false end
 function widgetMethods:GetName() return self._name end
+function widgetMethods:GetObjectType() return self._type end
+function widgetMethods:IsObjectType(t) return self._type == t end
+function widgetMethods:GetParent() return self._parent end
 
 function widgetMethods:SetPoint(point, a2, a3, a4, a5)
   local entry = { point = point }
@@ -86,21 +278,27 @@ function widgetMethods:GetPoint(index)
   return entry.point, entry.relativeTo, entry.relativePoint, entry.x, entry.y
 end
 
+function widgetMethods:GetNumPoints() return #self._points end
+
 function widgetMethods:SetScript(name, fn) self._scripts[name] = fn end
 function widgetMethods:GetScript(name) return self._scripts[name] end
 function widgetMethods:HookScript(name, fn) self._scripts[name] = fn end
+function widgetMethods:HasScript(name) return self._scripts[name] ~= nil end
 
 function widgetMethods:RegisterEvent(event) self._events[event] = true end
 function widgetMethods:UnregisterEvent(event) self._events[event] = nil end
+function widgetMethods:IsEventRegistered(event) return self._events[event] == true end
 
 function widgetMethods:SetText(text) self._text = text end
 function widgetMethods:GetText() return self._text end
+function widgetMethods:SetFormattedText(fmt, ...) self._text = fmt:format(...) end
 
 function widgetMethods:SetWidth(w) self._width = w end
 function widgetMethods:SetHeight(h) self._height = h end
 function widgetMethods:GetWidth() return self._width end
 function widgetMethods:GetHeight() return self._height end
 function widgetMethods:SetSize(w, h) self._width, self._height = w, h end
+function widgetMethods:GetSize() return self._width, self._height end
 
 function widgetMethods:CreateTexture(name, layer)
   local tex = newWidget("Texture", name, self)
@@ -117,13 +315,24 @@ function widgetMethods:CreateFontString(name, layer, template)
   return fs
 end
 
+function widgetMethods:GetRegions() return unpack(self._regions) end
+function widgetMethods:GetNumRegions() return #self._regions end
+function widgetMethods:GetChildren() return unpack(self._children) end
+function widgetMethods:GetNumChildren() return #self._children end
+
 function widgetMethods:SetMovable(movable) self._movable = movable and true or false end
 function widgetMethods:SetClampedToScreen(clamped) self._clamped = clamped and true or false end
 function widgetMethods:StartMoving() self._moving = true end
 function widgetMethods:StopMovingOrSizing() self._moving = false end
 
+function widgetMethods:SetMinResize(w, h) self._minResize = { w, h } end
+function widgetMethods:SetMaxResize(w, h) self._maxResize = { w, h } end
+
 function widgetMethods:LockHighlight() self._highlighted = true end
 function widgetMethods:UnlockHighlight() self._highlighted = false end
+
+function widgetMethods:GetFontString() return self._fontString end
+function widgetMethods:SetFontString(fs) self._fontString = fs end
 
 -- CheckButton state. The client flips this before OnClick runs, so tests that
 -- drive a checkbox should SetChecked first and then fire the script.
@@ -133,6 +342,36 @@ function widgetMethods:GetChecked() return self._checked and true or false end
 function widgetMethods:Enable() self._enabled = true end
 function widgetMethods:Disable() self._enabled = false end
 function widgetMethods:IsEnabled() return self._enabled ~= false end
+
+function widgetMethods:SetAutoFocus(auto) self._autoFocus = auto and true or false end
+function widgetMethods:SetFocus() self._focused = true end
+function widgetMethods:ClearFocus() self._focused = false end
+function widgetMethods:HasFocus() return self._focused and true or false end
+
+function widgetMethods:SetValue(value) self._value = value end
+function widgetMethods:GetValue() return self._value end
+function widgetMethods:SetMinMaxValues(min, max) self._min, self._max = min, max end
+function widgetMethods:GetMinMaxValues() return self._min, self._max end
+
+function widgetMethods:CreateAnimationGroup(name)
+  local group = newWidget("AnimationGroup", name, nil)
+  group._animations = {}
+  self._animGroups = self._animGroups or {}
+  self._animGroups[#self._animGroups + 1] = group
+  return group
+end
+
+function widgetMethods:CreateAnimation(animType, name)
+  local anim = newWidget("Animation", name, nil)
+  anim._animType = animType
+  self._animations = self._animations or {}
+  self._animations[#self._animations + 1] = anim
+  return anim
+end
+
+function widgetMethods:Play() self._playing = true end
+function widgetMethods:Stop() self._playing = false end
+function widgetMethods:IsPlaying() return self._playing and true or false end
 
 -- Test helpers -----------------------------------------------------------------
 
@@ -151,29 +390,87 @@ function M.findChild(widget, predicate)
   return nil
 end
 
+-- Timers -----------------------------------------------------------------------
+--
+-- C_Timer.After delays used to be discarded, so every throttle, coalesce and
+-- retry in the addon was untestable: flushTimers() ran callbacks that the client
+-- would not have fired for another ten seconds. Timers now carry a due time on the
+-- same clock GetTime() reports, and M.advance(seconds) moves that clock forward and
+-- fires only what has actually come due, in order.
+
+local function dueOrder(a, b)
+  if a.due ~= b.due then return a.due < b.due end
+  return a.seq < b.seq
+end
+
+-- Runs everything scheduled, regardless of when it was due. Kept for suites that
+-- only care that a deferred callback eventually runs; prefer advance() when the
+-- delay itself is the thing under test.
 function M.flushTimers()
   local pending = M.timers
   M.timers = {}
-  for i = 1, #pending do pending[i]() end
+  table.sort(pending, dueOrder)
+  for i = 1, #pending do pending[i].fn() end
   return #pending
+end
+
+-- Moves the clock forward and fires the timers that came due, honouring callbacks
+-- that schedule further work inside the same window.
+function M.advance(seconds)
+  local target = M.now + (seconds or 0)
+  local fired = 0
+
+  while true do
+    local next_, index = nil, nil
+    for i = 1, #M.timers do
+      local timer = M.timers[i]
+      if timer.due <= target and (not next_ or dueOrder(timer, next_)) then
+        next_, index = timer, i
+      end
+    end
+    if not next_ then break end
+
+    table.remove(M.timers, index)
+    M.now = next_.due
+    next_.fn()
+    fired = fired + 1
+  end
+
+  M.now = target
+  return fired
+end
+
+function M.pendingTimers()
+  return #M.timers
 end
 
 local GLOBALS = {
   "CreateFrame", "UIParent", "Minimap", "UISpecialFrames",
   "GameTooltip", "C_Timer", "GetGuildInfo", "UnitName", "IsInGuild",
-  "GetNumGuildMembers", "GetGuildRosterInfo",
+  "GetNumGuildMembers", "GetGuildRosterInfo", "RAID_CLASS_COLORS",
   "SendChatMessage", "GetTime",
   "C_ChatInfo", "SendAddonMessage", "RegisterAddonMessagePrefix",
   "C_GuildInfo", "GuildRoster",
   "UnitIsInMyGuild", "UnitIsAFK", "GetNumGroupMembers", "IsInRaid",
   "IsInInstance", "IsResting", "GetInstanceInfo", "UnitAffectingCombat", "GetBattlefieldWinner",
+  "FauxScrollFrame_Update", "FauxScrollFrame_SetOffset", "FauxScrollFrame_GetOffset",
+  "FauxScrollFrame_OnVerticalScroll",
+  "PanelTemplates_SelectTab", "PanelTemplates_DeselectTab", "PanelTemplates_TabResize",
 }
+
+-- Names of scroll bars this stub minted for FauxScrollFrameTemplate frames, so the
+-- install teardown can put the global namespace back exactly as it found it.
+local mintedGlobals = {}
 
 function M.install()
   local saved = {}
   for i = 1, #GLOBALS do saved[GLOBALS[i]] = _G[GLOBALS[i]] end
 
+  for i = 1, #mintedGlobals do _G[mintedGlobals[i]] = nil end
+  mintedGlobals = {}
+
   M.timers = {}
+  M.timerSeq = 0
   M.guildRankIndex = nil
   M.playerName = "Beefina"
   M.inGuild = true
@@ -204,30 +501,84 @@ function M.install()
   M.battlefieldWinner = nil
   M.tickers = {}
 
+  -- Classic exposes class tints through this table; GetClassColor stays absent
+  -- so the Ladder exercises its TBC-safe fallback branch.
+  RAID_CLASS_COLORS = {
+    MAGE = { r = 0.41, g = 0.80, b = 0.94 },
+    WARRIOR = { r = 0.78, g = 0.61, b = 0.43 },
+    PRIEST = { r = 1.0, g = 1.0, b = 1.0 },
+  }
+
   UIParent = newWidget("Frame", "UIParent", nil)
   Minimap = newWidget("Frame", "Minimap", nil)
   UISpecialFrames = {}
-  GameTooltip = newWidget("Frame", "GameTooltip", nil)
+  GameTooltip = newWidget("GameTooltip", "GameTooltip", nil)
 
   CreateFrame = function(frameType, name, parent, template)
     local widget = newWidget(frameType, name, parent)
     widget._template = template
-    -- BasicFrameTemplate surface used by MainFrame (TitleText / CloseButton).
-    if type(template) == "string" and template:find("BasicFrame", 1, true) then
-      widget.TitleText = widget:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-      widget.CloseButton = newWidget("Button", (name or "") .. "CloseButton", widget)
-      widget.CloseButton.HookScript = widgetMethods.HookScript
-    end
-    if type(template) == "string" and template:find("Backdrop", 1, true) then
-      widget.SetBackdrop = function() end
-      widget.SetBackdropColor = function() end
-      widget.SetBackdropBorderColor = function() end
+    if type(template) == "string" then
+      -- BasicFrameTemplate surface used by MainFrame (TitleText / CloseButton).
+      if template:find("BasicFrame", 1, true) then
+        widget.TitleText = widget:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+        widget.CloseButton = newWidget("Button", (name or "") .. "CloseButton", widget)
+      end
+      -- Backdrops moved onto a template in the 9.x UI 2.5.x is built from, so the
+      -- methods exist only where the template was asked for.
+      if template:find("Backdrop", 1, true) then
+        widget.SetBackdrop = function() end
+        widget.SetBackdropColor = function() end
+        widget.SetBackdropBorderColor = function() end
+        widget.GetBackdrop = function() return nil end
+      end
+      -- UIPanelButtonTemplate and PanelTabButtonTemplate ship a label, which is
+      -- what GetFontString returns.
+      if template:find("UIPanelButton", 1, true) or template:find("PanelTabButton", 1, true) then
+        widget._fontString = widget:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+      end
+      -- FauxScrollFrameTemplate mints a named scroll bar as a global. The tabs read
+      -- it back with rawget(_G, name .. "ScrollBar"), and without this the thumb
+      -- sync in every scroller was dead code the suite never entered.
+      if template:find("FauxScrollFrame", 1, true) and name then
+        local barName = name .. "ScrollBar"
+        local bar = newWidget("Slider", barName, widget)
+        _G[barName] = bar
+        mintedGlobals[#mintedGlobals + 1] = barName
+        widget.ScrollBar = bar
+      end
     end
     return widget
   end
 
+  -- FauxScrollFrame is FrameXML, not a widget method: model the three calls the
+  -- tabs make so their scroll maths is exercised rather than skipped.
+  FauxScrollFrame_SetOffset = function(frame, offset) frame._fauxOffset = offset or 0 end
+  FauxScrollFrame_GetOffset = function(frame) return frame._fauxOffset or 0 end
+  FauxScrollFrame_Update = function(frame, itemCount, shownCount, itemHeight)
+    frame._fauxRange = math.max(0, (itemCount - shownCount)) * itemHeight
+    local needed = itemCount > shownCount
+    frame._fauxShown = needed
+    local bar = frame.ScrollBar
+    if bar then
+      bar:SetMinMaxValues(0, frame._fauxRange)
+      if needed then bar:Show() else bar:Hide() end
+    end
+    return needed
+  end
+  FauxScrollFrame_OnVerticalScroll = function(frame, offsetPx, itemHeight, updateFn)
+    frame._fauxOffset = math.floor((offsetPx or 0) / (itemHeight or 1) + 0.5)
+    if updateFn then updateFn() end
+  end
+
   C_Timer = {
-    After = function(_seconds, fn) M.timers[#M.timers + 1] = fn end,
+    After = function(seconds, fn)
+      M.timerSeq = M.timerSeq + 1
+      M.timers[#M.timers + 1] = {
+        due = M.now + (tonumber(seconds) or 0),
+        seq = M.timerSeq,
+        fn = fn,
+      }
+    end,
     -- Tickers are recorded rather than run: suites drive ticker.fn() themselves and
     -- assert that an idle tracker cancelled its timer.
     NewTicker = function(seconds, fn)
@@ -245,8 +596,9 @@ function M.install()
 
   GetNumGuildMembers = function() return #M.guildRoster end
 
-  -- Entries may be a plain name string, or { name = "...", rankIndex = N }.
-  -- Per-member rankIndex drives the roster-backed Church title map.
+  -- Entries may be a plain name string, or { name = "...", rankIndex = N,
+  -- classFile = "MAGE" }. Per-member rankIndex drives the roster-backed Church
+  -- title map; the 11th return is the classFile the Ladder tints names with.
   GetGuildRosterInfo = function(index)
     local entry = M.guildRoster[index]
     if not entry then return nil end
@@ -254,9 +606,11 @@ function M.install()
       local name = entry.name or entry[1]
       local rankIndex = tonumber(entry.rankIndex or entry[2])
       if not rankIndex then rankIndex = M.guildRankIndex or 6 end
-      return name, "Beefling", rankIndex
+      return name, "Beefling", rankIndex, 70, "Mage", "Zone", "", "",
+        true, 0, entry.classFile
     end
-    return entry, "Beefling", M.guildRankIndex or 6
+    return entry, "Beefling", M.guildRankIndex or 6, 70, "Mage", "Zone", "", "",
+      true, 0, nil
   end
 
   UnitName = function(unit)
@@ -314,10 +668,34 @@ function M.install()
   M.addonMessages = {}
   M.registeredPrefixes = {}
   M.rosterRequests = 0
+  M.oversizeMessages = {}
+  -- Guild addon messages come back to the sender in game. Suites that want to
+  -- prove IsSelf really drops our own traffic set this and route the echo.
+  M.loopbackAddonMessages = false
+  M.onAddonMessageEcho = nil
+
+  -- The client refuses an addon message whose prefix + payload will not fit the
+  -- 255-byte chat envelope. Modelling the refusal is the only way an offline test
+  -- can catch a message format that grows past the wire budget.
+  local ADDON_MESSAGE_LIMIT = 255
 
   local function sendAddonMessage(prefix, payload, channel, target)
+    prefix = tostring(prefix or "")
+    payload = tostring(payload or "")
+    -- prefix + tab separator + payload is what actually travels.
+    local size = #prefix + 1 + #payload
+    if size > ADDON_MESSAGE_LIMIT then
+      M.oversizeMessages[#M.oversizeMessages + 1] =
+        { prefix = prefix, payload = payload, size = size }
+      return false
+    end
+
     M.addonMessages[#M.addonMessages + 1] =
       { prefix = prefix, payload = payload, channel = channel, target = target }
+
+    if M.loopbackAddonMessages and channel == "GUILD" and M.onAddonMessageEcho then
+      M.onAddonMessageEcho(prefix, payload, channel, M.playerName)
+    end
     return true
   end
 
@@ -337,8 +715,20 @@ function M.install()
 
   GetTime = function() return M.now end
 
+  -- FrameXML panel-tab helpers. The client swaps the tab's active/idle texture
+  -- set and resizes to the label; the stub records the selected state and a
+  -- plausible width so suites can assert which tab the shell considers active.
+  PanelTemplates_SelectTab = function(tab) tab._panelTabSelected = true end
+  PanelTemplates_DeselectTab = function(tab) tab._panelTabSelected = false end
+  PanelTemplates_TabResize = function(tab, padding)
+    local text = type(tab.GetText) == "function" and tab:GetText() or ""
+    tab:SetWidth(#tostring(text) * 7 + (padding or 0) * 2)
+  end
+
   return function()
     for i = 1, #GLOBALS do _G[GLOBALS[i]] = saved[GLOBALS[i]] end
+    for i = 1, #mintedGlobals do _G[mintedGlobals[i]] = nil end
+    mintedGlobals = {}
   end
 end
 

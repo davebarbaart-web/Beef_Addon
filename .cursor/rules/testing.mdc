@@ -11,21 +11,23 @@ alwaysApply: false
 
 ## Non-negotiables
 
-- Run from checkout that has `tests/run.lua` (often `.worktrees/feat-church-of-beef-v1/`)
+- Run from the checkout that has `tests/run.lua` (workspace `addon/` when present; otherwise a worktree)
 - Exit `0` required for Core/Data/harness changes
-- Green harness ≠ V1 sign-off (UI / Net / spectacle need the client — `verification.mdc`)
+- Green harness ≠ MVP sign-off (client paths still need smoke — `verification.mdc`)
 
 ## Infra
 
 - Desktop Lua harness under `tests/` — local runner `scripts/run-tests.sh`; GHA `.github/workflows/lua-tests.yml` when `tests/` exists on the branch
-- Suites today: `test_ranks`, `test_ladder`. Runner may list more; missing modules are ignored until created
+- Suites die with discarded subjects. New Core (store, runtime, codecs) is test-first
 - Scope: pure Core / Data only
 
 ```bash
-./scripts/run-tests.sh                 # from Beef_Addon root (resolves worktree)
-# or:
-cd .worktrees/feat-church-of-beef-v1   # addon checkout root
+./scripts/run-tests.sh                 # from Beef_Addon root (resolves checkout)
+# or, when tests live at workspace root:
 lua tests/run.lua                      # Lua 5.1 preferred; 5.4 OK for pure logic
+# worktree fallback if addon/ is absent:
+cd .worktrees/feat-church-of-beef-v1
+lua tests/run.lua
 ```
 
 Healthy: `Tests finished: N passed, 0 failed`.
@@ -37,15 +39,14 @@ Healthy: `Tests finished: N passed, 0 failed`.
 
 ```lua
 ChurchOfBeef = ChurchOfBeef or {}
-dofile("addon/ChurchOfBeef/Data/Ranks.lua")
-dofile("addon/ChurchOfBeef/Core/Ladder.lua")
-local L = ChurchOfBeef.Ladder
-L:ResetForTests()
+dofile("addon/ChurchOfBeef/Core/Common.lua")
+dofile("addon/ChurchOfBeef/Core/DB.lua")
+local DB = ChurchOfBeef.DB
+DB:ResetForTests()
 ```
 
 4. Runner sets `ChurchOfBeef._IN_TEST = true` first — production must refuse `ResetForTests` without that flag
-5. Assert threshold `0` explicitly (`Threshold(1) == 0`) — Lua treats `0` as truthy
-6. Getters return copies; mutating `GetRecord` must not change live state
+5. Getters return copies; mutating a getter result must not change live state
 
 ## Do not
 

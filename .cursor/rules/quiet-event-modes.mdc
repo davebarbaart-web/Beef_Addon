@@ -1,0 +1,55 @@
+---
+description: Quiet vs Event contract; Decree bound; every feature declares a mode.
+globs:
+  - "**/addon/**/UI/**/*.lua"
+  - "**/addon/**/UI/**/*.xml"
+  - "**/ChurchOfBeef/ChurchOfBeef.lua"
+alwaysApply: false
+---
+
+# Quiet Mode / Event Mode
+
+Product law: `docs/design/Game_Design_Bible_v1.1.1.md`. On conflict, the Bible wins. Law 6.
+
+Exactly **two** presentation states. Every UI feature **must declare** Quiet Mode or Event Mode before it is built (§4.8, §19.1, §24 filter 8). Undeclared surfaces are rejected.
+
+## Quiet Mode (normal WoW)
+
+Render **at most** a minimap presence and the active Decree. Contractual, not aspirational.
+
+**Banned ambient surfaces:** feeds, dashboards, toasts, pips, sound, “now playing,” activity panels, bars, standing tabs, points-history, grant/suggestion toasts during normal play, minimap pips on grants (Audit V9). **“Just a small always-visible panel” is rejected** (§4.8, §19.1).
+
+Quiet Mode is **silent, absolutely** — no ambient audio, UI clicks-and-whooshes, or notification sounds (§19.4).
+
+**Unbidden Quiet chrome** is only minimap presence + the active Decree. **Player-opened Quiet** is only identity/history (profile / records) per §14.2 — not a Standing tab, points history, Ladder, Officer desk, grant pip, petition pip, or always-on chip. Minimap click reaches the Decree and may open that identity/history. That is not a license for always-visible chrome or a feed. Do not add extra Quiet Mode surfaces “for usability.” Do not invent Director Console UX here (§18).
+
+A Tuesday login sees **almost nothing, plus the Decree.** Do not “fix” the quiet (§14.2).
+
+## The Decree (the one Quiet Mode feature beyond presence)
+
+One **single** active proclamation. Shown **once per login** as a parchment banner; thereafter reachable from the minimap. That is the entire feature (§14.1).
+
+**Hard bound:** no calendar, RSVP, reminders, recurring events, or attendance tracking. Do not invent Decree deputy UX.
+
+## Event Mode (ceremonies and Goras)
+
+Theatrical: proclamations, cards, HUD, favor, outcomes, sound (§4.8, §19.2). Entered and exited **only** via the ceremony runtime (§20). When the machine returns to QUIET, Event chrome (HUD, cards, favor, ceremonial sound) **must go**. Congregation receives theater, not administration (§18.5).
+
+Rhythm: **Quiet → Ritual Begins → Spectacle → Consequence → Quiet.**
+
+## Sound
+
+Event Mode only. MVP cue names from §19.4 **only**: Sanction bell, Verdict, Elevation, Knighting, Cowardice Recorded; later, Canonization seal. Do not add ambient UI clicks or any other cues.
+
+## Notices and onboarding
+
+Toast-engine, if any: **Event Mode only** (consequence beats). The **only** Quiet exception is the Bible’s gentle version-mismatch notice when a stale client drops to Quiet Mode (§13.4 / §20.3). That is a notice, not a toast-kind family. No other Quiet toasts exist. Do not invent toast kinds.
+
+Onboarding: **one parchment welcome** (Quiet, first launch only), then silence until the Church does something. No config walls, tutorial popups, or minimap fanfare (§19.5).
+
+## Scope filters (§24)
+
+8. Is it Quiet Mode or Event Mode — and does Quiet Mode stay quiet?
+9. Does it replace something a human currently performs that is part of the entertainment?
+
+Unfavorable → defer or reject. Do not invent product answers; append `docs/design/OPEN_QUESTIONS.md`.

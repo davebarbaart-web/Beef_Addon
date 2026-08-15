@@ -4,81 +4,71 @@ Short map for coding agents. Policy lives in `.cursor/rules/`; the operational l
 
 ## What this is
 
-**Church of Beef** — social guild / streamer-event add-on for **WoW TBC Classic Anniversary** (`## Interface: 20506`). Roster-backed rank ladder, standing suggestions, officer Dismiss / standing correction; officers promote in the Blizzard guild UI. Not combat/raid tooling.
+**Church of Beef** — social ceremony, Gora, and memory layer for **WoW TBC Classic Anniversary** (`## Interface: 20506`). The add-on formalizes ritual, sanctioned duels, Pope-facing direction, and Church records. It is **not** a roster-backed standing ladder and not combat/raid tooling.
 
-Stack (V1): Lua 5.1, plain global `ChurchOfBeef` / `COB`, no AceAddon. Installable unit: `addon/ChurchOfBeef/` → `Interface/AddOns/ChurchOfBeef`.
+Stack: Lua 5.1, plain global `ChurchOfBeef` / `COB`, no AceAddon. Installable unit: `addon/ChurchOfBeef/` → `Interface/AddOns/ChurchOfBeef`.
 
 ## Workspace root (important)
 
-Open **`/Volumes/AI_Design_Drive/Beef_Addon`** (this repo / `main`) as the Cursor workspace so `.cursor/rules`, `.cursor/skills`, and `.vscode` apply.
+Open **`/Volumes/AI_Design_Drive/Beef_Addon`** (this repo) as the Cursor workspace so `.cursor/rules`, `.cursor/skills`, and `.vscode` apply.
 
-Do **not** open `.worktrees/feat-church-of-beef-v1` as a separate workspace — it has no `.cursor/` copy. Edit addon Lua under that worktree path from the parent workspace.
+Addon code currently lives at `addon/ChurchOfBeef/` on this workspace. `.worktrees/` is optional isolation only — do not open a worktree as a separate workspace (it has no `.cursor/` copy).
 
 ## Where to look
 
 | Need | Path |
 |------|------|
-| Product decisions | `docs/superpowers/specs/2026-07-25-church-of-beef-design.md` |
-| Task / file layout | `docs/superpowers/plans/2026-07-25-church-of-beef-v1.md` |
-| **UI / art direction (agents)** | [`docs/superpowers/ui-polished-direction-for-agents.md`](docs/superpowers/ui-polished-direction-for-agents.md) — **read before any UI `CreateFrame`** |
-| Machine canon (ranks/thresholds) | `addon/ChurchOfBeef/Data/Ranks.lua` (on feature checkout) |
-| Lore prose (no numbers) | `docs/canon/` |
+| **Product law** | [`docs/design/Game_Design_Bible_v1.1.1.md`](docs/design/Game_Design_Bible_v1.1.1.md) |
+| Adjudication | [`docs/design/Peer_Review_Adjudication.md`](docs/design/Peer_Review_Adjudication.md) |
+| Demo audit | [`docs/design/Demo_Build_Audit.md`](docs/design/Demo_Build_Audit.md) |
+| Reformation log | [`docs/REFORMATION_LOG.md`](docs/REFORMATION_LOG.md) |
+| Open questions | [`docs/design/OPEN_QUESTIONS.md`](docs/design/OPEN_QUESTIONS.md) |
+| Ten Laws (Phase 0) | [`docs/reformation/phase-0/TEN_LAWS.md`](docs/reformation/phase-0/TEN_LAWS.md) |
+| Archived law (historical) | [`docs/archive/pre-reformation/`](docs/archive/pre-reformation/) |
 | Cursor rules | [`.cursor/rules/`](.cursor/rules/) |
 | Install / reload / test | [`.cursor/skills/church-of-beef-dev/SKILL.md`](.cursor/skills/church-of-beef-dev/SKILL.md) |
 | Editor defaults (Lua 5.1) | [`.vscode/`](.vscode/) |
 | DevEx backlog (needs approval) | [`OPTIMIZATIONS.md`](OPTIMIZATIONS.md) |
-| Research library | `docs/research/wow-classic-addon-design/` |
-| Agent polish research (process + juice; ≠ law) | [`docs/research/agent-polish-vision/`](docs/research/agent-polish-vision/) — start at [`00-SYNTHESIS.md`](docs/research/agent-polish-vision/00-SYNTHESIS.md), [`00-SYNTHESIS-ADVERSARIAL.md`](docs/research/agent-polish-vision/00-SYNTHESIS-ADVERSARIAL.md), [`00-ADR-log.md`](docs/research/agent-polish-vision/00-ADR-log.md), [`00-PROMOTE-STATUS.md`](docs/research/agent-polish-vision/00-PROMOTE-STATUS.md), wiring: [`00-CURSOR-WIRING-AUDIT.md`](docs/research/agent-polish-vision/00-CURSOR-WIRING-AUDIT.md) |
+| Research library (≠ law) | `docs/research/` |
 
-Research guidance is not product law. On conflict, design spec / glossary / `Data/Ranks.lua` / [`ui-polished-direction-for-agents.md`](docs/superpowers/ui-polished-direction-for-agents.md) win. Major UI polish: UI brief + skill § Polish loop (Accepted ADRs 2026-07-26); do not install a parallel polish OS.
+Research guidance is not product law. On conflict, the Bible wins, then Adjudication, then the Audit. Archived specs, plans, and UI briefs in `docs/archive/pre-reformation/` are historical — they must not win.
 
 ### UI work is agent-executed
 
-V1 UI and later art direction are expected to be implemented by **coding agents**, not hand-designed in Figma. Orientation canvases (north star, build prep, commission brief) may live in the Cursor project `canvases/` folder; the **in-repo briefing** above is the durable entry point. Spec §15 / glossary win over canvases if they ever diverge.
-
-### Checkout layout
-
-On **`main`**, this tree is mostly docs + research. Active addon code and offline tests live in a **local git worktree** (gitignored at parent):
-
-```
-.worktrees/feat-church-of-beef-v1/
-  addon/ChurchOfBeef/
-  tests/
-  README.md
-```
-
-Plan paths (`addon/…`, `tests/…`) are relative to that checkout root.
+UI is implemented by coding agents. Visual law is Bible §19.3 / Law 10 and `.cursor/rules/ui-juice-standards.mdc`. Operational polish loop: the skill § Polish loop. Do not treat archived UI briefs as law.
 
 ## How to run
 
 ```bash
-./scripts/run-tests.sh                 # from workspace root (resolves worktree if needed)
+./scripts/run-tests.sh                 # from workspace root
 # or:
-cd .worktrees/feat-church-of-beef-v1   # addon checkout
 lua tests/run.lua                      # exit 0 required for Core/Data changes
 ```
 
-In-game: agents may reinstall `addon/ChurchOfBeef/` → Anniversary `Interface/AddOns/ChurchOfBeef/` after polish (or `$WOW_ADDONS_DIR`); `/reload`, `/beef`. Details: the skill above; path note `docs/research/agent-polish-vision/00-INSTALL-PATH.md`.
+In-game: reinstall `addon/ChurchOfBeef/` → Anniversary `Interface/AddOns/ChurchOfBeef/` (or `$WOW_ADDONS_DIR`); `/reload`, `/beef`. Details: the skill above.
 
-CI: `.github/workflows/lua-tests.yml` runs the harness when `tests/run.lua` is on the branch; on `main` (docs-only) it skips with a clear log. Remaining tooling ideas: `OPTIMIZATIONS.md`.
+CI: `.github/workflows/lua-tests.yml` runs the harness when `tests/run.lua` is on the branch.
+
 ## Rules at a glance
 
 | Mode | Files |
 |------|--------|
-| Always on | `architecture-overview.mdc`, `verification.mdc` |
+| Always on | `ten-laws`, `architecture-overview`, `verification` |
 | Layers / style | `addon-module-layers`, `lua-cob-modules`, `toc-lifecycle` |
-| Canon / packaging | `canon-data`, `build-packaging`, `packaging-assets` |
-| Domain | `ladder-authority`, `scoring-coplay`, `officer-guild-roster`, `beefnet-messaging` |
+| Packaging | `build-packaging`, `packaging-assets` |
+| Domain | `gora-sanction`, `pope-authority`, `identity-records`, `ceremony-runtime`, `quiet-event-modes`, `records-not-points` |
 | Client | `wow-ui-taint-lockdown`, `wow-performance`, `testing` |
-| UI juice (glob) | `ui-juice-standards` — toasts / announce / motion bans when editing `UI/**` |
+| UI juice (glob) | `ui-juice-standards` — hybrid visual law when editing `UI/**` |
 
-Trust the rule picker. When research changes a product decision, update the **design spec decisions log** — do not silently fork policy into research tracks. Polish / juice / spectacle / “make UI nicer” asks: UI brief + skill § Polish loop (+ `ui-juice-standards` on UI files); Goal anatomy ([30](docs/research/agent-polish-vision/30-writing-effective-agent-goals.md)); stop/governor ([31](docs/research/agent-polish-vision/31-loop-stop-conditions.md), [49](docs/research/agent-polish-vision/49-adversarial-overengineering.md)). Research ≠ product law. Wiring audit: [`00-CURSOR-WIRING-AUDIT.md`](docs/research/agent-polish-vision/00-CURSOR-WIRING-AUDIT.md).
+Trust the rule picker. When research would change a product decision, append a named item to `docs/design/OPEN_QUESTIONS.md` — do not silently fork policy into research tracks or archived specs.
 
 ## Key don'ts
 
+- Ten Laws: no points/XP/currencies/dailies/streaks; record events never behavior; no activity leaderboards; no ELO; Pope holds ceremonial sovereignty (officers/Council do not perform rituals); software proposes, Pope ratifies; Pope-authoritative star; Quiet Mode is minimap + Decree only; Church history is never deleted (account-level: rank on the human, Gora records on the character); combat is WoW's; six ranks, no Prophet, Pope is not a rank; hybrid visual law, UI never tells jokes
 - No bots, injection, protected-action bypass, or gameplay automation
-- No Retail / Dragonflight-only APIs; V1 is Anniversary `20506` only
-- Do not fork rank numbers into `docs/canon/` — edit `Data/Ranks.lua`
-- UI must not award points; Net must not invent ranks; Core must not `CreateFrame`
+- No Retail / Dragonflight-only APIs; target is Anniversary `20506`
+- Rank structure is Bible §5 / `Data/Ranks.lua` after Phase 1; do not invent Prophet or thresholds
+- UI never records official outcomes or invents ranks; Net never invents ranks or verdicts; only the Pope's Core store is authoritative. Core never `CreateFrame`. Data never reads SV
 - Do not list missing files in the `.toc`
 - Research scrapes (`.firecrawl/`, `**/.raw/`) are not product truth
+- Do not follow archived specs as winners on conflict

@@ -1,28 +1,33 @@
 # Church of Beef
 
-A social guild and streamer-event add-on for **World of Warcraft: Burning Crusade Classic Anniversary**.
+A social ceremony, Gora, and memory layer for **World of Warcraft: Burning Crusade Classic Anniversary**.
 
-Church of Beef turns the guild into a living religious-sports-entertainment institution: a seven-title
-rank ladder, standing points earned by playing together, officer-approved promotions, and guild-chat
-spectacle when someone is elevated (or excommunicated).
+The add-on is **not another game inside World of Warcraft**. It makes the things players already do — a duel, a promotion, a Gathering — feel like they happened inside the Church of Beef: sanctioned Beef Goras, Knighting, the Beef Pope as performer, and a persistent Church memory. The software is the stage manager. Humans generate the show.
 
 It is **not** a raid-optimization or combat-assistance tool.
 
-## The ladder
+## Ranks
 
-| Order | Title | How you get there |
-|------:|-------|-------------------|
-| 1 | Fresh Beef | Default |
-| 2 | Cooked Beef | Standing threshold → officer approval |
-| 3 | Beef Knight | Standing threshold → officer approval |
-| 4 | Beef Lord | Standing threshold → officer approval |
-| 5 | Beef Butcher | Standing threshold → officer approval |
-| 6 | Beef Council | Appointed; seat-limited |
-| 7 | Beef Prophet | Bestowed by decree; unique |
+Ranks are kinds of relationship with the Church, not a points ladder. There are no thresholds. **The Beef Pope is not a rank.**
 
-The addon **suggests** promotions from your standing. Characters with a real WoW guild rank of
-Officer or higher **approve or reject** them. Standings are self-reported advisory testimony;
-officer approval is the real gate.
+| Title | Relationship |
+|-------|----------------|
+| Fresh Beef | Recruitment — newly invited; low-commitment entry |
+| Cooked Beef | Engagement — first voluntary step into the wider community |
+| Beef Knight | Belonging — *I belong here.* |
+| Beef Lord | Proven prestige — *I proved something here.* |
+| Beef Butcher | Raiding Team role designation — *I raid for the Church.* Display-only in this phase |
+| Beef Council | Trusted leadership — always a human judgment, never a score |
+
+## Bans
+
+No points, XP, currencies, dailies, streaks, or engagement scoring. No activity leaderboards. No ELO/MMR. A Beef Gora is an unmodified duel in the world.
+
+Church history is never deleted. Identity is account-level: **rank belongs to the human; Gora records belong to the character.**
+
+## Quiet Mode
+
+Outside events the add-on is at most a **minimap presence** and the active **Decree**. The Decree is forthcoming; it does not ship today. No feeds, toasts, pips, or ambient surfaces in Quiet Mode.
 
 ## Install
 
@@ -41,18 +46,10 @@ addon/ChurchOfBeef/  →  <TBC Anniversary client>/Interface/AddOns/ChurchOfBeef
 Install path must be exactly `Interface/AddOns/ChurchOfBeef` (folder name matches the `.toc`).
 Reload (`/reload`) and confirm **Church of Beef** appears in the AddOns list.
 
-Nothing outside that folder is needed at runtime: stock Blizzard UI textures/fonts only — no custom `Media/`.
-
 ## Usage
 
-- `/beef` — open the main frame. The minimap button toggles the same frame; it has no
-  subcommands, and any arguments are ignored. To hide the minimap icon without unloading the
-  addon, run `/run ChurchOfBeef.Minimap:SetShown(false)` — the choice persists.
-- Tabs: **Ladder** (all seven ranks), **My Standing** (your own points and recent testimony), and
-  **Officer**, which only appears once the client knows you are Officer or higher
-- The Officer tab carries the guild-chat announce opt-out. It is on by default, and turning it
-  off silences this client's announcements without changing the promotion itself.
-- Data is stored per character in `ChurchOfBeefDB` (SavedVariablesPerCharacter). Alts start fresh.
+- `/beef` — toggle the main frame. The minimap button toggles the same frame.
+- `/beef minimap` — show or hide the minimap button (the existing restore path if the button is hidden). Unrecognized arguments open the frame.
 
 ## Hard safety rules
 
@@ -64,24 +61,22 @@ These are firm project rules for every version:
 - **No protected-action circumvention.**
 - **Lua and XML only**, fully in-game.
 - **TBC Classic Anniversary first** (`## Interface: 20506`). No Retail-only or Dragonflight-era APIs.
-  Classic+ is a future port, not V1 scope.
+  Classic+ is a future port, not current scope.
 
-The addon may announce, track, record, display, coordinate, and sync allowed information.
+The add-on may announce, record, display, and coordinate allowed information.
 It must never play the game for anyone.
 
 ## Repository layout
 
 ```
-addon/ChurchOfBeef/   Installable addon (Data/ canon, Core/, Net/, UI/)
-docs/canon/           Prose lore only — never duplicates the numbers
-docs/phases/          Roadmap and V1 verification checklist
-docs/superpowers/     Design spec and implementation plan
-tests/                Offline Lua test harness for pure Core logic
+addon/ChurchOfBeef/              Installable addon (Data/, Core/, Net/, UI/)
+docs/design/                     Product law (Bible, Adjudication, Audit)
+docs/archive/pre-reformation/    Retired law — historical only; do not follow
+docs/reformation/                Reformation process
+tests/                           Offline Lua harness for pure Core logic
 ```
 
-Machine-readable canon (rank ids, titles, thresholds, seats) lives only in
-`addon/ChurchOfBeef/Data/Ranks.lua` — a WoW TOC can only load files inside the addon folder, so that
-is the single source of truth.
+Rank structure is Bible §5. Machine ids belong in `addon/ChurchOfBeef/Data/Ranks.lua` after Phase 1 — do not invent Beef Prophet or thresholds.
 
 ## Tests
 
@@ -92,29 +87,27 @@ brew install lua@5.1 || brew install lua
 lua tests/run.lua
 ```
 
-Run from the repository root. Test suites appear as tasks land; a missing suite is not a failure.
+Run from the repository root. A green harness proves nothing about the client.
 
-The harness covers pure logic only — it stubs the WoW API, so a green run proves nothing about
-the client.
+## Definition of done
 
-## In-game verification is still required
+The current checkout is **not** the finished product. The demo is not done.
 
-BeefNet replication, login sync, the frames, and the guild-chat spectacle cannot be proven
-offline. Before calling V1 done:
+From Bible §22.3:
 
-1. Install (`./scripts/install-anniversary.sh`) → `/reload` → `/beef`
-2. Walk [`docs/phases/v1-checklist.md`](docs/phases/v1-checklist.md) with `/console scriptErrors 1`
-   (BugGrabber + BugSack preferred)
-3. For a real guild night, use [`docs/phases/guild-night-playtest.md`](docs/phases/guild-night-playtest.md)
+> The MVP is done when the Church runs one complete, real Gathering — assembly under a Decree, several Knightings, several sanctioned Beef Goras with fight HUD and favor — live on stream, with records persisting afterward and visible the next morning, with a first-time Twitch viewer able to understand the spectacle, and with David never opening Blizzard's guild roster and never touching an external spreadsheet during the performance.
 
-Network and officer boxes need two characters — one Officer+, one member. The social criterion
-needs an actual guild night: if a promotion passes unnoticed in guild chat, V1 has failed even
-with every function working.
+Offline tests and `/reload` smoke cannot prove that.
 
-## Design spec
+## Design law
 
-Full V1 design: [`docs/superpowers/specs/2026-07-25-church-of-beef-design.md`](docs/superpowers/specs/2026-07-25-church-of-beef-design.md)
+| Document | Role |
+|----------|------|
+| [`docs/design/Game_Design_Bible_v1.1.1.md`](docs/design/Game_Design_Bible_v1.1.1.md) | Sole product law |
+| [`docs/design/Peer_Review_Adjudication.md`](docs/design/Peer_Review_Adjudication.md) | What the peer review accepted, deferred, or rejected |
+| [`docs/design/Demo_Build_Audit.md`](docs/design/Demo_Build_Audit.md) | Why the prior demo was the wrong product |
+| [`docs/archive/pre-reformation/`](docs/archive/pre-reformation/) | Archived law — historical only |
 
 ## For AI agents
 
-Short orientation map: `AGENTS.md` at the Beef_Addon workspace root (the directory that contains `.worktrees/`). Persistent rules: `.cursor/rules/` on that same root; install/test loop: `.cursor/skills/church-of-beef-dev/`.
+Short orientation map: `AGENTS.md` at the Beef_Addon workspace root. Persistent rules: `.cursor/rules/` on that same root; install/test loop: `.cursor/skills/church-of-beef-dev/`.

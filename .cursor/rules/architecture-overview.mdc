@@ -1,46 +1,58 @@
 ---
-description: Repo map, layers, safety, and architecture invariants for Church of Beef
+description: Star topology, ceremony runtime, module layers, Bible as product law
 alwaysApply: true
 ---
 
 # Architecture overview
 
-**Church of Beef** — social guild ladder for **TBC Classic Anniversary** (`## Interface: 20506`). Plain global `ChurchOfBeef` / `COB` — no AceAddon in V1. Not raid/combat tooling.
+**Church of Beef** — social ceremony, Gora, and memory layer for **TBC Classic Anniversary** (`## Interface: 20506`). Plain global `ChurchOfBeef` / `COB`. Not raid/combat tooling. Not a points ladder.
 
 ## Non-negotiables
 
-- Announce / track / sync only — no bots, injection, protected-action bypass, or gameplay automation
-- No Retail / Dragonflight-only APIs
+- Record events and present ceremony — no bots, injection, protected-action bypass, or gameplay automation
+- Lua/XML only; no Retail / Dragonflight-only APIs; Classic+ portability via guarded API reads (Bible §3.2)
 - Layers: UI→Core→Data and Net→Core→Data only; never Core→UI
-- UI never awards points; Net never invents ranks; Core never `CreateFrame`; Data never reads SV
+- UI never records official outcomes or invents ranks; Net never invents ranks or verdicts; only the Pope's Core store is authoritative; Core never `CreateFrame`; Data never reads SV
+
+## Product law
+
+| Authority | Location |
+|-----------|----------|
+| Product law | `docs/design/Game_Design_Bible_v1.1.1.md` |
+| Why the law says that | `docs/design/Peer_Review_Adjudication.md` |
+| Keep / rework / discard | `docs/design/Demo_Build_Audit.md` |
+| Orchestration | `CURSOR_REWORK_HANDOFF.md` |
+
+`docs/superpowers/specs/*` and `docs/archive/pre-reformation/` are historical. On conflict, the Bible wins. Unanswered product questions go to `docs/design/OPEN_QUESTIONS.md` — do not invent answers.
+
+## Star topology (Bible §13.1, §4.10)
+
+- **Pope client** — single writer and source of truth. Ranks, records, ceremony state, Chronicle: modified only in the Pope's store.
+- **Congregation clients** — display terminals plus input devices. They render broadcast state and send inputs (petitions, favor, confession text) to the Pope's console. Inputs never trigger public theater.
+- **Witnesses report, never rule.** No distributed consensus, no peer self-reported authority. One writer: no conflicts in MVP.
+
+State broadcasts one-way on the guild addon channel with sequence numbers. Theatrical UI renders only from a registered Pope-character sender; congregation-originated messages are console inputs only; player-typed free text renders only on the Pope's console. Messages carry a protocol version; stale clients degrade to Quiet Mode rather than misrender theater (§13.4).
+
+## Ceremony runtime (Bible §20)
+
+States, named only: **QUIET → ASSEMBLY → RITE (typed) → CONSEQUENCE → ASSEMBLY or QUIET**. The Pope's client owns every transition. Event Mode theater (Gora, fight HUD, Knighting) hangs on this skeleton. The Director Console starts events from QUIET (§20.2). The Decree is Quiet Mode (§14.1). Records Book is player-opened identity/history (§14.2). Detail: `ceremony-runtime.mdc`.
 
 ## Repo map
 
 ```
-.worktrees/feat-church-of-beef-v1/   # addon checkout when absent on main
-  addon/ChurchOfBeef/                # → Interface/AddOns/ChurchOfBeef/
-    Data/                            # Machine canon (Ranks.lua)
-    Core/                            # Ladder, scoring, officer gate
-    Net/                             # BeefNet + Sync
-    UI/                              # Frames, tabs, toasts, minimap
-    ChurchOfBeef.toc                 # Load order = dependency graph
-    ChurchOfBeef.lua                 # Bootstrap: events, /beef, Init
-  tests/                             # Desktop Lua Core harness
-docs/superpowers/                    # Spec + plan (product law)
-docs/canon/                          # Lore prose only (no numbers)
-docs/phases/                         # Roadmap / V1 checklist
+addon/ChurchOfBeef/                 # this workspace → Interface/AddOns/ChurchOfBeef/
+  Data/                             # machine-readable tables (consumed by Core)
+  Core/                             # Common, Roster, DB keepers; Pope's store is authoritative
+  Net/                              # BeefNet transport keeper
+  UI/                               # UI shell keeper
+  ChurchOfBeef.toc                  # load order = dependency graph
+  ChurchOfBeef.lua                  # bootstrap: events, /beef, Init
+tests/                              # desktop Lua Core harness
+docs/design/                        # product law
+docs/archive/pre-reformation/       # retired law — do not follow
 ```
 
-Keep the Cursor workspace on **Beef_Addon** (this repo) so `.cursor/rules` apply. Edit worktree Lua from the parent workspace — see `AGENTS.md`.
-
-## Authority
-
-| Truth | Location |
-|-------|----------|
-| Rank ids, titles, thresholds, seats, officer index | `addon/ChurchOfBeef/Data/Ranks.lua` only |
-| Product decisions | `docs/superpowers/specs/2026-07-25-church-of-beef-design.md` |
-| Task / file layout | `docs/superpowers/plans/2026-07-25-church-of-beef-v1.md` |
-| Lore prose | `docs/canon/` — never duplicate numeric thresholds |
+Keep the Cursor workspace on **Beef_Addon** so `.cursor/rules` apply.
 
 ## Entry points
 
@@ -49,15 +61,14 @@ Keep the Cursor workspace on **Beef_Addon** (this repo) so `.cursor/rules` apply
 | Phase | Runs |
 |-------|------|
 | `ADDON_LOADED` (`ChurchOfBeef`) | `COB.DB:Init()` |
-| `PLAYER_LOGIN` | `COB.UI:Init()`, `COB.Net:Init()`, `COB.Sync:OnLogin()` |
+| `PLAYER_LOGIN` | `COB.UI:Init()`, `COB.Net:Init()` |
 | `/beef` | `COB.UI:Toggle()` |
 
-SV = per-character `ChurchOfBeefDB`. BeefNet prefix `COB` / channel `GUILD`.
+SV direction: account-level `ChurchOfBeefDB` (no server = per-client persistence, §13.1; store scope is account-wide, §12 / Audit §6.3). BeefNet prefix `COB` / channel `GUILD`.
 
 ## Edit preferences
 
-- Extend planned modules (`Core/Ladder.lua`, `Net/BeefNet.lua`, …) over new top-level files
+- Extend existing keepers (`Core/Common.lua`, `Core/Roster.lua`, `Core/DB.lua`, `Net/BeefNet.lua`, UI shell) over new top-level files
 - Expand TOC only when the file exists; never list missing files
 - Keep `ChurchOfBeef*.lua` casing consistent (case-sensitive packaging)
-- Prefer `docs/superpowers/` + `Data/Ranks.lua` over inventing policy from `docs/research/`
-- Major UI polish / juice follows the UI brief + skill § Polish loop + glob `ui-juice-standards.mdc` (`docs/superpowers/ui-polished-direction-for-agents.md`, `.cursor/skills/church-of-beef-dev/SKILL.md`) — not a new always-on rule factory ([34] four-rule pack stays deferred)
+- Prefer `docs/design/` over inventing policy from `docs/research/` or `docs/archive/pre-reformation/`

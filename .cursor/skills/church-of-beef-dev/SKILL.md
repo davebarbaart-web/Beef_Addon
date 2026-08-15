@@ -6,9 +6,10 @@ description: >-
   into Interface/AddOns, /reload smoke, polish/juice/spectacle/critique,
   toasts/announce feel, empty states, “make UI nicer,” or when the user mentions
   install, AddOns path, /beef, WOW_ADDONS_DIR, or offline Core tests. Before any
-  UI CreateFrame / visual work, read
-  docs/superpowers/ui-polished-direction-for-agents.md and follow § Polish loop.
-  Do not install a second polish skill — this skill § is enough (ADR-0002).
+  UI CreateFrame / visual work, read Bible §19.3 and
+  `.cursor/rules/ui-juice-standards.mdc`, then follow § Polish loop.
+  Product law is `docs/design/`, not archived briefs or specs.
+  Do not install a second polish skill — this skill § is enough.
 ---
 
 # Church of Beef — install / reload / test
@@ -55,7 +56,7 @@ lua tests/run.lua      # exit 0 required
 | Non-zero exit / `N failed` | Logic or fixture bug | Fix code/tests; do not skip |
 | Suite listed but skipped | Module not created yet | OK until that task lands |
 
-Green harness ≠ V1 done (UI / BeefNet / spectacle need the client).
+Green harness ≠ MVP done (Bible §22.3). UI / net / ceremony need the client.
 
 ## 2. Install into the client (agents own this)
 
@@ -92,7 +93,7 @@ After install (or any UI/Net/SV/slash change):
 2. `/console scriptErrors 1` (prefer BugGrabber + BugSack for stacks).
 3. `/reload`
 4. `/beef` — expect versioned stub or UI; Lua errors = fail.
-5. BeefNet / officer / sync changes → two clients (Officer+ and Member).
+5. BeefNet / guild-net changes → two clients (Pope writer + congregation display).
 
 **Do not** delete player `WTF/**/ChurchOfBeefDB.lua` unless the user explicitly asks.
 
@@ -101,7 +102,7 @@ After install (or any UI/Net/SV/slash change):
 | Addon not listed | Install path / TOC Interface mismatch | Re-check `WOW_ADDONS_DIR` and `## Interface: 20506` |
 | Silent failure | `scriptErrors` off | Enable console errors or BugSack |
 | `/beef` unknown | Bootstrap/slash not loaded | Check TOC file list + load errors |
-| Officer tab missing | Roster not ready / not Officer+ | Wait for `GUILD_ROSTER_UPDATE`; confirm rank index |
+| Expected surface missing | Roster / runtime not ready | Wait for `GUILD_ROSTER_UPDATE`; confirm the client role |
 
 ## 4. Quick zip (optional hand-out)
 
@@ -118,7 +119,7 @@ Zip root must be `ChurchOfBeef/`, not the monorepo root. No packager upload with
 - [ ] lua tests/run.lua → 0 failed
 - [ ] TOC lists only existing files; Interface 20506 unless intentionally bumping
 - [ ] Reinstalled to Anniversary AddOns/ChurchOfBeef (see 00-INSTALL-PATH.md; never WTF/)
-- [ ] /reload + /beef smoke (and two-client if Net/officer)
+- [ ] /reload + /beef smoke (and two-client if Net / Pope↔congregation)
 - [ ] No gameplay automation / Retail-only APIs introduced
 ```
 
@@ -127,26 +128,26 @@ Zip root must be `ChurchOfBeef/`, not the monorepo root. No packager upload with
 UI and art direction are implemented by coding agents. Before scaffolding frames
 or Media:
 
-1. Read `docs/superpowers/ui-polished-direction-for-agents.md` (authority order + V1 bans + juice vocabulary).
-2. Follow design spec §10 / §15 and glossary rows 68–71, 74–81.
-3. Prefer Cursor canvas `cob-v1-ui-build-prep` as the day-to-day checklist when available.
-4. Do **not** add custom `Media/` or SFX in V1 Tasks 7–10.
+1. Read Bible §19.3 (hybrid visual law) and `.cursor/rules/ui-juice-standards.mdc`.
+2. Follow Law 10: functional surfaces stay stock-template pragmatic; theatrical surfaces get the ecclesiastical identity. The UI never tells jokes.
+3. Custom media is permitted only on theatrical surfaces; missing media must not fail load.
+4. Do **not** treat `docs/archive/pre-reformation/` UI briefs or specs as product law.
 
 Green harness still does not prove UI polish — complete step 3 (in-game smoke) for UI changes.
 
 ## Polish loop (UI / toast / announce / empty states)
 
-Use for juice/critique asks after the functional path exists. Pointer-heavy; product law stays in the UI brief + design spec.
+Use for juice/critique asks after the functional path exists. Product law is Bible §19 and `ui-juice-standards.mdc` only. Research links below are **process** (goal size, stop conditions). If a research page cites the archived design spec, V1 ladder, officer `/g` spectacle, or the archived UI brief as law — **ignore those product claims.**
 
 1. **Goal** — name the surface, acceptance evidence, max **2** critique→revise rounds (research [30](docs/research/agent-polish-vision/30-writing-effective-agent-goals.md)). Refuse “make it nicer” without a Goal.
-2. **One V1-IN slice** — shell/tabs/toasts/announce craft/minimap/empty honesty/short fades only ([42](docs/research/agent-polish-vision/42-v1-vs-v2-juice-scope.md)). Refuse Media/SFX/WA center/StatusBar/juice OS.
+2. **One slice** — named surface only ([42](docs/research/agent-polish-vision/42-v1-vs-v2-juice-scope.md)). Refuse WA center pulses, StatusBar meters, and a juice OS. Theatrical media follows Law 10 / Bible §19.3; Quiet Mode stays silent.
 3. **Hard verify** — this skill §§1–3 (harness if Core/Data; TOC; install → `/reload` → path).
-4. **Separate critique** — against UI brief (hierarchy, T0/T1, ToS corridor, 4 critique questions). Gates + brief anti-patterns first; [25](docs/research/agent-polish-vision/25-ui-polish-critique-rubric.md) optional depth only — never paste composite score math. Fix P0/P1 only.
+4. **Separate critique** — against Bible §19.3 / `ui-juice-standards.mdc` (hybrid law, Quiet vs Event, UI never jokes). Gates + rule anti-patterns first; [25](docs/research/agent-polish-vision/25-ui-polish-critique-rubric.md) optional depth only — never paste composite score math. Fix P0/P1 only.
 5. **Stop** — clean / plateau / max rounds / reopen-locked ([31](docs/research/agent-polish-vision/31-loop-stop-conditions.md), [49](docs/research/agent-polish-vision/49-adversarial-overengineering.md)). Role budget: **1** implementer + **0–1** critic; no UI swarm.
-6. **Claim `POLISH:CANDIDATE` only** — human signs `POLISH:PASS`; never claim V1 complete from harness or taste.
+6. **Claim `POLISH:CANDIDATE` only** — human signs `POLISH:PASS`; never claim MVP complete from harness or taste (Bible §22.3).
 7. **No** WoW process control, pixel CI, or overnight unattended UI Ralph.
 
-Brief after Step 2 promote: `docs/superpowers/ui-polished-direction-for-agents.md`. Synthesis: `docs/research/agent-polish-vision/00-SYNTHESIS.md`.
+Visual law: Bible §19.3 and `.cursor/rules/ui-juice-standards.mdc`. Do not open `00-SYNTHESIS.md` for product decisions.
 
 ## Do not duplicate
 

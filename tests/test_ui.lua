@@ -1,55 +1,45 @@
--- UI shell: frame creation, tab gating, saved position, minimap toggle, toasts.
--- Widget behaviour comes from tests/wow_ui_stub.lua; this is a construction and
--- wiring check, not a substitute for an in-game smoke test.
+-- Quiet shell: frame creation, drag/resize/coalesce, saved position, minimap
+-- toggle, system/debug toasts. No tab registry. No Standing / Ladder / Officer
+-- IA. No promote / rite toast kinds.
 local stub = require("wow_ui_stub")
 local restore = stub.install()
 
 ChurchOfBeef = ChurchOfBeef or {}
 ChurchOfBeef._IN_TEST = true
 dofile("addon/ChurchOfBeef/Data/Ranks.lua")
-dofile("addon/ChurchOfBeef/Core/Ladder.lua")
-dofile("addon/ChurchOfBeef/Core/Scoring.lua")
 dofile("addon/ChurchOfBeef/Core/Officer.lua")
 dofile("addon/ChurchOfBeef/Core/Roster.lua")
 dofile("addon/ChurchOfBeef/Core/DB.lua")
 
 local COB = ChurchOfBeef
 
--- TOC order: MainFrame owns COB.UI, tab files register into it on load.
 local function loadUi()
   dofile("addon/ChurchOfBeef/UI/MainFrame.lua")
   dofile("addon/ChurchOfBeef/UI/Status.lua")
-  dofile("addon/ChurchOfBeef/UI/Announce.lua")
-  dofile("addon/ChurchOfBeef/UI/LadderTab.lua")
-  dofile("addon/ChurchOfBeef/UI/StandingTab.lua")
-  dofile("addon/ChurchOfBeef/UI/OfficerTab.lua")
   dofile("addon/ChurchOfBeef/UI/Minimap.lua")
   dofile("addon/ChurchOfBeef/UI/Toasts.lua")
 end
 
-COB.Ladder:ResetForTests()
-COB.Scoring:ResetForTests()
 ChurchOfBeefDB = nil
 COB.DB:Init()
+if COB.Roster and COB.Roster.ResetForTests then COB.Roster:ResetForTests() end
 
 loadUi()
 
 --------------------------------------------------------------------------------
--- Tabs register on load, in TOC order
+-- Tab registry and ClassColorCode are gone
 --------------------------------------------------------------------------------
-local names = COB.UI:GetTabNames()
-assert_eq(#names, 3, "three tabs registered")
-assert_eq(names[1], "ladder", "ladder registers first")
-assert_eq(names[2], "standing", "standing registers second")
-assert_eq(names[3], "officer", "officer registers third")
-
-assert_eq(select(1, COB.UI:RegisterTab({ name = "ladder", label = "Dupe" })), nil, "duplicate tab refused")
-assert_eq(select(1, COB.UI:RegisterTab({ label = "No name" })), nil, "unnamed tab refused")
+assert_eq(COB.UI.RegisterTab, nil, "RegisterTab is gone")
+assert_eq(COB.UI.ShowTab, nil, "ShowTab is gone")
+assert_eq(COB.UI.GetTabNames, nil, "GetTabNames is gone")
+assert_eq(COB.UI.UpdateOfficerVisibility, nil, "officer-only tab chrome is gone")
+assert_eq(COB.UI.ClassColorCode, nil, "ClassColorCode is gone")
+assert_eq(COB.UI.MarkDirty, nil, "tab dirty-flag is gone")
 
 --------------------------------------------------------------------------------
--- Init builds a hidden, movable, clamped frame
+-- Init builds a hidden, movable, clamped, resizable frame
 --------------------------------------------------------------------------------
-stub.guildRankIndex = nil -- roster not answered yet: fail closed
+stub.guildRankIndex = nil
 local frame = COB.UI:Init()
 assert_true(frame ~= nil, "Init creates the main frame")
 assert_eq(frame:GetName(), "ChurchOfBeefFrame", "frame has a global name for UISpecialFrames")
@@ -60,9 +50,17 @@ assert_eq(COB.UI:IsShown(), false, "frame starts hidden")
 assert_eq(COB.UI:Init(), frame, "Init is idempotent")
 assert_eq(frame._movable, true, "frame is movable")
 assert_eq(frame._clamped, true, "frame is clamped to screen")
-assert_true(frame.FooterText ~= nil, "scripture footer placeholder exists")
-assert_true(frame.StatusChip ~= nil, "L0 mesh status chip exists on main frame")
+assert_true(frame.FooterText ~= nil, "footer placeholder exists")
+assert_eq(frame.FooterText:GetText(), "", "footer is empty — no Eternal Grazing joke")
+assert_true(frame.StatusChip ~= nil, "status chip exists on main frame")
 assert_true(COB.UI.Status ~= nil, "UI.Status presenter loaded")
+assert_eq(frame:GetWidth(), COB.UI.DEFAULT_WIDTH, "default width")
+assert_eq(frame:GetHeight(), COB.UI.DEFAULT_HEIGHT, "default height")
+assert_true(frame.SizeGrip ~= nil, "size grip exists")
+assert_true(frame._minResize ~= nil, "Classic SetMinResize applied")
+assert_eq(frame._minResize[1], COB.UI.MIN_WIDTH, "min width bound")
+assert_eq(frame._minResize[2], COB.UI.MIN_HEIGHT, "min height bound")
+assert_true(COB.UI.content ~= nil, "empty content host exists")
 
 local point, _, relativePoint, x, y = frame:GetPoint(1)
 assert_eq(point, "CENTER", "unsaved position defaults to center")
@@ -70,21 +68,16 @@ assert_eq(relativePoint, "CENTER", "default relative anchor is center")
 assert_eq(x, 0, "default x offset")
 assert_eq(y, 0, "default y offset")
 
---------------------------------------------------------------------------------
--- Officer tab is hidden until the roster says Officer+
---------------------------------------------------------------------------------
 local function buttonFor(label)
   return stub.findChild(frame, function(child)
     return child._type == "Button" and child:GetText() == label
   end)
 end
 
-assert_true(buttonFor("Ladder") ~= nil, "ladder tab button exists")
-assert_eq(buttonFor("Ladder"):IsShown(), true, "ladder tab button visible")
-assert_eq(buttonFor("My Standing"):IsShown(), true, "standing tab button visible")
-assert_eq(buttonFor("Officer"):IsShown(), false, "non-officer does not see the Officer tab")
-assert_eq(COB.UI.activeTab, "ladder", "first visible tab is active")
-assert_eq(COB.UI:ShowTab("officer"), "ladder", "asking for a hidden tab falls back")
+assert_eq(buttonFor("Ladder"), nil, "no Ladder tab button")
+assert_eq(buttonFor("My Standing"), nil, "no Standing tab button")
+assert_eq(buttonFor("Officer"), nil, "no Officer tab button")
+assert_eq(buttonFor("Probe"), nil, "no plumbing-tab probe button")
 
 --------------------------------------------------------------------------------
 -- Toggle shows/hides and records the state in SV
@@ -93,32 +86,14 @@ COB.UI:Toggle()
 assert_eq(COB.UI:IsShown(), true, "toggle opens the frame")
 assert_eq(ChurchOfBeefDB.ui.shown, true, "open state persisted")
 
-assert_eq(COB.UI:ShowTab("standing"), "standing", "standing tab activates")
-assert_eq(buttonFor("My Standing")._highlighted, true, "active tab button is highlighted")
-assert_eq(buttonFor("Ladder")._highlighted, false, "inactive tab button is not highlighted")
-
 COB.UI:Toggle()
 assert_eq(COB.UI:IsShown(), false, "toggle closes the frame")
 assert_eq(ChurchOfBeefDB.ui.shown, false, "closed state persisted")
 
--- Escape via UISpecialFrames hides the frame without going through UI:Hide.
 COB.UI:Show()
 assert_eq(ChurchOfBeefDB.ui.shown, true, "Show persists the open state")
 frame:Hide()
 assert_eq(ChurchOfBeefDB.ui.shown, false, "an escape-key close still persists")
-
---------------------------------------------------------------------------------
--- Roster answering Officer+ reveals the tab without a reload
---------------------------------------------------------------------------------
-stub.guildRankIndex = 0
-assert_true(stub.fire(frame, "OnEvent", "GUILD_ROSTER_UPDATE"), "guild roster event handled")
-assert_eq(buttonFor("Officer"):IsShown(), true, "officer sees the Officer tab")
-assert_eq(COB.UI:ShowTab("officer"), "officer", "officer tab activates")
-
-stub.guildRankIndex = 5
-assert_true(stub.fire(frame, "OnEvent", "PLAYER_GUILD_UPDATE"), "guild update handled")
-assert_eq(buttonFor("Officer"):IsShown(), false, "demoted player loses the Officer tab")
-assert_eq(COB.UI.activeTab, "ladder", "hidden active tab falls back to ladder")
 
 --------------------------------------------------------------------------------
 -- Dragging the title bar saves the anchor into ChurchOfBeefDB.ui.point
@@ -146,10 +121,38 @@ assert_eq(saved.y, -80, "y offset saved")
 assert_eq(saved.relativeTo, nil, "no frame reference lands in SavedVariables")
 
 --------------------------------------------------------------------------------
+-- Resize: clamp, persist, restore default
+--------------------------------------------------------------------------------
+frame:SetWidth(100)
+frame:SetHeight(50)
+stub.fire(frame, "OnSizeChanged")
+assert_eq(frame:GetWidth(), COB.UI.MIN_WIDTH, "undersize width clamps to min")
+assert_eq(frame:GetHeight(), COB.UI.MIN_HEIGHT, "undersize height clamps to min")
+
+frame:SetWidth(2000)
+frame:SetHeight(2000)
+stub.fire(frame, "OnSizeChanged")
+assert_eq(frame:GetWidth(), COB.UI.MAX_WIDTH, "oversize width clamps to max")
+assert_eq(frame:GetHeight(), COB.UI.MAX_HEIGHT, "oversize height clamps to max")
+
+assert_eq(COB.UI:ResetSize(), true, "ResetSize succeeds")
+assert_eq(frame:GetWidth(), COB.UI.DEFAULT_WIDTH, "ResetSize restores default width")
+assert_eq(frame:GetHeight(), COB.UI.DEFAULT_HEIGHT, "ResetSize restores default height")
+assert_eq(ChurchOfBeefDB.ui.size.w, COB.UI.DEFAULT_WIDTH, "default size persisted")
+assert_eq(ChurchOfBeefDB.ui.size.h, COB.UI.DEFAULT_HEIGHT, "default height persisted")
+
+local cw, ch = COB.UI:GetContentSize()
+assert_true(type(cw) == "number" and cw > 0, "GetContentSize width")
+assert_true(type(ch) == "number" and ch > 0, "GetContentSize height")
+
+assert_true(stub.fire(frame.SizeGrip, "OnMouseDown", "RightButton"), "grip right-click wired")
+assert_eq(frame:GetWidth(), COB.UI.DEFAULT_WIDTH, "grip right-click restores default width")
+
+--------------------------------------------------------------------------------
 -- Reload restores position and open state
 --------------------------------------------------------------------------------
 ChurchOfBeefDB.ui.shown = true
-loadUi() -- fresh COB.UI, as a /reload would produce
+loadUi()
 local reloaded = COB.UI:Init()
 local rp, _, rrp, rx, ry = reloaded:GetPoint(1)
 assert_eq(rp, "TOPLEFT", "saved anchor restored after reload")
@@ -157,13 +160,16 @@ assert_eq(rrp, "TOPLEFT", "saved relative anchor restored")
 assert_eq(rx, 120, "saved x restored")
 assert_eq(ry, -80, "saved y restored")
 assert_eq(COB.UI:IsShown(), true, "frame reopens when it was open at logout")
+assert_eq(COB.UI.RegisterTab, nil, "reload still has no tab registry")
+assert_eq(COB.UI.ClassColorCode, nil, "reload still has no ClassColorCode")
+assert_eq(reloaded.FooterText:GetText(), "", "reload footer stays empty")
 
--- A corrupt anchor must not brick /beef.
 ChurchOfBeefDB.ui.point = { point = "MIDDLE-OF-NOWHERE", relativePoint = "CENTER", x = 1, y = 2 }
 loadUi()
 local safe = COB.UI:Init()
 assert_eq(select(1, safe:GetPoint(1)), "CENTER", "invalid saved anchor falls back to center")
 ChurchOfBeefDB.ui.point = saved
+frame = safe
 
 --------------------------------------------------------------------------------
 -- Minimap button toggles the same frame
@@ -184,217 +190,152 @@ COB.Minimap:SetShown(true)
 assert_eq(button:IsShown(), true, "minimap button can come back")
 
 --------------------------------------------------------------------------------
--- Toasts queue and expire without a permanent OnUpdate
+-- System / debug toasts queue and expire without a permanent OnUpdate
 --------------------------------------------------------------------------------
 assert_eq(COB.Toasts:Show(""), false, "empty toast refused")
 assert_eq(COB.Toasts:Show(nil), false, "nil toast refused")
-assert_eq(COB.Toasts:Show("Beefina is now Cooked Beef."), true, "toast accepted")
+assert_eq(COB.Toasts:Show("system one"), true, "toast accepted")
 assert_eq(COB.Toasts.frame:IsShown(), true, "toast frame shown")
-assert_eq(COB.Toasts.frame.text:GetText(), "Beefina is now Cooked Beef.", "toast text set")
+assert_eq(COB.Toasts.frame.text:GetText(), "system one", "toast text set")
 
-assert_eq(COB.Toasts:Show("The Prophet has spoken."), true, "second toast queued")
-assert_eq(COB.Toasts.frame.text:GetText(), "Beefina is now Cooked Beef.", "queued toast waits its turn")
+assert_eq(COB.Toasts:Show("system two"), true, "second toast queued")
+assert_eq(COB.Toasts.frame.text:GetText(), "system one", "queued toast waits its turn")
 stub.flushTimers()
-assert_eq(COB.Toasts.frame.text:GetText(), "The Prophet has spoken.", "queue advances on expiry")
+assert_eq(COB.Toasts.frame.text:GetText(), "system two", "queue advances on expiry")
 assert_eq(COB.Toasts.frame:IsShown(), true, "second toast visible")
 stub.flushTimers()
 assert_eq(COB.Toasts.frame:IsShown(), false, "toast hides when the queue drains")
 
---------------------------------------------------------------------------------
--- Toast priority / dedupe / Celebrate (V1 edge toast polish)
---------------------------------------------------------------------------------
 COB.Toasts:ResetForTests()
-assert_eq(COB.Toasts:Push({ kind = "credit", text = "Gora win: +8 standing" }), true, "credit accepted")
-assert_eq(COB.Toasts:ShowingKind(), "credit", "showing credit")
-assert_eq(COB.Toasts:Celebrate("promote", {
-  name = "Beefina", title = "Cooked Beef", dedupeKey = "promote:Beefina:2",
-}), true, "promote accepted")
-assert_eq(COB.Toasts:ShowingKind(), "promote", "promote interrupts credit")
-assert_eq(COB.Toasts.frame.text:GetText(), "Beefina is now Cooked Beef.", "promote copy")
-local dupOk, dupReason = COB.Toasts:Celebrate("promote", {
-  name = "Beefina", title = "Cooked Beef", dedupeKey = "promote:Beefina:2",
-})
-assert_eq(dupOk, false, "duplicate promote deduped")
+assert_eq(COB.Toasts:Push({ kind = "system", text = "dedupe me", dedupeKey = "sys:1" }), true,
+  "system push accepted")
+local dupOk, dupReason = COB.Toasts:Push({ kind = "system", text = "dedupe me", dedupeKey = "sys:1" })
+assert_eq(dupOk, false, "duplicate system toast deduped")
 assert_eq(dupReason, "deduped", "dedupe reason")
 COB.Toasts:HideAll()
 assert_eq(COB.Toasts:PendingCount(), 0, "HideAll clears pending")
 assert_eq(COB.Toasts:ShowingKind(), nil, "HideAll clears showing")
 
--- Regression: wow_ui_stub __index-caches noops; cobFadeIn must not look Play()-able.
 COB.Toasts:ResetForTests()
+assert_eq(COB.Toasts:Celebrate("debug", { detail = "probe" }), true, "debug Celebrate accepted")
+assert_eq(COB.Toasts:ShowingKind(), "debug", "debug kind still exists")
+assert_eq(COB.Toasts.frame.text:GetText(), "probe", "debug uses detail copy")
+COB.Toasts:ResetForTests()
+
+local promoteOk, promoteReason = COB.Toasts:Celebrate("promote", {
+  name = "Beefina", title = "Beef Knight",
+})
+assert_eq(promoteOk, false, "promote Celebrate mints no copy")
+assert_eq(promoteReason, "invalid", "promote builder is gone")
+assert_eq(COB.Toasts:ShowingKind(), nil, "promote does not show")
+
+local riteOk, riteReason = COB.Toasts:Celebrate("rite", {
+  verb = "Set", name = "Beefina", title = "Cooked Beef",
+})
+assert_eq(riteOk, false, "rite Celebrate mints no copy")
+assert_eq(riteReason, "invalid", "rite builder is gone")
+
+assert_eq(COB.Toasts:Push({ kind = "promote", text = "leftover promote" }), true,
+  "unknown kind with explicit text still queues")
+assert_eq(COB.Toasts:ShowingKind(), "system", "excised promote kind falls through to system")
+COB.Toasts:ResetForTests()
+
 local wasTest = COB._IN_TEST
 COB._IN_TEST = false
+
+assert_eq(COB.Toasts:Push({ kind = "system", text = "motion on" }), true,
+  "toast accepted on a client with animation groups")
+local fadeIn = rawget(COB.Toasts.frame, "cobFadeIn")
+assert_eq(type(fadeIn), "table", "a real AnimationGroup is built and kept")
+assert_eq(fadeIn:IsPlaying(), true, "and it is the thing that plays the toast in")
+assert_eq(COB.Toasts.frame:IsShown(), true, "the toast is on screen")
+COB.Toasts:HideAll()
+COB.Toasts:ResetForTests()
+
+local toastFrame = COB.Toasts.frame
+local realCreate = rawget(toastFrame, "CreateAnimationGroup")
+rawset(toastFrame, "CreateAnimationGroup", false)
+rawset(toastFrame, "_cobMotionReady", nil)
+rawset(toastFrame, "cobFadeIn", nil)
+
 assert_eq(COB.Toasts:Push({ kind = "system", text = "motion fallback ok" }), true,
   "toast works when AnimationGroup is absent")
-assert_eq(rawget(COB.Toasts.frame, "cobFadeIn"), nil, "cobFadeIn not stored as stub noop")
-assert_eq(COB.Toasts.frame:IsShown(), true, "C_Timer fade path still shows toast")
+assert_eq(rawget(toastFrame, "cobFadeIn"), nil, "no group is invented on a client without them")
+assert_eq(toastFrame:IsShown(), true, "C_Timer fade path still shows toast")
+
+rawset(toastFrame, "CreateAnimationGroup", realCreate or nil)
+rawset(toastFrame, "_cobMotionReady", nil)
 stub.flushTimers()
 COB._IN_TEST = wasTest
 COB.Toasts:ResetForTests()
 
 --------------------------------------------------------------------------------
--- Ladder / Standing tabs read roster + standing (text thresholds; no StatusBar)
+-- Status chip: guild / roster / version only — no standing or grant copy
 --------------------------------------------------------------------------------
-COB.Ladder:ResetForTests()
-COB.Scoring:ResetForTests()
-COB.Roster:ResetForTests()
-stub.playerName = "Beefina"
-stub.guildRoster = {
-  { name = "Popeina", rankIndex = 0 },
-  { name = "Beefina", rankIndex = 5 }, -- Cooked Beef via guild map
-}
-stub.guildRankIndex = 5
-COB.Roster:Refresh()
-COB.Ladder:SetStanding("Beefina", 75)
-
-COB.UI:Show()
-COB.UI:ShowTab("ladder")
-COB.UI:MarkDirty("ladder")
-assert_eq(COB.UI.activeTab, "ladder", "ladder tab active for refresh")
-assert_true(COB.LadderTab.rows ~= nil and #COB.LadderTab.rows == 7, "seven ladder rows")
-assert_eq(COB.LadderTab.rows[1].title:GetText(), "Beef Prophet", "top row is Prophet")
-assert_eq(COB.LadderTab.rows[7].title:GetText(), "Fresh Beef", "bottom row is Fresh Beef")
--- Cooked Beef is rank 2 → display index 6 (7 - 2 + 1)
-local cooked = COB.LadderTab.rows[6]
-assert_eq(cooked.title:GetText():find("Cooked Beef", 1, true) ~= nil, true, "Cooked Beef title shown")
-assert_eq(cooked.occupants:GetText():find("Beefina", 1, true) ~= nil, true, "occupant listed")
-assert_eq(cooked.occupants:GetText():find("(You)", 1, true) ~= nil, true, "self dual-encoded as You")
-assert_true(COB.LadderTab.rows[1].occupants:GetText():find("Popeina", 1, true) ~= nil,
-  "GM listed under Prophet from roster")
-
-COB.UI:ShowTab("standing")
-COB.UI:MarkDirty("standing")
-assert_eq(COB.StandingTab.header:GetText():find("Cooked Beef", 1, true) ~= nil, true, "standing shows title")
-assert_eq(COB.StandingTab.standing:GetText(), "Standing: 75", "standing value from Core")
-assert_eq(COB.StandingTab.nextLine:GetText():find("Beef Knight", 1, true) ~= nil, true, "text next threshold")
-assert_eq(COB.StandingTab.nextLine:GetText():find("StatusBar", 1, true), nil, "no StatusBar copy")
-
--- No guild → empty flock copy
-stub.inGuild = false
-COB.UI:ShowTab("ladder")
-COB.UI:MarkDirty("ladder")
-assert_eq(COB.LadderTab.empty:IsShown(), true, "no-guild empty state shown")
-assert_eq(COB.LadderTab.empty:GetText():find("outside the flock", 1, true) ~= nil, true, "COB_EMPTY_NO_GUILD copy")
-stub.inGuild = true
-
---------------------------------------------------------------------------------
--- BeefNet / sync L0 status chip (research 20 + 45)
---------------------------------------------------------------------------------
-dofile("addon/ChurchOfBeef/Net/BeefNet.lua")
-dofile("addon/ChurchOfBeef/Net/Sync.lua")
 local Status = COB.UI.Status
-local Sync = COB.Sync
--- Prefer live UI.frame: loadUi()/Init reload replaces the first `frame` local.
 local function chip()
   return COB.UI.statusChip or (COB.UI.frame and COB.UI.frame.StatusChip)
 end
 
+assert_eq(Status.ShowsLearningBanner, nil, "no ladder learning banner predicate")
+assert_eq(Status.ShowsHardGateBanner, nil, "no ladder hard-gate banner predicate")
+
 Status:ResetForTests()
-Sync:ResetForTests()
-COB.Ladder:ResetForTests()
+if COB.Roster and COB.Roster.ResetForTests then COB.Roster:ResetForTests() end
 stub.inGuild = true
-COB.Net.rosterLookup = function()
-  return function() return 0 end
-end
+COB.Roster.ready = false
+COB.UI:OnStatusChanged()
+assert_eq(Status.state, "roster_wait", "an unread roster is the one waiting state")
+assert_eq(Status:ChipText(), "Reading the guild roster…", "roster_wait chip copy")
+assert_eq(chip():GetText(), "Reading the guild roster…", "and it reaches the chip widget")
+assert_eq(chip():IsShown(), true, "chip visible while waiting")
+assert_eq(Status:IsConnecting(), true, "roster_wait is the connecting state")
 
-Sync.pendingRequest = "r1"
-Sync.requestSent = false
-Sync.sessionMergeCount = 0
-Sync.consumeEnded = false
-COB.UI:OnSyncStatusChanged()
-assert_eq(Status.state, "settling", "login settle is settling")
-assert_true(Status:ChipText():find("Starting Church", 1, true) ~= nil, "settling chip copy")
-assert_true(chip():GetText():find("Starting Church", 1, true) ~= nil, "settling text on chip")
-assert_eq(chip():IsShown(), true, "chip visible while settling")
-
-Sync.requestSent = true
-COB.UI:OnSyncStatusChanged()
-assert_eq(Status.state, "syncing", "sent request is syncing")
-assert_eq(Status:ChipText(), "Checking for peers…", "syncing chip copy")
-
-COB.Ladder:SetStanding("Beefina", 75)
-Sync.sessionMergeCount = 2
-COB.UI:OnSyncStatusChanged()
-assert_eq(Status.state, "synced", "useful merge is synced")
-assert_eq(Status:ChipText(), "Synced", "synced chip copy")
-COB.UI:ShowTab("ladder")
-COB.UI:MarkDirty("ladder")
-assert_eq(COB.LadderTab.empty:IsShown(), false, "sync success never blanks ladder into empty")
-assert_eq(COB.LadderTab.rows[6].occupants:GetText():find("Beefina", 1, true) ~= nil, true,
-  "cached occupants stay visible during sync success")
-
-stub.flushTimers()
-assert_eq(Status.state, "ready", "synced auto-advances to ready")
+Status:ResetForTests()
+if COB.Roster and COB.Roster.ResetForTests then COB.Roster:ResetForTests() end
+stub.guildRoster = { { name = "Beefina", rankIndex = 6 } }
+assert_true(COB.Roster:Refresh(), "Refresh succeeds when Church ids are nil")
+COB.UI:OnStatusChanged()
+assert_eq(Status.state, "ready", "a sensed roster leaves roster_wait")
 assert_eq(Status:ChipText(), "", "ready hides the chip")
+assert_eq(chip():IsShown(), false, "the widget hides after a real Refresh")
+assert_eq(COB.UI.frame.FooterText:GetText(), "", "ready footer stays empty")
 
--- Solo GM with a live roster: consume-end with no peer merge is ready (not no_peers).
 Status:ResetForTests()
-Sync.pendingRequest = nil
-Sync.requestSent = true
-Sync.sessionMergeCount = 0
-Sync.consumeEnded = true
-assert_true(#COB.Roster:GetLadderView() > 0, "roster still has occupants")
-COB.UI:OnSyncStatusChanged()
-assert_eq(Status.state, "ready", "roster occupants → ready even with no addon peers")
-assert_eq(Status:ChipText(), "", "ready hides the chip when roster fills the ladder")
-COB.UI:ShowTab("ladder")
-COB.UI:MarkDirty("ladder")
-assert_eq(COB.LadderTab.banner:IsShown(), false, "roster-filled ladder hides learning banner")
-
--- Ready roster with zero occupants + local standing → soft "local standing" chip.
-Status:ResetForTests()
-COB.Roster:ResetForTests()
+if COB.Roster and COB.Roster.ResetForTests then COB.Roster:ResetForTests() end
 COB.Roster.ready = true
-COB.Roster.members = {}
-stub.guildRoster = {}
-COB.Ladder:SetStanding("Beefina", 75)
-Sync.pendingRequest = nil
-Sync.requestSent = true
-Sync.sessionMergeCount = 0
-Sync.consumeEnded = true
-assert_true(#COB.Ladder:ExportState() > 0, "standing cache present for cached chip")
-COB.UI:OnSyncStatusChanged()
-assert_eq(Status.state, "cached", "timeout with standing cache and empty roster is cached")
-assert_true(Status:ChipText():find("local standing", 1, true) ~= nil, "cached chip copy")
+COB.Roster.complete = true
+COB.UI:OnStatusChanged()
+assert_eq(Status.state, "ready", "a read roster is ready")
+assert_eq(Status:ChipText(), "", "ready hides the chip")
+assert_eq(chip():IsShown(), false, "the widget hides too")
+assert_eq(Status:IsConnecting(), false, "ready is not connecting")
 
+COB.Net = COB.Net or {}
+COB.Net.warnedVersion = true
 Status:ResetForTests()
-Sync:ResetForTests()
-COB.Ladder:ResetForTests()
-COB.Roster:ResetForTests()
-COB.Roster.ready = true
-COB.Roster.members = {}
-stub.guildRoster = {}
-Sync.consumeEnded = true
-Sync.sessionMergeCount = 0
-COB.UI:OnSyncStatusChanged()
-assert_eq(Status.state, "no_peers", "timeout with empty cache and empty roster is no_peers")
-assert_eq(Status:ChipText(), "No addon peers", "no_peers chip copy")
-COB.UI:ShowTab("ladder")
-COB.UI:MarkDirty("ladder")
-assert_eq(COB.LadderTab.banner:IsShown(), true, "no_peers shows L1 learning banner")
-assert_true(COB.LadderTab.banner:GetText():find("guild roster", 1, true) ~= nil,
-  "roster-backed learning copy")
-assert_eq(COB.LadderTab.rows[1].frame:IsShown(), true, "empty shelves stay visible for no_peers")
+COB.UI:OnStatusChanged()
+assert_eq(Status.state, "ready", "a version mismatch does not block the shell")
+assert_eq(Status:ChipText(), "BeefNet version mismatch", "but it is said out loud")
+assert_true(Status:FormattedChip():find("|cffffaa00", 1, true) ~= nil,
+  "warnings are dual-encoded: words plus amber")
+COB.Net.warnedVersion = nil
 
 stub.inGuild = false
 Status:ResetForTests()
-COB.UI:OnSyncStatusChanged()
-assert_eq(Status.state, "unguilded", "not in guild is unguilded")
+COB.UI:OnStatusChanged()
+assert_eq(Status.state, "unguilded", "not in a guild is unguilded")
 assert_eq(Status:ChipText(), "Not in a guild", "unguilded chip copy")
-COB.UI:ShowTab("ladder")
-COB.UI:MarkDirty("ladder")
-assert_eq(COB.LadderTab.empty:IsShown(), true, "unguilded L1 empty body")
-assert_eq(COB.LadderTab.banner:IsShown(), false, "unguilded does not use no_peers banner")
 stub.inGuild = true
 
-local reqId = Sync:OnLogin()
-local sig = Sync:GetStatus()
-assert_eq(sig.pendingRequest, reqId, "GetStatus exposes pending request")
-assert_eq(sig.requestSent, false, "settle window has not sent yet")
-assert_eq(sig.mergeCount, 0, "merge count starts at zero")
-assert_eq(sig.consumeEnded, false, "consume has not ended")
+--------------------------------------------------------------------------------
+-- Roster events coalesce; RefreshLadder is a safe no-tab fan-out
+--------------------------------------------------------------------------------
+COB.UI:Show()
+assert_true(stub.fire(COB.UI.frame, "OnEvent", "GUILD_ROSTER_UPDATE"), "guild roster event handled")
 stub.flushTimers()
-sig = Sync:GetStatus()
-assert_eq(sig.requestSent, true, "after settle, requestSent is true")
+COB.UI:RefreshLadder()
+assert_eq(COB.UI:IsShown(), true, "RefreshLadder does not close the shell")
+assert_eq(COB.UI.frame.FooterText:GetText(), "", "coalesced paint never restores Eternal Grazing")
 
 restore()

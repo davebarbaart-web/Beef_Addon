@@ -1,0 +1,103 @@
+---
+description: Beef Gora is a Pope-sanctioned unmodified duel — petitions, favor, verdicts, no ratings
+globs:
+  - "**/Core/**/*.lua"
+  - "**/UI/**/*.lua"
+  - "**/Net/**/*.lua"
+alwaysApply: false
+---
+
+# Gora sanction (domain)
+
+Authority: Bible §10.1–10.10, Law 8. Audit V4 is the failure this rule exists to stop.
+
+## Non-negotiables
+
+- A Beef Gora **exists only after** the Pope verb **SANCTION BEEF GORA**. Until then it is a petition or a recommendation — not a Gora.
+- Combat is an **unmodified WoW duel** in the world. No addon combat, no rated matchmaking, no ELO/MMR/hidden rating, no combat analytics, no betting/wagering.
+- **Ban the demo Gora (Audit V4):** no typed self-report result, no member-typed win/loss/draw, no `GrantGora` / points faucet, no pair-pay cooldown as product, no “Gora” that is two people typing an outcome.
+- Software **proposes**; the Pope **ratifies**. Nothing auto-declares, auto-announces in the Pope’s voice, or generates flavor. Cards and HUD are mute. The software never narrates (§4.2, §4.4).
+- Congregation clients are input + display. Witnesses report; they do not rule. No peer self-reported authority over outcomes (Law 5).
+
+## Required loop (§10.1)
+
+**Petition → assisted matchmaking → SANCTION BEEF GORA → mute fighter cards → congregation favor → unmodified duel → Pope ratifies → records → possible elevation.**
+
+Do not skip sanction. Do not collapse this into challenge-and-type-a-result.
+
+## Petition hygiene (§10.2)
+
+- Petitions expire (freshness window; Bible default is **~the current event** — do not invent a TTL number).
+- Pool shows only petitioners who are **present and alive**.
+- Pope **one-tap dismisses**, consequence-free.
+- Dismissed petitioner gets a **soft re-petition cooldown** (duration unspecified — do not invent one).
+- A petition may **name a desired opponent**. The callout is official **only when the Pope announces it**, never when the software does.
+
+## Ruleset is the Pope (§10.3)
+
+- No standing rulebook, rules engine, picker, or stipulations database.
+- Optional **one-line stipulation** at sanction, recorded on the card if the Pope attaches it. Software remembers the decree; it does not offer a menu of rules.
+- Practice defaults (not a picker): come as you are; fight to the duel’s natural end; flee system message proposes **COWARDICE RECORDED**; interference/weirdness proposes **VOID**; disconnect — console suggests Void, rematch encouraged; rematches at the Pope’s pleasure.
+- Level gap **~2** is historical **guidance** the matchmaker may show; the Pope may waive it.
+
+## Matchmaking (§10.5)
+
+Recommend only: level proximity, freshness, head-to-head, named-challenge requests, class displayed plainly. **No odds copy. No ratings. No pairing score. No ranked suggestion list as authority. No auto-sanction of the next pair.** Level gap ~2 is guidance, not a hard filter. The Pope decides. Software never SANCTION BEEF GORA.
+
+## Sanction, mute cards, favor (§10.6)
+
+- **SANCTION BEEF GORA** is one Director Console action. After sanction, the Church recognizes the result.
+- **Mute cards** (tale of the tape): name, class/portrait, level, Church title, Gora record, defenses, relevant accolades, head-to-head line when they have history. Show; the Pope tells. No generated flavor, no auto-introductions.
+- **Favor** is pick-a-side only. Render a split bar. Always visible to the Pope; congregation display is a **per-event Pope toggle** (default on). No favor scores, streaks, accuracy records, economy, or wagering.
+
+## Fight HUD (§10.7) — Event Mode only
+
+- Only in **Event Mode**, only during a **sanctioned** fight. Quiet Mode: no HUD, no favor surface, no Gora feed.
+- Compact: both fighters — name, class color, level, title, record, defense count — head-to-head line, favor split beneath. Top-center default, movable. Appears at sanction; persists through the verdict beat; exits with the consequence.
+- Live health is Appendix A item 1. **Defined fallback:** render everything except live health. Do **not** invent a health hack, nameplate scrape, or combat-log HP estimator.
+
+## Adjudication verbs (§10.8)
+
+Duel system messages **propose**. The Pope ratifies with one action:
+
+| Verb | Use |
+|------|-----|
+| **DECLARE VICTOR** | Pope names the winner |
+| **COWARDICE RECORDED** | First-class flee outcome |
+| **VOID** | Interference / weirdness; one tap, no shame |
+| **Free ruling** | Any other Pope judgment (do not invent extra typed outcomes) |
+
+The record stores the **Pope’s ruling**, not the parser’s guess. Elevation, when earned, is its own beat — never auto.
+
+## Elevation — Lord milestone (§10.4)
+
+A **Beef Knight** who **wins a sanctioned Gora the Pope judges fair** has earned elevation. “Fair” is entirely the Pope’s judgment. Attainable milestone; elevation is a Pope ceremony.
+
+**Banned gates:** demotion, decay, mandatory defense, **beating a sitting Lord** (`goraLordWin` / sit-the-champ). **Defenses** is a Bible-named story field on the card and Records Book — not a title-defense schema, not a sit-the-champ gate, not a pairing score. Do not invent the increment rule (OPEN_QUESTIONS).
+
+## Records are stories (§10.9–10.10)
+
+- Character-level stories: wins/losses, **sanctioned-Gora W/L streaks only**, defenses, head-to-heads, notable victims, rulings received. Player profile aggregates; the **character** owns the Gora record (Law 7). Engagement, login, attendance, favor, and accuracy streaks remain banned.
+- No damage meters, duration stats, per-class win rates, or other analytics.
+- **Records Book** = parchment **superlatives**, never a ranked / sortable ladder. Bible MVP names: Most Sanctioned Victories, Longest Streak, Most Successful Defenses, The Iron Chin, Greatest Rivalry, **Famous Upsets (Pope-flagged — never computed)**, The Undefeated, The Glorious Martyr, Tournament Champions. Do not add a “#1 rating.”
+- Permanence: no seasons, resets, decay, or expiry of old Gora records.
+
+## Required Pope verbs (Gora)
+
+`SANCTION BEEF GORA` · `DECLARE VICTOR` · `COWARDICE RECORDED` · `VOID` · free ruling · elevation when the Pope judges it earned.
+
+## Do not rebuild
+
+```text
+❌ Challenge + typed RecordResult + Scoring:GrantGora
+❌ Member/officer self-report as the Gora
+❌ ELO / MMR / hidden rating / “fairness” score
+❌ Favor as a scored game
+❌ Auto-declare from duel chat
+❌ Invented outcome enums beyond the verbs above
+❌ HUD health workarounds
+❌ Invented petition TTL / cooldown numbers
+❌ Pairing score / auto-sanction / ranked matchmaking list
+❌ Computed Famous Upsets
+❌ Title-defense / sit-the-champ record schema
+```

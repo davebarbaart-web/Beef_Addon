@@ -1,12 +1,15 @@
 ChurchOfBeef = ChurchOfBeef or {}
 local COB = ChurchOfBeef
 
--- Thin Beef Gora ledger (spec §7.1). A challenge is a note that two members
--- agreed to fight; a recorded result is the testimony that pays them. Every
--- point leaves through Scoring:GrantGora, so the daily gora cap and the
--- "losses must pay" weighting stay in exactly one place.
+-- Sanctioned Gora: Petition → (Recommend) → Sanction → Propose → Pope ruling.
+-- Typed-result RecordResult, GrantGora, pair-pay cooldown, and goraLordWin stay
+-- excised (Audit V4). Leftover Challenge pair-key notes remain for the old suite.
+-- Combat is WoW's. Software proposes; the Pope ratifies. No ELO, no auto-elevate.
 local Gora = {
   pending = {},
+  petitions = {},
+  sanctioned = nil,
+  proposal = nil,
 }
 COB.Gora = Gora
 
@@ -15,38 +18,122 @@ COB.Gora = Gora
 local CHALLENGE_TTL = 1800
 local PENDING_MAX = 20
 
--- Outcome is stated from the winner's side, which is why the first name is the
--- winner: "loss" is deliberately not accepted, because silently swapping two
--- named parameters is how the wrong member ends up paid.
-local OUTCOMES = {
-  win = { winner = "win", loser = "loss" },
-  draw = { winner = "draw", loser = "draw" },
-}
-
 local function normalizeName(name)
-  if type(name) ~= "string" then return nil end
-  name = name:gsub("^%s+", ""):gsub("%s+$", "")
-  if name == "" then return nil end
-  return name
+  return COB.Names and COB.Names.Display(name) or nil
+end
+
+local function nameKey(name)
+  return COB.Names and COB.Names.Key(name) or nil
+end
+
+local function sameName(a, b)
+  return COB.Names and COB.Names.Same(a, b) or false
 end
 
 local function resolveTime(now)
-  if type(now) == "number" then return now end
-  if type(time) == "function" then return time() end
-  return 0
+  return COB.Clock and COB.Clock.Wall(now) or (type(now) == "number" and now or 0)
 end
 
 local function localName()
-  if type(UnitName) ~= "function" then return nil end
-  local name = UnitName("player")
-  if type(name) == "string" and name ~= "" then return name end
+  return COB.Group and COB.Group.PlayerName() or nil
+end
+
+local function isId(n)
+  return type(n) == "number" and n == math.floor(n) and n >= 1
+end
+
+local function deepcopy(value)
+  if type(value) ~= "table" then return value end
+  local out = {}
+  for k, v in pairs(value) do
+    out[deepcopy(k)] = deepcopy(v)
+  end
+  return out
+end
+
+local function trimLine(text)
+  if text == nil then return nil end
+  if type(text) ~= "string" then return nil, "stipulation must be a line" end
+  if COB.Names and COB.Names.Trim then return COB.Names.Trim(text) end
+  text = text:gsub("^%s+", ""):gsub("%s+$", "")
+  if text == "" then return nil end
+  return text
+end
+
+local function liveEventId()
+  if not COB.Runtime or not COB.Runtime.Snapshot then return nil end
+  local snap = COB.Runtime:Snapshot()
+  if type(snap) ~= "table" or snap.state == "QUIET" then return nil end
+  if not isId(snap.eventId) then return nil end
+  return snap.eventId
+end
+
+local function knownCharacter(id)
+  if not isId(id) then return false end
+  if COB.Store and COB.Store.GetCharacter then
+    return COB.Store:GetCharacter(id) ~= nil
+  end
+  return true
+end
+
+local function copyPetition(entry)
+  local out = { characterId = entry.characterId }
+  if entry.namedOpponentId ~= nil then
+    out.namedOpponentId = entry.namedOpponentId
+  end
+  return out
+end
+
+local function copySanctioned(row)
+  if not row then return nil end
+  return {
+    fighterA = row.fighterA,
+    fighterB = row.fighterB,
+    stipulation = row.stipulation,
+  }
+end
+
+local function samePair(row, a, b)
+  if not row then return false end
+  return (row.fighterA == a and row.fighterB == b)
+    or (row.fighterA == b and row.fighterB == a)
+end
+
+local function otherFighter(row, id)
+  if not row then return nil end
+  if row.fighterA == id then return row.fighterB end
+  if row.fighterB == id then return row.fighterA end
   return nil
 end
 
--- One duel per pair regardless of who called it out, so recording the result
--- clears the challenge whichever combatant reports it.
+function Gora:_Expire()
+  local eventId = liveEventId()
+  if not eventId then
+    self.petitions = {}
+    self.sanctioned = nil
+    self.proposal = nil
+    return
+  end
+  local drop = nil
+  for id, entry in pairs(self.petitions) do
+    if entry.eventId ~= eventId then
+      drop = drop or {}
+      drop[#drop + 1] = id
+    end
+  end
+  if drop then
+    for i = 1, #drop do self.petitions[drop[i]] = nil end
+  end
+  if self.sanctioned and self.sanctioned.eventId ~= eventId then
+    self.sanctioned = nil
+    self.proposal = nil
+  end
+end
+
+-- One note per pair regardless of who called it out.
 local function pairKey(a, b)
-  local x, y = a:lower(), b:lower()
+  local x, y = nameKey(a), nameKey(b)
+  if not x or not y then return nil end
   if x > y then x, y = y, x end
   return x .. "\0" .. y
 end
@@ -79,14 +166,15 @@ end
 function Gora:Challenge(target, challenger, now)
   local them = normalizeName(target)
   if not them then return nil, "name someone to challenge" end
-  local me = normalizeName(challenger) or localName()
+  local me = normalizeName(challenger) or normalizeName(localName())
   if not me then return nil, "your character name is not known yet" end
-  if me:lower() == them:lower() then return nil, "a Gora needs two different combatants" end
+  if sameName(me, them) then return nil, "a Gora needs two different combatants" end
 
   local at = resolveTime(now)
   self:_Prune(at)
 
   local key = pairKey(me, them)
+  if not key then return nil, "a Gora needs two different combatants" end
   if not self.pending[key] and countPending(self.pending) >= PENDING_MAX then
     return nil, "too many challenges are already open"
   end
@@ -97,18 +185,18 @@ end
 
 function Gora:Cancel(target, challenger)
   local them = normalizeName(target)
-  local me = normalizeName(challenger) or localName()
+  local me = normalizeName(challenger) or normalizeName(localName())
   if not them or not me then return false end
   local key = pairKey(me, them)
-  if not self.pending[key] then return false end
+  if not key or not self.pending[key] then return false end
   self.pending[key] = nil
   return true
 end
 
 function Gora:IsChallenged(a, b)
-  local x, y = normalizeName(a), normalizeName(b)
-  if not x or not y then return false end
-  return self.pending[pairKey(x, y)] ~= nil
+  local key = pairKey(a, b)
+  if not key then return false end
+  return self.pending[key] ~= nil
 end
 
 -- Copies, oldest first: the caller gets a list it can sort or mutate freely.
@@ -124,69 +212,198 @@ function Gora:GetPending(now)
   return out
 end
 
--- outcome is "win" (the default) or "draw". A prior Challenge is not required:
--- duels happen faster than anyone remembers to press a button, and refusing
--- unchallenged results would just teach members to stop recording them.
-function Gora:RecordResult(winner, loser, outcome, now)
-  local a = normalizeName(winner)
-  if not a then return nil, "name the winner" end
-  local b = normalizeName(loser)
-  if not b then return nil, "name the loser" end
-  if a:lower() == b:lower() then return nil, "a Gora needs two different combatants" end
-
-  if outcome == nil then outcome = "win" end
-  if type(outcome) ~= "string" then return nil, "outcome must be win or draw" end
-  local grants = OUTCOMES[outcome:lower()]
-  if not grants then
-    return nil, "outcome must be win or draw; record a loss by naming the winner first"
+function Gora:Petition(characterId, namedOpponentId)
+  self:_Expire()
+  local eventId = liveEventId()
+  if not eventId then return nil, "no event" end
+  if not isId(characterId) then return nil, "invalid character id" end
+  if not knownCharacter(characterId) then return nil, "unknown character" end
+  if namedOpponentId ~= nil then
+    if not isId(namedOpponentId) then return nil, "opponent must be a character id" end
+    if namedOpponentId == characterId then
+      return nil, "a Gora needs two different combatants"
+    end
+    if not knownCharacter(namedOpponentId) then return nil, "unknown opponent" end
   end
+  local entry = { characterId = characterId, eventId = eventId }
+  if namedOpponentId ~= nil then entry.namedOpponentId = namedOpponentId end
+  self.petitions[characterId] = entry
+  return copyPetition(entry)
+end
 
-  local scoring = COB.Scoring
-  if not (scoring and scoring.GrantGora) then return nil, "scoring unavailable" end
+function Gora:Dismiss(characterId)
+  self:_Expire()
+  if not isId(characterId) or not self.petitions[characterId] then return false end
+  self.petitions[characterId] = nil
+  return true
+end
 
-  -- Losses pay, and the loser's grant is independent of the winner's: a winner
-  -- who has spent their daily gora cap must not silently cost the loser their
-  -- participation points.
-  local winnerPoints = scoring:GrantGora(a, grants.winner, now) or 0
-  local loserPoints = scoring:GrantGora(b, grants.loser, now) or 0
+function Gora:GetPetitions(presentAndAlive)
+  self:_Expire()
+  local out = {}
+  if type(presentAndAlive) ~= "table" then return out end
+  for id, entry in pairs(self.petitions) do
+    if presentAndAlive[id] == true then
+      out[#out + 1] = copyPetition(entry)
+    end
+  end
+  table.sort(out, function(a, b)
+    return a.characterId < b.characterId
+  end)
+  return out
+end
 
-  local at = resolveTime(now)
-  local key = pairKey(a, b)
-  local challenged = self.pending[key] ~= nil
-  self.pending[key] = nil
-
-  -- Advisory Lord rite: beating a roster-mapped Beef Lord (rank id 4) on a win.
-  local outcomeKey = outcome:lower()
-  local lordRite = false
-  if outcomeKey == "win" then
-    local roster = COB.Roster
-    if roster and roster.GetChurchRankId and roster:IsReady() then
-      local loserRank = roster:GetChurchRankId(b)
-      if loserRank == 4 then
-        local ladder = COB.Ladder
-        if ladder and ladder.SetRiteFlag then
-          ladder:SetRiteFlag(a, "goraLordWin", true)
+function Gora:Recommend(fighterA, fighterB)
+  self:_Expire()
+  if not isId(fighterA) or not isId(fighterB) or fighterA == fighterB then
+    return nil, "a Gora needs two different combatants"
+  end
+  local out = { namedOpponent = false }
+  local pa = self.petitions[fighterA]
+  local pb = self.petitions[fighterB]
+  if pa and pa.namedOpponentId == fighterB then out.namedOpponent = true end
+  if pb and pb.namedOpponentId == fighterA then out.namedOpponent = true end
+  if COB.Store and COB.Store.GetCharacter then
+    local ca = COB.Store:GetCharacter(fighterA)
+    local cb = COB.Store:GetCharacter(fighterB)
+    if ca then out.levelA = ca.level end
+    if cb then out.levelB = cb.level end
+    if ca and ca.gora and type(ca.gora.headToHeads) == "table" then
+      for i = 1, #ca.gora.headToHeads do
+        local row = ca.gora.headToHeads[i]
+        if row.opponentId == fighterB then
+          out.headToHead = deepcopy(row)
+          break
         end
-        lordRite = true
       end
     end
   end
+  return out
+end
 
-  return {
-    winner = a,
-    loser = b,
-    outcome = outcomeKey,
-    winnerPoints = winnerPoints,
-    loserPoints = loserPoints,
-    challenged = challenged,
-    at = at,
-    lordRite = lordRite,
+function Gora:Sanction(fighterA, fighterB, stipulation)
+  self:_Expire()
+  local eventId = liveEventId()
+  if not eventId then return nil, "no event" end
+  if not isId(fighterA) or not isId(fighterB) or fighterA == fighterB then
+    return nil, "a Gora needs two different combatants"
+  end
+  if not knownCharacter(fighterA) or not knownCharacter(fighterB) then
+    return nil, "unknown character"
+  end
+  local line, lineErr = trimLine(stipulation)
+  if lineErr then return nil, lineErr end
+  if self.sanctioned and not samePair(self.sanctioned, fighterA, fighterB) then
+    return nil, "a Gora is already sanctioned"
+  end
+  self.sanctioned = {
+    fighterA = fighterA,
+    fighterB = fighterB,
+    stipulation = line,
+    eventId = eventId,
   }
+  return copySanctioned(self.sanctioned)
+end
+
+function Gora:GetSanctioned()
+  self:_Expire()
+  return copySanctioned(self.sanctioned)
+end
+
+function Gora:Propose(proposal)
+  self:_Expire()
+  if proposal == nil then return nil, "proposal required" end
+  if not self.sanctioned then return nil, "no sanctioned gora" end
+  if type(proposal) == "table" then
+    self.proposal = deepcopy(proposal)
+    return deepcopy(self.proposal)
+  end
+  self.proposal = proposal
+  return self.proposal
+end
+
+function Gora:GetProposal()
+  self:_Expire()
+  if self.proposal == nil then return nil end
+  if type(self.proposal) == "table" then return deepcopy(self.proposal) end
+  return self.proposal
+end
+
+local function writeBoth(idA, idB, ruling, wonA, wonB)
+  if not COB.Store or not COB.Store.RecordGoraResult then
+    return nil, "no store"
+  end
+  local fieldsA = { opponentId = idB, ruling = ruling }
+  local fieldsB = { opponentId = idA, ruling = ruling }
+  if ruling ~= "void" then
+    fieldsA.won = wonA
+    fieldsB.won = wonB
+  end
+  local ra, ea = COB.Store:RecordGoraResult(idA, fieldsA)
+  if not ra then return nil, ea end
+  local rb, eb = COB.Store:RecordGoraResult(idB, fieldsB)
+  if not rb then return nil, eb end
+  return true
+end
+
+local function clearLive(self)
+  self.sanctioned = nil
+  self.proposal = nil
+end
+
+function Gora:DeclareVictor(winnerId)
+  self:_Expire()
+  if not self.sanctioned then return nil, "no sanctioned gora" end
+  local loserId = otherFighter(self.sanctioned, winnerId)
+  if not loserId then return nil, "winner is not a fighter" end
+  local ok, err = writeBoth(winnerId, loserId, "victor", true, false)
+  if not ok then return nil, err end
+  clearLive(self)
+  return { ruling = "victor", winnerId = winnerId }
+end
+
+function Gora:CowardiceRecorded(fleerId)
+  self:_Expire()
+  if not self.sanctioned then return nil, "no sanctioned gora" end
+  local otherId = otherFighter(self.sanctioned, fleerId)
+  if not otherId then return nil, "fleer is not a fighter" end
+  local ok, err = writeBoth(fleerId, otherId, "cowardice", false, true)
+  if not ok then return nil, err end
+  clearLive(self)
+  return { ruling = "cowardice", fleerId = fleerId }
+end
+
+function Gora:Void()
+  self:_Expire()
+  if not self.sanctioned then return nil, "no sanctioned gora" end
+  local a, b = self.sanctioned.fighterA, self.sanctioned.fighterB
+  local ok, err = writeBoth(a, b, "void")
+  if not ok then return nil, err end
+  clearLive(self)
+  return { ruling = "void" }
+end
+
+function Gora:FreeRuling(text)
+  self:_Expire()
+  if not self.sanctioned then return nil, "no sanctioned gora" end
+  local line
+  if text ~= nil then
+    if type(text) ~= "string" then return nil, "ruling text must be a string" end
+    line = trimLine(text)
+  end
+  local a, b = self.sanctioned.fighterA, self.sanctioned.fighterB
+  local ok, err = writeBoth(a, b, "free", false, false)
+  if not ok then return nil, err end
+  clearLive(self)
+  return { ruling = "free", text = line }
 end
 
 -- Test-only, matching the rest of Core: never clear live state in game.
 function Gora:ResetForTests()
   if not COB._IN_TEST then return false end
   self.pending = {}
+  self.petitions = {}
+  self.sanctioned = nil
+  self.proposal = nil
   return true
 end

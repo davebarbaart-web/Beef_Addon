@@ -12,7 +12,7 @@ alwaysApply: false
 
 - UI closed → effectively idle (events only)
 - No permanent `OnUpdate` for business logic
-- In combat: no full ladder rebuild storms
+- In combat: no full-list rebuild storms
 - Prefer ≪ 1 MB SavedVariables
 
 ## Budget
@@ -30,26 +30,25 @@ Bar: invisible next to WA/Details/nameplates.
 
 | Do | Don’t |
 |----|-------|
-| Event-driven scoring + roster | Per-frame proximity / combat scans |
-| Dirty-flag UI; refresh ≤10 Hz when open | Rebuild full ladder per BeefNet message |
-| Cap/rotate local event logs in SV | Unbounded SavedVariables growth |
-| Cache roster lookups | Full guild rescan every suggestion |
-| `C_Timer` / throttled ticks for buckets | Permanent `OnUpdate` for scoring/net |
+| Event-driven roster / Core apply | Per-frame proximity / combat scans |
+| Dirty-flag UI; refresh ≤10 Hz when open | Rebuild full lists per BeefNet message |
+| Cap **lossy UI caches** only | Delete or expire Church records (Law 7) |
+| Cache roster lookups | Full guild rescan every refresh |
+| `C_Timer` when a one-shot delay is required | Permanent `OnUpdate` for net or Core |
 
 ```lua
 -- ✅ GOOD — disable when idle
 frame:SetScript("OnUpdate", nil)
 
--- ❌ BAD — scoring or net parse every frame
-frame:SetScript("OnUpdate", function(_, elapsed) COB.Scoring:Tick(elapsed) end)
+-- ❌ BAD — net parse or Core mutate every frame
+frame:SetScript("OnUpdate", function(_, elapsed) end)
 ```
 
 ## Cross-cutting throttle
 
-- BeefNet: CTL pacing; sync reply suppression (`beefnet-messaging.mdc`)
-- Guild announce: one officer-origin line per promotion
-- Instance drip: events + **low-rate** ticker; anti-AFK requires combat in the bucket
+- BeefNet: CTL pacing; inbound rate limits; reply suppression — see ceremony-runtime / BeefNet keepers (not archived `beefnet-messaging.mdc`)
+- No permanent tickers for business logic
 
 ## SV size
 
-Cache official ladder + revisions; treat My Standing logs as lossy/capped.
+Prefer ≪ 1 MB. Church records are never deleted. Cap lossy UI caches only — not the store, Chronicle, or Gora records.
