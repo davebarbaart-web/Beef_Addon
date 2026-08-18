@@ -18,3 +18,5 @@ docs/research/**/_deep-*.json
 docs/research/**/_deep-*.md
 docs/research/**/_extract-*.json
 docs/research/**/_wave-*.md
+.DS_Store
+_to_delete/
