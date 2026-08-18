@@ -1,0 +1,259 @@
+# B39-A — OpenRite Gora does not reopen the last pair (implementation diff)
+
+Lane-only unified diff of the exclusive implementation files vs the pre-lane working tree.
+
+--- a/addon/ChurchOfBeef/UI/Console.lua
++++ b/addon/ChurchOfBeef/UI/Console.lua
+@@ -66,7 +66,8 @@
+ -- Refresh / Hide remount rememberSpecial when the frame already exists. No
+ -- panel whoosh on show / hide / ESC. Do not register scroll children.
+ -- No permanent OnUpdate. Open Gora subjects use the selected pair when both
+--- ids are set, else Gora:GetSanctioned() then Gora:GetLastSanctioned().
++-- ids are set, else live Gora:GetSanctioned() only. Does not fall back to
++-- GetLastSanctioned (leftover last pair is persist, not the next rite).
+ -- Open Knighting subjects use selectedHumanId, else the head of
+ -- Knighting:GetLine() when that humanId is an id. Scrollable Presence /
+ -- Gora / Confession / Line / CeremonyLog lists, click-to-select. Presence
+@@ -1536,12 +1537,6 @@
+       if Gora and type(Gora.GetSanctioned) == "function" then
+         pair = Gora:GetSanctioned()
+       end
+-      if type(pair) ~= "table" or not isId(pair.fighterA) or not isId(pair.fighterB) then
+-        pair = nil
+-        if Gora and type(Gora.GetLastSanctioned) == "function" then
+-          pair = Gora:GetLastSanctioned()
+-        end
+-      end
+       if type(pair) == "table" then
+         a = pair.fighterA
+         b = pair.fighterB
+
+--- a/tests/test_console.lua
++++ b/tests/test_console.lua
+@@ -26,7 +26,8 @@
+ -- Presence hide SetAlpha(1) + B36-B
+ -- successful EndEvent nils selectedHumanId / selectedCharacterId + B37-A
+ -- successful Dismiss nils selectedCharacterId + B38-A
+--- successful Dismiss of a pair member nils the pair and lastRecommendation).
++-- successful Dismiss of a pair member nils the pair and lastRecommendation
++-- + B39-A OpenRite Gora does not fall back to GetLastSanctioned).
+ -- Isolated: wow_ui_stub + Common + Ranks + Runtime + Store + Gora + Knighting
+ -- + Sender + Decree + Console. Confession is stubbed when painted; this file
+ -- does not load Confession.lua. Knighting GetLine/Enqueue/Skip are stubbed
+@@ -2513,12 +2514,17 @@
+ assert_true(Console:StartEvent() ~= nil, "StartEvent for last-pair fallback")
+ assert_true(Console:Sanction(lastOnlyA.id, lastOnlyB.id) ~= nil, "Sanction last-only pair")
+ assert_true(Console:Void() ~= nil, "VOID leaves last pair only")
+-assert_eq(Gora:GetSanctioned(), nil, "no live pair for last-only fallback")
+-local openedLast = Console:OpenRite("Gora")
+-assert_true(openedLast ~= nil, "OpenRite Gora falls back to GetLastSanctioned")
++assert_eq(Gora:GetSanctioned(), nil, "no live pair after VOID")
++assert_eq(Gora:GetLastSanctioned().fighterA, lastOnlyA.id, "last pair leftover is A")
++assert_eq(Gora:GetLastSanctioned().fighterB, lastOnlyB.id, "last pair leftover is B")
++local openedLast = Console:OpenRite("Gora")
++assert_true(openedLast ~= nil, "OpenRite Gora still opens without a desk pair")
+ local lastFighters = openedLast and openedLast.subjects and openedLast.subjects.fighters
+-assert_eq(lastFighters and lastFighters[1], lastOnlyA.id, "last-pair fallback A")
+-assert_eq(lastFighters and lastFighters[2], lastOnlyB.id, "last-pair fallback B")
++assert_eq(lastFighters, nil, "OpenRite Gora does not attach leftover last fighters")
++assert_eq((lastFighters and lastFighters[1]) == lastOnlyA.id, false,
++  "last pair A is not a Runtime subject")
++assert_eq((lastFighters and lastFighters[2]) == lastOnlyB.id, false,
++  "last pair B is not a Runtime subject")
+ 
+ Sender.IsRegisteredPope = savedPred
+ assert_eq(Sender:IsRegisteredPope(COB.Group.PlayerName()), false,
+@@ -5600,7 +5606,193 @@
+ assert_eq(COB.Popes, nil, "still no Pope list after B38-A")
+ end
+ runB38A()
++
++--------------------------------------------------------------------------------
++-- B39-A: OpenRite Gora does not fall back to GetLastSanctioned.
++-- Live GetSanctioned fallback stays. Selected pair still wins.
++-- Sanction A/B, rule, Continue; OpenRite without a desk pair does
++-- not put leftover last fighters on Runtime subjects.
++-- Knighting OpenRite unchanged. End / Start / Dismiss keeps stay.
++-- SaveNote nil. No SUMMON. Nested inside runB8E after runB38A().
++--------------------------------------------------------------------------------
++local function runB39A()
++reset()
++Console:Init()
++assert_eq(Console.SaveNote, nil, "SaveNote stays nil")
++assert_eq(Console.GetNotes, nil, "no notes table")
++assert_eq(Console.CopyCeremonySummary, nil, "no post-show ceremony summary")
++assert_eq(Console.CeremonySummary, nil, "no ceremony summary")
++assert_eq(findButton(frame, "SUMMON THE FAITHFUL"), nil, "no SUMMON chrome")
++assert_eq(findButton(frame, "COPY SUMMARY"), nil, "no ceremony-summary chrome")
++assert_eq(findButton(frame, "WHISPER ALL"), nil, "no WHISPER ALL chrome")
++assert_eq(findButton(frame, "RSVP"), nil, "no RSVP chrome")
++assert_eq(type(Console.OpenRite), "function", "OpenRite stays a console verb")
++assert_eq(type(Console.Continue), "function", "Continue stays a console verb")
++assert_eq(type(Console.Dismiss), "function", "Dismiss keep stays")
++
++local srcOpen = io.open("addon/ChurchOfBeef/UI/Console.lua", "r")
++assert_true(srcOpen ~= nil, "Console.lua is readable for B39-A")
++local srcOpenBody = srcOpen:read("*a")
++srcOpen:close()
++local openFn = srcOpenBody:match("function Console:OpenRite%(kind%)(.-)\nfunction Console:CloseRite")
++assert_true(type(openFn) == "string" and openFn ~= "",
++  "OpenRite body is readable")
++assert_true(openFn:find("selectedFighterA", 1, true) ~= nil,
++  "selected fighter A still wins")
++assert_true(openFn:find("selectedFighterB", 1, true) ~= nil,
++  "selected fighter B still wins")
++assert_true(openFn:find("GetSanctioned", 1, true) ~= nil,
++  "live GetSanctioned fallback stays")
++assert_eq(openFn:find("GetLastSanctioned", 1, true), nil,
++  "OpenRite Gora does not fall back to GetLastSanctioned")
++assert_true(openFn:find('kind == "Knighting"', 1, true) ~= nil,
++  "Knighting OpenRite stays")
++assert_true(openFn:find("GetLine", 1, true) ~= nil,
++  "Knighting OpenRite still falls back to GetLine")
++assert_true(openFn:find("selectedHumanId", 1, true) ~= nil,
++  "Knighting OpenRite still prefers selectedHumanId")
++assert_eq(srcOpenBody:find("function Console:SaveNote", 1, true), nil,
++  "source must not define SaveNote")
++assert_eq(srcOpenBody:find("SUMMON THE FAITHFUL", 1, true), nil,
++  "source must not contain SUMMON")
++assert_eq(srcOpenBody:find("Parchment", 1, true), nil, "console stays stock, not parchment")
++assert_eq(srcOpenBody:find("PanelTabButtonTemplate", 1, true), nil,
++  "desks are not collapsed into tabs")
++local startFn = srcOpenBody:match("function Console:StartEvent%(%)(.-)\nfunction Console:OpenRite")
++assert_true(type(startFn) == "string" and startFn ~= "",
++  "StartEvent body is readable")
++assert_eq(startFn:find("selectedCharacterId", 1, true), nil,
++  "StartEvent keep stays — does not nil selectedCharacterId")
++assert_eq(startFn:find("selectedHumanId", 1, true), nil,
++  "StartEvent keep stays — does not nil selectedHumanId")
++assert_true(srcOpenBody:find("local result, err = COB.Runtime:StartEvent()\n  if result ~= nil then\n    lastRecommendation = nil\n    self.selectedFighterA = nil\n    self.selectedFighterB = nil\n  end\n  return after(self, result, err)", 1, true) ~= nil,
++  "StartEvent keep stays — still nils only lastRecommendation and the pair")
++local endFn = srcOpenBody:match("function Console:EndEvent%(%)(.-)\nfunction Console:KnightThisBeef")
++assert_true(type(endFn) == "string" and endFn ~= "",
++  "EndEvent body is readable")
++assert_true(endFn:find("self.selectedCharacterId = nil", 1, true) ~= nil,
++  "EndEvent keep stays — still nils selectedCharacterId")
++assert_true(endFn:find("self.selectedHumanId = nil", 1, true) ~= nil,
++  "EndEvent keep stays — still nils selectedHumanId")
++local dismissFn = srcOpenBody:match("function Console:Dismiss%(characterId%)(.-)\nfunction Console:DeclareVictor")
++assert_true(type(dismissFn) == "string" and dismissFn ~= "",
++  "Dismiss body is readable")
++assert_true(dismissFn:find("if ok then\n    self.selectedCharacterId = nil\n    if isId(id) and (id == self.selectedFighterA or id == self.selectedFighterB) then\n      lastRecommendation = nil\n      self.selectedFighterA = nil\n      self.selectedFighterB = nil\n    end\n    self:Refresh()\n  end", 1, true) ~= nil,
++  "Dismiss keep stays — successful Dismiss still nils the pair when the id is in it")
++assert_eq(dismissFn:find("selectedHumanId = nil", 1, true), nil,
++  "Dismiss keep stays — does not nil selectedHumanId")
++
++local savedPred = Sender.IsRegisteredPope
++Sender.IsRegisteredPope = function() return true end
++
++reset()
++Console:Init()
++local liveA = Store:CreateCharacter({ name = "LiveA", class = "Warrior", level = 70 })
++local liveB = Store:CreateCharacter({ name = "LiveB", class = "Mage", level = 68 })
++assert_eq(Console.selectedFighterA, nil, "live fallback has no selected A")
++assert_eq(Console.selectedFighterB, nil, "live fallback has no selected B")
++assert_true(Console:StartEvent() ~= nil, "StartEvent for live sanctioned fallback")
++assert_true(Console:Sanction(liveA.id, liveB.id) ~= nil, "Sanction live pair")
++assert_eq(Gora:GetSanctioned().fighterA, liveA.id, "live pair is A")
++assert_eq(Gora:GetSanctioned().fighterB, liveB.id, "live pair is B")
++local openedLive = Console:OpenRite("Gora")
++assert_true(openedLive ~= nil, "OpenRite Gora reaches Runtime from the live pair")
++assert_eq(openedLive.state, "RITE", "OpenRite opens a typed rite")
++assert_eq(openedLive.riteType, "Gora", "rite type is Gora")
++local liveFighters = openedLive.subjects and openedLive.subjects.fighters
++assert_eq(liveFighters and liveFighters[1], liveA.id, "Runtime subject A is the live pair")
++assert_eq(liveFighters and liveFighters[2], liveB.id, "Runtime subject B is the live pair")
++
++reset()
++Console:Init()
++local lastA = Store:CreateCharacter({ name = "LastA", class = "Warrior", level = 70 })
++local lastB = Store:CreateCharacter({ name = "LastB", class = "Mage", level = 68 })
++local selA = Store:CreateCharacter({ name = "SelA", class = "Rogue", level = 70 })
++local selB = Store:CreateCharacter({ name = "SelB", class = "Priest", level = 69 })
++assert_true(Console:StartEvent() ~= nil, "StartEvent for selected-wins")
++assert_true(Console:Sanction(lastA.id, lastB.id) ~= nil, "Sanction last pair")
++assert_true(Console:Void() ~= nil, "VOID clears the live pair")
++assert_eq(Gora:GetSanctioned(), nil, "live pair is gone after VOID")
++assert_eq(Gora:GetLastSanctioned().fighterA, lastA.id, "last pair is A")
++assert_eq(Gora:GetLastSanctioned().fighterB, lastB.id, "last pair is B")
++Console:SelectFighters(selA.id, selB.id)
++assert_eq(Console.selectedFighterA, selA.id, "selected A is set")
++assert_eq(Console.selectedFighterB, selB.id, "selected B is set")
++local openedSel = Console:OpenRite("Gora")
++assert_true(openedSel ~= nil, "OpenRite Gora reaches Runtime from the selected pair")
++local selFighters = openedSel and openedSel.subjects and openedSel.subjects.fighters
++assert_eq(selFighters and selFighters[1], selA.id, "selected pair still wins")
++assert_eq(selFighters and selFighters[2], selB.id, "selected pair B still wins")
++assert_eq(selFighters and selFighters[1] == lastA.id, false, "last pair A does not win")
++assert_eq(selFighters and selFighters[2] == lastB.id, false, "last pair B does not win")
++
++reset()
++Console:Init()
++local boutA = Store:CreateCharacter({ name = "BoutA", class = "Warrior", level = 70 })
++local boutB = Store:CreateCharacter({ name = "BoutB", class = "Mage", level = 68 })
++assert_eq(Console.selectedFighterA, nil, "leftover sequence has no selected A")
++assert_eq(Console.selectedFighterB, nil, "leftover sequence has no selected B")
++assert_true(Console:StartEvent() ~= nil, "StartEvent for leftover last pair")
++assert_true(Console:Sanction(boutA.id, boutB.id) ~= nil, "Sanction leftover pair")
++assert_true(Console:OpenRite("Gora") ~= nil, "OpenRite Gora from the live pair")
++assert_true(Console:CloseRite() ~= nil, "CloseRite reaches CONSEQUENCE")
++assert_true(Console:Void() ~= nil, "rule clears the live pair")
++assert_true(Console:Continue() ~= nil, "Continue returns to ASSEMBLY")
++assert_eq(Runtime:Snapshot().state, "ASSEMBLY", "machine is ASSEMBLY after Continue")
++assert_eq(Gora:GetSanctioned(), nil, "no live pair after the ruling")
++assert_eq(Gora:GetLastSanctioned().fighterA, boutA.id, "last pair leftover is A")
++assert_eq(Gora:GetLastSanctioned().fighterB, boutB.id, "last pair leftover is B")
++assert_eq(Console.selectedFighterA, nil, "desk pair stays empty after Continue")
++assert_eq(Console.selectedFighterB, nil, "desk pair B stays empty after Continue")
++local leftoverA
++local leftoverB
++local leftoverKind
++local realOpen = Runtime.OpenRite
++Runtime.OpenRite = function(self, kind, subjects)
++  leftoverKind = kind
++  leftoverA = subjects and subjects.fighters and subjects.fighters[1]
++  leftoverB = subjects and subjects.fighters and subjects.fighters[2]
++  return realOpen(self, kind, subjects)
+ end
++local openedAgain = Console:OpenRite("Gora")
++Runtime.OpenRite = realOpen
++assert_true(openedAgain ~= nil, "OpenRite Gora still opens after Continue")
++assert_eq(leftoverKind, "Gora", "second OpenRite is Gora")
++assert_eq(leftoverA, nil, "OpenRite does not pass leftover last A")
++assert_eq(leftoverB, nil, "OpenRite does not pass leftover last B")
++local againFighters = openedAgain and openedAgain.subjects and openedAgain.subjects.fighters
++assert_eq(againFighters, nil, "Runtime subjects have no leftover last fighters")
++assert_eq((againFighters and againFighters[1]) == boutA.id, false,
++  "leftover last A is not a Runtime subject")
++assert_eq((againFighters and againFighters[2]) == boutB.id, false,
++  "leftover last B is not a Runtime subject")
++
++reset()
++Console:Init()
++local lineHead = seedHuman("LineHead39", 1)
++assert_eq(Console.selectedHumanId, nil, "no selected human")
++assert_true(Console:StartEvent() ~= nil, "StartEvent for Knighting keep")
++assert_true(Console:Enqueue(lineHead.id) ~= nil, "Enqueue reaches Knighting")
++local openedLine = Console:OpenRite("Knighting")
++assert_true(openedLine ~= nil, "OpenRite Knighting still reaches Runtime from the line head")
++assert_eq(openedLine.subjects and openedLine.subjects.candidate, lineHead.id,
++  "Knighting OpenRite still uses the line head")
++
++Sender.IsRegisteredPope = savedPred
++assert_eq(Sender:IsRegisteredPope(COB.Group.PlayerName()), false,
++  "B39-A wrapping the predicate does not stub the list true")
++
++assert_eq(Console.SaveNote, nil, "SaveNote stays nil after B39-A")
++if standalone then
++  assert_eq(COB.Archive, nil, "isolation still does not load Archive")
++  assert_eq(COB.UI, nil, "isolation still does not load the Quiet shell")
++  assert_eq(COB.Toasts, nil, "isolation still does not load Toasts")
++  assert_eq(COB.Confession, nil, "isolation still does not load Confession")
++end
++assert_eq(COB.Popes, nil, "still no Pope list after B39-A")
++end
++runB39A()
++end
+ runB8E()
+ 
+ --------------------------------------------------------------------------------

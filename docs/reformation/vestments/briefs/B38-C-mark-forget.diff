@@ -1,0 +1,192 @@
+diff --git a/addon/ChurchOfBeef/UI/Markers.lua b/addon/ChurchOfBeef/UI/Markers.lua
+--- a/addon/ChurchOfBeef/UI/Markers.lua
++++ b/addon/ChurchOfBeef/UI/Markers.lua
+@@ -325,6 +325,38 @@
+   })
+ end
+ 
++function Markers:Forget()
++  if not isLocalPope() then
++    return refuse("Forget", "not a registered pope")
++  end
++  local seen = {}
++  local leftover = false
++  local applied = true
++  local function sweep(unit)
++    if type(unit) ~= "string" or unit == "" then
++      return
++    end
++    leftover = true
++    if seen[unit] then
++      return
++    end
++    seen[unit] = true
++    if not applyMark(unit, 0) then
++      applied = false
++    end
++  end
++  sweep(last.unit)
++  sweep(last.unitA)
++  sweep(last.unitB)
++  if leftover and not applied then
++    return refuse("Forget", nil)
++  end
++  return remember({
++    verb = "Forget",
++    ok = true,
++  })
++end
++
+ function Markers:GetView()
+   return deepcopy(last)
+ end
+
+diff --git a/tests/test_markers.lua b/tests/test_markers.lua
+--- a/tests/test_markers.lua
++++ b/tests/test_markers.lua
+@@ -139,6 +139,7 @@
+ assert_eq(type(Markers.MarkCandidate), "function", "MarkCandidate places star")
+ assert_eq(type(Markers.MarkFighters), "function", "MarkFighters places 2 and 3")
+ assert_eq(type(Markers.Clear), "function", "Clear removes a mark")
++assert_eq(type(Markers.Forget), "function", "Forget sweeps leftover marks")
+ assert_eq(type(Markers.GetView), "function", "GetView returns a copy")
+ assert_eq(type(Markers.ResetForTests), "function", "ResetForTests is a harness hatch")
+ assert_eq(Markers.Init, nil, "no frame surface this lane")
+@@ -217,6 +218,7 @@
+ assert_eq(src:find("SecureActionButton", 1, true), nil, "no secure template")
+ assert_eq(src:find("UnitIsDead", 1, true), nil, "source does not UnitIsDead")
+ assert_true(src:find("local function clearPrior", 1, true) ~= nil, "clearPrior helper exists")
++assert_true(src:find("function Markers:Forget", 1, true) ~= nil, "Forget verb exists")
+ assert_eq(src:find("CreateFrame", 1, true), nil, "no frame this lane")
+ assert_eq(src:find("ShowUIPanel", 1, true), nil, "insecure only")
+ assert_eq(src:find("SLASH_", 1, true), nil, "source does not register a slash")
+@@ -974,7 +976,129 @@
+ view = Markers:GetView()
+ assert_eq(view.name, "Tendermage", "B35-C Target after A name is the Target")
+ assert_eq(view.unit, "raid2", "B35-C Target after A keeps prior unit")
++
++--------------------------------------------------------------------------------
++-- B38-C: Markers:Forget() works in Quiet. Pope-gated. applyMark(unit, 0)
++-- on leftover last.unit / unitA / unitB, then remember empty
++-- (verb = "Forget", no units). Do not call Markers:Clear. Clear Quiet
++-- refuse stays. Missing SetRaidTarget fail-closed. Isolation wrap stays.
++--------------------------------------------------------------------------------
++do
++  local forgetStart = src:find("function Markers:Forget", 1, true)
++  local viewStart = src:find("function Markers:GetView", 1, true)
++  assert_true(forgetStart ~= nil and viewStart ~= nil, "Forget and GetView are findable")
++  if forgetStart and viewStart then
++    local forgetBody = src:sub(forgetStart, viewStart - 1)
++    assert_eq(forgetBody:find(":Clear(", 1, true), nil, "Forget does not call Clear")
++    assert_true(forgetBody:find("applyMark", 1, true) ~= nil, "Forget applyMarks leftover units")
++  end
++end
++
++reset()
++Runtime:StartEvent()
++popeFlag = true
++armRaid("Chuckroast")
++ok, err = Markers:MarkCandidate("Chuckroast")
++assert_eq(ok, true, "B38-C MarkCandidate A is true")
++assert_eq(err, nil, "B38-C MarkCandidate A has no error")
++assert_eq(#raidTargets, 1, "B38-C first A is one spy")
++assert_eq((raidTargets[1] or {}).unit, "raid2", "B38-C A marks raid2")
++assert_eq(Markers:GetView().unit, "raid2", "B38-C A view is raid2")
++assert_true(Runtime:EndEvent() ~= nil, "B38-C EndEvent returns to QUIET")
++assert_eq(Runtime:Snapshot().state, "QUIET", "B38-C after EndEvent is QUIET")
++for i = #raidTargets, 1, -1 do raidTargets[i] = nil end
++ok, err = Markers:Forget()
++assert_eq(ok, true, "Quiet Forget after leftover A is true")
++assert_eq(err, nil, "Quiet Forget after leftover A has no error")
++assert_eq(#raidTargets, 1, "Forget after A spies one SetRaidTarget")
++assert_eq((raidTargets[1] or {}).unit, "raid2", "Forget after A clears leftover A")
++assert_eq((raidTargets[1] or {}).index, 0, "Forget after A clears leftover A at 0")
++view = Markers:GetView()
++assert_eq(view.ok, true, "Forget after A view records ok")
++assert_eq(view.verb, "Forget", "Forget after A view records the verb")
++assert_eq(view.unit, nil, "Forget after A view unit is nil")
++assert_eq(view.unitA, nil, "Forget after A view unitA is nil")
++assert_eq(view.unitB, nil, "Forget after A view unitB is nil")
++ok, err = Markers:Clear("Chuckroast")
++assert_eq(ok, false, "Quiet Clear still refuses after Forget")
++assert_eq(err, "quiet", "Quiet Clear after Forget still names quiet")
++assert_eq(#raidTargets, 1, "Quiet Clear after Forget does not SetRaidTarget")
++
++reset()
++Runtime:StartEvent()
++popeFlag = true
++armRaid("Chuckroast", "Tendermage")
++ok, err = Markers:MarkFighters("Chuckroast", "Tendermage")
++assert_eq(ok, true, "B38-C MarkFighters pair is true")
++for i = #raidTargets, 1, -1 do raidTargets[i] = nil end
++ok, err = Markers:Forget()
++assert_eq(ok, true, "Forget after fighters is true")
++assert_eq(err, nil, "Forget after fighters has no error")
++assert_eq(#raidTargets, 2, "Forget after fighters spies two SetRaidTarget clears")
++assert_eq((raidTargets[1] or {}).unit, "raid2", "Forget after fighters clears A")
++assert_eq((raidTargets[1] or {}).index, 0, "Forget after fighters clears A at 0")
++assert_eq((raidTargets[2] or {}).unit, "raid3", "Forget after fighters clears B")
++assert_eq((raidTargets[2] or {}).index, 0, "Forget after fighters clears B at 0")
++view = Markers:GetView()
++assert_eq(view.verb, "Forget", "Forget after fighters records Forget")
++assert_eq(view.ok, true, "Forget after fighters records ok")
++assert_eq(view.unit, nil, "Forget after fighters view unit is nil")
++assert_eq(view.unitA, nil, "Forget after fighters view unitA is nil")
++assert_eq(view.unitB, nil, "Forget after fighters view unitB is nil")
+ 
++reset()
++popeFlag = true
++ok, err = Markers:Forget()
++assert_eq(ok, true, "Quiet Forget without prior last is true")
++assert_eq(err, nil, "Quiet Forget without prior last has no error")
++assert_eq(#raidTargets, 0, "Quiet Forget without prior last does not SetRaidTarget")
++view = Markers:GetView()
++assert_eq(view.ok, true, "empty Quiet Forget view records ok")
++assert_eq(view.verb, "Forget", "empty Quiet Forget view records the verb")
++assert_eq(view.unit, nil, "empty Quiet Forget view unit is nil")
++assert_eq(view.unitA, nil, "empty Quiet Forget view unitA is nil")
++assert_eq(view.unitB, nil, "empty Quiet Forget view unitB is nil")
++
++reset()
++popeFlag = false
++ok, err = Markers:Forget()
++assert_eq(ok, false, "unlisted Pope Forget is false")
++assert_eq(err, "not a registered pope", "unlisted Pope Forget names the error")
++assert_eq(#raidTargets, 0, "unlisted Pope Forget does not SetRaidTarget")
++
++reset()
++Runtime:StartEvent()
++popeFlag = true
++armRaid("Chuckroast")
++ok, err = Markers:MarkCandidate("Chuckroast")
++assert_eq(ok, true, "B38-C leftover before unlisted Forget is true")
++popeFlag = false
++for i = #raidTargets, 1, -1 do raidTargets[i] = nil end
++ok, err = Markers:Forget()
++assert_eq(ok, false, "unlisted Pope Forget after leftover is false")
++assert_eq(err, "not a registered pope", "unlisted Pope Forget after leftover names the error")
++assert_eq(#raidTargets, 0, "unlisted Pope Forget after leftover does not SetRaidTarget")
++assert_eq(Markers:GetView().unit, "raid2", "unlisted Pope Forget keeps leftover unit")
++
++reset()
++Runtime:StartEvent()
++popeFlag = true
++armRaid("Chuckroast")
++ok, err = Markers:MarkCandidate("Chuckroast")
++assert_eq(ok, true, "B38-C leftover before missing SetRaidTarget is true")
++assert_true(Runtime:EndEvent() ~= nil, "B38-C EndEvent before missing SetRaidTarget")
++do
++  local saved = SetRaidTarget
++  SetRaidTarget = nil
++  local threw, callOk = pcall(function()
++    return Markers:Forget()
++  end)
++  assert_eq(threw, true, "missing SetRaidTarget Forget does not throw")
++  assert_eq(callOk, false, "missing SetRaidTarget Forget is false")
++  SetRaidTarget = saved
++end
++assert_eq(Markers:GetView().unit, "raid2", "missing SetRaidTarget Forget keeps leftover unit")
++
+ --------------------------------------------------------------------------------
+ -- Missing API fail-closed. No throw.
+ --------------------------------------------------------------------------------

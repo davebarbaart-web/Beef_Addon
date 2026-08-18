@@ -1,0 +1,223 @@
+# B32-B — Console Dismiss also reaches the confession inbox (implementation diff)
+
+Lane-only unified diff of the exclusive implementation files vs the pre-lane working tree.
+
+--- a/addon/ChurchOfBeef/UI/Console.lua
++++ b/addon/ChurchOfBeef/UI/Console.lua
+@@ -13,8 +13,11 @@
+ -- mute numeric H2H when Store has history. Confession inbox is a stock list
+ -- on this desk only — never theater. Rows click-select the character; a
+ -- called row appends mute "  called". Dismiss is stock furniture, not a ritual
+--- plate. Knighting line is a stock list plus Enqueue / Skip furniture.
++-- plate. Console:Dismiss reaches Gora:Dismiss and, when Confession.Dismiss
++-- exists, that inbox too (same id). Refresh if either returns true.
++-- Isolated Gora-only Dismiss stays when Confession is nil. Knighting line
++-- is a stock list plus Enqueue / Skip furniture.
+ -- Recommend proposes a pair and never Sanctions. lastRecommendation
+ -- and the selected fighter pair clear on successful StartEvent / EndEvent
+ -- (before after() Refresh); failed Start / failed End / Continue keep
+@@ -1669,9 +1672,13 @@
+ function Console:Dismiss(characterId)
+   if not isRegisteredPope() then return nil, REFUSE end
+   if not COB.Gora or not COB.Gora.Dismiss then
+     return nil, "gora is not available"
+   end
+-  local ok = COB.Gora:Dismiss(characterId or self.selectedCharacterId)
++  local id = characterId or self.selectedCharacterId
++  local ok = COB.Gora:Dismiss(id)
++  if COB.Confession and type(COB.Confession.Dismiss) == "function" then
++    if COB.Confession:Dismiss(id) then ok = true end
++  end
+   if ok then self:Refresh() end
+   return ok
+ end
+--- a/tests/test_console.lua
++++ b/tests/test_console.lua
+@@ -20,7 +20,9 @@
+ -- Init early-return remounts UISpecialFrames rememberSpecial + B28-A
+ -- Show / Refresh remount UISpecialFrames rememberSpecial + B29-A
+ -- Hide remounts UISpecialFrames rememberSpecial + B31-A
+--- Refresh in QUIET nils lastRecommendation).
++-- Refresh in QUIET nils lastRecommendation + B32-B
++-- Console:Dismiss also reaches Confession:Dismiss).
+ -- Isolated: wow_ui_stub + Common + Ranks + Runtime + Store + Gora + Knighting
+ -- + Sender + Decree + Console. Confession is stubbed when painted; this file
+ -- does not load Confession.lua. Knighting GetLine/Enqueue/Skip are stubbed
+@@ -4456,3 +4457,177 @@
+ runB31A()
++
++--------------------------------------------------------------------------------
++-- B32-B: Console:Dismiss also reaches Confession:Dismiss when present.
++-- Same id. Gora path and "gora is not available" stay. Missing Confession
++-- stays Gora-only. One stock Dismiss. No second button. No theater.
++-- CallForward pins stay. SaveNote nil. No SUMMON.
++-- Nested inside runB8E after runB31A().
++--------------------------------------------------------------------------------
++local function runB32B()
++reset()
++Console:Init()
++assert_eq(Console.SaveNote, nil, "SaveNote stays nil")
++assert_eq(Console.GetNotes, nil, "no notes table")
++assert_eq(Console.CopyCeremonySummary, nil, "no post-show ceremony summary")
++assert_eq(Console.CeremonySummary, nil, "no ceremony summary")
++assert_eq(findButton(frame, "SUMMON THE FAITHFUL"), nil, "no SUMMON chrome")
++assert_eq(findButton(frame, "COPY SUMMARY"), nil, "no ceremony-summary chrome")
++assert_eq(findButton(frame, "WHISPER ALL"), nil, "no WHISPER ALL chrome")
++assert_eq(findButton(frame, "RSVP"), nil, "no RSVP chrome")
++assert_eq(type(Console.Dismiss), "function", "Dismiss stays a console verb")
++assert_eq(type(Console.CallForward), "function", "CallForward pins stay")
++local dismissCount = 0
++walk(frame, function(child)
++  if child._type == "Button" and child.GetText and child:GetText() == "Dismiss" then
++    dismissCount = dismissCount + 1
++  end
++end)
++assert_eq(dismissCount, 1, "no second Dismiss plate")
++assert_true(findButton(frame, "Dismiss") ~= nil, "Gora Dismiss stays")
++assert_eq(findButton(frame, "Dismiss")._template, "UIPanelButtonTemplate",
++  "Dismiss stays UIPanelButtonTemplate")
++
++local srcDismiss = io.open("addon/ChurchOfBeef/UI/Console.lua", "r")
++assert_true(srcDismiss ~= nil, "Console.lua is readable for B32-B")
++local srcDismissBody = srcDismiss:read("*a")
++srcDismiss:close()
++local dismissFn = srcDismissBody:match("function Console:Dismiss%(characterId%)(.-)\nfunction Console:DeclareVictor")
++assert_true(type(dismissFn) == "string" and dismissFn ~= "",
++  "Dismiss body is readable")
++assert_true(dismissFn:find('return nil, "gora is not available"', 1, true) ~= nil,
++  "Dismiss keeps the gora is not available refuse")
++assert_true(dismissFn:find("if not COB.Gora or not COB.Gora.Dismiss then", 1, true) ~= nil,
++  "Dismiss still requires Gora.Dismiss")
++assert_true(dismissFn:find("local id = characterId or self.selectedCharacterId", 1, true) ~= nil,
++  "Dismiss resolves one id for Gora and Confession")
++assert_true(dismissFn:find("COB.Gora:Dismiss(id)", 1, true) ~= nil,
++  "Dismiss still reaches Gora with that id")
++assert_true(dismissFn:find('type(COB.Confession.Dismiss) == "function"', 1, true) ~= nil,
++  "Dismiss type-guards Confession.Dismiss")
++assert_true(dismissFn:find("COB.Confession:Dismiss(id)", 1, true) ~= nil,
++  "Dismiss reaches Confession with the same id")
++assert_true(dismissFn:find("if ok then self:Refresh() end", 1, true) ~= nil,
++  "Dismiss Refreshs when either succeeded")
++assert_eq(dismissFn:find("after(", 1, true), nil, "Dismiss does not fan-out through after()")
++assert_eq(dismissFn:find("PlaySound", 1, true), nil, "Dismiss does not PlaySound")
++assert_eq(dismissFn:find("playCue", 1, true), nil, "Dismiss does not playCue")
++assert_true(srcDismissBody:find("function Console:CallForward(characterId)", 1, true) ~= nil,
++  "CallForward source pin stays")
++assert_true(srcDismissBody:find("Confession:CallForward", 1, true) ~= nil,
++  "CallForward still reaches Confession")
++assert_true(srcDismissBody:find('stockButton(right, "Dismiss", function() Console:Dismiss() end)', 1, true) ~= nil,
++  "one stock Dismiss button stays")
++assert_eq(srcDismissBody:find("function Console:SaveNote", 1, true), nil,
++  "source must not define SaveNote")
++assert_eq(srcDismissBody:find("SUMMON THE FAITHFUL", 1, true), nil,
++  "source must not contain SUMMON")
++assert_eq(srcDismissBody:find("Parchment", 1, true), nil, "console stays stock, not parchment")
++assert_eq(srcDismissBody:find("PanelTabButtonTemplate", 1, true), nil,
++  "desks are not collapsed into tabs")
++
++local savedPred = Sender.IsRegisteredPope
++Sender.IsRegisteredPope = function() return true end
++
++reset()
++Console:Init()
++assert_true(Console:StartEvent() ~= nil, "StartEvent for a live petition")
++local petitioner = Store:CreateCharacter({ name = "Chuckroast", class = "Warrior", level = 70 })
++local confessionId
++local confessionCalls = 0
++local goraIds = {}
++local realGoraDismiss = Gora.Dismiss
++Gora.Dismiss = function(self, id)
++  goraIds[#goraIds + 1] = id
++  return realGoraDismiss(self, id)
++end
++COB.Confession = {
++  GetQueue = function()
++    return {}
++  end,
++  Dismiss = function(_, characterId)
++    confessionCalls = confessionCalls + 1
++    confessionId = characterId
++    return true
++  end,
++}
++local soundRec = {}
++local toastCalls = 0
++local chats = 0
++local savedSound = COB.Sound
++local savedToasts = COB.Toasts
++local savedChat = SendChatMessage
++COB.Sound = {
++  Play = function(_, name)
++    soundRec[#soundRec + 1] = name
++    return name
++  end,
++}
++COB.Toasts = {
++  Show = function()
++    toastCalls = toastCalls + 1
++  end,
++}
++SendChatMessage = function()
++  chats = chats + 1
++end
++
++Gora:Petition(petitioner.id)
++assert_eq(Console:Dismiss(petitioner.id), true, "Dismiss reaches Gora and Confession")
++assert_eq(confessionCalls, 1, "Dismiss reaches Confession:Dismiss")
++assert_eq(confessionId, petitioner.id, "Confession:Dismiss receives the same id")
++assert_eq(#goraIds, 1, "Dismiss still reaches Gora")
++assert_eq(goraIds[1], petitioner.id, "Gora:Dismiss receives the same id")
++assert_eq(#soundRec, 0, "Dismiss does not play Sound")
++assert_eq(toastCalls, 0, "Dismiss does not toast")
++assert_eq(chats, 0, "Dismiss does not SendChatMessage")
++
++assert_eq(Console:Dismiss(petitioner.id), true, "Confession success still returns true")
++assert_eq(confessionCalls, 2, "Confession:Dismiss runs when Gora has no petition")
++assert_eq(confessionId, petitioner.id, "either-succeeded still uses the same id")
++assert_eq(#goraIds, 2, "Gora:Dismiss still runs when the petition is gone")
++assert_eq(#soundRec, 0, "either-succeeded Dismiss does not play Sound")
++assert_eq(toastCalls, 0, "either-succeeded Dismiss does not toast")
++assert_eq(chats, 0, "either-succeeded Dismiss does not SendChatMessage")
++
++COB.Confession = {
++  GetQueue = function()
++    return {}
++  end,
++}
++Gora:Petition(petitioner.id)
++assert_eq(Console:Dismiss(petitioner.id), true, "Confession without Dismiss still reaches Gora")
++assert_eq(confessionCalls, 2, "missing Confession.Dismiss does not call the prior stub")
++
++COB.Confession = nil
++Gora:Petition(petitioner.id)
++assert_eq(Console:Dismiss(petitioner.id), true, "missing Confession: Gora Dismiss still true")
++assert_eq(#soundRec, 0, "Gora-only Dismiss does not play Sound")
++assert_eq(toastCalls, 0, "Gora-only Dismiss does not toast")
++assert_eq(chats, 0, "Gora-only Dismiss does not SendChatMessage")
++
++Gora.Dismiss = nil
++local missingOk, missingErr = Console:Dismiss(petitioner.id)
++assert_eq(missingOk, nil, "missing Gora.Dismiss refuses")
++assert_eq(missingErr, "gora is not available", "gora is not available refuse stays")
++Gora.Dismiss = realGoraDismiss
++
++COB.Sound = savedSound
++COB.Toasts = savedToasts
++SendChatMessage = savedChat
++COB.Confession = nil
++Sender.IsRegisteredPope = savedPred
++assert_eq(Sender:IsRegisteredPope(COB.Group.PlayerName()), false,
++  "B32-B wrapping the predicate does not stub the list true")
++
++assert_eq(Console.SaveNote, nil, "SaveNote stays nil after B32-B")
++if standalone then
++  assert_eq(COB.Archive, nil, "isolation still does not load Archive")
++  assert_eq(COB.UI, nil, "isolation still does not load the Quiet shell")
++  assert_eq(COB.Toasts, nil, "isolation still does not load Toasts")
++  assert_eq(COB.Confession, nil, "isolation still does not load Confession")
++end
++assert_eq(COB.Popes, nil, "still no Pope list after B32-B")
++end
++runB32B()
+ end
+ runB8E()

@@ -1,0 +1,117 @@
+# B28-C — Records Book Hide remounts ESC (implementation diff)
+
+Lane-only unified diff of the exclusive implementation files vs the pre-lane working tree.
+
+--- a/addon/ChurchOfBeef/UI/RecordsBook.lua
++++ b/addon/ChurchOfBeef/UI/RecordsBook.lua
+@@ -848,7 +848,10 @@
+ end
+ 
+ function RecordsBook:Hide()
+-  if self.frame then self.frame:Hide() end
++  if self.frame then
++    rememberSpecial(FRAME_NAME)
++    self.frame:Hide()
++  end
+   return true
+ end
+ 
+--- a/tests/test_records.lua
++++ b/tests/test_records.lua
+@@ -1,6 +1,7 @@
+ -- Records Book superlatives (Phase 4 Lane G). Isolated: wow_ui_stub + Common + Ranks + Store + RecordsBook.
+ -- Player-opened Quiet identity/history. Theatrical parchment, not a sortable ladder.
+ -- B25-C Init early-return rememberSpecial lives in runB25C() (Lua 5.1 200-local cap).
++-- B28-C Hide remount rememberSpecial lives in runB28C() nested in runB25C().
+ -- No TOC / bootstrap / run.lua / MainFrame / Console / Hud / Store / Net edits. No slash.
+ ChurchOfBeef = ChurchOfBeef or {}
+ ChurchOfBeef._IN_TEST = true
+@@ -298,7 +299,88 @@
+   assert_eq(Book.frame, existing, "third Init still does not rebuild")
+   assert_eq(#Book:GetPages(), 9, "wipe remount is not a tenth page")
+   UISpecialFrames = savedSpecial
++
++  -- B28-C: Hide remounts ChurchOfBeefRecordsBook after a wiped
++  -- UISpecialFrames. Do not rebuild. Toggle-while-shown is Hide.
++  -- PAGE_TITLES==9 / Morpheus / B25-C Init remount stay.
++  local function runB28C()
++    local hideBody = src:match("function RecordsBook:Hide%(%)(.-)function RecordsBook:Toggle")
++    assert_true(type(hideBody) == "string" and hideBody ~= "",
++      "Hide body is readable")
++    local remountAt = hideBody and hideBody:find("rememberSpecial(FRAME_NAME)", 1, true)
++    local hideAt = hideBody and hideBody:find("self.frame:Hide()", 1, true)
++    assert_true(remountAt ~= nil and hideAt ~= nil and remountAt < hideAt,
++      "Hide remounts rememberSpecial FRAME_NAME before Hide")
++    assert_eq(hideBody:find("buildFrame", 1, true), nil,
++      "Hide does not rebuild")
++    assert_eq(hideBody:find("CreateFrame", 1, true), nil,
++      "Hide does not CreateFrame")
++    assert_eq(hideBody:find("PlaySound", 1, true), nil,
++      "Hide does not PlaySound")
++    assert_eq(src:find("PlaySound", 1, true), nil,
++      "source still does not play sound")
++
++    local earlyInit = src:match("function RecordsBook:Init%(%)%s*\n%s*if self%.frame then(.-)return self%.frame")
++    assert_true(type(earlyInit) == "string" and earlyInit ~= "",
++      "B25-C Init early-return body stays readable")
++    assert_true(earlyInit:find("rememberSpecial(FRAME_NAME)", 1, true) ~= nil,
++      "B25-C early-return rememberSpecial FRAME_NAME stays")
++    assert_eq(earlyInit:find("buildFrame", 1, true), nil,
++      "B25-C early-return still does not rebuild")
++
++    assert_true(src:find('PAGE_TITLE_FONT = "Fonts\\\\MORPHEUS.ttf"', 1, true) ~= nil,
++      "PAGE_TITLE_FONT stays Fonts\\MORPHEUS.ttf")
++    assert_true(src:find("Fonts\\\\MORPHEUS.ttf", 1, true) ~= nil,
++      "PAGE_TITLE_FONT stays FrameXML lowercase Morpheus")
++    assert_eq(src:find("MORPHEUS.TTF", 1, true), nil,
++      "page title path is still not uppercase TTF")
++    assert_eq(#Book:GetPages(), #BIBLE_TITLES, "PAGE_TITLES stay the nine Bible titles")
++    assert_eq(#Book:GetPages(), 9, "PAGE_TITLES stay 9")
++
++    Book:Init()
++    local existingHide = Book.frame
++    assert_true(existingHide ~= nil, "B28-C Init so the frame exists")
++    assert_eq(existingHide:GetName(), "ChurchOfBeefRecordsBook",
++      "B28-C frame name stays ChurchOfBeefRecordsBook")
++    local savedHide = UISpecialFrames
++    UISpecialFrames = {}
++    assert_eq(countSpecial("ChurchOfBeefRecordsBook"), 0,
++      "B28-C wipe clears ChurchOfBeefRecordsBook")
++    local cuesHide = sounds
++    assert_eq(Book:Hide(), true, "B28-C Hide succeeds")
++    assert_eq(Book.frame, existingHide, "B28-C Hide does not rebuild")
++    assert_eq(existingHide:GetName(), "ChurchOfBeefRecordsBook",
++      "B28-C Hide keeps the named frame")
++    assert_eq(countSpecial("ChurchOfBeefRecordsBook"), 1,
++      "wiped UISpecialFrames + Hide lists ChurchOfBeefRecordsBook once")
++    assert_eq(sounds, cuesHide, "B28-C Hide plays no sound")
++    Book:Hide()
++    assert_eq(countSpecial("ChurchOfBeefRecordsBook"), 1,
++      "second Hide after wipe does not duplicate ChurchOfBeefRecordsBook")
++    assert_eq(Book.frame, existingHide, "second Hide still does not rebuild")
++    assert_eq(#Book:GetPages(), 9, "Hide remount is not a tenth page")
++
++    Book:Show()
++    assert_eq(Book:IsShown(), true, "B28-C Show opens for Toggle")
++    UISpecialFrames = {}
++    assert_eq(countSpecial("ChurchOfBeefRecordsBook"), 0,
++      "B28-C Toggle wipe clears ChurchOfBeefRecordsBook")
++    assert_eq(Book:Toggle(), true, "B28-C Toggle-while-shown succeeds")
++    assert_eq(Book:IsShown(), false, "B28-C Toggle-while-shown hides")
++    assert_eq(Book.frame, existingHide, "B28-C Toggle-while-shown does not rebuild")
++    assert_eq(countSpecial("ChurchOfBeefRecordsBook"), 1,
++      "wiped UISpecialFrames + Toggle-while-shown lists ChurchOfBeefRecordsBook once")
++    assert_eq(sounds, cuesHide, "B28-C Toggle-while-shown plays no sound")
+ 
++    UISpecialFrames = {}
++    local remounted = Book:Init()
++    assert_eq(remounted, existingHide, "B25-C Init remount still same frame")
++    assert_eq(countSpecial("ChurchOfBeefRecordsBook"), 1,
++      "B25-C wiped UISpecialFrames + Init still lists ChurchOfBeefRecordsBook once")
++    UISpecialFrames = savedHide
++  end
++  runB28C()
++
+   if standalone then
+     assert_eq(COB.Runtime, nil, "isolation still does not load Runtime")
+     assert_eq(COB.UI, nil, "isolation still does not load MainFrame")

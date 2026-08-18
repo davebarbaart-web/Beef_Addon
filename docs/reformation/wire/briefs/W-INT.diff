@@ -1,0 +1,686 @@
+diff --git a/addon/ChurchOfBeef/ChurchOfBeef.lua b/addon/ChurchOfBeef/ChurchOfBeef.lua
+index 8f9a064..7af8542 100644
+--- a/addon/ChurchOfBeef/ChurchOfBeef.lua
++++ b/addon/ChurchOfBeef/ChurchOfBeef.lua
+@@ -17,6 +17,7 @@ function COB:OnLogin()
+   if COB.Net and COB.Net.Init then
+     COB.Net:Init()
+   end
++  self:InstallWire()
+ end
+ 
+ function COB:OnLogout()
+@@ -25,6 +26,172 @@ function COB:OnLogout()
+   end
+ end
+ 
++--------------------------------------------------------------------------------
++-- Wire glue. UI and Core stay Net-free. Wraps attach on login only so a
++-- minimap dofile of this file does not broadcast. Fail-closed: missing Net
++-- or an unlisted Pope already refuse. Do not throw.
++--------------------------------------------------------------------------------
++
++local function skipSend()
++  return COB._inspecting == true
++end
++
++local function fighterCount(subjects)
++  if type(subjects) ~= "table" or type(subjects.fighters) ~= "table" then
++    return 0
++  end
++  return #subjects.fighters
++end
++
++local function stateFields()
++  local fields = {}
++  if COB.Runtime and COB.Runtime.Snapshot then
++    local snap = COB.Runtime:Snapshot()
++    if type(snap) == "table" then
++      fields.eventId = snap.eventId
++      fields.state = snap.state
++      fields.riteType = snap.riteType
++      fields.subjects = snap.subjects
++      fields.sequence = snap.sequence
++    end
++  end
++
++  local visible = COB.Console
++    and COB.Console.GetCongregationFavorVisible
++    and COB.Console:GetCongregationFavorVisible() == true
++  local pair = COB.Gora and COB.Gora.GetSanctioned and COB.Gora:GetSanctioned()
++  local livePair = type(pair) == "table" and pair.fighterA and pair.fighterB
++  if visible and livePair then
++    if COB.Gora.GetFavorSplit then
++      fields.favor = COB.Gora:GetFavorSplit()
++    end
++    -- Codec refuses favor unless subjects name two fighters. Sanction can
++    -- be live in ASSEMBLY before OpenRite; copy the pair onto the outbound
++    -- snapshot only.
++    if fighterCount(fields.subjects) ~= 2 then
++      local candidate = type(fields.subjects) == "table" and fields.subjects.candidate or nil
++      fields.subjects = {
++        candidate = candidate,
++        fighters = { pair.fighterA, pair.fighterB },
++      }
++    end
++  end
++  return fields
++end
++
++local function sendState()
++  if skipSend() then return end
++  local Net = COB.Net
++  if not (Net and Net.SendState) then return end
++  pcall(Net.SendState, Net, stateFields())
++end
++
++local function sendDecree(fields)
++  if skipSend() then return end
++  local Net = COB.Net
++  if not (Net and Net.SendDecree) then return end
++  pcall(Net.SendDecree, Net, fields)
++end
++
++local function bindLocalCharacter()
++  if not (COB.Hud and COB.Hud.SetLocalCharacterId) then return end
++  if not (COB.Store and COB.Store.Snapshot) then return end
++  if not (COB.Names and COB.Names.Key) then return end
++  if type(UnitName) ~= "function" then return end
++  local me = COB.Names.Key(UnitName("player"))
++  if not me then return end
++  local snap = COB.Store:Snapshot()
++  local chars = snap and snap.characters
++  if type(chars) ~= "table" then return end
++  for i = 1, #chars do
++    local row = chars[i]
++    if type(row) == "table" and COB.Names.Key(row.name) == me then
++      pcall(COB.Hud.SetLocalCharacterId, COB.Hud, row.id)
++      return
++    end
++  end
++end
++
++local function paintInboundFavor(decoded, sender)
++  local Hud = COB.Hud
++  if type(Hud) ~= "table" then return end
++  if Hud.SetFavorTarget then
++    pcall(Hud.SetFavorTarget, Hud, sender)
++  end
++  if Hud.SetBroadcastFavor then
++    local favor = decoded and decoded.favor or nil
++    pcall(Hud.SetBroadcastFavor, Hud, favor)
++  end
++  if Hud.Refresh then
++    pcall(Hud.Refresh, Hud)
++  end
++end
++
++local function wrapAfter(module, name, afterFn)
++  if type(module) ~= "table" then return end
++  local orig = module[name]
++  if type(orig) ~= "function" then return end
++  module[name] = function(self, ...)
++    local result, err = orig(self, ...)
++    if result ~= nil then
++      afterFn(self, result)
++    end
++    return result, err
++  end
++end
++
++function COB:InstallWire()
++  if COB._wireInstalled then return true end
++  COB._wireInstalled = true
++
++  wrapAfter(COB.Runtime, "StartEvent", sendState)
++  wrapAfter(COB.Runtime, "OpenRite", sendState)
++  wrapAfter(COB.Runtime, "CloseRite", sendState)
++  wrapAfter(COB.Runtime, "Continue", sendState)
++  wrapAfter(COB.Runtime, "EndEvent", sendState)
++  wrapAfter(COB.Gora, "RecordFavor", sendState)
++  wrapAfter(COB.Console, "SetCongregationFavorVisible", sendState)
++  wrapAfter(COB.Console, "PostDecree", function(_, result)
++    sendDecree({ line = result.line, flavor = result.flavor })
++  end)
++  wrapAfter(COB.Store, "Restore", bindLocalCharacter)
++
++  local Net = COB.Net
++  if type(Net) == "table" then
++    local origState = Net._HandleState
++    if type(origState) == "function" then
++      Net._HandleState = function(self, decoded, channel, sender)
++        local ok, err = origState(self, decoded, channel, sender)
++        if ok then
++          paintInboundFavor(decoded, sender)
++        end
++        return ok, err
++      end
++    end
++
++    local origSnap = Net._HandleSnapshot
++    if type(origSnap) == "function" then
++      Net._HandleSnapshot = function(self, decoded, channel, sender, payload)
++        local ok, err = origSnap(self, decoded, channel, sender, payload)
++        if ok and decoded and decoded.role == "response" then
++          local favor = decoded.favor
++          if favor == nil and type(payload) == "string" and COB.Codec and COB.Codec.Decode then
++            local again = COB.Codec:Decode(payload)
++            if type(again) == "table" then
++              favor = again.favor
++            end
++          end
++          paintInboundFavor({ favor = favor }, sender)
++        end
++        return ok, err
++      end
++    end
++  end
++
++  bindLocalCharacter()
++  return true
++end
++
+ local frame = CreateFrame("Frame")
+ frame:RegisterEvent("ADDON_LOADED")
+ frame:RegisterEvent("PLAYER_LOGIN")
+@@ -84,31 +251,36 @@ end
+ -- rows. Sets a Decree (persists) and opens the built surfaces so they can
+ -- be seen. Runtime is returned to QUIET. Rituals stay fail-closed.
+ function COB:InspectProgress()
+-  if COB.Decree and COB.Decree.Set then
+-    COB.Decree:Set({
+-      line = "Goldshire Inn — Sunday, 7:00 PM",
+-      flavor = "The Gathering.",
+-    })
+-  end
+-  if COB.DecreeBanner and COB.DecreeBanner.Show then
+-    COB.DecreeBanner:Show()
+-  end
+-  if COB.RecordsBook and COB.RecordsBook.Show then
+-    COB.RecordsBook:Show()
+-  end
+-  if COB.Console and COB.Console.Show then
+-    COB.Console:Show()
+-  end
+-  if COB.Runtime and COB.Runtime.StartEvent then
+-    COB.Runtime:StartEvent()
+-    if COB.Sound and COB.Sound.Play then
+-      COB.Sound:Play("sanction")
++  COB._inspecting = true
++  local ok, err = pcall(function()
++    if COB.Decree and COB.Decree.Set then
++      COB.Decree:Set({
++        line = "Goldshire Inn — Sunday, 7:00 PM",
++        flavor = "The Gathering.",
++      })
+     end
+-    if COB.Runtime.EndEvent then
+-      COB.Runtime:EndEvent()
++    if COB.DecreeBanner and COB.DecreeBanner.Show then
++      COB.DecreeBanner:Show()
+     end
+-  end
+-  if DEFAULT_CHAT_FRAME and DEFAULT_CHAT_FRAME.AddMessage then
+-    DEFAULT_CHAT_FRAME:AddMessage("|cffffaa00Church of Beef|r: Records Book, Decree, and Director Console are open. Buttons still refuse — no registered Pope. Fight HUD needs a sanctioned pair.")
+-  end
++    if COB.RecordsBook and COB.RecordsBook.Show then
++      COB.RecordsBook:Show()
++    end
++    if COB.Console and COB.Console.Show then
++      COB.Console:Show()
++    end
++    if COB.Runtime and COB.Runtime.StartEvent then
++      COB.Runtime:StartEvent()
++      if COB.Sound and COB.Sound.Play then
++        COB.Sound:Play("sanction")
++      end
++      if COB.Runtime.EndEvent then
++        COB.Runtime:EndEvent()
++      end
++    end
++    if DEFAULT_CHAT_FRAME and DEFAULT_CHAT_FRAME.AddMessage then
++      DEFAULT_CHAT_FRAME:AddMessage("|cffffaa00Church of Beef|r: Records Book, Decree, and Director Console are open. Buttons still refuse — no registered Pope. Fight HUD needs a sanctioned pair.")
++    end
++  end)
++  COB._inspecting = false
++  if not ok then error(err) end
+ end
+diff --git a/docs/REFORMATION_LOG.md b/docs/REFORMATION_LOG.md
+index 736eb22..b8a2b73 100644
+--- a/docs/REFORMATION_LOG.md
++++ b/docs/REFORMATION_LOG.md
+@@ -428,5 +428,35 @@ Writers do not edit TOC / `ChurchOfBeef.lua` / `tests/run.lua` / `OPEN_QUESTIONS
+ - P6-H ([Registered Pope](1b1f6d65-640d-426b-b338-d9445ea0ecd9)): writer DONE. [Pope-list review](468cad4c-fd5f-45d3-9326-2887f468bff9): Spec PASS; Quality Approved. Empty list; STATE/SNAPSHOT Accept; isolated 263/0. Integrator listed TOC and re-keys `IsListed` so a Display-case file entry is not a silent miss. **Lane H signed.**
+ - P6-I ([Console verbs](875fdd5e-934e-4e93-bde6-317590b1531f)): writer DONE. [Console review](ffe6677b-4dba-45d5-80b8-a084c24ed781): Spec PASS; Quality Approved. Post Decree, Event cues, Hud:Refresh; isolated 293/0. **Lane I signed.**
+ 
+-Leftover wave D–J is signed. Harness **6035 passed, 0 failed**. Gate 6 stays **OPEN** until David writes A01–A04 Results. Still out: designated-Council UX, Console `SendState`, favor, SUMMON, INPUT/Confession, Decree wire, live HUD health, polish pass, CurseForge/Wago. David authorized the commit for in-game smoke.
++Leftover wave D–J is signed. Harness **6,043 passed, 0 failed** (live count; 6035 was stale). Gate 6 stays **OPEN** until David writes A01–A04 Results. Named leftovers that this closer still correctly parked: designated-Council UX, SUMMON, Confession fan-out, live HUD health, polish pass, CurseForge/Wago. SendState / favor / Decree wire moved to the Wire wave below.
++
++## Wire & Vestments wave
++
++**Status:** OPEN (Stage 1 — THE WIRE in flight; Stage 2 Vestments not opened)  
++**Branch:** `reformation/phase-1-excision`  
++**Cited:** CONTINUE 2026-08-18 licenses 1–3; Bible §10.6, §13.1, §14.1; Laws 1, 4, 5, 6.  
++**Gate W:** six exclusive lanes + integrator glue; harness green; then David walks `docs/phases/two-client-smoke.md`. Vestments stay closed until Gate W.
++
++Writers do not commit and do not edit TOC / `ChurchOfBeef.lua` / `tests/run.lua` / `OPEN_QUESTIONS.md` / this log except the integrator.
++
++| Lane | Owns | When |
++|------|------|------|
++| W-A | `Net/Codec.lua`, `tests/test_net_codec.lua` | now |
++| W-B | `Core/Gora.lua`, `tests/test_gora.lua` | now |
++| W-C | `Core/Store.lua`, `tests/test_store.lua` | now |
++| W-D | `Net/BeefNet.lua`, `tests/test_net_v2.lua` | after W-A |
++| W-E | `UI/Console.lua`, `tests/test_console.lua` | after W-B, W-C, W-D |
++| W-F | `UI/Hud.lua`, `tests/test_hud.lua` | after W-B, W-D |
++
++### Verdicts
++
++- W-A ([Codec](109d0845-f1f2-48ee-b69c-4d1c1ec7c911)): writer DONE. [Codec review](16952c2b-f8c2-4cb4-9691-ea262048b18f): Spec PASS. Closed types are four (`DECREE`); favor INPUT requires `pick`; optional STATE / SNAPSHOT-response favor omitted when off. Integrator follow-on: encode refuses `"\n"` in decree `line` / `flavor`. Isolated codec 441/0. **Lane A signed.**
++- W-B ([Gora](b7f8e09e-bd5d-477a-876c-fe82a4c604d1)): writer DONE. First [Gora review](47e48e7a-b991-4684-9be0-8ccebe3c9819): Spec FAIL on event-scope expire. Fix ([expire](b23ccf86-38b2-41ae-ac6b-243dfd1c1a0f)). [Rereview](9771575a-138d-4a96-b997-208a339719f3): Spec PASS; Quality Approved. Memory-only standing pick; `favorEventId` wipe on missing/different event; FreeRuling writes no `won`. Isolated gora 401/0. Minors only. **Lane B signed.**
++- W-C ([Store](7e19204e-ad81-44dd-966c-3ee0830b4560)): writer DONE. [Store review](123cfffe-fa42-43f9-a30d-055bc6c53707): Spec PASS; Quality Approved. `free` without `won`; optional Pope text on bout + `AppendCeremony` 4th arg; Void/Victor/Cowardice unchanged. Isolated store 330/0. Minors only. **Lane C signed.**
++- W-D ([BeefNet](1184a87d-9224-43b7-97db-ea906a9f2cb5)): writer DONE. [BeefNet review](996d7393-87c4-418a-894f-f5aaf7c8c7cd): Spec PASS; Quality Approved. Pope-gated `SendDecree`; congregation `SendFavor` whisper; inbound DECREE via `IsRegisteredPope`; favor INPUT live only as whisper-to-Pope. Isolated net_v2 403/0. Minors only. **Lane D signed.**
++- W-E ([Console](2a3b7ef8-2467-4663-97bc-29f2594e050d)): writer DONE. [Console review](0160d6dd-f2fd-4324-971a-856482f6221f): Spec PASS; Quality Approved. Stock FAVOR pane; memory-only congregation toggle default on; Post Decree stays `Decree:Set`; FREE RULING text box, no winner. Isolated console 393/0. Minors only. **Lane E signed.**
++- W-F ([HUD](02f56b54-9513-4abe-a83e-03bc681db499)): writer DONE. [HUD review](4cb80564-44d1-4387-b39a-b8538f21a5d9): Spec PASS; Quality Approved. Pope split from Gora; congregation from `SetBroadcastFavor` only; plate click → `SendFavor` after target + local id. Isolated hud 320/0. Minors only. **Lane F signed.**
++- W-INT (bootstrap glue): integrator DONE_WITH_CONCERNS. `InstallWire` (OnLogin only, idempotent) wraps Runtime verbs + `RecordFavor` + congregation toggle → `SendState`; `PostDecree` → `SendDecree`; inbound STATE / SNAPSHOT-response → HUD favor. Isolated `test_wire_glue` 133/0; full harness 6677/0. Honesty table updated. **Gate W stays OPEN** — two-client smoke is David's; Vestments stay closed. No commit.
++
++
+ 
+diff --git a/docs/phases/two-client-smoke.md b/docs/phases/two-client-smoke.md
+index 24f5009..8853827 100644
+--- a/docs/phases/two-client-smoke.md
++++ b/docs/phases/two-client-smoke.md
+@@ -22,9 +22,10 @@ The deleted product (standing, SUGGESTION fan-out, Officer queue, claimed-vs-ver
+ | Kind | What the code actually does |
+ |------|-----------------------------|
+ | **HELLO** | Live. `Net:SendHello()` on `Init`. GUILD. Presence / protocol version only. Not authority. |
+-| **STATE** | Live codec. `Net:SendState(fields)` encodes and sends on **GUILD** only if `Sender:IsRegisteredPope` of the local player. Else `false, "not a registered pope"`. Inbound Restore only if `Sender:Accept(sender, "STATE")`. |
++| **STATE** | Live. Bootstrap `InstallWire` sends `Net:SendState` after a successful Runtime `StartEvent` / `OpenRite` / `CloseRite` / `Continue` / `EndEvent`, and after successful `Gora:RecordFavor` or `Console:SetCongregationFavorVisible`. Still **GUILD** only if `Sender:IsRegisteredPope` of the local player. Else `false, "not a registered pope"`. Inbound Restore only if `Sender:Accept(sender, "STATE")`. Optional `favor` is on the payload only when the Pope's congregation toggle is on and a sanctioned pair exists. |
+ | **SNAPSHOT** | Live codec. `Net:SendSnapshot(fields, target)` encodes and whispers to `target` only if the local player is a registered Pope. Else the same refuse. Inbound **response** Restores only if `Accept(sender, "SNAPSHOT")`. Inbound **request** is answered only if the local player is a registered Pope. Channel must be **WHISPER**. No GUILD fan-out. C does not answer. |
+-| **INPUT** | Codec only. `Codec:EncodeInput` exists. There is **no live INPUT channel**. BeefNet does not send or route INPUT. A forged INPUT body is unknown traffic and is discarded. |
++| **DECREE** | Live. `Console:PostDecree` → `Net:SendDecree({ line, flavor })` after Core `Set`. Inbound `_HandleDecree` Sets when `Sender:IsRegisteredPope(sender)`. `InspectProgress` / direct `Decree:Set` do not broadcast. |
++| **INPUT** | Favor live as **WHISPER-to-Pope** only (`Net:SendFavor` / inbound `_HandleFavor`). Petition and confession stay unknown traffic and are discarded. |
+ | **SUGGESTION / SYNC_REQUEST / SYNC_STATE / RANK_COMMIT** | Retired. Named so they die quietly. Discarded unread. Never answered. |
+ 
+ `Net:Send` (raw GUILD enqueue) is **not** Pope-gated. A congregation client can put bytes on GUILD. That is not becoming a writer. Theater is `Accept` / Restore, not "a message existed on the wire."
+diff --git a/tests/run.lua b/tests/run.lua
+index c8ee794..e61806a 100644
+--- a/tests/run.lua
++++ b/tests/run.lua
+@@ -54,6 +54,7 @@ local suites = {
+   "test_decree",
+   "test_decree_ui",
+   "test_sound",
++  "test_wire_glue",
+ }
+ 
+ --------------------------------------------------------------------------------
+
+diff --git a/tests/test_wire_glue.lua b/tests/test_wire_glue.lua
+new file mode 100644
+--- /dev/null
++++ b/tests/test_wire_glue.lua
++++ b/tests/test_wire_glue.lua
+@@ -0,0 +1,362 @@
++-- Bootstrap wire glue (W-INT). Isolated: Common + Runtime + Store + Gora +
++-- Sender + Decree + Codec + Snapshot + BeefNet + Console + Hud + ChurchOfBeef.lua.
++-- InstallWire only — no Data/Popes.lua. Pope predicate is stubbed in-test and
++-- restored. Standalone wrap.
++package.path = package.path .. ";./tests/?.lua"
++
++local standalone = (type(assert_eq) ~= "function")
++local passed = 0
++local failed = 0
++
++if standalone then
++  function assert_eq(a, b, msg)
++    if a ~= b then
++      failed = failed + 1
++      print("FAIL: " .. (msg or "") .. " expected " .. tostring(b) .. " got " .. tostring(a))
++    else
++      passed = passed + 1
++    end
++  end
++  function assert_true(v, msg)
++    assert_eq(not not v, true, msg)
++  end
++end
++
++local stub = require("wow_ui_stub")
++local restoreUi = stub.install()
++
++ChurchOfBeef = ChurchOfBeef or {}
++ChurchOfBeef._IN_TEST = true
++
++SlashCmdList = SlashCmdList or {}
++DEFAULT_CHAT_FRAME = DEFAULT_CHAT_FRAME or { AddMessage = function() end }
++
++UnitName = function(unit)
++  if unit == "player" then return "Beefina" end
++  return nil
++end
++
++dofile("addon/ChurchOfBeef/Core/Common.lua")
++dofile("addon/ChurchOfBeef/Core/Runtime.lua")
++dofile("addon/ChurchOfBeef/Core/Store.lua")
++dofile("addon/ChurchOfBeef/Core/Gora.lua")
++dofile("addon/ChurchOfBeef/Core/Sender.lua")
++dofile("addon/ChurchOfBeef/Core/Decree.lua")
++dofile("addon/ChurchOfBeef/Net/Codec.lua")
++dofile("addon/ChurchOfBeef/Net/Snapshot.lua")
++dofile("addon/ChurchOfBeef/Net/BeefNet.lua")
++dofile("addon/ChurchOfBeef/UI/Console.lua")
++dofile("addon/ChurchOfBeef/UI/Hud.lua")
++
++local origStart = ChurchOfBeef.Runtime.StartEvent
++local origOpen = ChurchOfBeef.Runtime.OpenRite
++local origClose = ChurchOfBeef.Runtime.CloseRite
++local origContinue = ChurchOfBeef.Runtime.Continue
++local origEnd = ChurchOfBeef.Runtime.EndEvent
++local origFavor = ChurchOfBeef.Gora.RecordFavor
++local origToggle = ChurchOfBeef.Console.SetCongregationFavorVisible
++local origPost = ChurchOfBeef.Console.PostDecree
++local origHandleState = ChurchOfBeef.Net._HandleState
++local origHandleSnap = ChurchOfBeef.Net._HandleSnapshot
++local origStoreRestore = ChurchOfBeef.Store.Restore
++local origPope = ChurchOfBeef.Sender.IsRegisteredPope
++
++dofile("addon/ChurchOfBeef/ChurchOfBeef.lua")
++
++local COB = ChurchOfBeef
++local Runtime = COB.Runtime
++local Store = COB.Store
++local Gora = COB.Gora
++local Sender = COB.Sender
++local Decree = COB.Decree
++local Codec = COB.Codec
++local Net = COB.Net
++local Console = COB.Console
++local Hud = COB.Hud
++
++local wire = {}
++local favorSpy = {}
++local targetSpy = {}
++local localIdSpy = {}
++local origSetFavor = Hud.SetBroadcastFavor
++local origSetTarget = Hud.SetFavorTarget
++local origSetLocal = Hud.SetLocalCharacterId
++
++local function hookHud()
++  favorSpy = {}
++  targetSpy = {}
++  localIdSpy = {}
++  Hud.SetBroadcastFavor = function(self, favor)
++    favorSpy[#favorSpy + 1] = favor
++    return origSetFavor(self, favor)
++  end
++  Hud.SetFavorTarget = function(self, target)
++    targetSpy[#targetSpy + 1] = target
++    return origSetTarget(self, target)
++  end
++  Hud.SetLocalCharacterId = function(self, characterId)
++    localIdSpy[#localIdSpy + 1] = characterId
++    return origSetLocal(self, characterId)
++  end
++end
++
++local function armTransmit()
++  wire = {}
++  Net.transmit = function(payload, channel, target)
++    wire[#wire + 1] = {
++      payload = payload,
++      channel = channel,
++      target = target,
++    }
++  end
++end
++
++local function reset()
++  assert_eq(Store:ResetForTests(), true, "Store ResetForTests runs under _IN_TEST")
++  assert_eq(Runtime:ResetForTests(), true, "Runtime ResetForTests runs under _IN_TEST")
++  assert_eq(Gora:ResetForTests(), true, "Gora ResetForTests runs under _IN_TEST")
++  assert_eq(Decree:ResetForTests(), true, "Decree ResetForTests runs under _IN_TEST")
++  assert_eq(Net:ResetForTests(), true, "Net ResetForTests runs under _IN_TEST")
++  if Console.ResetForTests then
++    assert_eq(Console:ResetForTests(), true, "Console ResetForTests runs under _IN_TEST")
++  end
++  if Hud.ResetForTests then
++    assert_eq(Hud:ResetForTests(), true, "Hud ResetForTests runs under _IN_TEST")
++  end
++  COB._inspecting = nil
++  armTransmit()
++  hookHud()
++end
++
++local function decodeLast()
++  local last = wire[#wire]
++  if not last then return nil end
++  return Codec:Decode(last.payload)
++end
++
++local function lastOfType(msgType)
++  for i = #wire, 1, -1 do
++    local msg = Codec:Decode(wire[i].payload)
++    if msg and msg.type == msgType then return msg, wire[i] end
++  end
++  return nil
++end
++
++local function countType(msgType)
++  local n = 0
++  for i = 1, #wire do
++    local msg = Codec:Decode(wire[i].payload)
++    if msg and msg.type == msgType then n = n + 1 end
++  end
++  return n
++end
++
++local function twoChars()
++  local a = Store:CreateCharacter({ name = "Chuckroast", class = "Warrior", level = 70 })
++  local b = Store:CreateCharacter({ name = "Tendermage", class = "Mage", level = 68 })
++  return a, b
++end
++
++local function stubPope()
++  Sender.IsRegisteredPope = function(_, sender)
++    return COB.Names.Key(sender) == "beefina"
++  end
++end
++
++--------------------------------------------------------------------------------
++-- Isolated surface. Pope list stays unloaded. Glue is not installed at load.
++--------------------------------------------------------------------------------
++assert_true(COB.InstallWire ~= nil, "InstallWire exists")
++assert_eq(type(COB.InstallWire), "function", "InstallWire is a function")
++assert_eq(COB._wireInstalled, nil, "dofile does not install wraps")
++assert_eq(Runtime.StartEvent, origStart, "StartEvent is unwrapped at load")
++assert_eq(COB.Popes, nil, "no COB.Popes (#8 is not coded)")
++
++if standalone then
++  assert_eq(COB.Scoring, nil, "isolated suite does not load Scoring")
++  assert_eq(COB.Ladder, nil, "isolated suite does not load Ladder")
++  assert_eq(COB.Officer, nil, "isolated suite does not load Officer")
++  assert_eq(COB.DB, nil, "isolated suite does not load DB")
++  assert_eq(COB.Archive, nil, "isolated suite does not load Archive")
++  assert_eq(COB.Ranks, nil, "isolated suite does not load Ranks")
++  assert_eq(COB.Recognition, nil, "isolated suite does not load Recognition")
++  assert_eq(COB.Popes, nil, "isolated suite does not load Data/Popes.lua")
++end
++
++assert_eq(UnitName("player"), "Beefina", "UnitName is stubbed to Beefina")
++assert_eq(Sender:IsRegisteredPope("Beefina"), false, "unstubbed Beefina is not a Pope")
++
++COB:InstallWire()
++assert_eq(COB._wireInstalled, true, "InstallWire marks itself installed")
++COB:InstallWire()
++assert_eq(COB._wireInstalled, true, "InstallWire is idempotent")
++
++--------------------------------------------------------------------------------
++-- Unstubbed Pope: StartEvent does not send.
++--------------------------------------------------------------------------------
++reset()
++assert_eq(Sender:IsRegisteredPope(Net:PlayerName()), false, "local player is not a registered Pope")
++local started, startErr = Runtime:StartEvent()
++assert_true(started ~= nil, "StartEvent still succeeds in Core")
++assert_eq(startErr, nil, "StartEvent has no Core error")
++assert_eq(Runtime:Snapshot().state, "ASSEMBLY", "StartEvent entered ASSEMBLY")
++assert_eq(#wire, 0, "unstubbed StartEvent does not send")
++assert_eq(countType("STATE"), 0, "unstubbed StartEvent does not enqueue STATE")
++
++--------------------------------------------------------------------------------
++-- Stubbed Pope: StartEvent / EndEvent send STATE. Second InstallWire does not
++-- double-wrap.
++--------------------------------------------------------------------------------
++reset()
++stubPope()
++assert_eq(Sender:IsRegisteredPope(Net:PlayerName()), true, "stub lists Beefina")
++COB:InstallWire()
++started = Runtime:StartEvent()
++assert_true(started ~= nil, "stubbed StartEvent succeeds")
++assert_eq(#wire, 1, "stubbed StartEvent sends once")
++local stateMsg = decodeLast()
++assert_true(stateMsg ~= nil, "StartEvent payload decodes")
++assert_eq(stateMsg.type, "STATE", "StartEvent sends STATE")
++assert_eq(stateMsg.state, "ASSEMBLY", "StartEvent STATE is ASSEMBLY")
++assert_eq(stateMsg.eventId, started.eventId, "StartEvent STATE carries event id")
++assert_eq(stateMsg.sequence, started.sequence, "StartEvent STATE carries sequence")
++assert_eq(stateMsg.favor, nil, "StartEvent STATE omits favor without a pair")
++assert_eq(wire[1].channel, "GUILD", "STATE travels on GUILD")
++
++local ended = Runtime:EndEvent()
++assert_true(ended ~= nil, "EndEvent succeeds from ASSEMBLY")
++assert_eq(#wire, 2, "EndEvent sends a second STATE")
++stateMsg = decodeLast()
++assert_eq(stateMsg.type, "STATE", "EndEvent sends STATE")
++assert_eq(stateMsg.state, "QUIET", "EndEvent STATE is QUIET")
++
++--------------------------------------------------------------------------------
++-- PostDecree sends DECREE. InspectProgress does not.
++--------------------------------------------------------------------------------
++reset()
++stubPope()
++local posted = Console:PostDecree({
++  line = "Goldshire Inn — Sunday, 7:00 PM",
++  flavor = "The Gathering.",
++})
++assert_true(posted ~= nil, "PostDecree Sets Core")
++assert_eq(posted.line, "Goldshire Inn — Sunday, 7:00 PM", "PostDecree returns line")
++assert_eq(countType("DECREE"), 1, "PostDecree sends DECREE")
++local decreeMsg = lastOfType("DECREE")
++assert_true(decreeMsg ~= nil, "DECREE decodes")
++assert_eq(decreeMsg.line, "Goldshire Inn — Sunday, 7:00 PM", "DECREE carries line")
++assert_eq(decreeMsg.flavor, "The Gathering.", "DECREE carries flavor")
++assert_eq(Decree:Get().line, "Goldshire Inn — Sunday, 7:00 PM", "PostDecree wrote Core")
++
++reset()
++stubPope()
++COB:InspectProgress()
++assert_eq(countType("DECREE"), 0, "InspectProgress does not send DECREE")
++assert_eq(countType("STATE"), 0, "InspectProgress does not send STATE")
++assert_eq(COB._inspecting, false, "InspectProgress clears the inspect flag")
++
++--------------------------------------------------------------------------------
++-- RecordFavor: toggle on + sanctioned pair includes favor; toggle off omits it.
++--------------------------------------------------------------------------------
++reset()
++stubPope()
++Runtime:StartEvent()
++local fighterA, fighterB = twoChars()
++local pair = Gora:Sanction(fighterA.id, fighterB.id)
++assert_true(pair ~= nil, "Sanction sets a live pair")
++assert_eq(Console:GetCongregationFavorVisible(), true, "congregation favor defaults on")
++assert_eq(Gora:RecordFavor(fighterA.id, fighterA.id), true, "RecordFavor stands a pick")
++stateMsg = lastOfType("STATE")
++assert_true(stateMsg ~= nil, "RecordFavor sends STATE")
++assert_true(stateMsg.favor ~= nil, "toggle-on STATE includes favor")
++assert_eq(stateMsg.favor.a, 1, "favor counts A")
++assert_eq(stateMsg.favor.b, 0, "favor counts B")
++
++assert_eq(Console:SetCongregationFavorVisible(false), true, "toggle accepts false")
++stateMsg = lastOfType("STATE")
++assert_true(stateMsg ~= nil, "toggle-off sends STATE")
++assert_eq(stateMsg.favor, nil, "toggle-off STATE omits favor")
++
++assert_eq(Gora:RecordFavor(fighterB.id, fighterB.id), true, "second pick stands")
++stateMsg = lastOfType("STATE")
++assert_eq(stateMsg.favor, nil, "RecordFavor with toggle off omits favor")
++
++--------------------------------------------------------------------------------
++-- Inbound STATE with favor (stub Accept) paints the HUD broadcast.
++--------------------------------------------------------------------------------
++reset()
++local savedAccept = Sender.Accept
++Sender.Accept = function() return true end
++local inbound, inboundErr = Codec:EncodeState({
++  eventId = 1,
++  state = "RITE",
++  riteType = "Gora",
++  subjects = { fighters = { 1, 2 } },
++  sequence = 1,
++  favor = { a = 3, b = 1 },
++})
++assert_true(inbound ~= nil, "inbound STATE encodes")
++assert_eq(inboundErr, nil, "inbound STATE encode has no error")
++local decoded = Codec:DecodeState(inbound)
++local ok = Net:_HandleState(decoded, "GUILD", "Steakina")
++assert_true(ok, "accepted STATE Restores")
++assert_eq(#favorSpy, 1, "accepted STATE calls SetBroadcastFavor once")
++assert_eq(favorSpy[1].a, 3, "broadcast favor a")
++assert_eq(favorSpy[1].b, 1, "broadcast favor b")
++assert_eq(targetSpy[1], "Steakina", "accepted STATE sets favor target")
++Sender.Accept = savedAccept
++
++--------------------------------------------------------------------------------
++-- Petition INPUT stays unknown.
++--------------------------------------------------------------------------------
++reset()
++local petition = Codec:EncodeInput({ kind = "petition", characterId = 1 })
++assert_true(petition ~= nil, "petition still encodes")
++local petOk, petErr = Net:OnAddonMessage(Net.Prefix, petition, "GUILD", "Steakina")
++assert_eq(petOk, false, "petition INPUT is not accepted")
++assert_eq(petErr, "unknown message type", "petition INPUT stays unknown")
++petOk, petErr = Net:OnAddonMessage(Net.Prefix, petition, "WHISPER", "Steakina")
++assert_eq(petOk, false, "whispered petition is not accepted")
++assert_eq(petErr, "unknown message type", "whispered petition stays unknown")
++
++--------------------------------------------------------------------------------
++-- Local picker id from Store after Restore. Matching UnitName via Names.Key.
++--------------------------------------------------------------------------------
++reset()
++local me = Store:CreateCharacter({ name = "Beefina", class = "Paladin", level = 70 })
++assert_true(me ~= nil, "local character is created")
++local restored = Store:Restore(Store:Snapshot())
++assert_true(restored, "Store Restore succeeds")
++assert_true(#localIdSpy >= 1, "Restore sets local character id")
++assert_eq(localIdSpy[#localIdSpy], me.id, "local id matches the Beefina row")
++
++--------------------------------------------------------------------------------
++-- Restore Pope stub and unwrap so a later harness suite is not polluted.
++--------------------------------------------------------------------------------
++Sender.IsRegisteredPope = origPope
++Hud.SetBroadcastFavor = origSetFavor
++Hud.SetFavorTarget = origSetTarget
++Hud.SetLocalCharacterId = origSetLocal
++Runtime.StartEvent = origStart
++Runtime.OpenRite = origOpen
++Runtime.CloseRite = origClose
++Runtime.Continue = origContinue
++Runtime.EndEvent = origEnd
++Gora.RecordFavor = origFavor
++Console.SetCongregationFavorVisible = origToggle
++Console.PostDecree = origPost
++Net._HandleState = origHandleState
++Net._HandleSnapshot = origHandleSnap
++Store.Restore = origStoreRestore
++COB._wireInstalled = nil
++COB._inspecting = nil
++
++assert_eq(Sender:IsRegisteredPope("Beefina"), false, "Pope stub is restored")
++assert_eq(Runtime.StartEvent, origStart, "StartEvent wrap is restored")
++
++if restoreUi then restoreUi() end
++
++if standalone then
++  print(string.format("Tests finished: %d passed, %d failed", passed, failed))
++  if failed > 0 then os.exit(1) end
++end

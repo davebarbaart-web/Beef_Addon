@@ -14,6 +14,16 @@ local RADIUS = 80
 
 local HINT_R, HINT_G, HINT_B = 0.8, 0.8, 0.8
 
+-- Theme:Texture by semantic name. Missing Theme or an empty resolve must not
+-- error: SetTexture(nil) is the client's question-mark fallback.
+local function themeTexture(name)
+  local theme = COB.Theme
+  if not theme or type(theme.Texture) ~= "function" then return nil end
+  local path = theme:Texture(name)
+  if type(path) ~= "string" or path == "" then return nil end
+  return path
+end
+
 local function minimapDb()
   if type(ChurchOfBeefDB) ~= "table" then return nil end
   if type(ChurchOfBeefDB.ui) ~= "table" then ChurchOfBeefDB.ui = {} end
@@ -121,11 +131,18 @@ function MinimapButton:Init()
   icon:SetWidth(20)
   icon:SetHeight(20)
   icon:SetPoint("CENTER", button, "CENTER", 0, 1)
-  -- A missing icon renders as the default question mark; it never errors.
-  icon:SetTexture("Interface\\Icons\\INV_Misc_Food_15")
+  -- Roundel via Theme (bull art when Media/ lands; stock disc until then).
+  -- A missing path renders as the default question mark; it never errors.
+  -- TexCoord 0.07 inset stays: stock fallback is UI-Minimap-Background, a
+  -- full-bleed disc, and the crop keeps it inside the tracking-border ring
+  -- rather than peeking as a square under the chrome. The same inset still
+  -- sits inside that ring when the bull lands.
+  icon:SetTexture(themeTexture("roundel_minimap"))
   icon:SetTexCoord(0.07, 0.93, 0.07, 0.93)
   button.icon = icon
 
+  -- Tracking border stays hardcoded MiniMap-TrackingBorder: it is stock
+  -- minimap chrome, not a church crest. Theme has no slot for it.
   local border = button:CreateTexture(nil, "OVERLAY")
   border:SetWidth(53)
   border:SetHeight(53)
@@ -133,7 +150,10 @@ function MinimapButton:Init()
   border:SetTexture("Interface\\Minimap\\MiniMap-TrackingBorder")
   button.border = border
 
-  button:SetHighlightTexture("Interface\\Minimap\\UI-Minimap-ZoomButton-Highlight")
+  button:SetHighlightTexture(themeTexture("roundel_minimap_highlight"))
+  -- Pushed is the stock Button:SetPushedTexture mechanic, not a no-op.
+  -- Theme already owns the slot (stock depress until the bull press lands).
+  button:SetPushedTexture(themeTexture("roundel_minimap_pushed"))
 
   button:SetScript("OnClick", function(_, mouseButton)
     if mouseButton and mouseButton ~= "LeftButton" then return end

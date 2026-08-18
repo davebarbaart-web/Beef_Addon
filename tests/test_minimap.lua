@@ -29,6 +29,7 @@ ChurchOfBeef._IN_TEST = true
 dofile("addon/ChurchOfBeef/Core/Common.lua")
 dofile("addon/ChurchOfBeef/Core/DB.lua")
 dofile("addon/ChurchOfBeef/Core/Decree.lua")
+dofile("addon/ChurchOfBeef/UI/Theme.lua")
 dofile("addon/ChurchOfBeef/UI/Decree.lua")
 
 local COB = ChurchOfBeef
@@ -49,9 +50,35 @@ local DEFAULT_ANGLE = 200
 local CENTER_X, CENTER_Y = 400, 300
 local SCALE = 2
 
+-- The widget stub allows SetTexture / SetHighlightTexture / SetPushedTexture
+-- but does not remember the path. Dress pins need the path Set* received.
+local savedCreateFrame = CreateFrame
+CreateFrame = function(frameType, name, parent, template)
+  local widget = savedCreateFrame(frameType, name, parent, template)
+  widget.SetHighlightTexture = function(self, path) self._highlightPath = path end
+  widget.GetHighlightTexture = function(self) return self._highlightPath end
+  widget.SetPushedTexture = function(self, path) self._pushedPath = path end
+  widget.GetPushedTexture = function(self) return self._pushedPath end
+  local savedCreateTexture = widget.CreateTexture
+  widget.CreateTexture = function(self, texName, layer)
+    local tex = savedCreateTexture(self, texName, layer)
+    tex.SetTexture = function(self, path) self._texture = path end
+    tex.GetTexture = function(self) return self._texture end
+    tex.SetTexCoord = function(self, ...) self._texCoord = { ... } end
+    tex.GetTexCoord = function(self)
+      local c = self._texCoord
+      if not c then return nil end
+      return c[1], c[2], c[3], c[4]
+    end
+    return tex
+  end
+  return widget
+end
+
 local savedCursorApi = GetCursorPosition
 local savedChatFrame = DEFAULT_CHAT_FRAME
 local savedUi = COB.UI
+local savedManifest = ChurchOfBeefMediaManifest
 
 local cursorScreenX, cursorScreenY = 0, 0
 GetCursorPosition = function() return cursorScreenX, cursorScreenY end
@@ -108,6 +135,23 @@ assert_eq(ChurchOfBeefDB.ui.minimapAngle, nil, "a fresh install saves no angle")
 assert_at_angle(button, DEFAULT_ANGLE, "an unplaced button sits on the default spoke")
 assert_eq(button:GetScript("OnUpdate"), nil, "a resting button runs nothing per frame")
 
+assert_true(COB.Theme ~= nil, "Theme is loaded for the roundel slot")
+assert_eq(button.icon:GetTexture(), COB.Theme:Texture("roundel_minimap"),
+  "icon is the Theme-resolved minimap roundel")
+assert_eq(button:GetHighlightTexture(), COB.Theme:Texture("roundel_minimap_highlight"),
+  "highlight is the Theme-resolved minimap roundel highlight")
+assert_eq(button:GetPushedTexture(), COB.Theme:Texture("roundel_minimap_pushed"),
+  "pushed is the Theme-resolved minimap roundel press")
+local u0, u1, v0, v1 = button.icon:GetTexCoord()
+assert_eq(u0, 0.07, "roundel keeps the stock-disc inset (u0)")
+assert_eq(u1, 0.93, "roundel keeps the stock-disc inset (u1)")
+assert_eq(v0, 0.07, "roundel keeps the stock-disc inset (v0)")
+assert_eq(v1, 0.93, "roundel keeps the stock-disc inset (v1)")
+assert_eq(button.border:GetTexture(), "Interface\\Minimap\\MiniMap-TrackingBorder",
+  "tracking border stays stock MiniMap-TrackingBorder chrome")
+assert_eq(button.icon:GetTexture() == "Interface\\Icons\\INV_Misc_Food_15", false,
+  "the steak placeholder is gone")
+
 --------------------------------------------------------------------------------
 -- Dragging walks the button around the ring and persists where it stopped
 --------------------------------------------------------------------------------
@@ -163,13 +207,29 @@ local persisted = ChurchOfBeefDB
 assert_near(persisted.ui.minimapAngle, 45, "the angle is not scrubbed by the defaults pass")
 
 -- A /reload: fresh module tables over the saved variable table the client kept.
+-- A sentinel manifest proves the icon is Theme-resolved, not a hardcoded stock path.
+ChurchOfBeefMediaManifest = {
+  roundel_minimap = "Interface\\AddOns\\ChurchOfBeef\\Media\\Roundel\\test-roundel.tga",
+  roundel_minimap_highlight = "Interface\\AddOns\\ChurchOfBeef\\Media\\Roundel\\test-highlight.tga",
+  roundel_minimap_pushed = "Interface\\AddOns\\ChurchOfBeef\\Media\\Roundel\\test-pushed.tga",
+}
 dofile("addon/ChurchOfBeef/UI/Minimap.lua")
 ChurchOfBeefDB = persisted
 COB.DB:Init()
 local reloaded = COB.Minimap:Init()
 assert_true(reloaded ~= button, "the reload builds a new button")
 assert_at_angle(reloaded, 45, "the dragged angle is honoured on the next login")
+assert_eq(reloaded.icon:GetTexture(), COB.Theme:Texture("roundel_minimap"),
+  "reload icon still follows Theme (manifest wins)")
+assert_eq(reloaded:GetHighlightTexture(), COB.Theme:Texture("roundel_minimap_highlight"),
+  "reload highlight still follows Theme (manifest wins)")
+assert_eq(reloaded:GetPushedTexture(), COB.Theme:Texture("roundel_minimap_pushed"),
+  "reload pushed still follows Theme (manifest wins)")
+assert_eq(reloaded.icon:GetTexture(),
+  "Interface\\AddOns\\ChurchOfBeef\\Media\\Roundel\\test-roundel.tga",
+  "reload icon is the manifest path, not a hardcoded stock disc")
 button = reloaded
+ChurchOfBeefMediaManifest = nil
 
 --------------------------------------------------------------------------------
 -- /beef minimap is the way back from a hidden button
@@ -270,6 +330,7 @@ assert_eq(button:IsShown(), true, "/beef minimap still shows after Decree replay
 GetCursorPosition = savedCursorApi
 DEFAULT_CHAT_FRAME = savedChatFrame
 COB.UI = savedUi
+ChurchOfBeefMediaManifest = savedManifest
 restore()
 
 if standalone then

@@ -1,0 +1,863 @@
+diff --git a/addon/ChurchOfBeef/UI/Markers.lua b/addon/ChurchOfBeef/UI/Markers.lua
+new file mode 100644
+index 0000000..32dc7ac
+--- /dev/null
++++ b/addon/ChurchOfBeef/UI/Markers.lua
+@@ -0,0 +1,278 @@
++ChurchOfBeef = ChurchOfBeef or {}
++local COB = ChurchOfBeef
++
++-- Event Mode candidate / fighter raid marks (Bible §8).
++-- Target + raid markers on the Pope's client. Fail-closed. No combat automation.
++local Markers = {
++  MODE = "Event",
++}
++COB.Markers = Markers
++
++local last = { mode = "Event" }
++
++local function deepcopy(value)
++  if type(value) ~= "table" then return value end
++  local out = {}
++  for k, v in pairs(value) do
++    out[deepcopy(k)] = deepcopy(v)
++  end
++  return out
++end
++
++local function parseName(name)
++  if COB.Names and type(COB.Names.Trim) == "function" then
++    return COB.Names.Trim(name)
++  end
++  if type(name) ~= "string" then return nil end
++  name = name:gsub("^%s+", ""):gsub("%s+$", "")
++  if name == "" then return nil end
++  return name
++end
++
++local function namesSame(a, b)
++  if COB.Names and type(COB.Names.Same) == "function" then
++    return COB.Names.Same(a, b)
++  end
++  return parseName(a) == parseName(b)
++end
++
++local function eventLive()
++  local Runtime = COB.Runtime
++  if not Runtime or type(Runtime.Snapshot) ~= "function" then return false end
++  local snap = Runtime:Snapshot()
++  return type(snap) == "table" and snap.state ~= nil and snap.state ~= "QUIET"
++end
++
++local function localSender()
++  if COB.Group and type(COB.Group.PlayerName) == "function" then
++    return COB.Group.PlayerName()
++  end
++  if type(UnitName) == "function" then
++    local ok, name = pcall(UnitName, "player")
++    if ok then return name end
++  end
++  return nil
++end
++
++local function isLocalPope()
++  local Sender = COB.Sender
++  if not Sender or type(Sender.IsRegisteredPope) ~= "function" then
++    return false
++  end
++  return Sender:IsRegisteredPope(localSender()) == true
++end
++
++local function isGrouped()
++  if type(IsInRaid) == "function" then
++    local ok, inRaid = pcall(IsInRaid)
++    if ok and inRaid then return true end
++  end
++  if type(IsInGroup) == "function" then
++    local ok, inGroup = pcall(IsInGroup)
++    if ok and inGroup then return true end
++  end
++  if type(GetNumGroupMembers) == "function" then
++    local ok, n = pcall(GetNumGroupMembers)
++    if ok and (tonumber(n) or 0) > 0 then return true end
++  end
++  return false
++end
++
++local function resolveUnit(name)
++  if type(GetNumGroupMembers) ~= "function" or type(UnitName) ~= "function" then
++    return nil
++  end
++  local ok, raw = pcall(GetNumGroupMembers)
++  if not ok then return nil end
++  local size = tonumber(raw) or 0
++  if size <= 0 then return nil end
++  local inRaid = false
++  if type(IsInRaid) == "function" then
++    local rok, raid = pcall(IsInRaid)
++    inRaid = rok and raid and true or false
++  end
++  local prefix = inRaid and "raid" or "party"
++  for i = 1, size do
++    local unit = prefix .. i
++    local uok, unitName = pcall(UnitName, unit)
++    if uok and namesSame(unitName, name) then
++      return unit
++    end
++  end
++  return nil
++end
++
++local function applyMark(unit, index)
++  if type(SetRaidTarget) ~= "function" then
++    return false
++  end
++  local ok = pcall(SetRaidTarget, unit, index)
++  if not ok then return false end
++  if type(GetRaidTargetIndex) == "function" then
++    pcall(GetRaidTargetIndex, unit)
++  end
++  return true
++end
++
++local function remember(fields)
++  last = {
++    mode = "Event",
++    verb = fields.verb,
++    ok = fields.ok == true,
++    err = fields.err,
++    name = fields.name,
++    unit = fields.unit,
++    index = fields.index,
++    nameA = fields.nameA,
++    nameB = fields.nameB,
++    unitA = fields.unitA,
++    unitB = fields.unitB,
++    indexA = fields.indexA,
++    indexB = fields.indexB,
++  }
++  if last.ok then
++    return true
++  end
++  return false, last.err
++end
++
++local function refuse(verb, err, fields)
++  fields = fields or {}
++  fields.verb = verb
++  fields.ok = false
++  fields.err = err
++  return remember(fields)
++end
++
++function Markers:Target(name)
++  local trimmed = parseName(name)
++  if not eventLive() then
++    return refuse("Target", "quiet", { name = trimmed or name })
++  end
++  if not isLocalPope() then
++    return refuse("Target", "not a registered pope", { name = trimmed or name })
++  end
++  if not trimmed then
++    return refuse("Target", "invalid name")
++  end
++  if type(TargetUnit) ~= "function" then
++    return refuse("Target", nil, { name = trimmed })
++  end
++  local ok = pcall(TargetUnit, trimmed, true)
++  if not ok then
++    return refuse("Target", nil, { name = trimmed })
++  end
++  return remember({ verb = "Target", ok = true, name = trimmed })
++end
++
++function Markers:MarkCandidate(name)
++  local trimmed = parseName(name)
++  if not eventLive() then
++    return refuse("MarkCandidate", "quiet", { name = trimmed or name })
++  end
++  if not isLocalPope() then
++    return refuse("MarkCandidate", "not a registered pope", { name = trimmed or name })
++  end
++  if not trimmed then
++    return refuse("MarkCandidate", "invalid name")
++  end
++  if not isGrouped() then
++    return refuse("MarkCandidate", "not in a group", { name = trimmed })
++  end
++  local unit = resolveUnit(trimmed)
++  if not unit then
++    return refuse("MarkCandidate", "unit not found", { name = trimmed })
++  end
++  if not applyMark(unit, 1) then
++    return refuse("MarkCandidate", nil, { name = trimmed, unit = unit, index = 1 })
++  end
++  return remember({
++    verb = "MarkCandidate",
++    ok = true,
++    name = trimmed,
++    unit = unit,
++    index = 1,
++  })
++end
++
++function Markers:MarkFighters(nameA, nameB)
++  local a = parseName(nameA)
++  local b = parseName(nameB)
++  if not eventLive() then
++    return refuse("MarkFighters", "quiet", { nameA = a or nameA, nameB = b or nameB })
++  end
++  if not isLocalPope() then
++    return refuse("MarkFighters", "not a registered pope", { nameA = a or nameA, nameB = b or nameB })
++  end
++  if not a or not b then
++    return refuse("MarkFighters", "invalid name", { nameA = a, nameB = b })
++  end
++  if not isGrouped() then
++    return refuse("MarkFighters", "not in a group", { nameA = a, nameB = b })
++  end
++  local unitA = resolveUnit(a)
++  local unitB = resolveUnit(b)
++  if not unitA or not unitB then
++    return refuse("MarkFighters", "unit not found", { nameA = a, nameB = b })
++  end
++  if not applyMark(unitA, 2) or not applyMark(unitB, 3) then
++    return refuse("MarkFighters", nil, {
++      nameA = a,
++      nameB = b,
++      unitA = unitA,
++      unitB = unitB,
++      indexA = 2,
++      indexB = 3,
++    })
++  end
++  return remember({
++    verb = "MarkFighters",
++    ok = true,
++    nameA = a,
++    nameB = b,
++    unitA = unitA,
++    unitB = unitB,
++    indexA = 2,
++    indexB = 3,
++  })
++end
++
++function Markers:Clear(name)
++  local trimmed = parseName(name)
++  if not eventLive() then
++    return refuse("Clear", "quiet", { name = trimmed or name })
++  end
++  if not isLocalPope() then
++    return refuse("Clear", "not a registered pope", { name = trimmed or name })
++  end
++  if not trimmed then
++    return refuse("Clear", "invalid name")
++  end
++  if not isGrouped() then
++    return refuse("Clear", "not in a group", { name = trimmed })
++  end
++  local unit = resolveUnit(trimmed)
++  if not unit then
++    return refuse("Clear", "unit not found", { name = trimmed })
++  end
++  if not applyMark(unit, 0) then
++    return refuse("Clear", nil, { name = trimmed, unit = unit, index = 0 })
++  end
++  return remember({
++    verb = "Clear",
++    ok = true,
++    name = trimmed,
++    unit = unit,
++    index = 0,
++  })
++end
++
++function Markers:GetView()
++  return deepcopy(last)
++end
++
++function Markers:ResetForTests()
++  if not COB._IN_TEST then return false end
++  last = { mode = "Event" }
++  return true
++end
+
+diff --git a/tests/test_markers.lua b/tests/test_markers.lua
+new file mode 100644
+index 0000000..5e04a55
+--- /dev/null
++++ b/tests/test_markers.lua
+@@ -0,0 +1,572 @@
++-- Candidate / fighter raid marks (B5-B). Isolated: wow_ui_stub + Common +
++-- Runtime + Markers. Stub SetRaidTarget / TargetUnit / Sender / UnitName.
++-- Quiet refuse. StartEvent + Pope + grouped → MarkCandidate spies
++-- SetRaidTarget(unit, 1). Missing API fail-closed. Isolation wrap.
++-- No TOC / bootstrap / run.lua / Knighting / Gora / Console.
++package.path = package.path .. ";./tests/?.lua"
++
++local stub = require("wow_ui_stub")
++local restore = stub.install()
++
++ChurchOfBeef = ChurchOfBeef or {}
++ChurchOfBeef._IN_TEST = true
++
++local standalone = (type(assert_eq) ~= "function")
++local passed = 0
++local failed = 0
++
++if standalone then
++  function assert_eq(a, b, msg)
++    if a ~= b then
++      failed = failed + 1
++      print("FAIL: " .. (msg or "") .. " expected " .. tostring(b) .. " got " .. tostring(a))
++    else
++      passed = passed + 1
++    end
++  end
++  function assert_true(v, msg)
++    assert_eq(not not v, true, msg)
++  end
++end
++
++dofile("addon/ChurchOfBeef/Core/Common.lua")
++dofile("addon/ChurchOfBeef/Core/Runtime.lua")
++dofile("addon/ChurchOfBeef/UI/Markers.lua")
++
++local COB = ChurchOfBeef
++local Markers = COB.Markers
++local Runtime = COB.Runtime
++
++local sounds = 0
++PlaySound = function()
++  sounds = sounds + 1
++end
++PlaySoundFile = function()
++  sounds = sounds + 1
++end
++PlaySoundKitID = function()
++  sounds = sounds + 1
++end
++
++local popeFlag = false
++local popeNames = {}
++local raidTargets = {}
++local targetCalls = {}
++local raidIndexReads = {}
++local combatCalls = 0
++
++local function stubSender()
++  popeNames = {}
++  COB.Sender = {
++    IsRegisteredPope = function(_, name)
++      popeNames[#popeNames + 1] = name
++      return popeFlag == true
++    end,
++  }
++end
++
++local function stubMarkApis()
++  raidTargets = {}
++  targetCalls = {}
++  raidIndexReads = {}
++  combatCalls = 0
++  SetRaidTarget = function(unit, index)
++    raidTargets[#raidTargets + 1] = { unit = unit, index = index }
++  end
++  TargetUnit = function(name, exact)
++    targetCalls[#targetCalls + 1] = { name = name, exact = exact }
++  end
++  GetRaidTargetIndex = function(unit)
++    raidIndexReads[#raidIndexReads + 1] = unit
++    for i = #raidTargets, 1, -1 do
++      if raidTargets[i].unit == unit then
++        return raidTargets[i].index
++      end
++    end
++    return nil
++  end
++  StartAttack = function()
++    combatCalls = combatCalls + 1
++  end
++  AttackTarget = function()
++    combatCalls = combatCalls + 1
++  end
++  AssistUnit = function()
++    combatCalls = combatCalls + 1
++  end
++end
++
++local function resetGroup()
++  stub.playerName = "Beefina"
++  stub.group = {}
++  stub.groupSize = 0
++  stub.inRaid = false
++  stub.playerInCombat = false
++end
++
++local function armRaid(candidateName, extra)
++  stub.playerName = "Beefina"
++  stub.inRaid = true
++  stub.groupSize = extra and 3 or 2
++  stub.group = {
++    raid1 = { name = "Beefina" },
++    raid2 = { name = candidateName or "Chuckroast" },
++  }
++  if extra then
++    stub.group.raid3 = { name = extra }
++  end
++end
++
++local function reset()
++  popeFlag = false
++  stubSender()
++  stubMarkApis()
++  resetGroup()
++  sounds = 0
++  assert_eq(Runtime:ResetForTests(), true, "Runtime ResetForTests runs under _IN_TEST")
++  assert_eq(Markers:ResetForTests(), true, "Markers ResetForTests runs under _IN_TEST")
++end
++
++--------------------------------------------------------------------------------
++-- Isolated surface. Other modules stay nil only when this file is the process.
++--------------------------------------------------------------------------------
++assert_true(Markers ~= nil, "COB.Markers is loaded")
++assert_true(Runtime ~= nil, "isolated suite loads Runtime")
++assert_true(COB.Names ~= nil, "Common name law is loaded")
++assert_true(COB.Group ~= nil, "Common Group is loaded")
++assert_eq(Markers.MODE, "Event", "Markers declares Event Mode")
++assert_eq(type(Markers.Target), "function", "Target is the desk-assist verb")
++assert_eq(type(Markers.MarkCandidate), "function", "MarkCandidate places star")
++assert_eq(type(Markers.MarkFighters), "function", "MarkFighters places 2 and 3")
++assert_eq(type(Markers.Clear), "function", "Clear removes a mark")
++assert_eq(type(Markers.GetView), "function", "GetView returns a copy")
++assert_eq(type(Markers.ResetForTests), "function", "ResetForTests is a harness hatch")
++assert_eq(Markers.Init, nil, "no frame surface this lane")
++assert_eq(Markers.Show, nil, "no Show chrome")
++assert_eq(Markers.PlayCue, nil, "no sound this lane")
++assert_eq(Markers.Toast, nil, "Markers is not a toast")
++assert_eq(Markers.Narrate, nil, "software does not narrate")
++assert_eq(Markers.Announce, nil, "software does not announce")
++assert_eq(Markers.Sanction, nil, "Markers does not sanction")
++assert_eq(Markers.Knight, nil, "Markers does not knight")
++assert_eq(Markers.Promote, nil, "no GuildPromote verb")
++assert_eq(Markers.StartAttack, nil, "no combat verb")
++assert_eq(Markers.INPUT, nil, "no invented INPUT channel")
++
++if standalone then
++  assert_eq(COB.UI, nil, "isolated suite does not load the Quiet shell")
++  assert_eq(COB.DB, nil, "isolated suite does not load DB")
++  assert_eq(COB.Net, nil, "isolated suite does not load BeefNet")
++  assert_eq(COB.Officer, nil, "isolated suite does not load Officer")
++  assert_eq(COB.Archive, nil, "isolated suite does not load Archive")
++  assert_eq(COB.Recognition, nil, "isolated suite does not load Recognition")
++  assert_eq(COB.Roster, nil, "isolated suite does not load Roster")
++  assert_eq(COB.Popes, nil, "isolated suite does not load a Pope list")
++  assert_eq(COB.Hud, nil, "isolated suite does not load Hud")
++  assert_eq(COB.Sound, nil, "isolated suite does not load Sound")
++  assert_eq(COB.DecreeBanner, nil, "isolated suite does not load Decree")
++  assert_eq(COB.RecordsBook, nil, "isolated suite does not load Records Book")
++  assert_eq(COB.Minimap, nil, "isolated suite does not load Minimap")
++  assert_eq(COB.Toasts, nil, "isolated suite does not load Toasts")
++  assert_eq(COB.Codec, nil, "isolated suite does not load Codec")
++  assert_eq(COB.Snapshot, nil, "isolated suite does not load Snapshot")
++  assert_eq(COB.Console, nil, "isolated suite does not load Console")
++  assert_eq(COB.Sender, nil, "isolated suite does not load Sender")
++  assert_eq(COB.Store, nil, "isolated suite does not load Store")
++  assert_eq(COB.Gora, nil, "isolated suite does not load Gora")
++  assert_eq(COB.Knighting, nil, "isolated suite does not load Knighting")
++  assert_eq(COB.FighterCard, nil, "isolated suite does not load FighterCard")
++  assert_eq(COB.Confession, nil, "isolated suite does not load Confession")
++  assert_eq(COB.Inputs, nil, "isolated suite does not load Inputs")
++  assert_eq(COB.ConsoleDock, nil, "isolated suite does not load ConsoleDock")
++  assert_eq(COB.Decree, nil, "isolated suite does not load Core Decree")
++  assert_eq(type(SLASH_CHURCHOFBEEF1), "nil", "this file does not register a slash")
++end
++
++--------------------------------------------------------------------------------
++-- Source contract: guarded APIs, no theater, no combat automation.
++--------------------------------------------------------------------------------
++local srcFile = io.open("addon/ChurchOfBeef/UI/Markers.lua", "r")
++assert_true(srcFile ~= nil, "UI/Markers.lua is readable")
++local src = srcFile:read("*a")
++srcFile:close()
++assert_true(src:find('type(TargetUnit)', 1, true) ~= nil, "TargetUnit is type-guarded")
++assert_true(src:find('type(SetRaidTarget)', 1, true) ~= nil, "SetRaidTarget is type-guarded")
++assert_true(src:find('type(GetRaidTargetIndex)', 1, true) ~= nil, "GetRaidTargetIndex is type-guarded")
++assert_true(src:find('type(GetNumGroupMembers)', 1, true) ~= nil, "GetNumGroupMembers is type-guarded")
++assert_true(src:find('type(IsInRaid)', 1, true) ~= nil, "IsInRaid is type-guarded")
++assert_true(src:find("pcall(TargetUnit", 1, true) ~= nil, "TargetUnit is pcalled")
++assert_true(src:find('"not in a group"', 1, true) ~= nil, "ungrouped error is named")
++assert_true(src:find('"not a registered pope"', 1, true) ~= nil, "unlisted Pope error is named")
++assert_eq(src:find("PlaySound", 1, true), nil, "source does not play sound")
++assert_eq(src:find("PlaySoundFile", 1, true), nil, "source does not call PlaySoundFile")
++assert_eq(src:find("Toasts", 1, true), nil, "source does not drive Toasts")
++assert_eq(src:find("COB.Net", 1, true), nil, "source does not call Net")
++assert_eq(src:find("SendChatMessage", 1, true), nil, "source does not send chat")
++assert_eq(src:find("SendAddonMessage", 1, true), nil, "source does not send addon messages")
++assert_eq(src:find("GuildPromote", 1, true), nil, "source does not GuildPromote")
++assert_eq(src:find("SetGuildMemberRank", 1, true), nil, "source does not set guild rank")
++assert_eq(src:find("StartAttack", 1, true), nil, "source does not StartAttack")
++assert_eq(src:find("AttackTarget", 1, true), nil, "source does not AttackTarget")
++assert_eq(src:find("AssistUnit", 1, true), nil, "source does not AssistUnit")
++assert_eq(src:find("CastSpell", 1, true), nil, "source does not CastSpell")
++assert_eq(src:find("UseAction", 1, true), nil, "source does not UseAction")
++assert_eq(src:find("SecureActionButton", 1, true), nil, "no secure template")
++assert_eq(src:find("CreateFrame", 1, true), nil, "no frame this lane")
++assert_eq(src:find("ShowUIPanel", 1, true), nil, "insecure only")
++assert_eq(src:find("SLASH_", 1, true), nil, "source does not register a slash")
++assert_eq(src:find("Media\\", 1, true), nil, "source does not require custom Media")
++assert_eq(src:find(".tga", 1, true), nil, "source does not load custom tga")
++assert_eq(src:find(".blp", 1, true), nil, "source does not load custom blp")
++assert_eq(src:find("rubber", 1, true), nil, "source has no rubber flavor")
++assert_eq(src:find("ordained", 1, true), nil, "source has no ordained flavor")
++assert_eq(src:find("Proclaim", 1, true), nil, "source does not Proclaim")
++
++--------------------------------------------------------------------------------
++-- Quiet refuse. All verbs. No TargetUnit / SetRaidTarget.
++--------------------------------------------------------------------------------
++reset()
++assert_eq(Runtime:Snapshot().state, "QUIET", "fresh runtime is QUIET")
++local ok, err = Markers:Target("Chuckroast")
++assert_eq(ok, false, "Quiet Target is false")
++assert_eq(err, "quiet", "Quiet Target names quiet")
++assert_eq(#targetCalls, 0, "Quiet Target does not TargetUnit")
++ok, err = Markers:MarkCandidate("Chuckroast")
++assert_eq(ok, false, "Quiet MarkCandidate is false")
++assert_eq(err, "quiet", "Quiet MarkCandidate names quiet")
++assert_eq(#raidTargets, 0, "Quiet MarkCandidate does not SetRaidTarget")
++ok, err = Markers:MarkFighters("Chuckroast", "Tendermage")
++assert_eq(ok, false, "Quiet MarkFighters is false")
++assert_eq(err, "quiet", "Quiet MarkFighters names quiet")
++ok, err = Markers:Clear("Chuckroast")
++assert_eq(ok, false, "Quiet Clear is false")
++assert_eq(err, "quiet", "Quiet Clear names quiet")
++assert_eq(#raidTargets, 0, "Quiet Clear does not SetRaidTarget")
++assert_eq(Markers:GetView().ok, false, "Quiet view records the refuse")
++assert_eq(Markers:GetView().mode, "Event", "refused view still declares Event")
++assert_eq(sounds, 0, "Quiet plays no sound")
++assert_eq(#stub.chat, 0, "Quiet does not SendChatMessage")
++assert_eq(#stub.addonMessages, 0, "Quiet does not SendAddonMessage")
++assert_eq(combatCalls, 0, "Quiet does not start combat")
++
++--------------------------------------------------------------------------------
++-- Event without Pope. Unlisted → not a registered pope.
++--------------------------------------------------------------------------------
++reset()
++assert_true(Runtime:StartEvent() ~= nil, "StartEvent reaches ASSEMBLY")
++assert_eq(Runtime:Snapshot().state, "ASSEMBLY", "runtime is ASSEMBLY")
++popeFlag = false
++armRaid("Chuckroast")
++ok, err = Markers:MarkCandidate("Chuckroast")
++assert_eq(ok, false, "unlisted Pope MarkCandidate is false")
++assert_eq(err, "not a registered pope", "unlisted Pope names the error")
++assert_eq(#raidTargets, 0, "unlisted Pope does not SetRaidTarget")
++ok, err = Markers:Target("Chuckroast")
++assert_eq(ok, false, "unlisted Pope Target is false")
++assert_eq(err, "not a registered pope", "unlisted Pope Target names the error")
++assert_eq(#targetCalls, 0, "unlisted Pope does not TargetUnit")
++ok, err = Markers:MarkFighters("Chuckroast", "Tendermage")
++assert_eq(ok, false, "unlisted Pope MarkFighters is false")
++assert_eq(err, "not a registered pope", "unlisted Pope MarkFighters names the error")
++ok, err = Markers:Clear("Chuckroast")
++assert_eq(ok, false, "unlisted Pope Clear is false")
++assert_eq(err, "not a registered pope", "unlisted Pope Clear names the error")
++
++local savedSender = COB.Sender
++COB.Sender = nil
++ok, err = Markers:MarkCandidate("Chuckroast")
++assert_eq(ok, false, "missing Sender is false")
++assert_eq(err, "not a registered pope", "missing Sender is not a registered pope")
++COB.Sender = {
++  IsRegisteredPope = function()
++    return 1
++  end,
++}
++ok, err = Markers:MarkCandidate("Chuckroast")
++assert_eq(ok, false, "non-true Pope return is false")
++assert_eq(err, "not a registered pope", "non-true Pope return is unlisted")
++COB.Sender = savedSender
++
++--------------------------------------------------------------------------------
++-- Event + Pope + not grouped → not in a group.
++--------------------------------------------------------------------------------
++reset()
++Runtime:StartEvent()
++popeFlag = true
++ok, err = Markers:MarkCandidate("Chuckroast")
++assert_eq(ok, false, "ungrouped MarkCandidate is false")
++assert_eq(err, "not in a group", "ungrouped MarkCandidate names the error")
++assert_eq(#raidTargets, 0, "ungrouped MarkCandidate does not mark")
++ok, err = Markers:MarkFighters("Chuckroast", "Tendermage")
++assert_eq(ok, false, "ungrouped MarkFighters is false")
++assert_eq(err, "not in a group", "ungrouped MarkFighters names the error")
++ok, err = Markers:Clear("Chuckroast")
++assert_eq(ok, false, "ungrouped Clear is false")
++assert_eq(err, "not in a group", "ungrouped Clear names the error")
++assert_eq(#raidTargets, 0, "ungrouped Clear does not SetRaidTarget")
++
++--------------------------------------------------------------------------------
++-- Event + Pope + grouped: Target and MarkCandidate spies.
++--------------------------------------------------------------------------------
++reset()
++Runtime:StartEvent()
++popeFlag = true
++armRaid("Chuckroast")
++ok, err = Markers:Target("Chuckroast")
++assert_eq(ok, true, "Event Pope Target is true")
++assert_eq(err, nil, "successful Target has no error")
++assert_eq(#targetCalls, 1, "Target spies TargetUnit once")
++assert_eq(targetCalls[1].name, "Chuckroast", "TargetUnit receives the name")
++assert_eq(targetCalls[1].exact, true, "TargetUnit uses exactMatch true")
++assert_eq(#raidTargets, 0, "Target does not SetRaidTarget")
++
++ok, err = Markers:MarkCandidate("Chuckroast")
++assert_eq(ok, true, "Event Pope grouped MarkCandidate is true")
++assert_eq(err, nil, "successful MarkCandidate has no error")
++assert_eq(#raidTargets, 1, "MarkCandidate spies SetRaidTarget once")
++assert_eq(raidTargets[1].unit, "raid2", "MarkCandidate uses a scanned raid token")
++assert_eq(raidTargets[1].index, 1, "MarkCandidate places star index 1")
++assert_eq(raidTargets[1].unit ~= "Chuckroast", true, "MarkCandidate does not invent a name token")
++assert_eq(#raidIndexReads >= 1, true, "GetRaidTargetIndex is read after mark")
++local view = Markers:GetView()
++assert_eq(view.ok, true, "view records success")
++assert_eq(view.verb, "MarkCandidate", "view records the verb")
++assert_eq(view.name, "Chuckroast", "view records the name")
++assert_eq(view.unit, "raid2", "view records the unit token")
++assert_eq(view.index, 1, "view records star index 1")
++assert_eq(view.mode, "Event", "success view declares Event")
++assert_eq(popeNames[#popeNames], "Beefina", "Pope gate reads the local player")
++
++ok, err = Markers:MarkCandidate("chuckroast")
++assert_eq(ok, true, "Names.Same matches case")
++assert_eq(raidTargets[#raidTargets].unit, "raid2", "case fold still uses raid2")
++
++stub.group.raid2 = { name = "Chuckroast-Whitemane" }
++ok, err = Markers:MarkCandidate("Chuckroast")
++assert_eq(ok, true, "Names.Same matches a realm suffix")
++assert_eq(raidTargets[#raidTargets].unit, "raid2", "realm suffix still uses raid2")
++
++ok, err = Markers:MarkCandidate("Ghost")
++assert_eq(ok, false, "unknown grouped name is false")
++assert_eq(err, "unit not found", "unknown name names the error")
++
++ok, err = Markers:MarkCandidate(nil)
++assert_eq(ok, false, "nil name is false")
++assert_eq(err, "invalid name", "nil name is invalid")
++ok, err = Markers:MarkCandidate("")
++assert_eq(ok, false, "empty name is false")
++assert_eq(err, "invalid name", "empty name is invalid")
++ok, err = Markers:MarkCandidate(1)
++assert_eq(ok, false, "numeric name is false")
++assert_eq(err, "invalid name", "numeric name is invalid")
++
++ok, err = Markers:Target("  Chuckroast  ")
++assert_eq(ok, true, "padded Target trims")
++assert_eq(targetCalls[#targetCalls].name, "Chuckroast", "TargetUnit receives the trimmed name")
++assert_eq(targetCalls[#targetCalls].exact, true, "padded Target still exact-matches")
++
++--------------------------------------------------------------------------------
++-- MarkFighters indices 2 and 3. Clear index 0. Atomic miss.
++--------------------------------------------------------------------------------
++reset()
++Runtime:StartEvent()
++popeFlag = true
++armRaid("Chuckroast", "Tendermage")
++ok, err = Markers:MarkFighters("Chuckroast", "Tendermage")
++assert_eq(ok, true, "MarkFighters is true when both resolve")
++assert_eq(err, nil, "successful MarkFighters has no error")
++assert_eq(#raidTargets, 2, "MarkFighters spies two SetRaidTarget calls")
++assert_eq(raidTargets[1].unit, "raid2", "fighter A is raid2")
++assert_eq(raidTargets[1].index, 2, "fighter A is index 2")
++assert_eq(raidTargets[2].unit, "raid3", "fighter B is raid3")
++assert_eq(raidTargets[2].index, 3, "fighter B is index 3")
++view = Markers:GetView()
++assert_eq(view.verb, "MarkFighters", "view records MarkFighters")
++assert_eq(view.unitA, "raid2", "view records fighter A unit")
++assert_eq(view.unitB, "raid3", "view records fighter B unit")
++assert_eq(view.indexA, 2, "view records fighter A index")
++assert_eq(view.indexB, 3, "view records fighter B index")
++assert_eq(view.nameA, "Chuckroast", "view records fighter A name")
++assert_eq(view.nameB, "Tendermage", "view records fighter B name")
++
++for i = #raidTargets, 1, -1 do raidTargets[i] = nil end
++ok, err = Markers:MarkFighters("Chuckroast", "Ghost")
++assert_eq(ok, false, "MarkFighters refuses a missing fighter")
++assert_eq(err, "unit not found", "missing fighter names the error")
++assert_eq(#raidTargets, 0, "partial MarkFighters does not mark")
++
++ok, err = Markers:Clear("Chuckroast")
++assert_eq(ok, true, "Clear is true when the unit resolves")
++assert_eq(raidTargets[#raidTargets].unit, "raid2", "Clear uses the scanned token")
++assert_eq(raidTargets[#raidTargets].index, 0, "Clear sets index 0")
++assert_eq(Markers:GetView().index, 0, "Clear view records index 0")
++
++--------------------------------------------------------------------------------
++-- Party prefix. Target still works ungrouped.
++--------------------------------------------------------------------------------
++reset()
++Runtime:StartEvent()
++popeFlag = true
++stub.inRaid = false
++stub.groupSize = 2
++stub.group = {
++  party1 = { name = "Chuckroast" },
++  party2 = { name = "Tendermage" },
++}
++ok, err = Markers:MarkCandidate("Chuckroast")
++assert_eq(ok, true, "party MarkCandidate is true")
++assert_eq(raidTargets[1].unit, "party1", "party scan uses party1")
++assert_eq(raidTargets[1].index, 1, "party candidate is still star")
++
++reset()
++Runtime:StartEvent()
++popeFlag = true
++ok, err = Markers:Target("Chuckroast")
++assert_eq(ok, true, "ungrouped Event Pope Target still runs")
++assert_eq(#targetCalls, 1, "ungrouped Target still spies TargetUnit")
++assert_eq(#raidTargets, 0, "ungrouped Target does not mark")
++
++--------------------------------------------------------------------------------
++-- Missing API fail-closed. No throw.
++--------------------------------------------------------------------------------
++reset()
++Runtime:StartEvent()
++popeFlag = true
++armRaid("Chuckroast")
++
++local savedSet = SetRaidTarget
++SetRaidTarget = nil
++local threw, callOk, callErr = pcall(function()
++  return Markers:MarkCandidate("Chuckroast")
++end)
++assert_eq(threw, true, "missing SetRaidTarget does not throw")
++assert_eq(callOk, false, "missing SetRaidTarget is false")
++SetRaidTarget = savedSet
++
++local savedTarget = TargetUnit
++TargetUnit = nil
++threw, callOk = pcall(function()
++  return Markers:Target("Chuckroast")
++end)
++assert_eq(threw, true, "missing TargetUnit does not throw")
++assert_eq(callOk, false, "missing TargetUnit is false")
++TargetUnit = savedTarget
++
++local savedGet = GetRaidTargetIndex
++GetRaidTargetIndex = nil
++raidTargets = {}
++ok, err = Markers:MarkCandidate("Chuckroast")
++assert_eq(ok, true, "missing GetRaidTargetIndex still marks")
++assert_eq(#raidTargets, 1, "missing GetRaidTargetIndex still spies SetRaidTarget")
++GetRaidTargetIndex = savedGet
++
++local savedNum = GetNumGroupMembers
++local savedRaid = IsInRaid
++GetNumGroupMembers = nil
++IsInRaid = nil
++threw, callOk, callErr = pcall(function()
++  return Markers:MarkCandidate("Chuckroast")
++end)
++assert_eq(threw, true, "missing group APIs do not throw")
++assert_eq(callOk, false, "missing group APIs are fail-closed")
++assert_eq(callErr, "not in a group", "missing group APIs are not grouped")
++GetNumGroupMembers = savedNum
++IsInRaid = savedRaid
++
++TargetUnit = function()
++  error("protected")
++end
++threw, callOk = pcall(function()
++  return Markers:Target("Chuckroast")
++end)
++assert_eq(threw, true, "TargetUnit error is pcalled")
++assert_eq(callOk, false, "TargetUnit error is false")
++stubMarkApis()
++
++SetRaidTarget = function()
++  error("no assist")
++end
++threw, callOk = pcall(function()
++  return Markers:MarkCandidate("Chuckroast")
++end)
++assert_eq(threw, true, "SetRaidTarget error is pcalled")
++assert_eq(callOk, false, "SetRaidTarget error is false")
++stubMarkApis()
++
++--------------------------------------------------------------------------------
++-- Missing Runtime is Quiet. EndEvent refuses again. RITE still Event.
++--------------------------------------------------------------------------------
++reset()
++Runtime:StartEvent()
++popeFlag = true
++armRaid("Chuckroast")
++local savedRuntime = COB.Runtime
++COB.Runtime = nil
++ok, err = Markers:MarkCandidate("Chuckroast")
++assert_eq(ok, false, "missing Runtime MarkCandidate is false")
++assert_eq(err, "quiet", "missing Runtime is Quiet")
++ok, err = Markers:Target("Chuckroast")
++assert_eq(ok, false, "missing Runtime Target is false")
++assert_eq(#targetCalls, 0, "missing Runtime does not TargetUnit")
++COB.Runtime = savedRuntime
++
++assert_eq(Markers:MarkCandidate("Chuckroast"), true, "restored Runtime marks")
++assert_true(Runtime:OpenRite("Knighting", { candidate = 1 }) ~= nil, "OpenRite reaches RITE")
++ok, err = Markers:MarkCandidate("Chuckroast")
++assert_eq(ok, true, "RITE MarkCandidate is true")
++Runtime:CloseRite()
++assert_eq(Markers:MarkCandidate("Chuckroast"), true, "CONSEQUENCE MarkCandidate is true")
++Runtime:Continue()
++assert_eq(Markers:Target("Chuckroast"), true, "ASSEMBLY after Continue still Targets")
++assert_true(Runtime:EndEvent() ~= nil, "EndEvent returns to QUIET")
++ok, err = Markers:MarkCandidate("Chuckroast")
++assert_eq(ok, false, "Quiet after EndEvent is false")
++assert_eq(err, "quiet", "EndEvent refuse names quiet")
++
++--------------------------------------------------------------------------------
++-- GetView is a copy. Combat flag does not automate. ResetForTests hatch.
++--------------------------------------------------------------------------------
++reset()
++Runtime:StartEvent()
++popeFlag = true
++armRaid("Chuckroast")
++stub.playerInCombat = true
++assert_eq(Markers:MarkCandidate("Chuckroast"), true, "combat still marks")
++assert_eq(combatCalls, 0, "marking does not StartAttack")
++view = Markers:GetView()
++view.ok = false
++view.unit = "hacked"
++view.index = 99
++view.mode = "Quiet"
++local again = Markers:GetView()
++assert_eq(again.ok, true, "mutating GetView does not change ok")
++assert_eq(again.unit, "raid2", "mutating GetView does not change the unit")
++assert_eq(again.index, 1, "mutating GetView does not change the index")
++assert_eq(again.mode, "Event", "mutating GetView does not change the mode")
++
++assert_eq(Markers:Target("Chuckroast"), true, "combat still Targets")
++assert_eq(combatCalls, 0, "Target does not AttackTarget")
++assert_eq(#stub.chat, 0, "verbs do not SendChatMessage")
++assert_eq(#stub.addonMessages, 0, "verbs do not SendAddonMessage")
++assert_eq(sounds, 0, "verbs play no sound")
++
++ChurchOfBeef._IN_TEST = false
++assert_eq(Markers:ResetForTests(), false, "ResetForTests refuses to run outside tests")
++assert_eq(Markers:GetView().ok, true, "out-of-harness reset leaves the last attempt")
++ChurchOfBeef._IN_TEST = true
++assert_eq(Markers:ResetForTests(), true, "ResetForTests returns under _IN_TEST")
++assert_eq(Markers:GetView().ok, nil, "harness reset clears the last attempt")
++assert_eq(Markers:GetView().mode, "Event", "harness reset still declares Event")
++assert_eq(Markers:GetView().unit, nil, "harness reset clears the unit")
++
++assert_eq(sounds, 0, "the suite played no sound")
++assert_eq(combatCalls, 0, "the suite never started combat")
++assert_eq(#stub.chat, 0, "the suite never SendChatMessage")
++assert_eq(#stub.addonMessages, 0, "the suite never SendAddonMessage")
++
++restore()
++
++if standalone then
++  print(string.format("Tests finished: %d passed, %d failed", passed, failed))
++  if failed > 0 then os.exit(1) end
++end

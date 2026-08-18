@@ -1,0 +1,162 @@
+diff --git a/addon/ChurchOfBeef/UI/Markers.lua b/addon/ChurchOfBeef/UI/Markers.lua
+--- a/addon/ChurchOfBeef/UI/Markers.lua
++++ b/addon/ChurchOfBeef/UI/Markers.lua
+@@ -163,11 +163,8 @@
+   return false, last.err
+ end
+ 
+-local function refuse(verb, err, fields)
++local function keepLastUnits(fields)
+   fields = fields or {}
+-  fields.verb = verb
+-  fields.ok = false
+-  fields.err = err
+   if fields.unit == nil then
+     fields.unit = last.unit
+   end
+@@ -186,9 +183,17 @@
+   if fields.indexB == nil then
+     fields.indexB = last.indexB
+   end
+-  return remember(fields)
++  return fields
+ end
+ 
++local function refuse(verb, err, fields)
++  fields = fields or {}
++  fields.verb = verb
++  fields.ok = false
++  fields.err = err
++  return remember(keepLastUnits(fields))
++end
++
+ function Markers:Target(name)
+   local trimmed = parseName(name)
+   if not eventLive() then
+@@ -207,7 +212,7 @@
+   if not ok then
+     return refuse("Target", nil, { name = trimmed })
+   end
+-  return remember({ verb = "Target", ok = true, name = trimmed })
++  return remember(keepLastUnits({ verb = "Target", ok = true, name = trimmed }))
+ end
+ 
+ function Markers:MarkCandidate(name)
+diff --git a/tests/test_markers.lua b/tests/test_markers.lua
+--- a/tests/test_markers.lua
++++ b/tests/test_markers.lua
+@@ -760,10 +760,11 @@
+ -- empty units (pinned above). Do not call Markers:Clear. clearPrior stays.
+ --------------------------------------------------------------------------------
+ do
++  local keepStart = src:find("local function keepLastUnits", 1, true)
+   local refuseStart = src:find("local function refuse", 1, true)
+   local targetStart = src:find("function Markers:Target", 1, true)
+   assert_true(refuseStart ~= nil and targetStart ~= nil, "refuse and Target are findable")
+-  local refuseBody = src:sub(refuseStart, targetStart - 1)
++  local refuseBody = src:sub(keepStart or refuseStart, targetStart - 1)
+   assert_true(refuseBody:find("fields.unit = last.unit", 1, true) ~= nil, "refuse copies last.unit")
+   assert_true(refuseBody:find("fields.unitA = last.unitA", 1, true) ~= nil, "refuse copies last.unitA")
+   assert_true(refuseBody:find("fields.unitB = last.unitB", 1, true) ~= nil, "refuse copies last.unitB")
+@@ -836,7 +837,101 @@
+ assert_eq(view.unit, "raid2", "successful Clear still records the unit")
+ assert_eq(view.index, 0, "successful Clear still records index 0")
+ 
++--------------------------------------------------------------------------------
++-- B34-C: successful Target keeps last.unit / last.unitA / last.unitB
++-- (and indices) when omitted, same == nil copy as refuse. After
++-- MarkCandidate A → Target B → MarkCandidate C, clearPrior can still
++-- clear A. MarkFighters pair + Target keeps unitA / unitB. Failed
++-- Target still keeps (refuse). Do not call Markers:Clear from Target.
+ --------------------------------------------------------------------------------
++do
++  local targetStart = src:find("function Markers:Target", 1, true)
++  local markStart = src:find("function Markers:MarkCandidate", 1, true)
++  assert_true(targetStart ~= nil and markStart ~= nil, "Target and MarkCandidate are findable")
++  local targetBody = src:sub(targetStart, markStart - 1)
++  assert_true(targetBody:find("keepLastUnits", 1, true) ~= nil, "Target success path copies last units when omitted")
++  assert_true(targetBody:find("remember(keepLastUnits", 1, true) ~= nil, "Target success remembers kept units")
++  assert_eq(targetBody:find(":Clear(", 1, true), nil, "Target does not call Clear")
++  assert_eq(targetBody:find("clearPrior", 1, true), nil, "Target does not call clearPrior")
++end
++
++reset()
++Runtime:StartEvent()
++popeFlag = true
++armRaid("Chuckroast", "Tendermage")
++ok, err = Markers:MarkCandidate("Chuckroast")
++assert_eq(ok, true, "B34-C MarkCandidate A is true")
++assert_eq(err, nil, "B34-C MarkCandidate A has no error")
++assert_eq(#raidTargets, 1, "B34-C first A is one spy")
++assert_eq((raidTargets[1] or {}).unit, "raid2", "B34-C A marks raid2")
++assert_eq(Markers:GetView().unit, "raid2", "B34-C A view is raid2")
++assert_eq(Markers:GetView().index, 1, "B34-C A view index is 1")
++
++ok, err = Markers:Target("Tendermage")
++assert_eq(ok, true, "successful Target of another name is true")
++assert_eq(err, nil, "successful Target has no error")
++assert_eq(#targetCalls, 1, "Target spies TargetUnit once")
++assert_eq(targetCalls[1].name, "Tendermage", "TargetUnit receives the other name")
++assert_eq(#raidTargets, 1, "successful Target does not SetRaidTarget")
++view = Markers:GetView()
++assert_eq(view.ok, true, "successful Target view records ok")
++assert_eq(view.verb, "Target", "successful Target view records the verb")
++assert_eq(view.name, "Tendermage", "successful Target view records the name")
++assert_eq(view.unit, "raid2", "successful Target keeps A's unit")
++assert_eq(view.index, 1, "successful Target keeps A's index")
++
++ok, err = Markers:MarkCandidate("Tendermage")
++assert_eq(ok, true, "MarkCandidate B after Target is true")
++assert_eq(#raidTargets, 3, "B after Target spies A, clear A, then B")
++assert_eq((raidTargets[2] or {}).unit, "raid2", "B after Target clears A")
++assert_eq((raidTargets[2] or {}).index, 0, "B after Target clears A at 0")
++assert_eq((raidTargets[3] or {}).unit, "raid3", "B after Target marks B")
++assert_eq((raidTargets[3] or {}).index, 1, "B after Target marks B at 1")
++assert_eq(Markers:GetView().ok, true, "successful B after Target replaces last ok")
++assert_eq(Markers:GetView().verb, "MarkCandidate", "successful B after Target replaces last verb")
++assert_eq(Markers:GetView().unit, "raid3", "successful B after Target replaces last.unit")
++assert_eq(Markers:GetView().index, 1, "successful B after Target replaces last.index")
++
++reset()
++Runtime:StartEvent()
++popeFlag = true
++armRaid("Chuckroast", "Tendermage")
++ok, err = Markers:MarkFighters("Chuckroast", "Tendermage")
++assert_eq(ok, true, "B34-C MarkFighters pair is true")
++ok, err = Markers:Target("Beefina")
++assert_eq(ok, true, "Target after fighters is true")
++view = Markers:GetView()
++assert_eq(view.verb, "Target", "Target after fighters records Target")
++assert_eq(view.ok, true, "Target after fighters records ok")
++assert_eq(view.unitA, "raid2", "Target after fighters keeps last.unitA")
++assert_eq(view.unitB, "raid3", "Target after fighters keeps last.unitB")
++assert_eq(view.indexA, 2, "Target after fighters keeps last.indexA")
++assert_eq(view.indexB, 3, "Target after fighters keeps last.indexB")
++
++reset()
++Runtime:StartEvent()
++popeFlag = true
++armRaid("Chuckroast", "Tendermage")
++ok, err = Markers:MarkCandidate("Chuckroast")
++assert_eq(ok, true, "B34-C pre-fail Target A is true")
++do
++  TargetUnit = function()
++    error("protected")
++  end
++  local threw, callOk = pcall(function()
++    return Markers:Target("Tendermage")
++  end)
++  assert_eq(threw, true, "failed Target is pcalled")
++  assert_eq(callOk, false, "failed Target is false")
++  view = Markers:GetView()
++  assert_eq(view.ok, false, "failed Target view records refuse")
++  assert_eq(view.verb, "Target", "failed Target view records the verb")
++  assert_eq(view.unit, "raid2", "failed Target keeps A's unit")
++  assert_eq(view.index, 1, "failed Target keeps A's index")
++  stubMarkApis()
++end
++
++--------------------------------------------------------------------------------
+ -- Missing API fail-closed. No throw.
+ --------------------------------------------------------------------------------
+ reset()

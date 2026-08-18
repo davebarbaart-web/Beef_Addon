@@ -1,0 +1,235 @@
+diff --git a/addon/ChurchOfBeef/UI/ConsoleDock.lua b/addon/ChurchOfBeef/UI/ConsoleDock.lua
+--- a/addon/ChurchOfBeef/UI/ConsoleDock.lua
++++ b/addon/ChurchOfBeef/UI/ConsoleDock.lua
+@@ -6,11 +6,12 @@
+ -- local player is the registered Pope. Stock SANCTION calls
+ -- Console:Sanction when present. Expand calls Console:Show.
+ -- ESC Hide()s ChurchOfBeefConsoleDock via UISpecialFrames (deduped).
+--- OnHide (after create-time Hide) remembers dismiss while the event
+--- is live and sets lastView.shown false. Refresh does not re-show
+--- while dismissed. Show() clears dismiss. Quiet / not-mayShow clears
+--- dismiss. Hide is not EndEvent. No Quiet chrome. No whisper fan-out.
+--- No cue. No congregation bar.
++-- OnHide (after create-time Hide) remembers Runtime eventId while
++-- the event is live and sets lastView.shown false. Refresh stays
++-- hidden while mayShow and that eventId is still current. A new
++-- eventId or QUIET / nil clears dismiss. Show() clears dismiss.
++-- Hide is not EndEvent. No Quiet chrome. No whisper fan-out. No cue.
++-- No congregation bar.
+ local ConsoleDock = {
+   MODE = "Event",
+ }
+@@ -31,7 +32,7 @@
+ 
+ local frame = nil
+ local lastView = nil
+-local dismissed = false
++local dismissedEventId = nil
+ 
+ local function deepcopy(value)
+   if type(value) ~= "table" then return value end
+@@ -42,15 +43,31 @@
+   return out
+ end
+ 
+-local function runtimeState()
++local function runtimeSnapshot()
+   if not COB.Runtime or type(COB.Runtime.Snapshot) ~= "function" then
+-    return "QUIET"
++    return nil
+   end
+   local snap = COB.Runtime:Snapshot()
+-  if type(snap) ~= "table" or type(snap.state) ~= "string" then
++  if type(snap) ~= "table" then
++    return nil
++  end
++  return snap
++end
++
++local function runtimeState()
++  local snap = runtimeSnapshot()
++  if not snap or type(snap.state) ~= "string" then
+     return "QUIET"
+   end
+   return snap.state
++end
++
++local function currentEventId()
++  local snap = runtimeSnapshot()
++  if not snap then return nil end
++  local eventId = snap.eventId
++  if type(eventId) ~= "number" then return nil end
++  return eventId
+ end
+ 
+ local function localSender()
+@@ -86,6 +103,13 @@
+   return eventLive() and isLocalPope()
+ end
+ 
++local function stayDismissed()
++  if not mayShow() then return false end
++  local eventId = currentEventId()
++  if type(eventId) ~= "number" then return false end
++  return dismissedEventId ~= nil and dismissedEventId == eventId
++end
++
+ local function hiddenView()
+   return {
+     shown = false,
+@@ -186,7 +210,10 @@
+         if lastView == nil then lastView = hiddenView() end
+         lastView.shown = false
+         if eventLive() then
+-          dismissed = true
++          local eventId = currentEventId()
++          if type(eventId) == "number" then
++            dismissedEventId = eventId
++          end
+         end
+       end)
+     end
+@@ -252,27 +279,28 @@
+     lastView = hiddenView()
+     lastView.shown = false
+     lastView.pope = isLocalPope()
+-    if not mayShow() then
+-      dismissed = false
++    if not stayDismissed() then
++      dismissedEventId = nil
+     end
+     return self:GetView()
+   end
+   if not mayShow() then
+-    dismissed = false
++    dismissedEventId = nil
+     paint(false)
+-    dismissed = false
++    dismissedEventId = nil
+     return self:GetView()
+   end
+-  if dismissed then
++  if stayDismissed() then
+     paint(false)
+     return self:GetView()
+   end
++  dismissedEventId = nil
+   paint(true)
+   return self:GetView()
+ end
+ 
+ function ConsoleDock:Show()
+-  dismissed = false
++  dismissedEventId = nil
+   if not frame then
+     self:Init()
+   end
+@@ -294,13 +322,13 @@
+ 
+ function ConsoleDock:ResetForTests()
+   if not COB._IN_TEST then return false end
+-  dismissed = false
++  dismissedEventId = nil
+   lastView = hiddenView()
+   lastView.shown = false
+   if frame then
+     frame:Hide()
+     frame = nil
+   end
+-  dismissed = false
++  dismissedEventId = nil
+   return true
+ end
+
+diff --git a/tests/test_console_dock.lua b/tests/test_console_dock.lua
+--- a/tests/test_console_dock.lua
++++ b/tests/test_console_dock.lua
+@@ -3,7 +3,10 @@
+ -- and Console.Sanction / Show. Quiet hides. StartEvent + Pope shows, title pin.
+ -- B22-D: ChurchOfBeefConsoleDock on UISpecialFrames (rememberSpecial).
+ -- B23-B: widget Hide / ESC stays dismissed until Show or QUIET.
+--- No TOC / bootstrap / run.lua / Console.lua / Hud / Toasts. Isolation wrap.
++-- B24-B: dismiss is keyed to Runtime eventId. EndEvent without Refresh
++-- then StartEvent + Refresh shows (new eventId). Same-event Hide + Refresh
++-- still hidden. No TOC / bootstrap / run.lua / Console.lua / Hud / Toasts.
++-- Isolation wrap.
+ ChurchOfBeef = ChurchOfBeef or {}
+ ChurchOfBeef._IN_TEST = true
+ 
+@@ -232,6 +235,7 @@
+ assert_true(type(hideAt) == "number" and type(onHideAt) == "number" and hideAt < onHideAt,
+   "OnHide is after create-time Hide")
+ assert_true(src:find("dismissed", 1, true) ~= nil, "source remembers dismiss")
++assert_true(src:find("eventId", 1, true) ~= nil, "source keys dismiss to eventId")
+ assert_eq(src:find("cooldown", 1, true), nil, "no dismiss-cooldown number")
+ assert_eq(src:find("Toasts", 1, true), nil, "source does not drive Toasts")
+ assert_eq(src:find("StatusBar", 1, true), nil, "source does not mint a StatusBar")
+@@ -441,6 +445,60 @@
+ assert_eq(sounds, 0, "dismiss path plays no sound")
+ 
+ --------------------------------------------------------------------------------
++-- B24-B: dismiss is keyed to Runtime eventId. Hide then EndEvent
++-- without Refresh; next StartEvent + Refresh shows (new eventId).
++-- Same-event Hide + Refresh still hidden.
++--------------------------------------------------------------------------------
++reset()
++frame = ConsoleDock:Init()
++popeFlag = true
++Runtime:StartEvent()
++assert_eq(ConsoleDock:Show(), true, "B24-B StartEvent + Pope Show is true")
++assert_eq(frame:IsShown(), true, "B24-B StartEvent + Pope shows the widget")
++assert_eq(ConsoleDock:GetView().shown, true, "B24-B StartEvent + Pope view is shown")
++local firstEventId = Runtime:Snapshot().eventId
++assert_eq(type(firstEventId), "number", "B24-B StartEvent assigns a number eventId")
++
++frame:Hide()
++assert_eq(frame:IsShown(), false, "B24-B widget Hide hides the dock")
++assert_eq(ConsoleDock:GetView().shown, false, "B24-B widget Hide sets shown false")
++assert_eq(Runtime:Snapshot().state, "ASSEMBLY", "B24-B widget Hide is not EndEvent")
++assert_eq(Runtime:Snapshot().eventId, firstEventId, "B24-B widget Hide keeps eventId")
++assert_eq(countSpecial("ChurchOfBeefConsoleDock"), 1, "B24-B widget Hide keeps UISpecialFrames")
++assert_eq(sounds, 0, "B24-B widget Hide plays no sound")
++
++Runtime:EndEvent()
++assert_eq(Runtime:Snapshot().state, "QUIET", "B24-B EndEvent without Refresh is QUIET")
++assert_eq(ConsoleDock:GetView().shown, false, "B24-B EndEvent without Refresh leaves view hidden")
++assert_eq(frame:IsShown(), false, "B24-B EndEvent without Refresh leaves widget hidden")
++
++Runtime:StartEvent()
++local secondEventId = Runtime:Snapshot().eventId
++assert_eq(type(secondEventId), "number", "B24-B next StartEvent assigns a number eventId")
++assert_true(secondEventId ~= firstEventId, "B24-B next StartEvent is a new eventId")
++view = ConsoleDock:Refresh()
++assert_eq(view.shown, true, "B24-B StartEvent + Refresh after EndEvent without Refresh shows")
++assert_eq(frame:IsShown(), true, "B24-B new eventId shows the widget")
++assert_eq(view.state, "ASSEMBLY", "B24-B new event reports ASSEMBLY")
++assert_eq(view.title, TITLE, "B24-B new event title stays DIRECTOR CONSOLE")
++assert_eq(frame.TitleText:GetText(), TITLE, "B24-B painted title stays DIRECTOR CONSOLE")
++if frame.CloseButton then
++  assert_eq(frame.CloseButton:IsShown(), false, "B24-B re-shown CloseButton stays hidden")
++end
++assert_eq(countSpecial("ChurchOfBeefConsoleDock"), 1, "B24-B new event keeps UISpecialFrames")
++assert_eq(sounds, 0, "B24-B new event Refresh plays no sound")
++
++frame:Hide()
++assert_eq(frame:IsShown(), false, "B24-B same-event Hide hides")
++assert_eq(ConsoleDock:GetView().shown, false, "B24-B same-event Hide sets shown false")
++assert_eq(Runtime:Snapshot().eventId, secondEventId, "B24-B same-event Hide keeps eventId")
++view = ConsoleDock:Refresh()
++assert_eq(view.shown, false, "B24-B same-event Hide + Refresh stays hidden")
++assert_eq(frame:IsShown(), false, "B24-B same-event Hide + Refresh does not re-show")
++assert_eq(Runtime:Snapshot().state, "ASSEMBLY", "B24-B same-event Refresh is not EndEvent")
++assert_eq(sounds, 0, "B24-B same-event Refresh plays no sound")
++
++--------------------------------------------------------------------------------
+ -- SANCTION click spies Console:Sanction. Expand spies Console:Show.
+ --------------------------------------------------------------------------------
+ reset()
+@@ -632,6 +690,7 @@
+ assert_true(src:find('SetScript("OnHide"', 1, true) ~= nil,
+   "persist source still hooks OnHide")
+ assert_true(src:find("dismissed", 1, true) ~= nil, "persist source still remembers dismiss")
++assert_true(src:find("eventId", 1, true) ~= nil, "persist source still keys dismiss to eventId")
+ assert_eq(src:find("cooldown", 1, true), nil, "persist source still has no dismiss-cooldown")
+ assert_eq(src:find("OnUpdate", 1, true), nil, "persist source still has no OnUpdate")
+ assert_eq(src:find("Media\\", 1, true), nil, "persist source still has no custom Media")

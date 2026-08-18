@@ -1,0 +1,104 @@
+diff --git a/addon/ChurchOfBeef/Core/Knighting.lua b/addon/ChurchOfBeef/Core/Knighting.lua
+--- a/addon/ChurchOfBeef/Core/Knighting.lua
++++ b/addon/ChurchOfBeef/Core/Knighting.lua
+@@ -155,6 +155,9 @@
+   if not human then return nil, err end
+   local row, setErr = Store:SetRank(humanId, KNIGHT_ID, now)
+   if not row then return nil, setErr end
++  if Store.AppendCeremony then
++    Store:AppendCeremony("Knighting", { humanId }, now)
++  end
+   self:_Expire()
+   line[human.id] = nil
+   return row
+@@ -167,6 +170,9 @@
+   if not human then return nil, err end
+   local row, setErr = Store:SetRank(humanId, LORD_ID, now)
+   if not row then return nil, setErr end
++  if Store.AppendCeremony then
++    Store:AppendCeremony("Elevation", { humanId }, now)
++  end
+   self:_Expire()
+   line[human.id] = nil
+   return row
+
+diff --git a/tests/test_knighting.lua b/tests/test_knighting.lua
+--- a/tests/test_knighting.lua
++++ b/tests/test_knighting.lua
+@@ -120,7 +120,14 @@
+ assert_eq(Ranks.Title(knighted.rankId), "Beef Knight", "the Church record is Beef Knight")
+ assert_eq(Store:GetHuman(steve.id).rankId, 3, "the Pope store holds Beef Knight")
+ assert_eq(Store:GetHuman(steve.id).elevationAt, nil, "knighting does not write elevationAt")
+-assert_eq(#Store:GetCeremonyLog(), 0, "KnightThisBeef does not append ceremony narration")
++assert_eq(#Store:GetCeremonyLog(), 1, "successful KnightThisBeef appends one ceremony row")
++assert_eq(Store:GetCeremonyLog()[1].type, "Knighting", "knighting log type is Knighting")
++assert_eq(Store:GetCeremonyLog()[1].participantIds[1], steve.id, "knighting log names the human")
++assert_eq(#Store:GetCeremonyLog()[1].participantIds, 1, "knighting log has one participant")
++assert_eq(Store:GetCeremonyLog()[1].at, 2000, "knighting log uses the verb now")
++assert_eq(Store:GetCeremonyLog()[1].text, nil, "knighting log has no text")
++assert_eq(Store:GetCeremonyLog()[1].scripture, nil, "knighting log has no scripture")
++assert_eq(Store:GetCeremonyLog()[1].narration, nil, "knighting log has no narration")
+ assert_eq(#Store:GetHuman(steve.id).honorifics, 0, "knighting does not invent an honorific")
+ assert_eq(Store:GetHuman(steve.id).council, false, "knighting does not set Council")
+ assert_eq(promoteCalls, 0, "KnightThisBeef does not call GuildPromote or SetGuildRank")
+@@ -135,6 +142,10 @@
+ local again = Knighting:KnightThisBeef(steve.id, 2001)
+ assert_eq(again.rankId, 3, "knighting a Knight stays Beef Knight")
+ assert_eq(again.elevationAt, nil, "a second knighting still does not elevate")
++assert_eq(#Store:GetCeremonyLog(), 2, "re-knight appends again")
++assert_eq(Store:GetCeremonyLog()[2].type, "Knighting", "re-knight type is still Knighting")
++assert_eq(Store:GetCeremonyLog()[2].at, 2001, "re-knight uses the second now")
++assert_eq(Store:GetCeremonyLog()[2].text, nil, "re-knight has no text")
+ 
+ --------------------------------------------------------------------------------
+ -- Refuse unknown humans and non-id keys. Names.Key is not a human.
+@@ -145,6 +156,7 @@
+ assert_eq(missing, nil, "KnightThisBeef refuses an unknown human")
+ assert_true(type(missingErr) == "string", "unknown human returns an error string")
+ assert_eq(Store:GetHuman(99), nil, "refused knighting does not invent a human")
++assert_eq(#Store:GetCeremonyLog(), 0, "unknown human leaves the ceremony log unchanged")
+ 
+ local named, namedErr = Knighting:KnightThisBeef("Steve", 2101)
+ assert_eq(named, nil, "KnightThisBeef refuses a name string")
+@@ -163,6 +175,7 @@
+ assert_true(type(noneErr) == "string", "missing human id returns an error string")
+ 
+ assert_eq(Store:GetHuman(steve.id).rankId, nil, "refused knightings leave the known human unchanged")
++assert_eq(#Store:GetCeremonyLog(), 0, "refused knightings do not append")
+ 
+ --------------------------------------------------------------------------------
+ -- Do not knight to Lord. Do not auto-advance a queue. Do not OpenRite / EndEvent.
+@@ -218,13 +231,24 @@
+ assert_eq(Store:GetHuman(steve.id).rankId, 4, "the Pope store holds Beef Lord")
+ assert_eq(lord.elevationAt, 2500, "first Lord elevationAt comes from Store")
+ assert_eq(Store:GetHuman(steve.id).elevationAt, 2500, "Store keeps the first elevationAt")
+-assert_eq(#Store:GetCeremonyLog(), 0, "ElevateToLord does not append ceremony narration")
++assert_eq(#Store:GetCeremonyLog(), 1, "successful ElevateToLord appends one ceremony row")
++assert_eq(Store:GetCeremonyLog()[1].type, "Elevation", "elevation log type is Elevation")
++assert_eq(Store:GetCeremonyLog()[1].participantIds[1], steve.id, "elevation log names the human")
++assert_eq(#Store:GetCeremonyLog()[1].participantIds, 1, "elevation log has one participant")
++assert_eq(Store:GetCeremonyLog()[1].at, 2500, "elevation log uses the verb now")
++assert_eq(Store:GetCeremonyLog()[1].text, nil, "elevation log has no text")
++assert_eq(Store:GetCeremonyLog()[1].scripture, nil, "elevation log has no scripture")
++assert_eq(Store:GetCeremonyLog()[1].narration, nil, "elevation log has no narration")
+ assert_eq(promoteCalls, 0, "ElevateToLord does not call GuildPromote or SetGuildRank")
+ assert_eq(frameCalls, 0, "ElevateToLord does not CreateFrame")
+ 
+ local stillLord = Knighting:ElevateToLord(steve.id, 2501)
+ assert_eq(stillLord.rankId, 4, "elevating a Lord stays Beef Lord")
+ assert_eq(stillLord.elevationAt, 2500, "a second Lord write does not overwrite elevationAt")
++assert_eq(#Store:GetCeremonyLog(), 2, "re-elevate appends again")
++assert_eq(Store:GetCeremonyLog()[2].type, "Elevation", "re-elevate type is still Elevation")
++assert_eq(Store:GetCeremonyLog()[2].at, 2501, "re-elevate uses the second now")
++assert_eq(Store:GetCeremonyLog()[2].text, nil, "re-elevate has no text")
+ 
+ --------------------------------------------------------------------------------
+ -- ElevateToLord refuses unknown humans. Does not compute fairness or pairing.
+@@ -234,6 +258,7 @@
+ local missLord, missLordErr = Knighting:ElevateToLord(99, 2600)
+ assert_eq(missLord, nil, "ElevateToLord refuses an unknown human")
+ assert_true(type(missLordErr) == "string", "unknown human elevation returns an error string")
++assert_eq(#Store:GetCeremonyLog(), 0, "unknown elevation leaves the ceremony log unchanged")
+ 
+ local nameLord, nameLordErr = Knighting:ElevateToLord("Steve", 2601)
+ assert_eq(nameLord, nil, "ElevateToLord refuses a name string")

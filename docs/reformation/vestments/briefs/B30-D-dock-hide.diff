@@ -1,0 +1,196 @@
+# B30-D — Event dock Hide remounts ESC (implementation diff)
+
+Lane-only unified diff of the exclusive implementation files vs the pre-lane working tree.
+
+--- a/addon/ChurchOfBeef/UI/ConsoleDock.lua
++++ b/addon/ChurchOfBeef/UI/ConsoleDock.lua
+@@ -7,7 +7,8 @@
+ -- Console:Sanction when present. Expand calls Console:Show.
+ -- ESC Hide()s ChurchOfBeefConsoleDock via UISpecialFrames (deduped).
+ -- Init remounts rememberSpecial when the frame already exists.
+--- Refresh and Show remount rememberSpecial when the frame already exists.
++-- Refresh, Show, and Hide remount rememberSpecial when the frame
++-- already exists.
+ -- OnHide (after create-time Hide) remembers Runtime eventId while
+ -- the event is live and sets lastView.shown false. Refresh stays
+ -- hidden while mayShow and that eventId is still current. A new
+@@ -321,6 +322,9 @@
+   return true
+ end
+ 
+ function ConsoleDock:Hide()
++  if frame then
++    rememberSpecial(FRAME_NAME)
++  end
+   paint(false)
+ end
+--- a/tests/test_console_dock.lua
++++ b/tests/test_console_dock.lua
+@@ -9,7 +9,10 @@
+ -- already exists (wipe UISpecialFrames then second Init lists the name
+ -- once). B27-D: Refresh / Show remount rememberSpecial when the frame
+ -- already exists (wipe then Refresh-only or Show-only lists the name
+--- once). No TOC / bootstrap / run.lua / Console.lua / Hud / Toasts.
++-- once). B30-D: Hide remounts rememberSpecial when the frame
++-- already exists (wipe then Hide lists the name once). Nested
++-- after runB27D(); no new main-chunk locals. No TOC / bootstrap /
++-- run.lua / Console.lua / Hud / Toasts.
+ -- Isolation wrap.
+ ChurchOfBeef = ChurchOfBeef or {}
+@@ -745,6 +748,157 @@
+     assert_eq(COB.RecordsBook, nil, "isolation still does not load Records Book")
+     assert_eq(type(SLASH_CHURCHOFBEEF1), "nil", "isolation still does not register a slash")
+   end
++
++  --------------------------------------------------------------------------------
++  -- B30-D: Hide remounts rememberSpecial when the frame already exists.
++  -- Init, wipe UISpecialFrames to {}, Hide: dock name listed exactly
++  -- once. Same frame pointer. Do not rebuild. Do not Show.
++  -- B27-D Show/Refresh remount and B26-D Init remount stay.
++  -- B24-B same-event Hide+Refresh stays hidden.
++  --------------------------------------------------------------------------------
++  local function runB30D()
++    local hideBody = src:match("function ConsoleDock:Hide%(%)(.-)\nfunction ConsoleDock:ResetForTests")
++    assert_true(type(hideBody) == "string" and hideBody ~= "",
++      "Hide body is readable")
++    assert_true(hideBody:find("rememberSpecial(FRAME_NAME)", 1, true) ~= nil,
++      "Hide remount rememberSpecial FRAME_NAME")
++    assert_eq(hideBody:find("build()", 1, true), nil,
++      "Hide remount does not rebuild")
++    assert_eq(hideBody:find("CreateFrame", 1, true), nil,
++      "Hide remount does not CreateFrame")
++    assert_eq(hideBody:find("PlaySound", 1, true), nil,
++      "Hide remount does not PlaySound")
++    assert_eq(hideBody:find(":Show()", 1, true), nil,
++      "Hide remount does not Show")
++    assert_eq(hideBody:find("self:Show", 1, true), nil,
++      "Hide remount does not call Show")
++    assert_true(hideBody:find("paint(false)", 1, true) ~= nil,
++      "Hide remount still paint(false)")
++
++    local refreshBody = src:match("function ConsoleDock:Refresh%(%)(.-)\nfunction ConsoleDock:Show")
++    assert_true(type(refreshBody) == "string" and refreshBody ~= "",
++      "B27-D Refresh body stays readable")
++    local remountRefresh = refreshBody:match("return self:GetView%(%)%s+end%s+(.-)if not mayShow")
++    assert_true(type(remountRefresh) == "string" and remountRefresh ~= "",
++      "B27-D Refresh remount body stays readable")
++    assert_true(remountRefresh:find("rememberSpecial(FRAME_NAME)", 1, true) ~= nil,
++      "B27-D Refresh remount rememberSpecial FRAME_NAME stays")
++    assert_eq(remountRefresh:find("build()", 1, true), nil,
++      "B27-D Refresh remount still does not rebuild")
++
++    local showBody = src:match("function ConsoleDock:Show%(%)(.-)\nfunction ConsoleDock:Hide")
++    assert_true(type(showBody) == "string" and showBody ~= "",
++      "B27-D Show body stays readable")
++    local remountShow = showBody:match("return false%s+end%s+(.-)if not mayShow")
++    assert_true(type(remountShow) == "string" and remountShow ~= "",
++      "B27-D Show remount body stays readable")
++    assert_true(remountShow:find("rememberSpecial(FRAME_NAME)", 1, true) ~= nil,
++      "B27-D Show remount rememberSpecial FRAME_NAME stays")
++    assert_eq(remountShow:find("build()", 1, true), nil,
++      "B27-D Show remount still does not rebuild")
++
++    local remountInit = src:match("if not frame then return nil end(.-)return frame")
++    assert_true(type(remountInit) == "string" and remountInit ~= "",
++      "B26-D Init remount body stays readable")
++    assert_true(remountInit:find("rememberSpecial(FRAME_NAME)", 1, true) ~= nil,
++      "B26-D Init remount rememberSpecial FRAME_NAME stays")
++    assert_true(remountInit:find("self:Refresh()", 1, true) ~= nil,
++      "B26-D Init remount still Refresh")
++    assert_eq(remountInit:find("build()", 1, true), nil,
++      "B26-D Init remount still does not rebuild")
++    assert_true(src:find("local function rememberSpecial", 1, true) ~= nil,
++      "rememberSpecial helper stays")
++    assert_true(src:find("rememberSpecial(FRAME_NAME)", 1, true) ~= nil,
++      "build still rememberSpecial FRAME_NAME")
++    assert_true(src:find("eventId", 1, true) ~= nil,
++      "per-event dismiss still keys eventId")
++    assert_true(src:find("dismissed", 1, true) ~= nil,
++      "per-event dismiss stays")
++    assert_eq(src:find("PlaySound", 1, true), nil,
++      "source still does not play sound")
++    assert_eq(src:find("IG_CHARACTER_INFO", 1, true), nil,
++      "source still has no IG_CHARACTER_INFO")
++    assert_eq(src:find("cooldown", 1, true), nil,
++      "source still has no dismiss-cooldown")
++    assert_eq(src:find("parchment", 1, true), nil,
++      "dock still has no parchment")
++
++    reset()
++    local existing = ConsoleDock:Init()
++    assert_true(existing ~= nil, "B30-D Init creates the dock")
++    assert_eq(existing:GetName(), "ChurchOfBeefConsoleDock",
++      "B30-D dock name stays ChurchOfBeefConsoleDock")
++    assert_eq(countSpecial("ChurchOfBeefConsoleDock"), 1,
++      "B30-D first Init lists ChurchOfBeefConsoleDock once")
++    local savedHideList = UISpecialFrames
++    UISpecialFrames = {}
++    assert_eq(countSpecial("ChurchOfBeefConsoleDock"), 0,
++      "B30-D wipe clears ChurchOfBeefConsoleDock")
++    local cuesHide = sounds
++    local hideCreates = 0
++    local savedHideCreate = CreateFrame
++    CreateFrame = function(...)
++      hideCreates = hideCreates + 1
++      return savedHideCreate(...)
++    end
++    ConsoleDock:Hide()
++    CreateFrame = savedHideCreate
++    assert_eq(countSpecial("ChurchOfBeefConsoleDock"), 1,
++      "wiped UISpecialFrames + Hide lists ChurchOfBeefConsoleDock once")
++    assert_eq(hideCreates, 0, "B30-D Hide does not rebuild")
++    assert_eq(sounds, cuesHide, "B30-D Hide plays no sound")
++    assert_eq(existing:IsShown(), false, "B30-D Hide Quiet widget stays hidden")
++    assert_eq(existing:GetName(), "ChurchOfBeefConsoleDock",
++      "B30-D Hide keeps the named frame")
++    assert_eq(ConsoleDock:Init(), existing, "B30-D Hide keeps the same frame")
++    ConsoleDock:Hide()
++    assert_eq(countSpecial("ChurchOfBeefConsoleDock"), 1,
++      "B30-D second Hide after wipe does not duplicate")
++    assert_eq(ConsoleDock:Init(), existing, "B30-D Hide still same frame pointer")
++
++    UISpecialFrames = {}
++    local remountedInit = ConsoleDock:Init()
++    assert_eq(remountedInit, existing, "B26-D Init remount still same frame after Hide")
++    assert_eq(countSpecial("ChurchOfBeefConsoleDock"), 1,
++      "B26-D wiped UISpecialFrames + Init still lists ChurchOfBeefConsoleDock once")
++
++    UISpecialFrames = {}
++    ConsoleDock:Refresh()
++    assert_eq(countSpecial("ChurchOfBeefConsoleDock"), 1,
++      "B27-D Refresh remount still lists ChurchOfBeefConsoleDock once")
++    assert_eq(ConsoleDock:Init(), existing, "B27-D Refresh remount still same frame")
++    UISpecialFrames = {}
++    ConsoleDock:Show()
++    assert_eq(countSpecial("ChurchOfBeefConsoleDock"), 1,
++      "B27-D Show remount still lists ChurchOfBeefConsoleDock once")
++    assert_eq(ConsoleDock:Init(), existing, "B27-D Show remount still same frame")
++
++    popeFlag = true
++    Runtime:StartEvent()
++    assert_eq(ConsoleDock:Show(), true, "B30-D StartEvent + Pope Show is true")
++    assert_eq(existing:IsShown(), true, "B30-D StartEvent + Pope shows")
++    ConsoleDock:Hide()
++    assert_eq(existing:IsShown(), false, "B30-D Hide hides the live dock")
++    assert_eq(ConsoleDock:GetView().shown, false, "B30-D Hide paints shown false")
++    local stay = ConsoleDock:Refresh()
++    assert_eq(stay.shown, false, "B24-B same-event Hide + Refresh stays hidden")
++    assert_eq(existing:IsShown(), false, "B24-B same-event Refresh does not re-show")
++    assert_eq(countSpecial("ChurchOfBeefConsoleDock"), 1,
++      "B30-D dismiss keeps UISpecialFrames")
++    assert_eq(sounds, cuesHide, "B30-D dismiss path plays no sound")
++    assert_eq(ConsoleDock:Init(), existing, "B30-D live Hide keeps the same frame")
++
++    UISpecialFrames = savedHideList
++
++    if standalone then
++      assert_eq(COB.Hud, nil, "B30-D isolation still does not load Hud")
++      assert_eq(COB.Toasts, nil, "B30-D isolation still does not load Toasts")
++      assert_eq(COB.DecreeBanner, nil, "B30-D isolation still does not load Decree")
++      assert_eq(COB.RecordsBook, nil, "B30-D isolation still does not load Records Book")
++      assert_eq(type(SLASH_CHURCHOFBEEF1), "nil", "B30-D isolation still does not register a slash")
++    end
++  end
++  runB30D()
+ end
+ runB27D()

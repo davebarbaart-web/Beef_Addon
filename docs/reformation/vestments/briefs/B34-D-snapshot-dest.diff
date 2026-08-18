@@ -1,0 +1,122 @@
+--- a/addon/ChurchOfBeef/Net/BeefNet.lua
++++ b/addon/ChurchOfBeef/Net/BeefNet.lua
+@@ -350,10 +350,17 @@
+   return self:Send(payload, nowSeconds)
+ end
+ 
++-- Pope-gated. destName before encode. Empty dest is no target and does
++-- not EncodeSnapshot. Caller supplies the whisper dest. Do not look up
++-- a Pope name.
+ function Net:SendSnapshot(fields, target)
+   if not self:_LocalPope() then
+     return false, "not a registered pope"
+   end
++  target = destName(target)
++  if not target then
++    return false, "no target"
++  end
+   if not (COB.Codec and COB.Codec.EncodeSnapshot) then
+     return false, "no codec"
+   end
+
+--- a/tests/test_net_v2.lua
++++ b/tests/test_net_v2.lua
+@@ -771,6 +771,97 @@
+     assert_eq(COB.Confession, nil, "dest pins do not leave a Confession stub")
+   end
+ end
+ 
++--------------------------------------------------------------------------------
++-- B34-D: SendSnapshot destName before encode. Pope gate stays first.
++--------------------------------------------------------------------------------
++do
++  reset()
++  assert_eq(Sender:IsRegisteredPope(Net:PlayerName()), false, "snapshot dest pins do not invent a Pope")
++  assert_eq(Net.LookupPope, nil, "snapshot dest pins do not grow a Pope-name lookup")
++  assert_eq(Net.FindPope, nil, "snapshot dest pins do not grow FindPope")
++
++  local encodeCalls = 0
++  local savedEncode = Codec.EncodeSnapshot
++  Codec.EncodeSnapshot = function(self, fields)
++    encodeCalls = encodeCalls + 1
++    return savedEncode(self, fields)
++  end
++
++  local space = "   "
++  local hostPad = "  Host  "
++  local ok, why
++
++  ok, why = Net:SendSnapshot({ role = "request" }, space)
++  assert_eq(ok, false, "non-pope SendSnapshot whitespace dest fails")
++  assert_eq(why, "not a registered pope", "non-pope SendSnapshot whitespace dest stays Pope-gated")
++  ok, why = Net:SendSnapshot({ role = "request" }, "")
++  assert_eq(ok, false, "non-pope SendSnapshot empty dest fails")
++  assert_eq(why, "not a registered pope", "non-pope SendSnapshot empty dest stays Pope-gated")
++  ok, why = Net:SendSnapshot({ role = "request" })
++  assert_eq(ok, false, "non-pope SendSnapshot nil dest fails")
++  assert_eq(why, "not a registered pope", "non-pope SendSnapshot nil dest stays Pope-gated")
++  ok, why = Net:SendSnapshot({ role = "request" }, hostPad)
++  assert_eq(ok, false, "non-pope SendSnapshot padded dest fails")
++  assert_eq(why, "not a registered pope", "non-pope SendSnapshot padded dest stays Pope-gated")
++  assert_eq(encodeCalls, 0, "non-pope SendSnapshot does not EncodeSnapshot")
++  assert_eq(#wire, 0, "non-pope SendSnapshot dest pins do not whisper")
++  assert_eq(sent, 0, "non-pope SendSnapshot dest pins do not SendAddonMessage")
++
++  local savedPred = Sender.IsRegisteredPope
++  Sender.IsRegisteredPope = function(_, sender)
++    return COB.Names.Key(sender) == "beefina"
++  end
++  assert_eq(Sender:IsRegisteredPope(Net:PlayerName()), true, "stub lists the local player")
++  assert_eq(Sender:IsRegisteredPope("Steakina"), false, "stub does not list a congregation name")
++
++  reset()
++  encodeCalls = 0
++
++  ok, why = Net:SendSnapshot({ role = "request" }, space)
++  assert_eq(ok, false, "SendSnapshot whitespace dest fails")
++  assert_eq(why, "no target", "SendSnapshot whitespace dest is no target")
++  ok, why = Net:SendSnapshot({ role = "request" }, " ")
++  assert_eq(ok, false, "SendSnapshot single-space dest fails")
++  assert_eq(why, "no target", "SendSnapshot single-space dest is no target")
++  ok, why = Net:SendSnapshot({ role = "request" }, "")
++  assert_eq(ok, false, "SendSnapshot empty dest fails")
++  assert_eq(why, "no target", "SendSnapshot empty dest is no target")
++  ok, why = Net:SendSnapshot({ role = "request" })
++  assert_eq(ok, false, "SendSnapshot nil dest fails")
++  assert_eq(why, "no target", "SendSnapshot nil dest is no target")
++  assert_eq(encodeCalls, 0, "empty dest does not EncodeSnapshot")
++  assert_eq(#wire, 0, "empty dest does not whisper")
++  assert_eq(sent, 0, "empty dest does not SendAddonMessage")
++
++  reset()
++  encodeCalls = 0
++  ok, why = Net:SendSnapshot({ role = "request" }, hostPad)
++  assert_eq(ok, true, "SendSnapshot padded dest sends")
++  assert_eq(why, nil, "SendSnapshot padded dest has no refusal")
++  assert_eq(encodeCalls, 1, "padded dest EncodeSnapshot once")
++  assert_eq(#wire, 1, "SendSnapshot padded dest whispers once")
++  assert_eq(wire[1].channel, "WHISPER", "SendSnapshot padded dest stays whisper")
++  assert_eq(wire[1].target, "Host", "SendSnapshot trims dest before transmit")
++  assert_eq(wire[1].payload, "1:SNAPSHOT:request", "SendSnapshot has no dest on SNAPSHOT")
++  assert_eq(Codec:Decode(wire[1].payload).role, "request", "padded dest SNAPSHOT role is unchanged")
++  assert_eq(Codec:Decode(wire[1].payload).dest, nil, "padded dest SNAPSHOT body has no dest")
++
++  Codec.EncodeSnapshot = savedEncode
++  Sender.IsRegisteredPope = savedPred
++  assert_eq(Sender:IsRegisteredPope(Net:PlayerName()), false,
++    "snapshot dest stub does not leave the Pope list true")
++  assert_eq(Net.LookupPope, nil, "SendSnapshot dest trim does not grow a Pope-name lookup")
++  assert_eq(Runtime:Snapshot().state, "QUIET", "SendSnapshot dest pins do not change Runtime")
++
++  if standalone then
++    assert_eq(COB.Store, nil, "snapshot dest pins do not load Store")
++    assert_eq(COB.UI, nil, "snapshot dest pins do not load UI")
++    assert_eq(COB.Popes, nil, "snapshot dest pins do not load a Pope list")
++    assert_eq(COB.Gora, nil, "snapshot dest pins do not leave a Gora stub")
++    assert_eq(COB.Confession, nil, "snapshot dest pins do not leave a Confession stub")
++  end
++end
++
+ --------------------------------------------------------------------------------
+ -- Unstubbed inbound DECREE: IsRegisteredPope is false. Do not Set. Do not Restore.
+ --------------------------------------------------------------------------------

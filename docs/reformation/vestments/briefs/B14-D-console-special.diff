@@ -1,0 +1,153 @@
+diff --git a/addon/ChurchOfBeef/UI/Console.lua b/addon/ChurchOfBeef/UI/Console.lua
+--- a/addon/ChurchOfBeef/UI/Console.lua
++++ b/addon/ChurchOfBeef/UI/Console.lua
+@@ -38,7 +38,9 @@
+ -- a stock ScrollFrame around the desk body (child stays tall). Type-guarded
+ -- EnableMouseWheel + OnMouseWheel steps 36px; missing scroll APIs no-op.
+ -- stockEdit type-guards OnEscapePressed to ClearFocus; the box does not Hide
+--- the desk. Missing SetScript / ClearFocus no-op.
++-- the desk. Missing SetScript / ClearFocus no-op. Named desk is on
++-- UISpecialFrames via rememberSpecial (dedupe). No panel whoosh on show /
++-- hide / ESC. Do not register scroll children.
+ -- No permanent OnUpdate. Open Gora subjects use the selected pair when both
+ -- ids are set, else Gora:GetSanctioned() then Gora:GetLastSanctioned().
+ -- Open Knighting subjects use selectedHumanId, else the head of
+@@ -459,6 +461,15 @@
+   return y + BTN_H + BTN_GAP
+ end
+ 
++local function rememberSpecial(name)
++  if type(UISpecialFrames) ~= "table" then return end
++  for i = 1, #UISpecialFrames do
++    if UISpecialFrames[i] == name then return end
++  end
++  UISpecialFrames[#UISpecialFrames + 1] = name
++end
++
+ local function buildFrame()
+   local frame = CreateFrame("Frame", FRAME_NAME, UIParent, "BasicFrameTemplate")
+   frame:SetFrameStrata("MEDIUM")
+@@ -748,10 +759,7 @@
+   notebook:SetPoint("TOPLEFT", content, "TOPLEFT", 0, -y)
+   frame.NotebookLabel = notebook
+ 
+-  if type(UISpecialFrames) == "table" then
+-    table.insert(UISpecialFrames, FRAME_NAME)
+-  end
++  rememberSpecial(FRAME_NAME)
+ 
+   return frame
+ end
+
+diff --git a/tests/test_console.lua b/tests/test_console.lua
+--- a/tests/test_console.lua
++++ b/tests/test_console.lua
+@@ -6,8 +6,8 @@
+ -- ArchiveBox / stock ARCHIVE and CANONIZE labels + B9-C stock
+ -- CeremonyLog desk + B10-D stock desk-body ScrollFrame, outer height 780
+ -- + B11-C desk mouse wheel and Open Gora subject fallback + B12-B Open
+--- Knighting line-head subject fallback + B13-D stockEdit OnEscapePressed
+--- ClearFocus).
++-- Knighting line-head subject fallback + B13-D stockEdit OnEscapePressed
++-- ClearFocus + B14-D UISpecialFrames rememberSpecial dedupe).
+ -- Isolated: wow_ui_stub + Common + Ranks + Runtime + Store + Gora + Knighting
+ -- + Sender + Decree + Console. Confession is stubbed when painted; this file
+ -- does not load Confession.lua. Knighting GetLine/Enqueue/Skip are stubbed
+@@ -2660,6 +2660,97 @@
+ assert_eq(COB.Popes, nil, "still no Pope list after B13-D")
+ end
+ runB13D()
++
++--------------------------------------------------------------------------------
++-- B14-D: UISpecialFrames rememberSpecial dedupe. Named desk once.
++-- Nested inside runB8E so the main chunk stays under Lua 5.1's 200-local cap.
++--------------------------------------------------------------------------------
++local function runB14D()
++reset()
++Console:Init()
++assert_eq(Console.SaveNote, nil, "SaveNote stays nil")
++assert_eq(Console.GetNotes, nil, "no notes table")
++assert_eq(Console.CopyCeremonySummary, nil, "no post-show ceremony summary")
++assert_eq(Console.CeremonySummary, nil, "no ceremony summary")
++assert_eq(findButton(frame, "SUMMON THE FAITHFUL"), nil, "no SUMMON chrome")
++assert_eq(findButton(frame, "COPY SUMMARY"), nil, "no ceremony-summary chrome")
++assert_eq(findButton(frame, "WHISPER ALL"), nil, "no WHISPER ALL chrome")
++assert_eq(findButton(frame, "RSVP"), nil, "no RSVP chrome")
++
++local function countSpecial(name)
++  local n = 0
++  if type(UISpecialFrames) ~= "table" then return 0 end
++  for i = 1, #UISpecialFrames do
++    if UISpecialFrames[i] == name then n = n + 1 end
++  end
++  return n
++end
++
++assert_eq(countSpecial("ChurchOfBeefConsoleFrame"), 1,
++  "after Init, ChurchOfBeefConsoleFrame is on UISpecialFrames once")
++
++reset()
++Console:Init()
++assert_eq(countSpecial("ChurchOfBeefConsoleFrame"), 1,
++  "ResetForTests + Init still registers ChurchOfBeefConsoleFrame once")
++
++-- Force a second build so rememberSpecial must dedupe (Init is otherwise
++-- idempotent; ResetForTests does not nil the widget).
++Console.frame = nil
++Console:Init()
++assert_eq(countSpecial("ChurchOfBeefConsoleFrame"), 1,
++  "second build does not duplicate ChurchOfBeefConsoleFrame")
++
++-- Optional: name already present before Init does not add a second.
++Console.frame = nil
++assert_eq(countSpecial("ChurchOfBeefConsoleFrame"), 1,
++  "name already present before Init")
++Console:Init()
++assert_eq(countSpecial("ChurchOfBeefConsoleFrame"), 1,
++  "Init does not add a second when the name is already present")
++
++frame = Console.frame
++assert_true(frame ~= nil, "live console frame is restored after rebuild")
++assert_true(frame.ArchiveBox ~= nil, "B13-D ArchiveBox still exists")
++assert_true(frame.ArchiveBox:GetScript("OnEscapePressed") ~= nil,
++  "B13-D OnEscapePressed ClearFocus still wired")
++
++local srcSpecial = io.open("addon/ChurchOfBeef/UI/Console.lua", "r")
++assert_true(srcSpecial ~= nil, "Console.lua is readable for B14-D")
++local srcSpecialBody = srcSpecial:read("*a")
++srcSpecial:close()
++assert_true(srcSpecialBody:find("ChurchOfBeefConsoleFrame", 1, true) ~= nil,
++  "source names ChurchOfBeefConsoleFrame")
++assert_true(srcSpecialBody:find("local function rememberSpecial", 1, true) ~= nil,
++  "source has rememberSpecial")
++assert_true(srcSpecialBody:find("UISpecialFrames[i] == name", 1, true) ~= nil,
++  "source has a dedupe loop")
++assert_true(srcSpecialBody:find("rememberSpecial(FRAME_NAME)", 1, true) ~= nil,
++  "build remembers the named desk")
++assert_eq(srcSpecialBody:find("table.insert(UISpecialFrames", 1, true), nil,
++  "source does not bare-insert UISpecialFrames")
++assert_eq(srcSpecialBody:find("rememberSpecial(FRAME_NAME ..", 1, true), nil,
++  "source does not register scroll child names")
++assert_eq(srcSpecialBody:find("IG_CHARACTER_INFO", 1, true), nil,
++  "source does not PlaySound IG_CHARACTER_INFO_*")
++assert_eq(srcSpecialBody:find("PlaySound", 1, true), nil, "source must not PlaySound")
++assert_eq(srcSpecialBody:find("function Console:SaveNote", 1, true), nil,
++  "source must not define SaveNote")
++assert_eq(srcSpecialBody:find("SUMMON THE FAITHFUL", 1, true), nil,
++  "source must not contain SUMMON")
++assert_eq(srcSpecialBody:find("Parchment", 1, true), nil, "console stays stock, not parchment")
++assert_eq(srcSpecialBody:find("PanelTabButtonTemplate", 1, true), nil,
++  "desks are not collapsed into tabs")
++
++assert_eq(Console.SaveNote, nil, "SaveNote stays nil after B14-D")
++if standalone then
++  assert_eq(COB.Archive, nil, "isolation still does not load Archive")
++  assert_eq(COB.UI, nil, "isolation still does not load the Quiet shell")
++  assert_eq(COB.Toasts, nil, "isolation still does not load Toasts")
++end
++assert_eq(COB.Popes, nil, "still no Pope list after B14-D")
++end
++runB14D()
+ end
+ runB8E()
+ 

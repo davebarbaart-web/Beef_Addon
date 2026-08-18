@@ -1,0 +1,102 @@
+# B22-B — HUD fighter names use FrameXML Morpheus casing (implementation diff)
+
+Lane-only unified diff of the exclusive implementation files vs the pre-lane working tree.
+
+diff --git a/addon/ChurchOfBeef/UI/Hud.lua b/addon/ChurchOfBeef/UI/Hud.lua
+--- a/addon/ChurchOfBeef/UI/Hud.lua
++++ b/addon/ChurchOfBeef/UI/Hud.lua
+@@ -14,7 +14,9 @@
+ -- Pope (IsRegisteredPope local) → GetSanctioned() only; congregation →
+ -- Runtime subjects.fighters only while RITE and riteType Gora (B16-C).
+ -- Isolated suite with a live GetSanctioned still sends even if Sender
+--- is nil. No verdict qualifier.
++-- is nil. No verdict qualifier. Names try stock Morpheus
++-- (Fonts\\MORPHEUS.ttf) via pcall SetFont; GameFontHighlight fallback
++-- (B22-B). Titles, records, defenses, vs, and favor stay GameFont.
+ -- Defined fallback: everything except live health. Favor split is
+ -- Pope-local from Gora (gora pair only, so a Runtime leftover after a
+ -- ruling does not thaw the freeze), or congregation broadcast only.
+@@ -35,6 +37,7 @@
+ local WHITE8X8 = "Interface\\Buttons\\WHITE8X8"
+ local PARCHMENT_TEXTURE = "Interface\\QuestFrame\\QuestBG"
+ local SEAL_TEXTURE = "Interface\\Buttons\\UI-EmptySlot-White"
++local NAME_FONT = "Fonts\\MORPHEUS.ttf"
+ 
+ local ANCHORS = {
+   TOPLEFT = true, TOP = true, TOPRIGHT = true,
+@@ -553,6 +556,20 @@
+   return fs
+ end
+ 
++local function applyNameFont(fs)
++  if not fs then return end
++  local used = false
++  if fs.SetFont then
++    local ok, applied = pcall(fs.SetFont, fs, NAME_FONT, 14)
++    used = ok and applied and true or false
++  end
++  if not used and fs.SetFontObject then
++    local font = GameFontHighlight
++    if type(font) == "string" then font = _G[font] end
++    if font then pcall(fs.SetFontObject, fs, font) end
++  end
++end
++
+ local function build()
+   local parent = UIParent
+   local widget = CreateFrame("Frame", FRAME_NAME, parent, "BackdropTemplate")
+@@ -602,6 +619,8 @@
+ 
+   widget.nameA = makeLabel(widget, nil, "GameFontHighlight", "LEFT")
+   widget.nameB = makeLabel(widget, nil, "GameFontHighlight", "RIGHT")
++  applyNameFont(widget.nameA)
++  applyNameFont(widget.nameB)
+   widget.titleA = makeLabel(widget, nil, "GameFontNormal", "LEFT")
+   widget.titleB = makeLabel(widget, nil, "GameFontNormal", "RIGHT")
+   widget.levelA = makeLabel(widget, nil, "GameFontNormal", "LEFT")
+diff --git a/tests/test_hud.lua b/tests/test_hud.lua
+--- a/tests/test_hud.lua
++++ b/tests/test_hud.lua
+@@ -5,7 +5,8 @@
+ -- + B16-C congregation picks only while RITE and riteType Gora
+ -- + B17-D livePair runtime arm only while RITE and riteType Gora
+ -- + B19-C lastPair does not paint during a non-Gora RITE
+--- + B21-B lastPair does not paint during a non-Gora CONSEQUENCE). Isolated:
++-- + B21-B lastPair does not paint during a non-Gora CONSEQUENCE
++-- + B22-B fighter names try Fonts\\MORPHEUS.ttf). Isolated:
+ -- wow_ui_stub + Common + Ranks + Runtime + Store + Gora + Hud. Event Mode
+ -- only. No live health, favor economy, sound, or toasts. Standalone wrap.
+ -- Congregation never Sanctions; the star pair is subjects.fighters.
+@@ -198,7 +199,16 @@
+ assert_true(src:find("UI-StatusBar", 1, true) ~= nil, "favor halves keep the stock StatusBar texture")
+ assert_eq(src:find(".tga", 1, true), nil, "source does not load custom tga")
+ assert_eq(src:find(".blp", 1, true), nil, "source does not load custom blp")
+-assert_eq(src:find(".ttf", 1, true), nil, "source does not load custom fonts")
++do
++  -- B22-B: stock FrameXML Morpheus on fighter names. No new main-chunk locals.
++  assert_true(src:find("Fonts\\\\MORPHEUS.ttf", 1, true) ~= nil,
++    "NAME_FONT uses FrameXML lowercase Morpheus")
++  assert_eq(src:find("MORPHEUS.TTF", 1, true), nil, "name path is not uppercase TTF")
++  assert_eq(src:find("MORPHEUS_CYR", 1, true), nil, "source does not use GlueFonts MORPHEUS_CYR")
++  assert_true(src:find("SetFontObject", 1, true) ~= nil, "applyNameFont still falls back to GameFont")
++  assert_eq(src:gsub("Fonts\\\\MORPHEUS%.ttf", ""):find(".ttf", 1, true), nil,
++    "source does not load custom fonts")
++end
+ assert_eq(src:find("Media\\", 1, true), nil, "source does not require custom Media")
+ assert_eq(src:find("Toasts", 1, true), nil, "source does not drive Toasts")
+ assert_eq(src:find("SendChatMessage", 1, true), nil, "source does not send chat")
+@@ -308,6 +318,14 @@
+ assert_eq(frame.defenseB:IsShown(), false, "defense B starts hidden")
+ assert_eq(frame.defenseA._template, "GameFontNormal", "defense A is stock GameFont")
+ assert_eq(frame.defenseB._template, "GameFontNormal", "defense B is stock GameFont")
++assert_eq(frame.nameA._template, "GameFontHighlight", "name A still uses GameFontHighlight")
++assert_eq(frame.nameB._template, "GameFontHighlight", "name B still uses GameFontHighlight")
++assert_eq(frame.titleA._template, "GameFontNormal", "title A stays GameFont")
++assert_eq(frame.titleB._template, "GameFontNormal", "title B stays GameFont")
++assert_eq(frame.recordA._template, "GameFontNormal", "record A stays GameFont")
++assert_eq(frame.recordB._template, "GameFontNormal", "record B stays GameFont")
++assert_eq(frame.vs._template, "GameFontNormal", "VS stays GameFont")
++assert_eq(frame.favorLabel._template, "GameFontHighlightSmall", "FAVOR stays GameFont")
+ 
+ local point, relativeTo, relativePoint, x, y = frame:GetPoint(1)
+ assert_eq(point, "TOP", "default anchor is the top")

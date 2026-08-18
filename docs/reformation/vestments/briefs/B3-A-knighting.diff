@@ -1,0 +1,225 @@
+diff --git a/addon/ChurchOfBeef/UI/Toasts.lua b/addon/ChurchOfBeef/UI/Toasts.lua
+--- a/addon/ChurchOfBeef/UI/Toasts.lua
++++ b/addon/ChurchOfBeef/UI/Toasts.lua
+@@ -4,8 +4,8 @@ local COB = ChurchOfBeef
+ -- Event Mode toast engine + theatrical proclamation/verdict beats (Law 6).
+ -- Quiet Mode does not drive this file. Grant-driven kinds are gone.
+ -- Promote / rite copy builders and those KINDS are gone.
+--- Engine: system / debug via Push; sanction / verdict / cowardice via Proclaim.
+--- Clerical copy only. Never generate oratory. Never SendChatMessage.
++-- Engine: system / debug via Push; sanction / verdict / cowardice /
++-- knighting / elevation via Proclaim.
++-- Clerical copy only. Never generate oratory. Never SendChatMessage.
+ local Toasts = {}
+ COB.Toasts = Toasts
+ 
+@@ -32,6 +32,8 @@ local THEATER_KINDS = {
+   sanction = true,
+   verdict = true,
+   cowardice = true,
++  knighting = true,
++  elevation = true,
+ }
+ 
+ local THEATER_HOLD = 5
+@@ -425,7 +427,7 @@ local function interruptShowing(self)
+ end
+ 
+ --------------------------------------------------------------------------------
+--- Theatrical overlay (sanction / verdict / cowardice)
++-- Theatrical overlay (sanction / verdict / cowardice / knighting / elevation)
+ --------------------------------------------------------------------------------
+ 
+ local function theaterAllowed()
+@@ -479,6 +481,20 @@ local function clericalCopy(kind, fields)
+     end
+   end
+ 
++  if kind == "knighting" then
++    local name = fields.name
++    if type(name) ~= "string" or name == "" then return nil end
++    return "RISE, BEEF KNIGHT\n" .. name
++  end
++
++  if kind == "elevation" then
++    local name = fields.name
++    if type(name) ~= "string" or name == "" then return nil end
++    return "RISE, BEEF LORD\n" .. name
++  end
++
+   return nil
+ end
+ 
+ local function tintFor(kind, fields)
+   if kind == "cowardice" then return OXBLOOD end
+   if kind == "verdict" and fields.ruling == "victor" then return GOLD end
++  if kind == "knighting" or kind == "elevation" then return GOLD end
+   return IRON
+ end
+ 
+@@ -592,8 +608,8 @@ function Toasts:InitTheater()
+   return self.theater
+ end
+ 
+---- Event Mode proclamation / verdict / cowardice. Clerical copy only.
+---- fields: { fighterA, fighterB, name, ruling, text, stipulation }
++--- Event Mode proclamation / verdict / cowardice / knighting / elevation.
++--- Clerical copy only. fields: { fighterA, fighterB, name, ruling, text, stipulation }
+ --- @return ok boolean, reason string|nil
+ function Toasts:Proclaim(kind, fields)
+   if type(kind) ~= "string" or not THEATER_KINDS[kind] then
+@@ -766,7 +782,7 @@ end
+ ---   Celebrate(kind, fieldsTable)            → system / debug, or Proclaim
+ --- fields: { detail?, text?, dedupeKey?, hold?, priority?,
+ ---           fighterA?, fighterB?, name?, ruling?, stipulation? }
+---- Theater kinds (sanction / verdict / cowardice) go to Proclaim.
++--- Theater kinds (sanction / verdict / cowardice / knighting / elevation) go to Proclaim.
+ --- Unknown / excised kinds (promote, rite, grant family) do not mint copy.
+ function Toasts:Celebrate(kind, fields)
+   -- Plain string → system toast (back-compat for early call sites).
+diff --git a/tests/test_ui.lua b/tests/test_ui.lua
+--- a/tests/test_ui.lua
++++ b/tests/test_ui.lua
+@@ -1,6 +1,6 @@
+ -- Quiet shell: frame creation, drag/resize/coalesce, saved position, minimap
+ -- toggle, system/debug toasts. Event Mode Proclaim (sanction / verdict /
+--- cowardice). No tab registry. No Standing / Ladder / Officer IA.
++-- cowardice / knighting / elevation). No tab registry. No Standing / Ladder / Officer IA.
+ -- No promote / rite toast kinds. Isolation stays under standalone.
+ local standalone = (type(assert_eq) ~= "function")
+ local passed = 0
+@@ -378,8 +378,9 @@ COB.UI:RefreshLadder()
+ assert_eq(COB.UI.frame.FooterText:GetText(), "", "coalesced paint never restores Eternal Grazing")
+ 
+ --------------------------------------------------------------------------------
+--- V-B: sanction proclamation + verdict seals. Push/Proclaim only.
+--- Runtime + Sound are loaded here (not wired from Console / Gora).
++-- V-B + B3-A: sanction / verdict / cowardice / knighting / elevation.
++-- Push/Proclaim only. Runtime + Sound are loaded here (not wired
++-- from Console / Gora / Knighting).
+ --------------------------------------------------------------------------------
+ dofile("addon/ChurchOfBeef/Core/Runtime.lua")
+ dofile("addon/ChurchOfBeef/UI/Sound.lua")
+@@ -525,6 +526,97 @@ assert_eq(COB.Toasts:Proclaim("verdict", { ruling = "free" }), true,
+   "Event Mode free ruling without text is accepted")
+ assert_eq(theaterCopy(), "Free ruling.", "free falls back to the clerical default")
+ 
++--------------------------------------------------------------------------------
++-- B3-A: knighting / elevation. Fixed clerical headlines. Mute card.
++--------------------------------------------------------------------------------
++theaterReset()
++assert_eq(COB.Runtime:Snapshot().state, "QUIET", "runtime reset is QUIET before knighting")
++local kQuietOk, kQuietReason = COB.Toasts:Proclaim("knighting", { name = "Beefina" })
++assert_eq(kQuietOk, false, "Quiet Runtime refuses knighting")
++assert_true(type(kQuietReason) == "string", "Quiet knighting refuse returns a reason")
++assert_true(
++  COB.Toasts.theater == nil or COB.Toasts.theater.root:IsShown() == false,
++  "Quiet does not show the knighting overlay"
++)
++
++local savedRuntimeK = COB.Runtime
++COB.Runtime = nil
++local kMissingOk = COB.Toasts:Proclaim("elevation", { name = "Juicyj" })
++assert_eq(kMissingOk, false, "missing Runtime refuses elevation")
++assert_true(
++  COB.Toasts.theater == nil or COB.Toasts.theater.root:IsShown() == false,
++  "missing Runtime does not show elevation"
++)
++COB.Runtime = savedRuntimeK
++
++theaterReset()
++assert_true(COB.Runtime:StartEvent() ~= nil, "StartEvent for knighting")
++UIParent:SetWidth(1200)
++UIParent:SetHeight(800)
++assert_eq(COB.Toasts:Proclaim("knighting", { name = "Beefina" }), true,
++  "Event Mode knighting is accepted")
++assert_true(COB.Toasts.theater ~= nil, "knighting mints a theater overlay")
++assert_eq(COB.Toasts.theater.root:IsShown(), true, "knighting shows the overlay")
++assert_eq(theaterCopy(), "RISE, BEEF KNIGHT\nBeefina",
++  "knighting copy is the fixed headline plus name")
++assert_eq(theaterCopy():find("found worthy", 1, true), nil,
++  "knighting does not generate oratory")
++assert_true(COB.Toasts.theater.dimAlpha <= 0.5, "knighting dim is ≤ 50%")
++assert_true(COB.Toasts.theater.dimAlpha > 0, "knighting dim is present")
++local kPanelW = COB.Toasts.theater.panel:GetWidth()
++assert_true(type(kPanelW) == "number", "knighting panel has a width")
++assert_true(kPanelW <= 400, "knighting panel occupies at most the center third")
++assert_eq(findButton(COB.Toasts.theater.root), nil, "knighting has no close button")
++assert_eq(COB.Toasts.theater.root:GetScript("OnUpdate"), nil,
++  "knighting theater has no permanent OnUpdate")
++assert_eq(played[#played], "knighting", "knighting plays the knighting cue")
++assert_eq(#stub.chat, 0, "knighting never SendChatMessage")
++if #chatLines > 0 then
++  assert_eq(chatLines[1], theaterCopy(), "optional chat repeats the knighting line")
++end
++
++theaterReset()
++assert_true(COB.Runtime:StartEvent() ~= nil, "StartEvent for elevation")
++assert_eq(COB.Toasts:Proclaim("elevation", { name = "Juicyj" }), true,
++  "Event Mode elevation is accepted")
++assert_eq(theaterCopy(), "RISE, BEEF LORD\nJuicyj",
++  "elevation copy is the fixed headline plus name")
++assert_eq(played[#played], "elevation", "elevation plays the elevation cue")
++assert_eq(findButton(COB.Toasts.theater.root), nil, "elevation has no close button")
++assert_eq(#stub.chat, 0, "elevation never SendChatMessage")
++assert_true(COB.Toasts.theater.dimAlpha <= 0.5, "elevation dim is ≤ 50%")
++
++theaterReset()
++assert_true(COB.Runtime:StartEvent() ~= nil, "StartEvent for knighting without name")
++local noNameOk, noNameReason = COB.Toasts:Proclaim("knighting", {})
++assert_eq(noNameOk, false, "knighting without name is invalid")
++assert_eq(noNameReason, "invalid", "knighting missing name reason")
++assert_true(
++  COB.Toasts.theater == nil or COB.Toasts.theater.root:IsShown() == false,
++  "knighting without name does not show theater"
++)
++
++theaterReset()
++assert_true(COB.Runtime:StartEvent() ~= nil, "StartEvent for elevation without name")
++local noElevOk, noElevReason = COB.Toasts:Proclaim("elevation", { name = "" })
++assert_eq(noElevOk, false, "elevation with empty name is invalid")
++assert_eq(noElevReason, "invalid", "elevation empty name reason")
++
++theaterReset()
++assert_true(COB.Runtime:StartEvent() ~= nil, "StartEvent for Celebrate knighting")
++local celOk, celReason = COB.Toasts:Celebrate("knighting")
++assert_eq(celOk, false, "Celebrate knighting without name mints no copy")
++assert_eq(celReason, "invalid", "Celebrate knighting without name is invalid")
++assert_eq(COB.Toasts:ShowingKind(), nil, "Celebrate knighting does not fall through to system")
++
++theaterReset()
++assert_true(COB.Runtime:StartEvent() ~= nil, "StartEvent for Celebrate knighting with name")
++assert_eq(COB.Toasts:Celebrate("knighting", { name = "Beefina" }), true,
++  "Celebrate routes knighting to Proclaim")
++assert_eq(theaterCopy(), "RISE, BEEF KNIGHT\nBeefina",
++  "Celebrate knighting paints the same clerical copy")
++assert_eq(played[#played], "knighting", "Celebrate knighting plays the knighting cue")
++
+ theaterReset()
+ assert_true(COB.Runtime:StartEvent() ~= nil, "StartEvent for unknown kind")
+ local unknownOk, unknownReason = COB.Toasts:Proclaim("sermon", { name = "Thickcut" })
+@@ -553,6 +645,13 @@ assert_eq(COB.Toasts.theater.root:IsShown(), true, "void is visible before the ti
+ stub.flushTimers()
+ assert_eq(COB.Toasts.theater.root:IsShown(), false, "C_Timer.After hides the beat")
+ 
++theaterReset()
++assert_true(COB.Runtime:StartEvent() ~= nil, "StartEvent for knighting timed hide")
++assert_eq(COB.Toasts:Proclaim("knighting", { name = "Beefina" }), true, "knighting beat is timed")
++assert_eq(COB.Toasts.theater.root:IsShown(), true, "knighting is visible before the timer")
++stub.flushTimers()
++assert_eq(COB.Toasts.theater.root:IsShown(), false, "C_Timer.After hides the knighting beat")
++
+ local toastSrcFile = io.open("addon/ChurchOfBeef/UI/Toasts.lua", "r")
+ assert_true(toastSrcFile ~= nil, "Toasts.lua is readable")
+ local toastSrc = toastSrcFile:read("*a")
+@@ -560,8 +659,10 @@ toastSrcFile:close()
+ assert_eq(toastSrc:find("SendChatMessage(", 1, true), nil, "source never SendChatMessage")
+ assert_eq(toastSrc:find("COB.Console", 1, true), nil, "source does not wire Console")
+ assert_eq(toastSrc:find("COB.Gora", 1, true), nil, "source does not wire Gora")
++assert_eq(toastSrc:find("COB.Knighting", 1, true), nil, "source does not wire Knighting")
+ assert_eq(toastSrc:find("Their third meeting", 1, true), nil, "source does not generate H2H oratory")
+ assert_eq(toastSrc:find("Let it be known", 1, true), nil, "source does not generate sermons")
++assert_eq(toastSrc:find("found worthy", 1, true), nil, "source does not generate knighting oratory")
+ 
+ theaterReset()
+ assert_eq(COB.Toasts:Push({ kind = "system", text = "system still lives" }), true,

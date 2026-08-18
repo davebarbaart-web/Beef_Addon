@@ -1,0 +1,139 @@
+diff --git a/tests/test_console.lua b/tests/test_console.lua
+--- a/tests/test_console.lua
++++ b/tests/test_console.lua
+@@ -12,7 +12,8 @@
+ -- presentCharacterIds fail-opens until Roster is complete + B20-A
+ -- Confession rows click-select and mute called token + B21-A
+ -- GetPresence fail-opens Store names until Roster is complete + B22-A
+--- Recommendation paints named-opponent "  names  ").
++-- Recommendation paints named-opponent "  names  " + B23-A
++-- playCue no-ops when Toasts.Proclaim exists).
+ -- Isolated: wow_ui_stub + Common + Ranks + Runtime + Store + Gora + Knighting
+ -- + Sender + Decree + Console. Confession is stubbed when painted; this file
+ -- does not load Confession.lua. Knighting GetLine/Enqueue/Skip are stubbed
+@@ -3430,7 +3431,107 @@
+ assert_eq(COB.Popes, nil, "still no Pope list after B22-A")
+ end
+ runB22A()
++
++--------------------------------------------------------------------------------
++-- B23-A: playCue no-ops when Toasts.Proclaim exists. Isolated Sound
++-- pins stay (suite does not load Toasts). Sanction + one other cued
++-- verb do not append to the Sound spy. SaveNote nil. No Proclaim call.
++-- Nested inside runB8E so the main chunk stays under Lua 5.1's 200-local cap.
++--------------------------------------------------------------------------------
++local function runB23A()
++reset()
++Console:Init()
++assert_eq(Console.SaveNote, nil, "SaveNote stays nil")
++assert_eq(Console.GetNotes, nil, "no notes table")
++assert_eq(Console.CopyCeremonySummary, nil, "no post-show ceremony summary")
++assert_eq(Console.CeremonySummary, nil, "no ceremony summary")
++assert_eq(findButton(frame, "SUMMON THE FAITHFUL"), nil, "no SUMMON chrome")
++assert_eq(findButton(frame, "COPY SUMMARY"), nil, "no ceremony-summary chrome")
++assert_eq(findButton(frame, "WHISPER ALL"), nil, "no WHISPER ALL chrome")
++assert_eq(findButton(frame, "RSVP"), nil, "no RSVP chrome")
++
++local savedPred = Sender.IsRegisteredPope
++Sender.IsRegisteredPope = function() return true end
++
++reset()
++Console:Init()
++local steve = seedHuman("Steve", 2)
++local fighterA = Store:CreateCharacter({ name = "Chuckroast", class = "Warrior", level = 70 })
++local fighterB = Store:CreateCharacter({ name = "Tendermage", class = "Mage", level = 68 })
++
++local savedSound = COB.Sound
++local savedToasts = COB.Toasts
++local soundCalls = {}
++local proclaimCalls = 0
++COB.Sound = {
++  Play = function(_, name)
++    soundCalls[#soundCalls + 1] = name
++    return name
++  end,
++}
++COB.Toasts = {
++  Proclaim = function()
++    proclaimCalls = proclaimCalls + 1
++  end,
++}
++
++assert_true(Console:StartEvent() ~= nil, "StartEvent for theater-owned cues")
++assert_eq(#soundCalls, 0, "StartEvent does not play Sound")
++assert_eq(proclaimCalls, 0, "StartEvent does not call Toasts:Proclaim")
++
++local knightedCue = Console:KnightThisBeef(steve.id)
++assert_true(knightedCue ~= nil, "KNIGHT THIS BEEF succeeds when Proclaim exists")
++assert_eq(#soundCalls, 0, "KNIGHT THIS BEEF does not append to the Sound spy when Proclaim exists")
++assert_eq(proclaimCalls, 0, "Console does not call Toasts:Proclaim")
++
++Gora:Petition(fighterA.id, fighterB.id)
++Gora:Petition(fighterB.id)
++local sanctionedCue = Console:Sanction(fighterA.id, fighterB.id)
++assert_true(sanctionedCue ~= nil, "Sanction succeeds when Proclaim exists")
++assert_eq(#soundCalls, 0, "Sanction does not append to the Sound spy when Proclaim exists")
++assert_eq(proclaimCalls, 0, "Sanction does not call Toasts:Proclaim")
++
++local srcCue = io.open("addon/ChurchOfBeef/UI/Console.lua", "r")
++assert_true(srcCue ~= nil, "Console.lua is readable for B23-A")
++local srcCueBody = srcCue:read("*a")
++srcCue:close()
++assert_true(srcCueBody:find('type(Toasts.Proclaim) == "function"', 1, true) ~= nil,
++  "playCue guards on Toasts.Proclaim")
++assert_true(srcCueBody:find('return after(self, result, err, "sanction", true)', 1, true) ~= nil,
++  "Sanction cue argument stays")
++assert_true(srcCueBody:find('return after(self, result, err, "knighting")', 1, true) ~= nil,
++  "KnightThisBeef cue argument stays")
++assert_true(srcCueBody:find('return after(self, result, err, "elevation")', 1, true) ~= nil,
++  "ElevateToLord cue argument stays")
++assert_true(srcCueBody:find("pcall(Sound.Play, Sound, name)", 1, true) ~= nil,
++  "isolated Sound:Play path stays")
++assert_eq(srcCueBody:find("Toasts:Proclaim", 1, true), nil, "source must not call Toasts:Proclaim")
++assert_eq(srcCueBody:find("Toasts.Proclaim(", 1, true), nil, "source must not call Toasts.Proclaim")
++assert_eq(srcCueBody:find("function Console:SaveNote", 1, true), nil,
++  "source must not define SaveNote")
++assert_eq(srcCueBody:find("SUMMON THE FAITHFUL", 1, true), nil,
++  "source must not contain SUMMON")
++assert_eq(srcCueBody:find("Parchment", 1, true), nil, "console stays stock, not parchment")
++assert_eq(srcCueBody:find("PanelTabButtonTemplate", 1, true), nil,
++  "desks are not collapsed into tabs")
++
++COB.Sound = savedSound
++COB.Toasts = savedToasts
++Sender.IsRegisteredPope = savedPred
++assert_eq(Sender:IsRegisteredPope(COB.Group.PlayerName()), false,
++  "B23-A wrapping the predicate does not stub the list true")
++
++assert_eq(Console.SaveNote, nil, "SaveNote stays nil after B23-A")
++if standalone then
++  assert_eq(COB.Archive, nil, "isolation still does not load Archive")
++  assert_eq(COB.UI, nil, "isolation still does not load the Quiet shell")
++  assert_eq(COB.Toasts, nil, "isolation still does not load Toasts")
++  assert_eq(COB.Confession, nil, "isolation still does not load Confession")
+ end
++assert_eq(COB.Popes, nil, "still no Pope list after B23-A")
++end
++runB23A()
++end
+ runB8E()
+ 
+ --------------------------------------------------------------------------------
+diff --git a/addon/ChurchOfBeef/UI/Console.lua b/addon/ChurchOfBeef/UI/Console.lua
+--- a/addon/ChurchOfBeef/UI/Console.lua
++++ b/addon/ChurchOfBeef/UI/Console.lua
+@@ -1384,7 +1384,14 @@
+ -- Ritual verbs — fail closed unless the local sender is a registered Pope
+ --------------------------------------------------------------------------------
+ 
++-- Theater owns §19.4 cues when Toasts.Proclaim exists (live client).
++-- Isolated suite does not load Toasts — Sound:Play stays for harness pins.
++-- Do not call Proclaim from this desk.
+ local function playCue(name)
++  local Toasts = COB.Toasts
++  if type(Toasts) == "table" and type(Toasts.Proclaim) == "function" then
++    return
++  end
+   local Sound = COB.Sound
+   if type(Sound) ~= "table" or type(Sound.Play) ~= "function" then
+     return

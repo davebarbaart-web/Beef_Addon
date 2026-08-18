@@ -1,0 +1,286 @@
+diff --git a/addon/ChurchOfBeef/UI/Inputs.lua b/addon/ChurchOfBeef/UI/Inputs.lua
+--- a/addon/ChurchOfBeef/UI/Inputs.lua
++++ b/addon/ChurchOfBeef/UI/Inputs.lua
+@@ -13,6 +13,9 @@
+ -- Missing ChurchOfBeefDB restores the default; save no-ops. ResetForTests
+ -- does not wipe SavedVariables. Root stays SetMovable + SetClampedToScreen;
+ -- drag is on TitleBar, not the root.
++-- Petition may pass opponent from the current target name when Names.Same
++-- is false versus the whisper dest and the local player. Both unit-name
++-- reads are pcalled. A missing unit-name API omits opponent.
+ local Inputs = {
+   MODE = "Event",
+ }
+@@ -229,13 +232,33 @@
+   end
+ end
+ 
++local function petitionOpponent()
++  if type(UnitName) ~= "function" then return nil end
++  local tok, targetName = pcall(UnitName, "target")
++  local pok, playerName = pcall(UnitName, "player")
++  if not tok or type(targetName) ~= "string" or targetName == "" then
++    return nil
++  end
++  if not (COB.Names and type(COB.Names.Same) == "function") then
++    return nil
++  end
++  if COB.Names.Same(targetName, inputTarget) then return nil end
++  if pok and COB.Names.Same(targetName, playerName) then return nil end
++  return targetName
++end
++
+ function Inputs:Petition()
+   local ok, why = readyToSend()
+   if not ok then return false, why end
+   if not (COB.Net and COB.Net.SendPetition) then
+     return false, "no net"
+   end
+-  return COB.Net:SendPetition({ characterId = localCharacterId }, inputTarget)
++  local fields = { characterId = localCharacterId }
++  local opponent = petitionOpponent()
++  if opponent then
++    fields.opponent = opponent
++  end
++  return COB.Net:SendPetition(fields, inputTarget)
+ end
+ 
+ function Inputs:Catchup()
+
+diff --git a/tests/test_inputs.lua b/tests/test_inputs.lua
+--- a/tests/test_inputs.lua
++++ b/tests/test_inputs.lua
+@@ -1,11 +1,13 @@
+ -- Event congregation Petition / Confess / Catchup (B4-G, B5-E, B14-B, B15-A,
+--- B16-B). Isolated: wow_ui_stub + Common + Runtime + Inputs. Stub
++-- B16-B, B17-C). Isolated: wow_ui_stub + Common + Runtime + Inputs. Stub
+ -- COB.Net.SendPetition / SendConfession / RequestSnapshot. Event Mode only.
+ -- No Pope-name lookup. No Gora:Petition. No Proclaim. No sound. No
+ -- SendChatMessage. Isolation wrap. No TOC / bootstrap / run.lua. Confess
+ -- box: OnEscapePressed ClearFocus only; type-guarded SetMultiLine(true).
+ -- Not on UISpecialFrames. TitleBar drag persist writes ChurchOfBeefDB.ui.inputs.
+ -- Root has no RegisterForDrag. ResetForTests does not wipe SV.
++-- Petition may name UnitName("target") when it is not the whisper dest and
++-- not the local player (Names.Same). Both UnitName reads are pcalled.
+ package.path = package.path .. ";./tests/?.lua"
+ 
+ local stub = require("wow_ui_stub")
+@@ -321,7 +323,7 @@
+ assert_eq(sentPetitions[1].target, "Host", "SendPetition uses SetInputTarget")
+ assert_eq(sentPetitions[1].fields.characterId, 7, "SendPetition carries characterId")
+ assert_eq(sentPetitions[1].fields.kind, nil, "Inputs does not invent a kind field")
+-assert_eq(sentPetitions[1].fields.opponent, nil, "Inputs does not name an opponent")
++assert_eq(sentPetitions[1].fields.opponent, nil, "unset stub target omits opponent")
+ 
+ ok, err = Inputs:Catchup()
+ assert_eq(ok, true, "Catchup sends when target is present")
+@@ -777,7 +779,209 @@
+ assert_eq(sounds, 0, "persist path plays no sound")
+ end
+ runB15A()
++
++--------------------------------------------------------------------------------
++-- B17-C: Petition may name UnitName("target") when it is not the whisper dest
++-- and not the local player (Names.Same). Existing spies stay opponent-less
++-- when stub target is nil. Nested so the main chunk stays under Lua 5.1's
++-- 200-local cap.
++--------------------------------------------------------------------------------
++local function runB17C()
++ChurchOfBeefDB = { ui = {} }
++reset()
++assert_true(Runtime:StartEvent() ~= nil, "B17-C StartEvent reaches ASSEMBLY")
++local frame = Inputs:Init()
++assert_true(frame ~= nil, "B17-C Init creates the frame")
++assert_eq(frame:IsShown(), true, "B17-C Event Init shows the Inputs panel")
++assert_eq(frame:GetWidth(), 328, "B17-C WIDTH stays 328")
++assert_eq(frame:GetHeight(), 72, "B17-C HEIGHT stays 72")
++assert_true(rawget(frame, "TitleBar") ~= nil, "B17-C TitleBar stays")
++assert_eq(frame:GetScript("OnDragStart"), nil, "B17-C root still has no OnDragStart")
++
++local box = editBox()
++assert_true(box ~= nil, "B17-C confess box stays")
++assert_true(box:GetScript("OnEscapePressed") ~= nil, "B17-C OnEscapePressed stays")
++box:SetFocus()
++assert_eq(box:HasFocus(), true, "B17-C editBox can take focus")
++local fired, fireErr = pcall(function()
++  stub.fire(box, "OnEscapePressed")
++end)
++assert_eq(fired, true, "B17-C OnEscapePressed fire does not error")
++assert_eq(fireErr, nil, "B17-C OnEscapePressed fire has no error text")
++assert_eq(box:HasFocus(), false, "B17-C ESC ClearFocus")
++assert_eq(frame:IsShown(), true, "B17-C ESC does not Hide")
++assert_eq(Inputs:GetView().shown, true, "B17-C GetView().shown stays true after ESC")
++
++local listed = false
++for i = 1, #UISpecialFrames do
++  if UISpecialFrames[i] == "ChurchOfBeefInputs" then listed = true end
++end
++assert_eq(listed, false, "B17-C still not on UISpecialFrames")
++
++Inputs:SetInputTarget("Host")
++Inputs:SetLocalCharacterId(7)
++
++local targetCalls = 0
++local savedTargetUnit = TargetUnit
++TargetUnit = function()
++  targetCalls = targetCalls + 1
++end
++
++local ok, err = Inputs:Petition()
++assert_eq(ok, true, "B17-C unset target still sends")
++assert_eq(err, nil, "B17-C unset target has no error")
++assert_eq(#sentPetitions, 1, "B17-C unset target sends once")
++assert_eq(sentPetitions[1].target, "Host", "B17-C unset target whisper dest stays Host")
++assert_eq(sentPetitions[1].fields.characterId, 7, "B17-C unset target keeps characterId")
++assert_eq(sentPetitions[1].fields.opponent, nil, "B17-C unset stub target omits opponent")
++assert_eq(targetCalls, 0, "B17-C Petition does not TargetUnit")
++
++local savedUnitName = UnitName
++UnitName = function(unit)
++  if unit == "target" then return "Chuckroast" end
++  if unit == "player" then return "Beefina" end
++  return nil
++end
++sentPetitions = {}
++ok, err = Inputs:Petition()
++assert_eq(ok, true, "B17-C named target sends")
++assert_eq(err, nil, "B17-C named target has no error")
++assert_eq(#sentPetitions, 1, "B17-C named target sends once")
++assert_eq(sentPetitions[1].target, "Host", "B17-C whisper dest stays Host")
++assert_eq(sentPetitions[1].fields.characterId, 7, "B17-C named target keeps characterId")
++assert_eq(sentPetitions[1].fields.opponent, "Chuckroast", "B17-C names Chuckroast")
++assert_eq(sentPetitions[1].fields.kind, nil, "B17-C does not invent a kind")
++assert_eq(targetCalls, 0, "B17-C named Petition does not TargetUnit")
++
++sentPetitions = {}
++local petitionBtn = buttonFor("Petition")
++assert_true(petitionBtn ~= nil, "B17-C Petition button stays")
++assert_eq(stub.fire(petitionBtn, "OnClick"), true, "B17-C Petition click is wired")
++assert_eq(#sentPetitions, 1, "B17-C click sends once")
++assert_eq(sentPetitions[1].fields.opponent, "Chuckroast", "B17-C click names Chuckroast")
++assert_eq(sentPetitions[1].target, "Host", "B17-C click whisper dest stays Host")
++
++UnitName = function(unit)
++  if unit == "target" then return "Host" end
++  if unit == "player" then return "Beefina" end
++  return nil
++end
++sentPetitions = {}
++ok, err = Inputs:Petition()
++assert_eq(ok, true, "B17-C names-same Host still sends")
++assert_eq(sentPetitions[1].fields.opponent, nil, "B17-C target names-same Host omits opponent")
++assert_eq(sentPetitions[1].target, "Host", "B17-C names-same Host whisper dest stays")
++assert_eq(sentPetitions[1].fields.characterId, 7, "B17-C names-same Host keeps characterId")
++
++UnitName = function(unit)
++  if unit == "target" then return "Host-Whitemane" end
++  if unit == "player" then return "Beefina" end
++  return nil
++end
++sentPetitions = {}
++Inputs:Petition()
++assert_eq(sentPetitions[1].fields.opponent, nil, "B17-C target names-same Host realm omits opponent")
++assert_eq(sentPetitions[1].target, "Host", "B17-C realm-fold Host whisper dest stays")
+ 
++UnitName = function(unit)
++  if unit == "target" then return "Beefina" end
++  if unit == "player" then return "Beefina" end
++  return nil
++end
++sentPetitions = {}
++ok, err = Inputs:Petition()
++assert_eq(ok, true, "B17-C names-same player still sends")
++assert_eq(sentPetitions[1].fields.opponent, nil, "B17-C target names-same player omits opponent")
++assert_eq(sentPetitions[1].target, "Host", "B17-C self-target whisper dest stays Host")
++assert_eq(sentPetitions[1].fields.characterId, 7, "B17-C self-target keeps characterId")
++
++UnitName = function(unit)
++  if unit == "target" then return "Beefina-Whitemane" end
++  if unit == "player" then return "Beefina" end
++  return nil
++end
++sentPetitions = {}
++Inputs:Petition()
++assert_eq(sentPetitions[1].fields.opponent, nil, "B17-C target names-same player realm omits opponent")
++
++UnitName = nil
++sentPetitions = {}
++ok, err = Inputs:Petition()
++assert_eq(ok, true, "B17-C missing UnitName still sends")
++assert_eq(err, nil, "B17-C missing UnitName has no error")
++assert_eq(sentPetitions[1].fields.opponent, nil, "B17-C missing UnitName omits opponent")
++assert_eq(sentPetitions[1].target, "Host", "B17-C missing UnitName whisper dest stays")
++assert_eq(sentPetitions[1].fields.characterId, 7, "B17-C missing UnitName keeps characterId")
++
++UnitName = function()
++  error("unitname failed")
++end
++sentPetitions = {}
++ok, err = Inputs:Petition()
++assert_eq(ok, true, "B17-C UnitName error still sends")
++assert_eq(sentPetitions[1].fields.opponent, nil, "B17-C UnitName error omits opponent")
++assert_eq(sentPetitions[1].target, "Host", "B17-C UnitName error whisper dest stays")
++
++UnitName = function(unit)
++  if unit == "target" then return "" end
++  if unit == "player" then return "Beefina" end
++  return nil
++end
++sentPetitions = {}
++Inputs:Petition()
++assert_eq(sentPetitions[1].fields.opponent, nil, "B17-C empty target name omits opponent")
++
++UnitName = function(unit)
++  if unit == "target" then return "Chuckroast" end
++  if unit == "player" then return "Beefina" end
++  return nil
++end
++assert_true(Runtime:EndEvent() ~= nil, "B17-C EndEvent returns QUIET")
++sentPetitions = {}
++ok = Inputs:Petition()
++assert_eq(ok, false, "B17-C Quiet Petition is false")
++assert_eq(#sentPetitions, 0, "B17-C Quiet does not send")
++
++assert_eq(targetCalls, 0, "B17-C never TargetUnit")
++assert_eq(sounds, 0, "B17-C plays no sound")
++assert_eq(goraCalls, 0, "B17-C does not call Gora")
++
++local challengeSrcFile = io.open("addon/ChurchOfBeef/UI/Inputs.lua", "r")
++assert_true(challengeSrcFile ~= nil, "Inputs.lua is readable after B17-C pins")
++local challengeSrc = challengeSrcFile:read("*a")
++challengeSrcFile:close()
++assert_true(challengeSrc:find('pcall(UnitName, "target")', 1, true) ~= nil,
++  "UnitName target read is pcalled")
++assert_true(challengeSrc:find('pcall(UnitName, "player")', 1, true) ~= nil,
++  "UnitName player read is pcalled")
++assert_true(challengeSrc:find("Names.Same", 1, true) ~= nil, "source compares with Names.Same")
++assert_eq(challengeSrc:find("TargetUnit", 1, true), nil, "source does not TargetUnit")
++assert_eq(challengeSrc:find("Gora:Petition", 1, true), nil, "source does not call Gora:Petition")
++assert_eq(challengeSrc:find("PlaySound", 1, true), nil, "source does not play sound")
++assert_eq(challengeSrc:find("Popes", 1, true), nil, "source has no Popes lookup")
++assert_eq(challengeSrc:find("IsRegisteredPope", 1, true), nil, "source has no IsRegisteredPope")
++assert_eq(challengeSrc:find("UISpecialFrames", 1, true), nil, "source does not use UISpecialFrames")
++assert_eq(challengeSrc:find("SUMMON", 1, true), nil, "source has no SUMMON")
++assert_true(challengeSrc:find("OnEscapePressed", 1, true) ~= nil, "B17-C source keeps OnEscapePressed")
++assert_true(challengeSrc:find("ClearFocus", 1, true) ~= nil, "B17-C source keeps ClearFocus")
++assert_true(challengeSrc:find("SetMultiLine(true)", 1, true) ~= nil, "B17-C source keeps SetMultiLine(true)")
++assert_true(challengeSrc:find("TitleBar", 1, true) ~= nil, "B17-C source keeps TitleBar")
++assert_true(challengeSrc:find("db.inputs", 1, true) ~= nil, "B17-C source keeps ui.inputs persist")
++
++if standalone then
++  assert_eq(COB.Console, nil, "still no Console after B17-C")
++  assert_eq(COB.Popes, nil, "still no Pope list after B17-C")
++  assert_eq(COB.Sender, nil, "still no Sender after B17-C")
++  assert_eq(COB.Sound, nil, "still no Sound after B17-C")
++  assert_eq(COB.Hud, nil, "still no Hud after B17-C")
++  assert_eq(type(SLASH_CHURCHOFBEEF1), "nil", "B17-C still does not register a slash")
++end
++
++UnitName = savedUnitName
++TargetUnit = savedTargetUnit
++end
++runB17C()
++
+ assert_eq(sounds, 0, "the suite played no sound")
+ assert_eq(#stub.chat, 0, "the suite never SendChatMessage")
+ assert_eq(#stub.addonMessages, 0, "the suite never SendAddonMessage")

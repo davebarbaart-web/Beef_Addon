@@ -1,0 +1,305 @@
+diff --git a/addon/ChurchOfBeef/UI/Console.lua b/addon/ChurchOfBeef/UI/Console.lua
+--- a/addon/ChurchOfBeef/UI/Console.lua
++++ b/addon/ChurchOfBeef/UI/Console.lua
+@@ -29,10 +29,12 @@
+ -- Stock GameFontNormal ARCHIVE / CANONIZE labels sit by those boxes. No
+ -- post-show ceremony summary. SaveNote stays nil. Post Decree writes Core
+ -- (Decree:Set); BeefNet broadcast is bootstrap glue. Law 6: Decree is Quiet;
+--- Sound is not played.
++-- Sound is not played. CeremonyLog is a stock scroll of Store ceremony rows,
++-- newest first: type token, GetHuman / GetCharacter names, optional Pope
++-- text. Missing Store log is an empty list. No generated knighting prose.
+ -- Layout: two-column stock desk, large targets, scrollable Presence / Gora /
+--- Confession / Line lists, click-to-select. Not parchment. Not collapsible
+--- tabs (desks stay glanceable without window switching).
++-- Confession / Line / CeremonyLog lists, click-to-select. Not parchment. Not
++-- collapsible tabs (desks stay glanceable without window switching).
+ local Console = {
+   MODE = "event",
+ }
+@@ -40,7 +42,7 @@
+ 
+ local FRAME_NAME = "ChurchOfBeefConsoleFrame"
+ local REFUSE = "not the registered pope"
+-local DEFAULT_WIDTH, DEFAULT_HEIGHT = 780, 960
++local DEFAULT_WIDTH, DEFAULT_HEIGHT = 780, 1050
+ local BTN_W, BTN_H, BTN_GAP = 172, 28, 8
+ local COL_W, COL_GAP = 370, 12
+ local ROW_H = 20
+@@ -328,8 +330,49 @@
+     return text
+   end
+   return name
++end
++
++local function participantName(id)
++  if not isId(id) then return nil end
++  local Store = COB.Store
++  if type(Store) ~= "table" then return nil end
++  if type(Store.GetHuman) == "function" then
++    local human = Store:GetHuman(id)
++    if type(human) == "table" and type(human.name) == "string" and human.name ~= "" then
++      return human.name
++    end
++  end
++  if type(Store.GetCharacter) == "function" then
++    local ch = Store:GetCharacter(id)
++    if type(ch) == "table" and type(ch.name) == "string" and ch.name ~= "" then
++      return ch.name
++    end
++  end
++  return nil
+ end
+ 
++local function ceremonyLine(row)
++  local parts = {}
++  local kind = row.type
++  if type(kind) == "string" and kind ~= "" then
++    parts[#parts + 1] = kind
++  end
++  local ids = row.participantIds
++  if type(ids) == "table" then
++    for i = 1, #ids do
++      local name = participantName(ids[i])
++      if name then
++        parts[#parts + 1] = name
++      end
++    end
++  end
++  local text = row.text
++  if type(text) == "string" and text ~= "" then
++    parts[#parts + 1] = text
++  end
++  return table.concat(parts, "  ")
++end
++
+ local function acquireRows(pool, parent, count, width)
+   pool = pool or {}
+   for i = 1, count do
+@@ -572,6 +615,17 @@
+   frame.FreeRulingText:SetPoint("TOPLEFT", right, "TOPLEFT", 8, -GORA_VERB_Y - 3 * (BTN_H + BTN_GAP))
+ 
+   y = y + DESK_H + 12
++  local logHead = header(content, "CeremonyLog")
++  logHead:SetPoint("TOPLEFT", content, "TOPLEFT", 0, -y)
++  frame.CeremonyLogLabel = logHead
++  y = y + 16
++  local logScroll, logChild, logList = scrollList(
++    content, FRAME_NAME .. "CeremonyLogScroll", 746, 70)
++  logScroll:SetPoint("TOPLEFT", content, "TOPLEFT", 0, -y)
++  frame.CeremonyLog = logList
++  frame.CeremonyLogChild = logChild
++  frame.CeremonyLogRows = {}
++  y = y + 78
+   local decreeHead = header(content, DECREE_HEADER)
+   decreeHead:SetPoint("TOPLEFT", content, "TOPLEFT", 0, -y)
+   frame.DecreeHeader = decreeHead
+@@ -860,6 +914,20 @@
+     label = suggestionLabel(rec.fighterA, rec.fighterB)
+   end
+   frame.Recommendation:SetText(label)
++end
++
++local function paintCeremonyLog(frame, rows)
++  if not frame or not frame.CeremonyLog then return end
++  local lines = {}
++  for i = 1, #rows do
++    lines[#lines + 1] = ceremonyLine(rows[i])
++  end
++  local body = table.concat(lines, "\n")
++  if body == "" then body = "No ceremony yet." end
++  frame.CeremonyLog:SetText(body)
++  if frame.CeremonyLogChild then
++    frame.CeremonyLogChild:SetHeight(math.max(70, #rows * ROW_H + 4))
++  end
+ end
+ 
+ --------------------------------------------------------------------------------
+@@ -886,6 +954,7 @@
+   paintConfessions(self.frame, self:GetConfessions())
+   paintKnightingLine(self.frame, self:GetKnightingLine())
+   paintRecommendation(self.frame)
++  paintCeremonyLog(self.frame, self:GetCeremonyLog())
+   applyGate(self.frame)
+ end
+ 
+@@ -1043,6 +1112,26 @@
+   return out
+ end
+ 
++function Console:GetCeremonyLog()
++  if not COB.Store or type(COB.Store.GetCeremonyLog) ~= "function" then
++    return {}
++  end
++  local log = COB.Store:GetCeremonyLog()
++  if type(log) ~= "table" then return {} end
++  local out = {}
++  for i = #log, 1, -1 do
++    local row = log[i]
++    if type(row) == "table" then
++      local copy = {}
++      for k, v in pairs(row) do
++        copy[k] = v
++      end
++      out[#out + 1] = copy
++    end
++  end
++  return out
++end
++
+ function Console:SelectHuman(humanId)
+   if humanId ~= nil and not isId(humanId) then return nil, "invalid human id" end
+   self.selectedHumanId = humanId
+
+diff --git a/tests/test_console.lua b/tests/test_console.lua
+--- a/tests/test_console.lua
++++ b/tests/test_console.lua
+@@ -3,7 +3,8 @@
+ -- inbox / stock Dismiss + B5-C line / Recommend / CallForward / zone mark +
+ -- B6-A GRANT HONORIFIC / Recognition Begin-Complete-Cancel + B7-B Archive
+ -- export/import / CanonizeMoment / FlagFamousUpset + B8-E multiline
+--- ArchiveBox / stock ARCHIVE and CANONIZE labels).
++-- ArchiveBox / stock ARCHIVE and CANONIZE labels + B9-C stock
++-- CeremonyLog desk).
+ -- Isolated: wow_ui_stub + Common + Ranks + Runtime + Store + Gora + Knighting
+ -- + Sender + Decree + Console. Confession is stubbed when painted; this file
+ -- does not load Confession.lua. Knighting GetLine/Enqueue/Skip are stubbed
+@@ -270,6 +271,8 @@
+ assert_eq(type(Console.ImportArchive), "function", "ImportArchive is a console verb")
+ assert_eq(type(Console.CanonizeMoment), "function", "CanonizeMoment is a console verb")
+ assert_eq(type(Console.FlagFamousUpset), "function", "FlagFamousUpset is a console verb")
++assert_eq(type(Console.GetCeremonyLog), "function", "GetCeremonyLog is a console readout")
++assert_eq(#Console:GetCeremonyLog(), 0, "GetCeremonyLog is empty before anyone is logged")
+ assert_eq(Console.CopyCeremonySummary, nil, "no post-show ceremony summary")
+ assert_eq(Console.CeremonySummary, nil, "no ceremony summary")
+ assert_eq(#Console:GetKnightingLine(), 0, "GetKnightingLine is empty before anyone is lined")
+@@ -2159,7 +2162,129 @@
+   assert_eq(COB.UI, nil, "isolation still does not load the Quiet shell")
+ end
+ assert_eq(COB.Popes, nil, "still no Pope list after B8-E")
++
++--------------------------------------------------------------------------------
++-- B9-C: stock CeremonyLog desk. Type + names + optional Pope text.
++-- Newest first. SaveNote nil. No SUMMON. No post-show summary.
++-- Nested inside runB8E so the main chunk stays under Lua 5.1's 200-local cap.
++--------------------------------------------------------------------------------
++reset()
++Console:Init()
++assert_eq(type(Console.GetCeremonyLog), "function", "GetCeremonyLog is a console readout")
++assert_eq(#Console:GetCeremonyLog(), 0, "empty Store log is an empty list")
++assert_eq(Console.SaveNote, nil, "SaveNote stays nil")
++assert_eq(Console.GetNotes, nil, "no notes table")
++assert_eq(Console.CopyCeremonySummary, nil, "no post-show ceremony summary")
++assert_eq(Console.CeremonySummary, nil, "no ceremony summary")
++assert_eq(Console.Proclaim, nil, "CeremonyLog does not Proclaim")
++assert_eq(findButton(frame, "SUMMON THE FAITHFUL"), nil, "no SUMMON chrome")
++assert_eq(findButton(frame, "COPY SUMMARY"), nil, "no ceremony-summary chrome")
++assert_eq(findButton(frame, "WHISPER ALL"), nil, "no WHISPER ALL chrome")
++
++assert_true(findButton(frame, "KNIGHT THIS BEEF") ~= nil, "KNIGHT THIS BEEF stays")
++assert_true(findButton(frame, "ELEVATE TO LORD") ~= nil, "ELEVATE TO LORD stays")
++assert_true(findButton(frame, "SANCTION BEEF GORA") ~= nil, "SANCTION stays")
++assert_true(findButton(frame, "DECLARE VICTOR") ~= nil, "DECLARE VICTOR stays")
++assert_true(findButton(frame, "COWARDICE RECORDED") ~= nil, "COWARDICE RECORDED stays")
++assert_true(findButton(frame, "VOID") ~= nil, "VOID stays")
++assert_true(findButton(frame, "FREE RULING") ~= nil, "FREE RULING stays")
++assert_true(findButton(frame, "Post Decree") ~= nil, "Post Decree stays")
++assert_true(findButton(frame, "MARK THIS MOMENT") ~= nil, "MARK THIS MOMENT stays")
++assert_eq(countType(frame, "EditBox"), 7, "B9-C adds no extra EditBox")
++
++local logLabel = findFont(frame, "CeremonyLog")
++assert_true(logLabel ~= nil, "CeremonyLog header exists")
++assert_eq(logLabel._type, "FontString", "CeremonyLog header is a FontString")
++assert_eq(logLabel._template, "GameFontNormal", "CeremonyLog header is GameFontNormal")
++assert_eq(logLabel:GetText(), "CeremonyLog", "CeremonyLog wording is exact")
++
++assert_true(frame.CeremonyLog ~= nil, "CeremonyLog list exists")
++assert_eq(frame.CeremonyLog._type, "FontString", "CeremonyLog list is a FontString")
++assert_eq(frame.CeremonyLog._template, "GameFontHighlightSmall", "CeremonyLog list is GameFontHighlightSmall")
++
++Console:Refresh()
++assert_true((frame.CeremonyLog:GetText() or ""):find("No ceremony yet", 1, true) ~= nil,
++  "empty log paints a stock empty line")
++assert_eq((frame.CeremonyLog:GetText() or ""):find("ordained", 1, true), nil,
++  "empty log does not paint ordained")
++
++local savedLog = Store.GetCeremonyLog
++Store.GetCeremonyLog = nil
++assert_eq(#Console:GetCeremonyLog(), 0, "missing Store log is an empty list")
++Store.GetCeremonyLog = savedLog
++
++local savedStore = COB.Store
++COB.Store = nil
++assert_eq(#Console:GetCeremonyLog(), 0, "missing Store is an empty list")
++COB.Store = savedStore
++
++local human, char = seedLinked("Beefina")
++local h2, c2 = seedLinked("Chuckroast")
++Store:AppendCeremony("Knighting", { human.id }, 3000)
++Store:AppendCeremony("victor", { char.id, c2.id }, 3001)
++Store:AppendCeremony("free", { char.id, c2.id }, 3002, "rematch at the Pope's pleasure")
++
++local log = Console:GetCeremonyLog()
++assert_eq(#log, 3, "GetCeremonyLog returns seeded rows")
++assert_eq(log[1].type, "free", "GetCeremonyLog is newest first")
++assert_eq(log[2].type, "victor", "middle row is the prior append")
++assert_eq(log[3].type, "Knighting", "oldest row is last")
++assert_eq(log[1].text, "rematch at the Pope's pleasure", "Pope text stays on the free row")
++assert_eq(log[2].text, nil, "type-only rows have no text")
++assert_eq(log[3].text, nil, "Knighting row has no generated text")
++assert_eq(log[1].participantIds[1], char.id, "free row keeps fighter A")
++assert_eq(log[1].participantIds[2], c2.id, "free row keeps fighter B")
++assert_eq(h2.id, c2.id, "linked fixture keeps matching store ids")
++log[1].type = "mutated"
++assert_eq(Console:GetCeremonyLog()[1].type, "free", "GetCeremonyLog returns a copy")
++assert_eq(Store:GetCeremonyLog()[1].type, "Knighting", "Store log stays oldest first")
++
++local soundCalls = 0
++local savedSound = COB.Sound
++COB.Sound = {
++  Play = function()
++    soundCalls = soundCalls + 1
++  end,
++}
++Console:Refresh()
++assert_eq(soundCalls, 0, "painting CeremonyLog does not Play Sound")
++COB.Sound = savedSound
++
++local body = frame.CeremonyLog:GetText() or ""
++assert_true(body:find("free", 1, true) ~= nil, "list shows the free type token")
++assert_true(body:find("victor", 1, true) ~= nil, "list shows the victor type token")
++assert_true(body:find("Knighting", 1, true) ~= nil, "list shows the Knighting type token")
++assert_true(body:find("Beefina", 1, true) ~= nil, "list shows the human/character name")
++assert_true(body:find("Chuckroast", 1, true) ~= nil, "list shows the second name")
++assert_true(body:find("rematch at the Pope's pleasure", 1, true) ~= nil,
++  "list shows Pope-authored free-ruling text")
++assert_eq(body:find("ordained", 1, true), nil, "list does not invent ordained")
++assert_eq(body:find("The Pope knighted", 1, true), nil, "list does not invent knighting prose")
++local freePos = body:find("free", 1, true)
++local knightPos = body:find("Knighting", 1, true)
++assert_true(freePos ~= nil and knightPos ~= nil and freePos < knightPos,
++  "painted list is newest first")
++
++local srcLog = io.open("addon/ChurchOfBeef/UI/Console.lua", "r")
++assert_true(srcLog ~= nil, "Console.lua is readable for B9-C")
++local srcLogBody = srcLog:read("*a")
++srcLog:close()
++assert_eq(srcLogBody:find("ordained", 1, true), nil, "source must not contain ordained")
++assert_eq(srcLogBody:find("The Pope knighted", 1, true), nil, "source must not invent knighting prose")
++assert_eq(srcLogBody:find("SUMMON THE FAITHFUL", 1, true), nil, "source must not contain SUMMON")
++assert_eq(srcLogBody:find("CopyCeremonySummary", 1, true), nil, "source must not copy a ceremony summary")
++assert_eq(srcLogBody:find("function Console:SaveNote", 1, true), nil, "source must not define SaveNote")
++assert_eq(srcLogBody:find("WHISPER ALL", 1, true), nil, "source must not contain WHISPER ALL")
++assert_eq(srcLogBody:find("Console:Proclaim", 1, true), nil, "source must not Proclaim")
++
++assert_eq(Console.SaveNote, nil, "SaveNote stays nil after B9-C")
++if standalone then
++  assert_eq(COB.Archive, nil, "isolation still does not load Archive")
++  assert_eq(COB.UI, nil, "isolation still does not load the Quiet shell")
++  assert_eq(COB.Toasts, nil, "isolation still does not load Toasts")
+ end
++assert_eq(COB.Popes, nil, "still no Pope list after B9-C")
++end
+ runB8E()
+ 
+ --------------------------------------------------------------------------------

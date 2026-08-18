@@ -1,0 +1,180 @@
+# B30-A — Decree ensureFrame remounts a missing OnHide (implementation diff)
+
+Lane-only unified diff of the exclusive implementation files vs the pre-lane working tree.
+
+--- a/addon/ChurchOfBeef/UI/Decree.lua
++++ b/addon/ChurchOfBeef/UI/Decree.lua
+@@ -284,7 +284,8 @@
+ local function ensureFrame()
+   if DecreeBanner.frame then
+     rememberSpecial(FRAME_NAME)
++    wireDecreeOnHide(DecreeBanner.frame)
+     return DecreeBanner.frame
+   end
+   if type(CreateFrame) ~= "function" then return nil end
+
+--- a/tests/test_decree_ui.lua
++++ b/tests/test_decree_ui.lua
+@@ -722,6 +722,163 @@
+     Banner:Hide()
+   end
+   runB29B()
++
++  -- B30-A: ensureFrame remounts a missing OnHide when the frame already
++  -- exists. Early-return rememberSpecial then wireDecreeOnHide. Do not
++  -- replace an existing script. Create-path / Hide / Refresh / empty Show
++  -- stay. Isolation wrap stays.
++  local function runB30A()
++    assert_true(type(earlyEnsure) == "string" and earlyEnsure ~= "",
++      "B30-A early-return body is readable")
++    local remAt = earlyEnsure:find("rememberSpecial(FRAME_NAME)", 1, true)
++    local wireAt = earlyEnsure:find("wireDecreeOnHide", 1, true)
++    assert_true(remAt ~= nil, "early-return still rememberSpecials")
++    assert_true(wireAt ~= nil, "early-return remounts via wireDecreeOnHide")
++    assert_true(type(remAt) == "number" and type(wireAt) == "number" and remAt < wireAt,
++      "early-return wires OnHide after rememberSpecial")
++    assert_eq(earlyEnsure:find('SetScript("OnHide"', 1, true), nil,
++      "early-return does not SetScript OnHide inline")
++    assert_eq(earlyEnsure:find("buildFrame", 1, true), nil,
++      "early-return does not rebuild")
++    assert_eq(earlyEnsure:find("CreateFrame", 1, true), nil,
++      "early-return does not CreateFrame")
++    assert_eq(earlyEnsure:find("PlaySound", 1, true), nil,
++      "early-return does not PlaySound")
++    assert_eq(earlyEnsure:find(":Show()", 1, true), nil,
++      "early-return does not Show")
++    assert_eq(earlyEnsure:find("Clear Decree", 1, true), nil,
++      "early-return has no Clear Decree chrome")
++    local buildBody = src:match("local function buildFrame%(%)(.-)\nlocal function ensureFrame")
++    assert_true(type(buildBody) == "string" and buildBody ~= "",
++      "B30-A buildFrame body is readable")
++    if type(buildBody) ~= "string" then buildBody = "" end
++    assert_true(buildBody:find("wireDecreeOnHide", 1, true) ~= nil,
++      "create-path buildFrame still calls wireDecreeOnHide")
++    assert_eq(buildBody:find('SetScript("OnHide"', 1, true), nil,
++      "buildFrame still does not SetScript OnHide inline")
++    local createEnsure = src:match(
++      'if type%(CreateFrame%) ~= "function" then return nil end%s*\n(.-)return DecreeBanner%.frame'
++    )
++    assert_true(type(createEnsure) == "string" and createEnsure ~= "",
++      "B30-A ensureFrame create body is readable")
++    if type(createEnsure) ~= "string" then createEnsure = "" end
++    assert_true(createEnsure:find("buildFrame()", 1, true) ~= nil,
++      "ensureFrame create still builds")
++    assert_true(createEnsure:find("wireDecreeOnHide", 1, true) ~= nil,
++      "ensureFrame create still calls wireDecreeOnHide")
++    assert_eq(hideBody:find("wireDecreeOnHide", 1, true), nil,
++      "Hide still does not call wireDecreeOnHide")
++    assert_eq(refreshBody:find("wireDecreeOnHide", 1, true), nil,
++      "Refresh still does not call wireDecreeOnHide")
++    assert_true(src:find("Fonts\\\\MORPHEUS.ttf", 1, true) ~= nil,
++      "LINE_FONT stays FrameXML lowercase Morpheus after remount")
++    assert_eq(src:find("Clear Decree", 1, true), nil,
++      "source still has no Clear Decree chrome")
++
++    assert_true(Banner.frame ~= nil, "frame already exists before remount")
++    local same = Banner.frame
++    local cuesRemount = sounds
++    same:SetScript("OnHide", nil)
++    assert_eq(same:GetScript("OnHide"), nil, "OnHide dropped before Show remount")
++    assert_eq(Banner:Show(), false, "Show remount with empty Get stays silent")
++    assert_eq(Banner.frame, same, "Show remount does not rebuild")
++    local afterShow = same:GetScript("OnHide")
++    assert_true(afterShow ~= nil, "Show remounts a missing OnHide")
++    assert_eq(sounds, cuesRemount, "Show remount plays no sound")
++
++    same:SetScript("OnHide", nil)
++    assert_eq(same:GetScript("OnHide"), nil, "OnHide dropped before Refresh remount")
++    assert_eq(Banner:Refresh(), false, "Refresh remount with empty Get stays silent")
++    assert_eq(Banner.frame, same, "Refresh remount does not rebuild")
++    local afterRefresh = same:GetScript("OnHide")
++    assert_true(afterRefresh ~= nil, "Refresh remounts a missing OnHide")
++    assert_eq(sounds, cuesRemount, "Refresh remount plays no sound")
++
++    same:SetScript("OnHide", nil)
++    assert_eq(same:GetScript("OnHide"), nil, "OnHide dropped before Init remount")
++    assert_eq(Banner:Init(), same, "Init remount returns the existing frame")
++    local afterInit = same:GetScript("OnHide")
++    assert_true(afterInit ~= nil, "Init remounts a missing OnHide")
++    assert_eq(Banner:Init(), same, "third Init still returns the existing frame")
++    assert_eq(same:GetScript("OnHide"), afterInit,
++      "third call with the script already set keeps identity")
++    assert_eq(Banner:Show(), false, "Show with script set does not rebuild")
++    assert_eq(same:GetScript("OnHide"), afterInit,
++      "Show with the script already set keeps identity")
++    assert_eq(Banner:Refresh(), false, "Refresh with script set does not rebuild")
++    assert_eq(same:GetScript("OnHide"), afterInit,
++      "Refresh with the script already set keeps identity")
++    assert_eq(sounds, cuesRemount, "identity-stay remounts play no sound")
++
++    Decree:Set({
++      line = "Goldshire Inn — Sunday, 7:00 PM",
++      flavor = "Bring a friend.",
++    })
++    assert_eq(Banner:Show(), true, "widget-Hide stay Show paints")
++    assert_eq(same:GetScript("OnHide"), afterInit,
++      "live Show does not replace remounted OnHide")
++    Decree:Clear()
++    local cuesHide = sounds
++    same:Hide()
++    assert_eq(Banner:IsShown(), false, "widget Hide after Clear is hidden")
++    assert_eq(same.LineText:GetText(), "",
++      "widget Hide after remount blanks leftover LineText")
++    assert_eq(same.FlavorText:GetText(), "",
++      "widget Hide after remount blanks leftover FlavorText")
++    assert_eq(same.FlavorText:IsShown(), false,
++      "widget Hide after remount hides leftover flavor")
++    assert_eq(sounds, cuesHide, "widget Hide after remount plays no sound")
++    assert_eq(same:GetScript("OnHide"), afterInit,
++      "widget Hide does not replace remounted OnHide")
++
++    Decree:Set({
++      line = "Goldshire Inn — Sunday, 7:00 PM",
++      flavor = "Bring a friend.",
++    })
++    assert_eq(Banner:Show(), true, "Hide wipe stay Show paints")
++    Decree:Clear()
++    local cuesBannerHide = sounds
++    assert_eq(Banner:Hide(), true, "Hide wipe still blanks after remount")
++    assert_eq(Banner:IsShown(), false, "Hide wipe stay is hidden")
++    assert_eq(same.LineText:GetText(), "",
++      "Hide wipe stay blanks leftover LineText")
++    assert_eq(same.FlavorText:GetText(), "",
++      "Hide wipe stay blanks leftover FlavorText")
++    assert_eq(sounds, cuesBannerHide, "Hide wipe stay plays no sound")
++
++    Decree:Set({
++      line = "Goldshire Inn — Sunday, 7:00 PM",
++      flavor = "Bring a friend.",
++    })
++    assert_eq(Banner:Show(), true, "Refresh wipe stay Show paints")
++    Decree:Clear()
++    local cuesRefresh = sounds
++    assert_eq(Banner:Refresh(), false, "Refresh wipe still blanks after remount")
++    assert_eq(Banner:IsShown(), false, "Refresh wipe stay is hidden")
++    assert_eq(same.LineText:GetText(), "",
++      "Refresh wipe stay blanks leftover LineText")
++    assert_eq(same.FlavorText:GetText(), "",
++      "Refresh wipe stay blanks leftover FlavorText")
++    assert_eq(sounds, cuesRefresh, "Refresh wipe stay plays no sound")
++
++    Decree:Set({
++      line = "Goldshire Inn — Sunday, 7:00 PM",
++      flavor = "Bring a friend.",
++    })
++    assert_eq(Banner:Show(), true, "empty Show wipe stay paints")
++    Decree:Clear()
++    local cuesEmpty = sounds
++    assert_eq(Banner:Show(), false, "empty Show wipe still blanks after remount")
++    assert_eq(Banner:IsShown(), false, "empty Show wipe stay is hidden")
++    assert_eq(same.LineText:GetText(), "",
++      "empty Show wipe stay blanks leftover LineText")
++    assert_eq(same.FlavorText:GetText(), "",
++      "empty Show wipe stay blanks leftover FlavorText")
++    assert_eq(sounds, cuesEmpty, "empty Show wipe stay plays no sound")
++    Decree:Clear()
++    Banner:Hide()
++  end
++  runB30A()
+ end
+ runB25B()

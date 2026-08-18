@@ -1,0 +1,115 @@
+diff --git a/tests/test_console.lua b/tests/test_console.lua
+--- a/tests/test_console.lua
++++ b/tests/test_console.lua
+@@ -7,7 +7,8 @@
+ -- CeremonyLog desk + B10-D stock desk-body ScrollFrame, outer height 780
+ -- + B11-C desk mouse wheel and Open Gora subject fallback + B12-B Open
+ -- Knighting line-head subject fallback + B13-D stockEdit OnEscapePressed
+--- ClearFocus + B14-D UISpecialFrames rememberSpecial dedupe).
++-- ClearFocus + B14-D UISpecialFrames rememberSpecial dedupe + B18-B named
++-- petition paints "  names  " and click SelectFighters).
+ -- Isolated: wow_ui_stub + Common + Ranks + Runtime + Store + Gora + Knighting
+ -- + Sender + Decree + Console. Confession is stubbed when painted; this file
+ -- does not load Confession.lua. Knighting GetLine/Enqueue/Skip are stubbed
+@@ -2756,6 +2757,101 @@
+ assert_eq(COB.Popes, nil, "still no Pope list after B14-D")
+ end
+ runB14D()
++
++--------------------------------------------------------------------------------
++-- B18-B: named-opponent petition paints "  names  "; click SelectFighters
++-- both ids. petitionLine copy stays. SaveNote nil. No DEMANDED.
++-- Nested inside runB8E so the main chunk stays under Lua 5.1's 200-local cap.
++--------------------------------------------------------------------------------
++local function runB18B()
++reset()
++Console:Init()
++assert_eq(Console.SaveNote, nil, "SaveNote stays nil")
++assert_eq(Console.GetNotes, nil, "no notes table")
++assert_eq(Console.CopyCeremonySummary, nil, "no post-show ceremony summary")
++assert_eq(Console.CeremonySummary, nil, "no ceremony summary")
++assert_eq(findButton(frame, "SUMMON THE FAITHFUL"), nil, "no SUMMON chrome")
++assert_eq(findButton(frame, "COPY SUMMARY"), nil, "no ceremony-summary chrome")
++assert_eq(findButton(frame, "WHISPER ALL"), nil, "no WHISPER ALL chrome")
++assert_eq(findButton(frame, "RSVP"), nil, "no RSVP chrome")
++
++local savedPred = Sender.IsRegisteredPope
++Sender.IsRegisteredPope = function() return true end
++
++reset()
++Console:Init()
++local nameA = Store:CreateCharacter({ name = "Chuckroast", class = "Warrior", level = 70 })
++local nameB = Store:CreateCharacter({ name = "Tendermage", class = "Mage", level = 68 })
++assert_eq(Console.selectedFighterA, nil, "no selected fighter A before the named petition")
++assert_eq(Console.selectedFighterB, nil, "no selected fighter B before the named petition")
++assert_true(Console:StartEvent() ~= nil, "StartEvent for named petition")
++assert_true(Gora:Petition(nameA.id, nameB.id) ~= nil, "named petition lands")
++COB.Roster = {
++  ready = true,
++  members = {
++    chuckroast = { name = "Chuckroast", guildRankIndex = 4 },
++    tendermage = { name = "Tendermage", guildRankIndex = 5 },
++  },
++}
++local namedPets = Console:GetPetitions()
++assert_eq(#namedPets, 1, "GetPetitions has the named petition")
++assert_eq(namedPets[1].characterId, nameA.id, "GetPetitions keeps the petitioner id")
++assert_eq(namedPets[1].namedOpponentId, nameB.id, "GetPetitions keeps the named opponent id")
++Console:Refresh()
++local listText = frame.PetitionsList:GetText() or ""
++assert_true(listText:find("  names  ", 1, true) ~= nil,
++  "PetitionsList FontString paints the names token")
++assert_true(listText:find("Chuckroast", 1, true) ~= nil,
++  "PetitionsList keeps the petitioner name")
++assert_true(listText:find("Tendermage", 1, true) ~= nil,
++  "PetitionsList keeps the opponent name")
++assert_eq(listText:find("DEMANDED", 1, true), nil, "painted line has no DEMANDED")
++assert_eq(listText:find("demanded", 1, true), nil, "painted line has no demanded prose")
++assert_eq(listText:find("odds", 1, true), nil, "painted line has no odds prose")
++assert_eq(listText:find("meeting", 1, true), nil, "painted line has no meeting prose")
++
++local rowBtn = frame.PetitionRows and frame.PetitionRows[1]
++assert_true(rowBtn ~= nil, "named petition paints a row button")
++assert_true((rowBtn:GetText() or ""):find("  names  ", 1, true) ~= nil,
++  "row button paints the names token")
++assert_true((rowBtn:GetText() or ""):find("Chuckroast", 1, true) ~= nil,
++  "row button keeps the petitioner name")
++assert_true((rowBtn:GetText() or ""):find("Tendermage", 1, true) ~= nil,
++  "row button keeps the opponent name")
++stub.fire(rowBtn, "OnClick")
++assert_eq(Console.selectedFighterA, nameA.id, "click SelectFighters the petitioner")
++assert_eq(Console.selectedFighterB, nameB.id, "click SelectFighters the named opponent")
++
++local srcNames = io.open("addon/ChurchOfBeef/UI/Console.lua", "r")
++assert_true(srcNames ~= nil, "Console.lua is readable for B18-B")
++local srcNamesBody = srcNames:read("*a")
++srcNames:close()
++assert_true(srcNamesBody:find('left .. "  names  " .. right', 1, true) ~= nil,
++  "petitionLine copy stays")
++assert_true(srcNamesBody:find("Console:SelectFighters(row.characterId, row.namedOpponentId)", 1, true) ~= nil,
++  "click SelectFighters both ids")
++assert_eq(srcNamesBody:find("DEMANDED", 1, true), nil, "source must not invent DEMANDED")
++assert_eq(srcNamesBody:find("function Console:SaveNote", 1, true), nil,
++  "source must not define SaveNote")
++assert_eq(srcNamesBody:find("SUMMON THE FAITHFUL", 1, true), nil,
++  "source must not contain SUMMON")
++assert_eq(srcNamesBody:find("Parchment", 1, true), nil, "console stays stock, not parchment")
++assert_eq(srcNamesBody:find("PanelTabButtonTemplate", 1, true), nil,
++  "desks are not collapsed into tabs")
++
++Sender.IsRegisteredPope = savedPred
++assert_eq(Sender:IsRegisteredPope(COB.Group.PlayerName()), false,
++  "B18-B wrapping the predicate does not stub the list true")
++
++assert_eq(Console.SaveNote, nil, "SaveNote stays nil after B18-B")
++if standalone then
++  assert_eq(COB.Archive, nil, "isolation still does not load Archive")
++  assert_eq(COB.UI, nil, "isolation still does not load the Quiet shell")
++  assert_eq(COB.Toasts, nil, "isolation still does not load Toasts")
++end
++assert_eq(COB.Popes, nil, "still no Pope list after B18-B")
++end
++runB18B()
+ end
+ runB8E()
+ 

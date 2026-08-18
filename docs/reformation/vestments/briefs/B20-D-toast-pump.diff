@@ -1,0 +1,122 @@
+# B20-D — ESC on the small toast advances the queue (implementation diff)
+
+Lane-only unified diff of the exclusive implementation files vs the pre-lane working tree.
+
+--- a/addon/ChurchOfBeef/UI/Toasts.lua
++++ b/addon/ChurchOfBeef/UI/Toasts.lua
+@@ -411,6 +411,10 @@
+ pump = function(self)
+   local nextEnv = table.remove(pending, 1)
+   if not nextEnv then
++    -- Hide-from-empty-pump re-enters OnHide; do not loop.
++    if not self.showing and #pending == 0 then
++      return
++    end
+     self.showing = nil
+     if self.frame then self.frame:Hide() end
+     return
+@@ -797,7 +801,13 @@
+     local existing = type(frame.GetScript) == "function" and frame:GetScript("OnHide")
+     if not existing then
+       frame:SetScript("OnHide", function()
+-        self.showing = nil
++        -- Hide-from-empty-pump: already idle; do not re-enter.
++        if not self.showing and #pending == 0 then
++          return
++        end
++        bumpGen()
++        self.showing = nil
++        pump(self)
+       end)
+     end
+   end
+
+--- a/tests/test_ui.lua
++++ b/tests/test_ui.lua
+@@ -1,8 +1,8 @@
+ -- Quiet shell: frame creation, drag/resize/coalesce, saved position, minimap
+ -- toggle, system/debug toasts. Event Mode Proclaim (sanction / verdict /
+ -- cowardice / knighting / elevation). B12-D Proclaim ESC, B15-C Quiet-shell
+--- UISpecialFrames, B18-C HideAll theaterGen, and B19-B small-toast ESC
+--- live in runB12D() (Lua 5.1 200-local cap).
++-- UISpecialFrames, B18-C HideAll theaterGen, B19-B small-toast ESC, and
++-- B20-D small-toast OnHide pump live in runB12D() (Lua 5.1 200-local cap).
+ -- No tab registry. No Standing / Ladder / Officer IA. No promote / rite toast
+ -- kinds. Isolation stays under standalone.
+ local standalone = (type(assert_eq) ~= "function")
+@@ -878,6 +878,20 @@
+   assert_eq(initBody:find("PlaySound", 1, true), nil,
+     "Init does not PlaySound")
++  assert_true(initBody:find("bumpGen", 1, true) ~= nil,
++    "small-toast OnHide bumpGen")
++  assert_true(initBody:find("pump(self)", 1, true) ~= nil,
++    "small-toast OnHide pumps next")
++
++  local pumpBody = src:match("pump = function%(self%)(.-)local function interruptShowing")
++  assert_true(type(pumpBody) == "string" and pumpBody ~= "",
++    "B20-D pump body is readable")
++  assert_true(pumpBody:find("not self.showing", 1, true) ~= nil,
++    "empty pump returns when showing is already nil")
++  assert_true(pumpBody:find("#pending == 0", 1, true) ~= nil,
++    "empty pump returns when pending is empty")
+ 
+   COB.Toasts:Init()
+   assert_eq(countSpecial("ChurchOfBeefToast"), 1,
+@@ -925,6 +939,56 @@
+   assert_eq(countSpecial("ChurchOfBeefToast"), 1,
+     "small Hide keeps ChurchOfBeefToast once")
++
++  -- B20-D: ESC Hide on the small toast bumpGen + pump. Advance one.
++  -- Do not drain the rest of the queue. Hide-from-empty-pump must not loop.
++  theaterReset()
++  assert_eq(COB.Toasts:Show("pump one"), true, "first system toast shows")
++  assert_eq(COB.Toasts:Show("pump two"), true, "second system toast queues")
++  assert_eq(COB.Toasts:Show("pump three"), true, "third system toast queues")
++  assert_eq(COB.Toasts.frame.text:GetText(), "pump one", "first envelope is showing")
++  assert_eq(COB.Toasts:ShowingKind(), "system", "first showing kind is system")
++  assert_eq(COB.Toasts:PendingCount(), 2, "two envelopes wait before ESC")
++  local cuesPump = #played
++  COB.Toasts.frame:Hide()
++  assert_eq(COB.Toasts.frame:IsShown(), true, "ESC presents the queued toast")
++  assert_eq(COB.Toasts.frame.text:GetText(), "pump two",
++    "ShowingKind path: second envelope is now shown")
++  assert_eq(COB.Toasts:ShowingKind(), "system", "ShowingKind is the second envelope")
++  assert_eq(COB.Toasts:PendingCount(), 1, "ESC advances one; third stays queued")
++  assert_eq(#played, cuesPump, "ESC pump plays no sound")
++  assert_eq(countSpecial("ChurchOfBeefToast"), 1,
++    "ESC pump does not re-register ChurchOfBeefToast")
++  assert_eq(findButton(COB.Toasts.frame), nil, "ESC pump adds no close button")
++
++  COB.Toasts.frame:Hide()
++  assert_eq(COB.Toasts.frame:IsShown(), true, "second ESC presents the third")
++  assert_eq(COB.Toasts.frame.text:GetText(), "pump three",
++    "third envelope is now shown")
++  assert_eq(COB.Toasts:PendingCount(), 0, "queue is empty after two advances")
++
++  COB.Toasts.frame:Hide()
++  assert_eq(COB.Toasts.frame:IsShown(), false, "last ESC Hide()s the small toast")
++  assert_eq(COB.Toasts:ShowingKind(), nil, "last ESC clears ShowingKind")
++  assert_eq(COB.Toasts:PendingCount(), 0, "last ESC does not invent pending")
++  assert_eq(#played, cuesPump, "empty-pump Hide plays no sound")
++
++  theaterReset()
++  assert_true(COB.Runtime:StartEvent() ~= nil, "StartEvent for ESC pump vs theater")
++  assert_eq(COB.Toasts:Proclaim("verdict", { ruling = "void" }), true,
++    "Proclaim while testing ESC pump")
++  assert_eq(COB.Toasts.theater.root:IsShown(), true, "theater shown before pump Hide")
++  assert_eq(COB.Toasts:Show("theater pump one"), true, "first toast beside theater")
++  assert_eq(COB.Toasts:Show("theater pump two"), true, "second toast queues beside theater")
++  COB.Toasts.frame:Hide()
++  assert_eq(COB.Toasts.frame:IsShown(), true, "ESC pump shows the second beside theater")
++  assert_eq(COB.Toasts.frame.text:GetText(), "theater pump two",
++    "ESC pump presents the second envelope beside theater")
++  assert_eq(COB.Toasts:ShowingKind(), "system", "second envelope kind beside theater")
++  assert_eq(COB.Toasts.theater.root:IsShown(), true,
++    "small-toast OnHide pump does not hide theater")
++  assert_eq(countSpecial("ChurchOfBeefProclaim"), 1,
++    "ESC pump keeps ChurchOfBeefProclaim once")
++  assert_eq(countSpecial("ChurchOfBeefToast"), 1,
++    "ESC pump keeps ChurchOfBeefToast once")
+ 
+   if standalone then
+     assert_eq(COB.Console, nil, "isolation still does not load Console")

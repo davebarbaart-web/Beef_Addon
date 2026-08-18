@@ -1,0 +1,107 @@
+# B25-C — Records Book Init early-return re-registers ESC (implementation diff)
+
+Lane-only unified diff of the exclusive implementation files vs the pre-lane working tree.
+
+--- a/addon/ChurchOfBeef/UI/RecordsBook.lua
++++ b/addon/ChurchOfBeef/UI/RecordsBook.lua
+@@ -826,7 +826,10 @@
+ end
+ 
+ function RecordsBook:Init()
+-  if self.frame then return self.frame end
++  if self.frame then
++    rememberSpecial(FRAME_NAME)
++    return self.frame
++  end
+   if type(CreateFrame) ~= "function" then return nil end
+   self.frame = buildFrame()
+   return self.frame
+--- a/tests/test_records.lua
++++ b/tests/test_records.lua
+@@ -1,5 +1,6 @@
+ -- Records Book superlatives (Phase 4 Lane G). Isolated: wow_ui_stub + Common + Ranks + Store + RecordsBook.
+ -- Player-opened Quiet identity/history. Theatrical parchment, not a sortable ladder.
++-- B25-C Init early-return rememberSpecial lives in runB25C() (Lua 5.1 200-local cap).
+ -- No TOC / bootstrap / run.lua / MainFrame / Console / Hud / Store / Net edits. No slash.
+ ChurchOfBeef = ChurchOfBeef or {}
+ ChurchOfBeef._IN_TEST = true
+@@ -235,6 +236,79 @@
+   return false
+ end)(), "Escape can close the book")
+ 
++-- B25-C: Init early-return re-registers ChurchOfBeefRecordsBook after a
++-- wiped UISpecialFrames. Do not rebuild. Wheel / roman / PAGE_TITLES==9 /
++-- Morpheus stay. First-create uniqueness pin stays. Isolation wrap stays.
++local function runB25C()
++  local function countSpecial(name)
++    local n = 0
++    if type(UISpecialFrames) ~= "table" then return 0 end
++    for i = 1, #UISpecialFrames do
++      if UISpecialFrames[i] == name then n = n + 1 end
++    end
++    return n
++  end
++
++  local earlyInit = src:match("function RecordsBook:Init%(%)%s*\n%s*if self%.frame then(.-)return self%.frame")
++  assert_true(type(earlyInit) == "string" and earlyInit ~= "",
++    "Init early-return body is readable")
++  assert_true(earlyInit:find("rememberSpecial(FRAME_NAME)", 1, true) ~= nil,
++    "early-return rememberSpecial FRAME_NAME")
++  assert_eq(earlyInit:find("buildFrame", 1, true), nil,
++    "early-return does not rebuild")
++  assert_eq(earlyInit:find("PlaySound", 1, true), nil,
++    "early-return does not PlaySound")
++  assert_eq(src:find("PlaySound", 1, true), nil,
++    "source still does not play sound")
++  assert_true(src:find("rememberSpecial(FRAME_NAME)", 1, true) ~= nil,
++    "buildFrame still rememberSpecial FRAME_NAME")
++  assert_true(src:find("Fonts\\\\MORPHEUS.ttf", 1, true) ~= nil,
++    "PAGE_TITLE_FONT stays FrameXML lowercase Morpheus")
++  assert_eq(src:find("MORPHEUS.TTF", 1, true), nil,
++    "page title path is still not uppercase TTF")
++  assert_true(src:find("EnableMouseWheel", 1, true) ~= nil,
++    "wheel EnableMouseWheel stays")
++  assert_eq(type(Book.toRoman), "function", "toRoman stays a public helper")
++  if type(Book.toRoman) == "function" then
++    assert_eq(Book.toRoman(14), "XIV", "roman tallies stay XIV")
++  end
++  assert_eq(#Book:GetPages(), #BIBLE_TITLES, "PAGE_TITLES stay the nine Bible titles")
++  assert_eq(#Book:GetPages(), 9, "PAGE_TITLES stay 9")
++
++  Book:Init()
++  assert_eq(countSpecial("ChurchOfBeefRecordsBook"), 1,
++    "first-create uniqueness: ChurchOfBeefRecordsBook once before wipe")
++  local existing = Book.frame
++  local savedSpecial = UISpecialFrames
++  UISpecialFrames = {}
++  assert_eq(countSpecial("ChurchOfBeefRecordsBook"), 0,
++    "wipe clears ChurchOfBeefRecordsBook")
++  local cuesWipe = sounds
++  local same = Book:Init()
++  assert_eq(same, existing, "second Init returns the existing frame")
++  assert_eq(Book.frame, existing, "early-return does not rebuild")
++  assert_eq(same:GetName(), "ChurchOfBeefRecordsBook",
++    "second Init keeps the named frame")
++  assert_eq(countSpecial("ChurchOfBeefRecordsBook"), 1,
++    "wiped UISpecialFrames + second Init lists ChurchOfBeefRecordsBook once")
++  assert_eq(sounds, cuesWipe, "second Init plays no sound")
++  Book:Init()
++  assert_eq(countSpecial("ChurchOfBeefRecordsBook"), 1,
++    "third Init after wipe does not duplicate ChurchOfBeefRecordsBook")
++  assert_eq(Book.frame, existing, "third Init still does not rebuild")
++  assert_eq(#Book:GetPages(), 9, "wipe remount is not a tenth page")
++  UISpecialFrames = savedSpecial
++
++  if standalone then
++    assert_eq(COB.Runtime, nil, "isolation still does not load Runtime")
++    assert_eq(COB.UI, nil, "isolation still does not load MainFrame")
++    assert_eq(COB.Toasts, nil, "isolation still does not load Toasts")
++    assert_eq(COB.Console, nil, "isolation still does not load Console")
++    assert_eq(COB.Hud, nil, "isolation still does not load Hud")
++  end
++end
++runB25C()
++
+ assert_eq(buttonFor("Ladder"), nil, "no Ladder chrome")
+ assert_eq(buttonFor("My Standing"), nil, "no Standing chrome")
+ assert_eq(buttonFor("Sort"), nil, "no Sort control")

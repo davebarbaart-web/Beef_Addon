@@ -1,0 +1,350 @@
+# B41-A — Console Refresh remounts missing OnHide (implementation diff)
+
+Lane-only unified diff of the exclusive implementation files vs the pre-lane working tree.
+
+--- a/addon/ChurchOfBeef/UI/Console.lua
++++ b/addon/ChurchOfBeef/UI/Console.lua
+@@ -64,6 +64,7 @@
+ -- the desk. Missing SetScript / ClearFocus no-op. Named desk is on
+ -- UISpecialFrames via rememberSpecial (dedupe). Init / Show /
+ -- Refresh / Hide remount rememberSpecial when the frame already exists.
++-- Refresh remounts a missing OnHide before rememberSpecial.
+ -- Hide remounts a missing OnHide before rememberSpecial then
+ -- frame:Hide(). OnHide remounts rememberSpecial so ESC still
+ -- re-lists. Do not reset selection / pair / Recommend. No
+@@ -1136,6 +1137,7 @@
+ 
+ function Console:Refresh()
+   if not self.frame then return end
++  wireConsoleOnHide(self.frame)
+   rememberSpecial(FRAME_NAME)
+   syncCongregationToggle()
+   local presence = self:GetPresence()
+
+--- a/tests/test_console.lua
++++ b/tests/test_console.lua
+@@ -28,7 +28,8 @@
+ -- successful Dismiss nils selectedCharacterId + B38-A
+ -- successful Dismiss of a pair member nils the pair and lastRecommendation
+ -- + B39-A OpenRite Gora does not fall back to GetLastSanctioned
+--- + B40-A Hide remounts missing OnHide).
++-- + B40-A Hide remounts missing OnHide
++-- + B41-A Refresh remounts missing OnHide).
+ -- Isolated: wow_ui_stub + Common + Ranks + Runtime + Store + Gora + Knighting
+ -- + Sender + Decree + Console. Confession is stubbed when painted; this file
+ -- does not load Confession.lua. Knighting GetLine/Enqueue/Skip are stubbed
+@@ -5922,7 +5923,7 @@
+ assert_true(type(showFn) == "string" and showFn ~= "",
+   "Show body stays readable")
+ assert_eq(showFn:find("wireConsoleOnHide", 1, true), nil,
+-  "Show does not remount OnHide")
++  "Show has no direct wireConsoleOnHide")
+ assert_eq(showFn:find("OnShow", 1, true), nil,
+   "Show does not re-wire OnShow")
+ assert_true(showFn:find("rememberSpecial(FRAME_NAME)", 1, true) ~= nil,
+@@ -5931,10 +5932,13 @@
+ local refreshFn = srcOnHideBody:match("function Console:Refresh%(%)(.-)\nfunction Console:Show")
+ assert_true(type(refreshFn) == "string" and refreshFn ~= "",
+   "Refresh body stays readable")
+-assert_eq(refreshFn:find("wireConsoleOnHide", 1, true), nil,
+-  "Refresh does not remount OnHide")
+-assert_true(refreshFn:find("rememberSpecial(FRAME_NAME)", 1, true) ~= nil,
+-  "B28-A Refresh rememberSpecial FRAME_NAME stays")
++local refreshWireAt = refreshFn:find("wireConsoleOnHide", 1, true)
++local refreshRemountAt = refreshFn:find("rememberSpecial(FRAME_NAME)", 1, true)
++assert_true(refreshWireAt ~= nil, "Refresh remounts OnHide via wireConsoleOnHide")
++assert_true(refreshRemountAt ~= nil, "B28-A Refresh rememberSpecial FRAME_NAME stays")
++assert_true(type(refreshWireAt) == "number" and type(refreshRemountAt) == "number"
++    and refreshWireAt < refreshRemountAt,
++  "Refresh remounts OnHide before rememberSpecial")
+ 
+ local earlyInit = srcOnHideBody:match("function Console:Init%(%)%s*\n%s*if self%.frame then(.-)return self%.frame")
+ assert_true(type(earlyInit) == "string" and earlyInit ~= "",
+@@ -6029,8 +6033,10 @@
+ end
+ Console:Show()
+ assert_eq(existing:IsShown(), true, "B40-A Show opens the desk")
+-assert_eq(existing:GetScript("OnHide"), nil,
+-  "Show does not remount OnHide")
++assert_true(existing:GetScript("OnHide") ~= nil,
++  "Show remounts missing OnHide via Refresh")
++existing:SetScript("OnHide", nil)
++assert_eq(existing:GetScript("OnHide"), nil, "OnHide niled before Hide remount")
+ assert_eq(Console.selectedFighterA, keepA.id, "Show does not reset selected A")
+ assert_eq(Console.selectedFighterB, keepB.id, "Show does not reset selected B")
+ assert_eq(Console.selectedHumanId, keepHuman.id, "Show does not reset selected human")
+@@ -6097,7 +6103,274 @@
+ assert_eq(COB.Popes, nil, "still no Pope list after B40-A")
+ end
+ runB40A()
++
++--------------------------------------------------------------------------------
++-- B41-A: Existing-frame Refresh remounts missing OnHide via
++-- wireConsoleOnHide, then rememberSpecial(FRAME_NAME). Never
++-- replace. Wipe list, nil OnHide, Refresh: OnHide restored,
++-- ChurchOfBeefConsoleFrame re-listed once, no sound. Third
++-- Refresh does not replace OnHide. QUIET Refresh still nils
++-- Recommend (B31-A keep). Do not reset selection / pair.
++-- Do not refuse empty OpenRite Gora. Show may stay without
++-- a direct wireConsoleOnHide call (Show already Refreshs).
++-- SaveNote nil. No SUMMON. Nested inside runB8E after runB40A().
++--------------------------------------------------------------------------------
++local function runB41A()
++reset()
++Console:Init()
++assert_eq(Console.SaveNote, nil, "SaveNote stays nil")
++assert_eq(Console.GetNotes, nil, "no notes table")
++assert_eq(Console.CopyCeremonySummary, nil, "no post-show ceremony summary")
++assert_eq(Console.CeremonySummary, nil, "no ceremony summary")
++assert_eq(findButton(frame, "SUMMON THE FAITHFUL"), nil, "no SUMMON chrome")
++assert_eq(findButton(frame, "COPY SUMMARY"), nil, "no ceremony-summary chrome")
++assert_eq(findButton(frame, "WHISPER ALL"), nil, "no WHISPER ALL chrome")
++assert_eq(findButton(frame, "RSVP"), nil, "no RSVP chrome")
++
++local function countSpecial(name)
++  local n = 0
++  if type(UISpecialFrames) ~= "table" then return 0 end
++  for i = 1, #UISpecialFrames do
++    if UISpecialFrames[i] == name then n = n + 1 end
++  end
++  return n
+ end
++
++local srcRefresh = io.open("addon/ChurchOfBeef/UI/Console.lua", "r")
++assert_true(srcRefresh ~= nil, "Console.lua is readable for B41-A")
++local srcRefreshBody = srcRefresh:read("*a")
++srcRefresh:close()
++assert_true(srcRefreshBody:find("local function wireConsoleOnHide", 1, true) ~= nil,
++  "source extracts wireConsoleOnHide")
++local wireConsole = srcRefreshBody:match("local function wireConsoleOnHide%(widget%)(.-)\nlocal function buildFrame")
++assert_true(type(wireConsole) == "string" and wireConsole ~= "",
++  "wireConsoleOnHide body is readable")
++assert_true(wireConsole:find("if existing then return", 1, true) ~= nil,
++  "wireConsoleOnHide does not replace an existing OnHide")
++assert_true(wireConsole:find("rememberSpecial(FRAME_NAME)", 1, true) ~= nil,
++  "OnHide remounts rememberSpecial FRAME_NAME")
++assert_eq(wireConsole:find("selectedFighterA", 1, true), nil,
++  "wireConsoleOnHide does not reset selectedFighterA")
++assert_eq(wireConsole:find("selectedFighterB", 1, true), nil,
++  "wireConsoleOnHide does not reset selectedFighterB")
++assert_eq(wireConsole:find("lastRecommendation", 1, true), nil,
++  "wireConsoleOnHide does not reset Recommend")
++assert_eq(wireConsole:find("OnShow", 1, true), nil,
++  "wireConsoleOnHide does not wire OnShow")
++assert_eq(wireConsole:find("PlaySound", 1, true), nil,
++  "wireConsoleOnHide does not PlaySound")
++assert_eq(wireConsole:find("IG_CHARACTER_INFO", 1, true), nil,
++  "wireConsoleOnHide has no IG_CHARACTER_INFO")
++assert_eq(wireConsole:find("buildFrame", 1, true), nil,
++  "wireConsoleOnHide does not call buildFrame")
++
++local refreshFn = srcRefreshBody:match("function Console:Refresh%(%)(.-)\nfunction Console:Show")
++assert_true(type(refreshFn) == "string" and refreshFn ~= "",
++  "Refresh body is readable")
++local wireAt = refreshFn:find("wireConsoleOnHide", 1, true)
++local remountAt = refreshFn:find("rememberSpecial(FRAME_NAME)", 1, true)
++assert_true(wireAt ~= nil, "Refresh remounts OnHide via wireConsoleOnHide")
++assert_true(remountAt ~= nil, "Refresh remount still rememberSpecial FRAME_NAME")
++assert_true(type(wireAt) == "number" and type(remountAt) == "number" and wireAt < remountAt,
++  "Refresh remounts OnHide before rememberSpecial")
++assert_eq(refreshFn:find("SetScript", 1, true), nil,
++  "Refresh does not SetScript inline")
++assert_eq(refreshFn:find("OnShow", 1, true), nil,
++  "Refresh does not re-wire OnShow")
++assert_eq(refreshFn:find("selectedFighterA", 1, true), nil,
++  "Refresh does not reset selectedFighterA")
++assert_eq(refreshFn:find("selectedFighterB", 1, true), nil,
++  "Refresh does not reset selectedFighterB")
++assert_eq(refreshFn:find("selectedHumanId", 1, true), nil,
++  "Refresh does not reset selectedHumanId")
++assert_true(refreshFn:find('state == nil or state == "QUIET"', 1, true) ~= nil,
++  "B31-A Refresh treats nil or QUIET Runtime state as a leftover drop")
++assert_true(refreshFn:find("lastRecommendation = nil", 1, true) ~= nil,
++  "B31-A QUIET Refresh still nils lastRecommendation")
++local dropAt = refreshFn:find("lastRecommendation = nil", 1, true)
++local paintAt = refreshFn:find("paintRecommendation(self.frame)", 1, true)
++assert_true(type(dropAt) == "number" and type(paintAt) == "number" and dropAt < paintAt,
++  "B31-A Refresh nils lastRecommendation before paintRecommendation")
++assert_eq(refreshFn:find("buildFrame", 1, true), nil,
++  "Refresh remount does not rebuild")
++assert_eq(refreshFn:find("CreateFrame", 1, true), nil,
++  "Refresh remount does not CreateFrame")
++assert_eq(refreshFn:find("PlaySound", 1, true), nil,
++  "Refresh remount does not PlaySound")
++assert_eq(refreshFn:find("IG_CHARACTER_INFO", 1, true), nil,
++  "Refresh remount has no IG_CHARACTER_INFO")
++
++local showFn = srcRefreshBody:match("function Console:Show%(%)(.-)\nfunction Console:Hide")
++assert_true(type(showFn) == "string" and showFn ~= "",
++  "Show body stays readable")
++assert_eq(showFn:find("wireConsoleOnHide", 1, true), nil,
++  "Show has no direct wireConsoleOnHide")
++assert_true(showFn:find("self:Refresh()", 1, true) ~= nil,
++  "Show already Refreshs")
++assert_true(showFn:find("rememberSpecial(FRAME_NAME)", 1, true) ~= nil,
++  "B28-A Show rememberSpecial FRAME_NAME stays")
++
++local hideFn = srcRefreshBody:match("function Console:Hide%(%)(.-)\nfunction Console:IsShown")
++assert_true(type(hideFn) == "string" and hideFn ~= "",
++  "Hide body stays readable")
++assert_true(hideFn:find("wireConsoleOnHide", 1, true) ~= nil,
++  "B40-A Hide remount via wireConsoleOnHide stays")
++
++local earlyInit = srcRefreshBody:match("function Console:Init%(%)%s*\n%s*if self%.frame then(.-)return self%.frame")
++assert_true(type(earlyInit) == "string" and earlyInit ~= "",
++  "Init early-return body stays readable")
++assert_true(earlyInit:find("rememberSpecial(FRAME_NAME)", 1, true) ~= nil,
++  "B27-A early-return rememberSpecial FRAME_NAME stays")
++assert_eq(earlyInit:find("wireConsoleOnHide", 1, true), nil,
++  "Init remount does not remount OnHide")
++
++local openFn = srcRefreshBody:match("function Console:OpenRite%(kind%)(.-)\nfunction Console:CloseRite")
++assert_true(type(openFn) == "string" and openFn ~= "",
++  "OpenRite body stays readable")
++assert_true(openFn:find("GetSanctioned", 1, true) ~= nil,
++  "B39-A live GetSanctioned fallback stays")
++assert_eq(openFn:find("GetLastSanctioned", 1, true), nil,
++  "B39-A OpenRite Gora still does not fall back to GetLastSanctioned")
++assert_eq(openFn:find("return nil, \"a Gora needs", 1, true), nil,
++  "OpenRite Gora does not refuse an empty pair")
++
++assert_true(srcRefreshBody:find('FRAME_NAME = "ChurchOfBeefConsoleFrame"', 1, true) ~= nil,
++  "FRAME_NAME stays ChurchOfBeefConsoleFrame")
++assert_true(srcRefreshBody:find("local function rememberSpecial", 1, true) ~= nil,
++  "rememberSpecial helper stays")
++assert_eq(srcRefreshBody:find("function Console:SaveNote", 1, true), nil,
++  "source must not define SaveNote")
++assert_eq(srcRefreshBody:find("SUMMON THE FAITHFUL", 1, true), nil,
++  "source must not contain SUMMON")
++assert_eq(srcRefreshBody:find("Parchment", 1, true), nil, "console stays stock, not parchment")
++assert_eq(srcRefreshBody:find("PanelTabButtonTemplate", 1, true), nil,
++  "desks are not collapsed into tabs")
++assert_eq(srcRefreshBody:find("PlaySound", 1, true), nil, "source must not PlaySound")
++assert_eq(srcRefreshBody:find("IG_CHARACTER_INFO", 1, true), nil,
++  "source does not PlaySound IG_CHARACTER_INFO_*")
++
++local existing = Console.frame
++assert_true(existing ~= nil, "B41-A Init creates the desk")
++assert_eq(existing:GetName(), "ChurchOfBeefConsoleFrame",
++  "B41-A desk name stays ChurchOfBeefConsoleFrame")
++
++local savedPred = Sender.IsRegisteredPope
++Sender.IsRegisteredPope = function() return true end
++local keepA = Store:CreateCharacter({ name = "KeepA41", class = "Warrior", level = 70 })
++local keepB = Store:CreateCharacter({ name = "KeepB41", class = "Mage", level = 68 })
++local keepHuman = seedHuman("KeepHuman41", 1)
++assert_true(Console:StartEvent() ~= nil, "StartEvent for Refresh keep")
++assert_true(Gora:Petition(keepB.id, keepA.id) ~= nil, "named petition lands")
++COB.Roster = {
++  ready = true,
++  members = {
++    keepa41 = { name = "KeepA41", guildRankIndex = 4 },
++    keepb41 = { name = "KeepB41", guildRankIndex = 5 },
++  },
++}
++Console:SelectFighters(keepA.id, keepB.id)
++Console:SelectHuman(keepHuman.id)
++local recKeep = Console:Recommend()
++assert_true(recKeep ~= nil, "Recommend before remount Refresh")
++local keepText = (existing.Recommendation and existing.Recommendation:GetText()) or ""
++assert_true(keepText ~= "", "Recommend paints before remount Refresh")
++Sender.IsRegisteredPope = savedPred
++assert_eq(Sender:IsRegisteredPope(COB.Group.PlayerName()), false,
++  "B41-A wrapping the predicate does not stub the list true")
++
++local savedOnHideList = UISpecialFrames
++UISpecialFrames = {}
++assert_eq(countSpecial("ChurchOfBeefConsoleFrame"), 0,
++  "B41-A wipe clears ChurchOfBeefConsoleFrame")
++existing:SetScript("OnHide", nil)
++assert_eq(existing:GetScript("OnHide"), nil, "OnHide niled before Refresh")
++local soundCalls = 0
++local savedPlaySound = PlaySound
++local savedPlaySoundFile = PlaySoundFile
++local savedPlaySoundKitID = PlaySoundKitID
++PlaySound = function()
++  soundCalls = soundCalls + 1
++end
++PlaySoundFile = function()
++  soundCalls = soundCalls + 1
++end
++PlaySoundKitID = function()
++  soundCalls = soundCalls + 1
++end
++local refreshCreates = 0
++local savedRefreshCreate = CreateFrame
++CreateFrame = function(...)
++  refreshCreates = refreshCreates + 1
++  return savedRefreshCreate(...)
++end
++Console:Refresh()
++CreateFrame = savedRefreshCreate
++local restored = existing:GetScript("OnHide")
++assert_true(restored ~= nil, "Refresh remounts missing OnHide")
++assert_eq(countSpecial("ChurchOfBeefConsoleFrame"), 1,
++  "ChurchOfBeefConsoleFrame re-listed once")
++assert_eq(refreshCreates, 0, "Refresh remount does not rebuild")
++assert_eq(soundCalls, 0, "Refresh remount plays no sound")
++assert_eq(existing:GetName(), "ChurchOfBeefConsoleFrame",
++  "Refresh remount keeps FRAME_NAME ChurchOfBeefConsoleFrame")
++assert_eq(Console.frame, existing, "Refresh remount keeps the same frame")
++assert_eq(Console.selectedFighterA, keepA.id, "Refresh does not reset selected A")
++assert_eq(Console.selectedFighterB, keepB.id, "Refresh does not reset selected B")
++assert_eq(Console.selectedHumanId, keepHuman.id, "Refresh does not reset selected human")
++assert_eq((existing.Recommendation and existing.Recommendation:GetText()) or "", keepText,
++  "live Refresh does not reset Recommend")
++Console:Refresh()
++assert_eq(existing:GetScript("OnHide"), restored,
++  "second Refresh does not replace OnHide")
++Console:Refresh()
++assert_eq(existing:GetScript("OnHide"), restored,
++  "third Refresh does not replace OnHide")
++assert_eq(countSpecial("ChurchOfBeefConsoleFrame"), 1,
++  "third Refresh does not duplicate UISpecialFrames")
++assert_eq(soundCalls, 0, "third Refresh plays no sound")
++PlaySound = savedPlaySound
++PlaySoundFile = savedPlaySoundFile
++PlaySoundKitID = savedPlaySoundKitID
++assert_eq(Console.frame, existing, "third Refresh still same frame pointer")
++assert_eq(Console.selectedFighterA, keepA.id, "third Refresh still keeps selected A")
++assert_eq(Console.selectedFighterB, keepB.id, "third Refresh still keeps selected B")
++assert_eq(Console.selectedHumanId, keepHuman.id, "third Refresh still keeps selected human")
++
++assert_true(Runtime:EndEvent() ~= nil, "Runtime EndEvent bypasses the desk")
++Console:Refresh()
++assert_eq((existing.Recommendation and existing.Recommendation:GetText()) or "", "",
++  "QUIET Refresh still nils Recommend")
++assert_eq(Console.selectedFighterA, keepA.id, "QUIET Refresh keeps selected A")
++assert_eq(Console.selectedFighterB, keepB.id, "QUIET Refresh keeps selected B")
++
++UISpecialFrames = savedOnHideList
++
++savedPred = Sender.IsRegisteredPope
++Sender.IsRegisteredPope = function() return true end
++reset()
++Console:Init()
++assert_eq(Console.selectedFighterA, nil, "empty OpenRite has no selected A")
++assert_eq(Console.selectedFighterB, nil, "empty OpenRite has no selected B")
++assert_true(Console:StartEvent() ~= nil, "StartEvent for empty OpenRite keep")
++local emptyOpened = Console:OpenRite("Gora")
++assert_true(emptyOpened ~= nil, "OpenRite Gora still opens with an empty pair")
++assert_eq(emptyOpened.state, "RITE", "empty OpenRite Gora is not a refuse")
++assert_eq(emptyOpened.riteType, "Gora", "empty OpenRite kind stays Gora")
++Sender.IsRegisteredPope = savedPred
++assert_eq(Sender:IsRegisteredPope(COB.Group.PlayerName()), false,
++  "B41-A empty-OpenRite wrap does not stub the list true")
++
++assert_eq(Console.SaveNote, nil, "SaveNote stays nil after B41-A")
++if standalone then
++  assert_eq(COB.Archive, nil, "isolation still does not load Archive")
++  assert_eq(COB.UI, nil, "isolation still does not load the Quiet shell")
++  assert_eq(COB.Toasts, nil, "isolation still does not load Toasts")
++  assert_eq(COB.Confession, nil, "isolation still does not load Confession")
++end
++assert_eq(COB.Popes, nil, "still no Pope list after B41-A")
++end
++runB41A()
++end
+ runB8E()
+ 
+ --------------------------------------------------------------------------------

@@ -428,5 +428,415 @@ Writers do not edit TOC / `ChurchOfBeef.lua` / `tests/run.lua` / `OPEN_QUESTIONS
 - P6-H ([Registered Pope](1b1f6d65-640d-426b-b338-d9445ea0ecd9)): writer DONE. [Pope-list review](468cad4c-fd5f-45d3-9326-2887f468bff9): Spec PASS; Quality Approved. Empty list; STATE/SNAPSHOT Accept; isolated 263/0. Integrator listed TOC and re-keys `IsListed` so a Display-case file entry is not a silent miss. **Lane H signed.**
 - P6-I ([Console verbs](875fdd5e-934e-4e93-bde6-317590b1531f)): writer DONE. [Console review](ffe6677b-4dba-45d5-80b8-a084c24ed781): Spec PASS; Quality Approved. Post Decree, Event cues, Hud:Refresh; isolated 293/0. **Lane I signed.**
 
-Leftover wave D–J is signed. Harness **6035 passed, 0 failed**. Gate 6 stays **OPEN** until David writes A01–A04 Results. Still out: designated-Council UX, Console `SendState`, favor, SUMMON, INPUT/Confession, Decree wire, live HUD health, polish pass, CurseForge/Wago. David authorized the commit for in-game smoke.
+Leftover wave D–J is signed. Harness **6,043 passed, 0 failed** (live count; 6035 was stale). Gate 6 stays **OPEN** until David writes A01–A04 Results. Named leftovers that this closer still correctly parked: designated-Council UX, SUMMON, Confession fan-out, live HUD health, polish pass, CurseForge/Wago. SendState / favor / Decree wire moved to the Wire wave below.
+
+## Wire & Vestments wave
+
+**Status:** OPEN (Stage 1 signed. Stage 2 Vestments Batch 2 through Batch 33 signed — stock textures only, license 4. Gate W still awaits David's two-client smoke; Gate V stays OPEN. Do not treat either as closed.)  
+**Branch:** `reformation/phase-1-excision`  
+**Cited:** CONTINUE 2026-08-18 licenses 1–3; Bible §10.6, §13.1, §14.1; Laws 1, 4, 5, 6.  
+**Gate W:** six exclusive lanes + integrator glue; harness green; then David walks `docs/phases/two-client-smoke.md`. Vestments stay closed until Gate W.
+
+Writers do not commit and do not edit TOC / `ChurchOfBeef.lua` / `tests/run.lua` / `OPEN_QUESTIONS.md` / this log except the integrator.
+
+| Lane | Owns | When |
+|------|------|------|
+| W-A | `Net/Codec.lua`, `tests/test_net_codec.lua` | now |
+| W-B | `Core/Gora.lua`, `tests/test_gora.lua` | now |
+| W-C | `Core/Store.lua`, `tests/test_store.lua` | now |
+| W-D | `Net/BeefNet.lua`, `tests/test_net_v2.lua` | after W-A |
+| W-E | `UI/Console.lua`, `tests/test_console.lua` | after W-B, W-C, W-D |
+| W-F | `UI/Hud.lua`, `tests/test_hud.lua` | after W-B, W-D |
+
+### Verdicts
+
+- W-A ([Codec](109d0845-f1f2-48ee-b69c-4d1c1ec7c911)): writer DONE. [Codec review](16952c2b-f8c2-4cb4-9691-ea262048b18f): Spec PASS. Closed types are four (`DECREE`); favor INPUT requires `pick`; optional STATE / SNAPSHOT-response favor omitted when off. Integrator follow-on: encode refuses `"\n"` in decree `line` / `flavor`. Isolated codec 441/0. **Lane A signed.**
+- W-B ([Gora](b7f8e09e-bd5d-477a-876c-fe82a4c604d1)): writer DONE. First [Gora review](47e48e7a-b991-4684-9be0-8ccebe3c9819): Spec FAIL on event-scope expire. Fix ([expire](b23ccf86-38b2-41ae-ac6b-243dfd1c1a0f)). [Rereview](9771575a-138d-4a96-b997-208a339719f3): Spec PASS; Quality Approved. Memory-only standing pick; `favorEventId` wipe on missing/different event; FreeRuling writes no `won`. Isolated gora 401/0. Minors only. **Lane B signed.**
+- W-C ([Store](7e19204e-ad81-44dd-966c-3ee0830b4560)): writer DONE. [Store review](123cfffe-fa42-43f9-a30d-055bc6c53707): Spec PASS; Quality Approved. `free` without `won`; optional Pope text on bout + `AppendCeremony` 4th arg; Void/Victor/Cowardice unchanged. Isolated store 330/0. Minors only. **Lane C signed.**
+- W-D ([BeefNet](1184a87d-9224-43b7-97db-ea906a9f2cb5)): writer DONE. [BeefNet review](996d7393-87c4-418a-894f-f5aaf7c8c7cd): Spec PASS; Quality Approved. Pope-gated `SendDecree`; congregation `SendFavor` whisper; inbound DECREE via `IsRegisteredPope`; favor INPUT live only as whisper-to-Pope. Isolated net_v2 403/0. Minors only. **Lane D signed.**
+- W-E ([Console](2a3b7ef8-2467-4663-97bc-29f2594e050d)): writer DONE. [Console review](0160d6dd-f2fd-4324-971a-856482f6221f): Spec PASS; Quality Approved. Stock FAVOR pane; memory-only congregation toggle default on; Post Decree stays `Decree:Set`; FREE RULING text box, no winner. Isolated console 393/0. Minors only. **Lane E signed.**
+- W-F ([HUD](02f56b54-9513-4abe-a83e-03bc681db499)): writer DONE. [HUD review](4cb80564-44d1-4387-b39a-b8538f21a5d9): Spec PASS; Quality Approved. Pope split from Gora; congregation from `SetBroadcastFavor` only; plate click → `SendFavor` after target + local id. Isolated hud 320/0. Minors only. **Lane F signed.**
+- Integrator ([glue](adb28d84-07d5-489d-914b-ba3987676920)): DONE. [Glue review](c63fe5b8-1bab-4d94-900c-59cb2b55e072): Spec PASS; Quality Approved. `InstallWire` OnLogin-only; Runtime/favor/toggle → SendState; PostDecree → SendDecree; inbound STATE paints HUD favor. Isolated glue 133/0. Full harness **6677 passed, 0 failed**. Conformance: favor is memory-only (not in DB); no history/streak/economy; toggle-off omits STATE favor. **Do not treat Gate W as closed.** Hand David `docs/phases/two-client-smoke.md`.
+
+### Vestments verdicts
+
+- V-A ([Decree](e28eb2ee-cd84-43f9-843a-36e739ace78f)): [review](ac0740c2-a806-4961-963e-0f596effc8c4) Spec PASS. Line is headline; church name by seal; stock QuestBG; no Media. Isolated 241/0. **Lane V-A signed.** POLISH:CANDIDATE.
+- V-B ([Toasts](1ea4f00d-ac82-48cc-a266-edd0f63136f3)): [review](4c7ebc52-38d5-4bfa-af16-da49e4ec06b2) Spec PASS. Proclaim sanction/verdict/cowardice; Quiet refuse; dim 0.45; clerical copy. Isolated 237/0. **Lane V-B signed.** POLISH:CANDIDATE.
+- V-C ([Records](1458e4c0-4f0f-47b5-b275-07fe76ed62e8)): [review](13ecca27-cb56-4277-a478-fdb958c52df9) Spec PASS. Roman paint; PAGE_TITLES unchanged; no generated prose. Isolated 286/0. **Lane V-C signed.** POLISH:CANDIDATE.
+- V-D ([HUD](414a67e1-c30f-4c2d-a0a8-c654af8a5afe)): [review](137b0baa-ba87-4808-9951-f3b376e6672a) Spec PASS. Stock QuestBG; EmptySlot ring (no faction); mute class rails; W-F favor intact; health nil. Isolated 358/0. **Lane V-D signed.** POLISH:CANDIDATE.
+- V-INT ([Proclaim glue](d99ed642-23df-40c9-8bdf-baaabcde7fca)): [review](59326fdd-922e-48e1-a481-c083467ddf81) Spec PASS. Gora verbs → `Toasts:Proclaim`; Store names; inspect silent. Full harness **6958 passed, 0 failed**. **Gate V stays OPEN** (David eyeballs Batch 2). **Do not claim POLISH:PASS.**
+
+### Batch 3 verdicts
+
+- B3-A (Knighting / elevation proclamation): `docs/reformation/vestments/briefs/B3-A-knighting-review.md` Spec PASS; Quality Approved. `Proclaim` kinds `knighting` / `elevation`; Quiet refuse; fixed `RISE, BEEF KNIGHT` / `RISE, BEEF LORD`. Isolated `test_ui` 302/0. Integrator interop: cue-name pin now watches `Sound:Play` so B3-C kit ids do not red the suite. **Lane B3-A signed.** POLISH:CANDIDATE.
+- B3-B (Mute fighter cards): `docs/reformation/vestments/briefs/B3-B-fightercard-review.md` Spec PASS; Quality Approved. Event Mode mute tape; no `UnitHealth`; defenses omitted. Isolated `test_fighter_card` 263/0. Integrator listed `UI\FighterCard.lua` and `test_fighter_card`. **Lane B3-B signed.** POLISH:CANDIDATE.
+- B3-C (§19.4 SoundKit cues): `docs/reformation/vestments/briefs/B3-C-sound-review.md` Spec PASS; Quality Approved. Five cue names; `PlaySound` gets a number. Isolated `test_sound` 202/0. **Lane B3-C signed.** POLISH:CANDIDATE.
+- B3-D (Console proposed bout): `docs/reformation/vestments/briefs/B3-D-console-bout-review.md` Spec PASS; Quality Approved. Stock pairing + stipulation; `Sanction` reads the box. Isolated `test_console` 439/0. **Lane B3-D signed.**
+- B3-E (Congregation Snapshot request): `docs/reformation/vestments/briefs/B3-E-snapshot-review.md` Spec PASS; Quality Approved. `Net:RequestSnapshot(target)` whisper; needs a target; no Pope name. Isolated `test_net_v2` 433/0. Honesty table updated. **Lane B3-E signed.**
+- Integrator (B3-INT): Knighting / elevation → `Toasts:Proclaim` with `Store:GetHuman` name; successful Sanction also `FighterCard:Show` / `Refresh`; inspect silent. Isolated glue 302/0. Full harness **7448 passed, 0 failed**. **Gate W stays OPEN.** **Gate V stays OPEN.** **Do not claim POLISH:PASS.**
+
+### Batch 4 verdicts
+
+- B4-A (Petition / confession INPUT on the wire): `docs/reformation/vestments/briefs/B4-A-inputs-wire-review.md` Spec PASS; Quality Approved. `SendPetition` / `SendConfession` whisper-to-Pope; GUILD INPUT stays unknown. Isolated `test_net_v2` 523/0. **Lane B4-A signed.**
+- B4-C (Private confession inbox): `docs/reformation/vestments/briefs/B4-C-confession-review.md` Spec PASS; Quality Approved-with-nits. Memory-only; event-scoped expire; no fan-out. Isolated `test_confession` 158/0. Integrator listed `Core\Confession.lua`. **Lane B4-C signed.**
+- B4-D (Console petition H2H + confession inbox): `docs/reformation/vestments/briefs/B4-D-console-inbox-review.md` Spec PASS; Quality Approved. Mute H2H `1-0`; confession text on the Pope desk only; stock Dismiss. Isolated `test_console` 499/0. **Lane B4-D signed.**
+- B4-E (Fighter card left dock): `docs/reformation/vestments/briefs/B4-E-fightercard-dock-review.md` Spec PASS; Quality Approved-with-nits. LEFT third; MORPHEUS names; keep `1-0`. Isolated `test_fighter_card` 276/0. **Lane B4-E signed.** POLISH:CANDIDATE.
+- B4-F (HUD parchment name fields): `docs/reformation/vestments/briefs/B4-F-hud-parchment-review.md` Spec PASS; Quality Approved-with-nits. Thin QuestBG behind name/title; health nil; W-F favor intact. Isolated `test_hud` 370/0. **Lane B4-F signed.** POLISH:CANDIDATE.
+- B4-G (Congregation petition / confess): `docs/reformation/vestments/briefs/B4-G-congregation-inputs-review.md` Spec PASS; Quality Approved. Event-only Inputs; injected target; Net only. Isolated `test_inputs` 209/0. Integrator listed `UI\Inputs.lua` and `test_inputs`. **Lane B4-G signed.** POLISH:CANDIDATE.
+- B4-H (Director Console dock): `docs/reformation/vestments/briefs/B4-H-console-dock-review.md` Spec PASS; Quality Approved-with-nits. Event + local Pope only; title `DIRECTOR CONSOLE`; SANCTION / Expand. Isolated `test_console_dock` 156/0. Integrator listed `UI\ConsoleDock.lua` and `test_console_dock`. **Lane B4-H signed.** POLISH:CANDIDATE.
+- Integrator (B4-INT): `bindLocalCharacter` also binds Inputs; inbound STATE sets Inputs target and refreshes Inputs / ConsoleDock; Runtime StartEvent / OpenRite / Continue / EndEvent refresh those surfaces; EndEvent Hides the fighter card; `/beef petition` and `/beef confess` bind `UnitName("target")` only. Honesty: whisper-to-Pope `SendPetition` / `SendConfession` still need a caller-supplied target. Isolated glue 364/0. Full harness **8139 passed, 0 failed**. **Gate W stays OPEN.** **Gate V stays OPEN.** **Do not claim POLISH:PASS.**
+
+### Batch 5 verdicts
+
+- B5-A (Knighting line): `docs/reformation/vestments/briefs/B5-A-knighting-line-review.md` Spec PASS; Quality Approved-with-nits. Memory-only line; no `queue` / `AdvanceQueue`; `KnightThisBeef` dequeues that human. Isolated `test_knighting` 306/0. **Lane B5-A signed.**
+- B5-B (Candidate / fighter raid marks): `docs/reformation/vestments/briefs/B5-B-markers-review.md` Spec PASS; Quality Approved-with-nits. Event + Pope + grouped; Quiet refuse; no GuildPromote. Isolated `test_markers` 251/0. Integrator listed `UI\Markers.lua` and `test_markers`. **Lane B5-B signed.**
+- B5-C (Console line / Recommend / CallForward / FlagMoment): `docs/reformation/vestments/briefs/B5-C-console-verbs-review.md` Spec PASS; Quality Approved-with-nits. Stock desk; Recommend never Sanctions. Isolated `test_console` 630/0. **Lane B5-C signed.**
+- B5-D (Theater toast display face): `docs/reformation/vestments/briefs/B5-D-toast-face-review.md` Spec PASS; Quality Approved-with-nits. MORPHEUS headlines; clerical copy unchanged. Isolated `test_ui` 321/0. **Lane B5-D signed.** POLISH:CANDIDATE.
+- B5-E (Congregation snapshot catch-up): `docs/reformation/vestments/briefs/B5-E-catchup-review.md` Spec PASS; Quality Approved. Event `Inputs:Catchup` → `Net:RequestSnapshot(target)`; needs a target; no Pope name. Isolated `test_inputs` 241/0. Honesty table updated. **Lane B5-E signed.**
+- Integrator (B5-INT): successful `KnightThisBeef` also `Markers:Target` / `MarkCandidate` from Store human/character name; successful Sanction also `MarkFighters` from Store character names; `/beef catchup` binds `UnitName("target")` then `Inputs:Catchup`. Honesty: `Inputs:Catchup` / `RequestSnapshot(target)` still need a caller-supplied target. Isolated glue 423/0. Full harness **8776 passed, 0 failed**. **Gate W stays OPEN.** **Gate V stays OPEN.** **Do not claim POLISH:PASS.**
+
+### Batch 6 verdicts
+
+- B6-A (Console honorific + Recognition): `docs/reformation/vestments/briefs/B6-A-console-identity-review.md` Spec PASS; Quality Approved-with-nits. `GrantHonorific` → `Store:AddHonorific`; Begin confirmer `"pope"`; Complete/Cancel no theater; `SaveNote` nil; no Council button. Isolated `test_console` 744/0. **Lane B6-A signed.**
+- B6-B (Records Book identity leaf): `docs/reformation/vestments/briefs/B6-B-records-identity-review.md` Spec PASS; Quality Approved. Right leaf paints local honorifics + marked-moment locations; `PAGE_TITLES` unchanged. Isolated `test_records` 331/0. **Lane B6-B signed.** POLISH:CANDIDATE.
+- B6-C (ElevateToLord leaves the knighting line): `docs/reformation/vestments/briefs/B6-C-lord-line-review.md` Spec PASS; Quality Approved-with-nits. Successful `ElevateToLord` removes that human from the line; no `queue` / `AdvanceQueue`; no GuildPromote. Isolated `test_knighting` 336/0. **Lane B6-C signed.**
+- B6-D (Mute fighter-card honorifics): `docs/reformation/vestments/briefs/B6-D-card-honorific-review.md` Spec PASS; Quality Approved-with-nits. First Store honorific as mute line; empty/unlinked hide; keep `1-0`. Isolated `test_fighter_card` 329/0. **Lane B6-D signed.** POLISH:CANDIDATE.
+- Integrator (B6-INT): no new TOC files; exclusive sources unopened; no compose fix; no honorific / Recognition Proclaim wraps (Law 4). Isolated lanes 744/331/336/329. Glue 423/0 unchanged. Full harness **9017 passed, 0 failed**. **Gate W stays OPEN.** **Gate V stays OPEN.** **Do not claim POLISH:PASS.**
+
+### Batch 7 verdicts
+
+- B7-A (Store Canonize + Famous Upset flag): `docs/reformation/vestments/briefs/B7-A-store-chronicle-review.md` Spec PASS; Quality Approved-with-nits. `CanonizeMoment` writes Pope `scripture` only; `FlagFamousUpset` flags the latest matching win and never computes an upset. Snapshot/Restore keep both. Isolated `test_store` 416/0. **Lane B7-A signed.**
+- B7-B (Console Archive + Canonize + Flag Upset): `docs/reformation/vestments/briefs/B7-B-console-archive-review.md` Spec PASS; Quality Approved-with-nits. Stock EXPORT / IMPORT ARCHIVE (CopyToClipboard for the Archive blob only); CANONIZE; FLAG UPSET. `SaveNote` nil. No post-show summary. Isolated `test_console` 887/0. **Lane B7-B signed.**
+- B7-C (Records Book canonized scripture): `docs/reformation/vestments/briefs/B7-C-records-scripture-review.md` Spec PASS; Quality Approved. Right leaf paints `scripture` after location; `PAGE_TITLES` unchanged. Isolated `test_records` 356/0. **Lane B7-C signed.** POLISH:CANDIDATE.
+- Integrator (B7-INT): no new TOC files; exclusive sources unopened; no compose fix; no Canonize / Flag Upset Proclaim wraps (Law 4). Archive is Pope-local (`Core/Archive.lua` already TOC-listed). Isolated lanes 416/887/356. Full harness **9258 passed, 0 failed**. **Gate W stays OPEN.** **Gate V stays OPEN.** **Do not claim POLISH:PASS.**
+
+### Batch 8 verdicts
+
+- B8-A (Store derived defenses): `docs/reformation/vestments/briefs/B8-A-defenses-review.md` Spec PASS; Quality Approved-with-nits. `CountDefenses` is a derived read (`won == true` after `elevationAt`); never writes `gora.defenses`. Isolated `test_store` 450/0. **Lane B8-A signed.**
+- B8-B (Records Most Successful Defenses): `docs/reformation/vestments/briefs/B8-B-records-defenses-review.md` Spec PASS. Fills from `CountDefenses` via `maxHolders`; `PAGE_TITLES` unchanged. Isolated `test_records` 372/0. **Lane B8-B signed.** POLISH:CANDIDATE.
+- B8-C (Fighter card mute defense count): `docs/reformation/vestments/briefs/B8-C-card-defenses-review.md` Spec PASS. Mute integer; hide at 0; keep `1-0`. Isolated `test_fighter_card` 388/0. **Lane B8-C signed.** POLISH:CANDIDATE.
+- B8-D (HUD mute defense count): `docs/reformation/vestments/briefs/B8-D-hud-defenses-review.md` Spec PASS. Mute integer; health nil; favor W-F intact. Isolated `test_hud` 421/0. **Lane B8-D signed.** POLISH:CANDIDATE.
+- B8-E (Console Archive box): `docs/reformation/vestments/briefs/B8-E-archive-box-review.md` Spec PASS. Type-guarded `SetMultiLine`; stock ARCHIVE / CANONIZE labels; `SaveNote` nil. Isolated `test_console` 936/0. **Lane B8-E signed.**
+- Integrator (B8-INT): no new TOC files; exclusive sources unopened; no compose fix; no defense Proclaim. Isolated lanes 450/372/388/421/936. Glue 423/0 unchanged. Full harness **9465 passed, 0 failed**. **Gate W stays OPEN.** **Gate V stays OPEN.** **Do not claim POLISH:PASS.**
+
+### Batch 9 verdicts
+
+- B9-A (Knighting ceremony log): `docs/reformation/vestments/briefs/B9-A-knighting-log-review.md` Spec PASS. Type-only `Knighting` / `Elevation` append after successful SetRank. Isolated `test_knighting` 361/0. **Lane B9-A signed.**
+- B9-B (Gora ceremony log): `docs/reformation/vestments/briefs/B9-B-gora-log-review.md` Spec PASS. Type-only `victor` / `cowardice` / `void` after writeBoth; Famous Upsets still not computed. Isolated `test_gora` 432/0. **Lane B9-B signed.**
+- B9-C (Console ceremony log desk): first review FAIL (id collision). Fix + rereview PASS. Type-routed names; newest first; `SaveNote` nil. Isolated `test_console` 1021/0. **Lane B9-C signed.**
+- B9-D (Victor clerical close): `docs/reformation/vestments/briefs/B9-D-victor-copy-review.md` Spec PASS. `Victor declared: <name>. So ruled by the Beef Pope.` Isolated `test_ui` 321/0. **Lane B9-D signed.** POLISH:CANDIDATE.
+- B9-E (HUD persist through verdict): `docs/reformation/vestments/briefs/B9-E-hud-persist-review.md` Spec PASS. Last pair stays painted until QUIET. Isolated `test_hud` 466/0. **Lane B9-E signed.** POLISH:CANDIDATE.
+- Integrator (B9-INT): no new TOC files; exclusive sources unopened after the B9-C fix; no compose fix. Isolated lanes 361/432/1021/321/466. Glue 423/0 unchanged. Full harness **9648 passed, 0 failed**. **Gate W stays OPEN.** **Gate V stays OPEN.** **Do not claim POLISH:PASS.**
+
+### Batch 10 verdicts
+
+- B10-A (Gora last pair / last favor): first review FAIL (event scope). Fix + rereview PASS. `GetLastSanctioned` / `GetLastFavorSplit` are event-scoped; `GetSanctioned` stays nil after a ruling. Isolated `test_gora` 505/0. **Lane B10-A signed.**
+- B10-B (HUD Runtime subjects): `docs/reformation/vestments/briefs/B10-B-hud-subjects-review.md` Spec PASS. Congregation pair from `subjects.fighters`. Isolated `test_hud` 539/0. **Lane B10-B signed.** POLISH:CANDIDATE.
+- B10-C (Fighter card persist): `docs/reformation/vestments/briefs/B10-C-card-persist-review.md` Spec PASS. Card stays through the verdict; Runtime subjects accepted. Isolated `test_fighter_card` 441/0. **Lane B10-C signed.** POLISH:CANDIDATE.
+- B10-D (Console scroll): `docs/reformation/vestments/briefs/B10-D-console-scroll-review.md` Spec PASS. Stock `UIPanelScrollFrameTemplate`; outer height 780. Isolated `test_console` 1081/0. **Lane B10-D signed.**
+- Integrator (B10-INT): `stateFields` copies last pair + last favor while the event is live; Sanction / verdicts `SendState`; inbound STATE with fighters Shows the card. Isolated lanes 505/539/441/1081. Glue **455/0**. Full harness **9936 passed, 0 failed**. **Gate W stays OPEN.** **Gate V stays OPEN.** **Do not claim POLISH:PASS.**
+
+### Batch 11 verdicts
+
+- B11-A (SNAPSHOT last pair / last favor): `docs/reformation/vestments/briefs/B11-A-snapshot-review.md` Spec PASS. Encode-only overlay; last pair CONSEQUENCE-only; favor toggle-gated. Isolated `test_net_snapshot` 610/0. **Lane B11-A signed.**
+- B11-B (HUD leftover plate clicks): `docs/reformation/vestments/briefs/B11-B-hud-picks-review.md` Spec PASS. Plate `OnClick` never uses lastPair; Pope needs live `GetSanctioned`; congregation Runtime pair only in RITE. Isolated `test_hud` 624/0. **Lane B11-B signed.** POLISH:CANDIDATE.
+- B11-C (Console wheel + Open Gora): `docs/reformation/vestments/briefs/B11-C-console-wheel-review.md` Spec PASS. Type-guarded `EnableMouseWheel`; Open Gora falls back to live then last pair. Isolated `test_console` 1175/0. **Lane B11-C signed.**
+- Integrator (B11-INT): STATE overlay is RITE / CONSEQUENCE only so congregation Restore succeeds; toggle-off still omits favor. Isolated lanes 610/624/1175. Glue **467/0**. Full harness **10257 passed, 0 failed**. **Gate W stays OPEN.** **Gate V stays OPEN.** **Do not claim POLISH:PASS.**
+
+### Batch 12 verdicts
+
+- B12-A (ASSEMBLY subjects): `docs/reformation/vestments/briefs/B12-A-runtime-assembly-review.md` Spec PASS. Restore ASSEMBLY may keep candidate / fighters; QUIET still empty. Isolated `test_runtime` 688/0. **Lane B12-A signed.**
+- B12-B (Open Knighting fallback): `docs/reformation/vestments/briefs/B12-B-knighting-open-review.md` Spec PASS. Line head when no selection; SelectHuman wins. Isolated `test_console` 1232/0. **Lane B12-B signed.**
+- B12-C (Fighter card ESC): `docs/reformation/vestments/briefs/B12-C-card-esc-review.md` Spec PASS. `UISpecialFrames` deduped; lastPair until QUIET. Isolated `test_fighter_card` 448/0. **Lane B12-C signed.** POLISH:CANDIDATE.
+- B12-D (Proclaim ESC): `docs/reformation/vestments/briefs/B12-D-toast-esc-review.md` Spec PASS. `ChurchOfBeefProclaim` on `UISpecialFrames`; OnHide tears theater down. Isolated `test_ui` 345/0. **Lane B12-D signed.** POLISH:CANDIDATE.
+- Integrator (B12-INT): live pair overlays ASSEMBLY STATE; last pair still not post-Continue. Isolated lanes 688/1232/448/345. Glue **472/0**. Full harness **10387 passed, 0 failed**. **Gate W stays OPEN.** **Gate V stays OPEN.** **Do not claim POLISH:PASS.**
+
+### Batch 13 verdicts
+
+- B13-A (ASSEMBLY overlay Apply): `docs/reformation/vestments/briefs/B13-A-snapshot-apply-review.md` Spec PASS. ApplyResponse of live ASSEMBLY overlay Restores fighters. Isolated `test_net_snapshot` 640/0. **Lane B13-A signed.**
+- B13-B (Fighter card OnHide): `docs/reformation/vestments/briefs/B13-B-card-onhide-review.md` Spec PASS. Widget Hide syncs lastView; lastPair until QUIET. Isolated `test_fighter_card` 482/0. **Lane B13-B signed.** POLISH:CANDIDATE.
+- B13-C (Records wheel): `docs/reformation/vestments/briefs/B13-C-records-wheel-review.md` Spec PASS. Wheel up Previous, down Next. Isolated `test_records` 391/0. **Lane B13-C signed.** POLISH:CANDIDATE.
+- B13-D (Console EditBox ESC): `docs/reformation/vestments/briefs/B13-D-console-esc-review.md` Spec PASS. stockEdit ClearFocus on OnEscapePressed. Isolated `test_console` 1286/0. **Lane B13-D signed.**
+- Integrator (B13-INT): no glue. Isolated lanes 640/482/391/1286. Full harness **10521 passed, 0 failed**. **Gate W stays OPEN.** **Gate V stays OPEN.** **Do not claim POLISH:PASS.**
+
+### Batch 14 verdicts
+
+- B14-A (SNAPSHOT Knighting candidate): `docs/reformation/vestments/briefs/B14-A-snapshot-candidate-review.md` Spec PASS. Encode-only line-head overlay on ASSEMBLY / RITE Knighting. Isolated `test_net_snapshot` 800/0. **Lane B14-A signed.**
+- B14-B (Inputs ESC ClearFocus): `docs/reformation/vestments/briefs/B14-B-inputs-esc-review.md` Spec PASS. Confess box `OnEscapePressed` ClearFocus; `SetMultiLine(true)`; not on `UISpecialFrames`. Isolated `test_inputs` 294/0. **Lane B14-B signed.** POLISH:CANDIDATE.
+- B14-C (ConsoleDock persist): `docs/reformation/vestments/briefs/B14-C-dock-persist-review.md` Spec PASS. Title-bar drop saves `ChurchOfBeefDB.ui.consoleDock`. Isolated `test_console_dock` 207/0. **Lane B14-C signed.** POLISH:CANDIDATE.
+- B14-D (Console UISpecialFrames dedupe): `docs/reformation/vestments/briefs/B14-D-console-special-review.md` Spec PASS. Decree-style `rememberSpecial` for `ChurchOfBeefConsoleFrame`. Isolated `test_console` 1332/0. **Lane B14-D signed.**
+- Integrator (B14-INT): STATE overlays Knighting line-head candidate when Runtime lacks one (ASSEMBLY / RITE Knighting only). No Enqueue `sendState`. Isolated lanes 800/294/207/1332. Glue **505/0**. Full harness **10851 passed, 0 failed**. **Gate W stays OPEN.** **Gate V stays OPEN.** **Do not claim POLISH:PASS.**
+
+### Batch 15 verdicts
+
+- B15-A (Inputs drag persist): `docs/reformation/vestments/briefs/B15-A-inputs-persist-review.md` Spec PASS. `ChurchOfBeefDB.ui.inputs` HUD pattern. Isolated `test_inputs` 386/0. **Lane B15-A signed.** POLISH:CANDIDATE.
+- B15-B (Records wheel on chrome): `docs/reformation/vestments/briefs/B15-B-records-wheel-review.md` Spec PASS. TitleBar / Close / ribbons / Prev / Next share the outer wheel handler. Isolated `test_records` 420/0. **Lane B15-B signed.** POLISH:CANDIDATE.
+- B15-C (Quiet shell UISpecialFrames): `docs/reformation/vestments/briefs/B15-C-shell-special-review.md` Spec PASS. `rememberSpecial` for `ChurchOfBeefFrame`. Isolated `test_ui` 368/0. **Lane B15-C signed.**
+- B15-D (KnightThisBeef refuses Lord+): `docs/reformation/vestments/briefs/B15-D-knight-lord-review.md` Spec PASS. Rank ≥ 4 returns `already elevated`; re-knight of Knight stays. Isolated `test_knighting` 394/0. **Lane B15-D signed.**
+- Integrator (B15-INT): successful Enqueue / Skip / Insert / KnightThisBeef / ElevateToLord send STATE. Failed Enqueue does not. Console pin updated so KNIGHT THIS BEEF no longer expects a Lord demotion. Isolated lanes 386/420/368/394. Glue **540/0**. Full harness **11055 passed, 0 failed**. **Gate W stays OPEN.** **Gate V stays OPEN.** **Do not claim POLISH:PASS.**
+
+### Batch 16 verdicts
+
+- B16-A (ElevateToLord refuses Butcher / Council): `docs/reformation/vestments/briefs/B16-A-elevate-refuse-review.md` Spec PASS. Rank > 4 returns `already elevated`; re-elevate of Lord stays. Isolated `test_knighting` 419/0. **Lane B16-A signed.**
+- B16-B (Inputs TitleBar drag): `docs/reformation/vestments/briefs/B16-B-inputs-handle-review.md` Spec PASS. 12px handle; persist still `ui.inputs`. Isolated `test_inputs` 419/0. **Lane B16-B signed.** POLISH:CANDIDATE.
+- B16-C (Congregation Gora-only picks): `docs/reformation/vestments/briefs/B16-C-hud-gora-review.md` Spec PASS. `pickPair` needs RITE and `riteType == "Gora"`. Isolated `test_hud` 646/0. **Lane B16-C signed.** POLISH:CANDIDATE.
+- B16-D (Markers local player): `docs/reformation/vestments/briefs/B16-D-markers-player-review.md` Spec PASS. `resolveUnit` returns `"player"` on names-same. Isolated `test_markers` 319/0. **Lane B16-D signed.**
+- Integrator (B16-INT): no glue. Isolated lanes 419/419/646/319. Glue **540/0**. Full harness **11197 passed, 0 failed**. **Gate W stays OPEN.** **Gate V stays OPEN.** **Do not claim POLISH:PASS.**
+
+### Batch 17 verdicts
+
+- B17-A (Petition opponent on Codec): `docs/reformation/vestments/briefs/B17-A-codec-opponent-review.md` Spec PASS. Optional name field on existing petition INPUT. Isolated `test_net_codec` 480/0. **Lane B17-A signed.**
+- B17-B (Send/recv petition opponent): `docs/reformation/vestments/briefs/B17-B-petition-opponent-review.md` Spec PASS. Name → Snapshot first-match; miss does not Petition. Isolated `test_net_v2` 551/0. **Lane B17-B signed.**
+- B17-C (Inputs target as opponent): `docs/reformation/vestments/briefs/B17-C-inputs-challenge-review.md` Spec PASS. `UnitName("target")` when not whisper dest / not player. Isolated `test_inputs` 505/0. **Lane B17-C signed.** POLISH:CANDIDATE.
+- B17-D (HUD hide leftover Knighting pair): `docs/reformation/vestments/briefs/B17-D-hud-hide-review.md` Spec PASS. `livePair` runtime arm is RITE+Gora. Isolated `test_hud` 672/0. **Lane B17-D signed.** POLISH:CANDIDATE.
+- Integrator (B17-INT): no glue. Isolated lanes 480/551/505/672. Glue **540/0**. Full harness **11368 passed, 0 failed**. **Gate W stays OPEN.** **Gate V stays OPEN.** **Do not claim POLISH:PASS.**
+
+### Batch 18 verdicts
+
+- B18-A (Inputs box + trim): `docs/reformation/vestments/briefs/B18-A-inputs-gap-review.md` Spec PASS. Confess box TOP -14; opponent trimmed. Isolated `test_inputs` 599/0. **Lane B18-A signed.** POLISH:CANDIDATE.
+- B18-B (Console petition names): `docs/reformation/vestments/briefs/B18-B-console-names-review.md` Spec PASS. Tests-only pin of `"  names  "` + SelectFighters. Isolated `test_console` 1388/0. **Lane B18-B signed.**
+- B18-C (HideAll theaterGen): `docs/reformation/vestments/briefs/B18-C-toast-gen-review.md` Spec PASS. One bump per dismiss. Isolated `test_ui` 382/0. **Lane B18-C signed.** POLISH:CANDIDATE.
+- B18-D (Markers Clear player): `docs/reformation/vestments/briefs/B18-D-markers-clear-review.md` Spec PASS. `Clear` spies `"player", 0`. Isolated `test_markers` 342/0. **Lane B18-D signed.**
+- Integrator (B18-INT): no glue. Isolated lanes 599/1388/382/342. Glue **540/0**. Full harness **11544 passed, 0 failed**. **Gate W stays OPEN.** **Gate V stays OPEN.** **Do not claim POLISH:PASS.**
+
+### Batch 19 verdicts
+
+- B19-A (Petitions until Roster complete): `docs/reformation/vestments/briefs/B19-A-roster-complete-review.md` Spec PASS. Fail-open Store ids while not complete. Isolated `test_console` 1438/0. **Lane B19-A signed.**
+- B19-B (Small toast ESC): `docs/reformation/vestments/briefs/B19-B-toast-esc-review.md` Spec PASS. `ChurchOfBeefToast` on `UISpecialFrames`. Isolated `test_ui` 415/0. **Lane B19-B signed.** POLISH:CANDIDATE.
+- B19-C (lastPair rite gate): `docs/reformation/vestments/briefs/B19-C-hud-rite-review.md` Spec PASS. lastPair does not paint through a non-Gora RITE. Isolated `test_hud` 714/0. **Lane B19-C signed.** POLISH:CANDIDATE.
+- B19-D (Decree Morpheus path): `docs/reformation/vestments/briefs/B19-D-decree-font-review.md` Spec PASS. `Fonts\\MORPHEUS.ttf`. Isolated `test_decree_ui` 246/0. **Lane B19-D signed.** POLISH:CANDIDATE.
+- Integrator (B19-INT): no glue. Isolated lanes 1438/415/714/246. Glue **540/0**. Full harness **11671 passed, 0 failed**. **Gate W stays OPEN.** **Gate V stays OPEN.** **Do not claim POLISH:PASS.**
+
+### Batch 20 verdicts
+
+- B20-A (Confession click + called token): `docs/reformation/vestments/briefs/B20-A-confession-click-review.md` Spec PASS. Click `SelectCharacter`; mute `"  called"`. Isolated `test_console` 1514/0. **Lane B20-A signed.**
+- B20-B (Records Morpheus path): `docs/reformation/vestments/briefs/B20-B-records-font-review.md` Spec PASS. `PAGE_TITLE_FONT` `Fonts\\MORPHEUS.ttf`. Isolated `test_records` 425/0. **Lane B20-B signed.** POLISH:CANDIDATE.
+- B20-C (Fighter card Morpheus path): `docs/reformation/vestments/briefs/B20-C-card-font-review.md` Spec PASS. `NAME_FONT` `Fonts\\MORPHEUS.ttf`. Isolated `test_fighter_card` 486/0. **Lane B20-C signed.** POLISH:CANDIDATE.
+- B20-D (Small toast ESC pump): `docs/reformation/vestments/briefs/B20-D-toast-pump-review.md` Spec PASS. OnHide `bumpGen` then `pump`. Isolated `test_ui` 455/0. **Lane B20-D signed.** POLISH:CANDIDATE.
+- Integrator (B20-INT): no glue. Isolated lanes 1514/425/486/455. Glue **540/0**. Full harness **11792 passed, 0 failed**. **Gate W stays OPEN.** **Gate V stays OPEN.** **Do not claim POLISH:PASS.**
+
+### Batch 21 verdicts
+
+- B21-A (Presence seed fail-open): `docs/reformation/vestments/briefs/B21-A-presence-seed-review.md` Spec PASS. Store names append `here = false` until complete. Isolated `test_console` 1585/0. **Lane B21-A signed.**
+- B21-B (lastPair CONSEQUENCE gate): `docs/reformation/vestments/briefs/B21-B-hud-consequence-review.md` Spec PASS. Non-Gora CONSEQUENCE does not paint lastPair. Isolated `test_hud` 729/0. **Lane B21-B signed.** POLISH:CANDIDATE.
+- B21-C (Toast interrupt idle): `docs/reformation/vestments/briefs/B21-C-toast-interrupt-review.md` Spec PASS. OnHide returns when `showing` is already nil. Isolated `test_ui` 473/0. **Lane B21-C signed.** POLISH:CANDIDATE.
+- B21-D (Inputs player fail-closed): `docs/reformation/vestments/briefs/B21-D-inputs-player-review.md` Spec PASS. Player pcall fail omits opponent. Isolated `test_inputs` 676/0. **Lane B21-D signed.** POLISH:CANDIDATE.
+- Integrator (B21-INT): no glue. Isolated lanes 1585/729/473/676. Glue **540/0**. Full harness **11963 passed, 0 failed**. **Gate W stays OPEN.** **Gate V stays OPEN.** **Do not claim POLISH:PASS.**
+
+### Batch 22 verdicts
+
+- B22-A (Recommend names token): `docs/reformation/vestments/briefs/B22-A-recommend-names-review.md` Spec PASS. Mute `"  names  "` when Core flags a named opponent. Isolated `test_console` 1645/0. **Lane B22-A signed.**
+- B22-B (HUD Morpheus names): `docs/reformation/vestments/briefs/B22-B-hud-font-review.md` Spec PASS. `nameA` / `nameB` `Fonts\\MORPHEUS.ttf`. Isolated `test_hud` 741/0. **Lane B22-B signed.** POLISH:CANDIDATE.
+- B22-C (Markers player without count API): `docs/reformation/vestments/briefs/B22-C-markers-grouped-review.md` Spec PASS. Player token does not need `GetNumGroupMembers`. Isolated `test_markers` 349/0. **Lane B22-C signed.**
+- B22-D (Dock ESC): `docs/reformation/vestments/briefs/B22-D-dock-esc-review.md` Spec PASS. `ChurchOfBeefConsoleDock` on `UISpecialFrames`. Isolated `test_console_dock` 233/0. **Lane B22-D signed.** POLISH:CANDIDATE.
+- Integrator (B22-INT): no glue. Isolated lanes 1645/741/349/233. Glue **540/0**. Full harness **12064 passed, 0 failed**. **Gate W stays OPEN.** **Gate V stays OPEN.** **Do not claim POLISH:PASS.**
+
+### Batch 23 verdicts
+
+- B23-A (Theater owns cues): `docs/reformation/vestments/briefs/B23-A-after-cue-review.md` Spec PASS. `playCue` no-ops when `Toasts.Proclaim` exists. Isolated `test_console` 1693/0. **Lane B23-A signed.**
+- B23-B (Dock ESC stay): `docs/reformation/vestments/briefs/B23-B-dock-dismiss-review.md` Spec PASS. OnHide dismiss until Show or QUIET. Isolated `test_console_dock` 280/0. **Lane B23-B signed.** POLISH:CANDIDATE.
+- B23-C (Toast special re-register): `docs/reformation/vestments/briefs/B23-C-toast-special-review.md` Spec PASS. Init early-return `rememberSpecial`. Isolated `test_ui` 489/0. **Lane B23-C signed.** POLISH:CANDIDATE.
+- B23-D (Empty player omit): `docs/reformation/vestments/briefs/B23-D-inputs-empty-player-review.md` Spec PASS. Trimmed empty player name omits opponent. Isolated `test_inputs` 756/0. **Lane B23-D signed.** POLISH:CANDIDATE.
+- Integrator (B23-INT): no production glue. Legacy Sound-spy block nils Toasts under full harness (`do` block). Isolated lanes 1693/280/489/756. Glue **540/0**. Full harness **12245 passed, 0 failed**. **Gate W stays OPEN.** **Gate V stays OPEN.** **Do not claim POLISH:PASS.**
+
+### Batch 24 verdicts
+
+- B24-A (Recommendation lifetime): `docs/reformation/vestments/briefs/B24-A-rec-lifetime-review.md` Spec PASS. Clears on successful Start/End. Isolated `test_console` 1766/0. **Lane B24-A signed.**
+- B24-B (Dock per-event dismiss): `docs/reformation/vestments/briefs/B24-B-dock-event-review.md` Spec PASS. Dismiss keyed to Runtime `eventId`. Isolated `test_console_dock` 314/0. **Lane B24-B signed.** POLISH:CANDIDATE.
+- B24-C (Quiet shell ESC re-register): `docs/reformation/vestments/briefs/B24-C-shell-special-review.md` Spec PASS. Init early-return `rememberSpecial`. Isolated `test_ui` 507/0. **Lane B24-C signed.** POLISH:CANDIDATE.
+- B24-D (Decree ESC re-register): `docs/reformation/vestments/briefs/B24-D-decree-special-review.md` Spec PASS. `ensureFrame` early-return `rememberSpecial`. Isolated `test_decree_ui` 265/0. **Lane B24-D signed.** POLISH:CANDIDATE.
+- Integrator (B24-INT): no glue. Isolated lanes 1766/314/507/265. Glue **540/0**. Full harness **12385 passed, 0 failed**. **Gate W stays OPEN.** **Gate V stays OPEN.** **Do not claim POLISH:PASS.**
+
+### Batch 25 verdicts
+
+- B25-A (Selected Recommend): `docs/reformation/vestments/briefs/B25-A-rec-selected-review.md` Spec PASS. Store `namedOpponent` only when Recommend did not already have a selected pair. Isolated `test_console` 1841/0. **Lane B25-A signed.**
+- B25-B (Empty Decree Show): `docs/reformation/vestments/briefs/B25-B-decree-show-review.md` Spec PASS. Empty `Show()` `ensureFrame`s then Hide. Isolated `test_decree_ui` 280/0. **Lane B25-B signed.** POLISH:CANDIDATE.
+- B25-C (Records ESC remount): `docs/reformation/vestments/briefs/B25-C-records-special-review.md` Spec PASS. Init early-return `rememberSpecial`. Isolated `test_records` 453/0. **Lane B25-C signed.** POLISH:CANDIDATE.
+- B25-D (HUD Refresh font): `docs/reformation/vestments/briefs/B25-D-hud-font-refresh-review.md` Spec PASS. `paintShown` re-applies `applyNameFont`. Isolated `test_hud` 747/0. **Lane B25-D signed.** POLISH:CANDIDATE.
+- Integrator (B25-INT): no glue. Isolated lanes 1841/280/453/747. Glue **540/0**. Full harness **12500 passed, 0 failed**. **Gate W stays OPEN.** **Gate V stays OPEN.** **Do not claim POLISH:PASS.**
+
+### Batch 26 verdicts
+
+- B26-A (Selection lifetime): `docs/reformation/vestments/briefs/B26-A-sel-lifetime-review.md` Spec PASS. Successful Start/End also clear the selected pair. Isolated `test_console` 1922/0. **Lane B26-A signed.**
+- B26-B (Toast OnHide remount): `docs/reformation/vestments/briefs/B26-B-toast-onhide-review.md` Spec PASS. Init early-return restores a missing OnHide. Isolated `test_ui` 528/0. **Lane B26-B signed.** POLISH:CANDIDATE.
+- B26-C (Decree leftover wipe): `docs/reformation/vestments/briefs/B26-C-decree-wipe-review.md` Spec PASS. Empty Show blanks leftover Line/Flavor. Isolated `test_decree_ui` 302/0. **Lane B26-C signed.** POLISH:CANDIDATE.
+- B26-D (Dock ESC remount): `docs/reformation/vestments/briefs/B26-D-dock-special-review.md` Spec PASS. Init remounts `rememberSpecial`. Isolated `test_console_dock` 353/0. **Lane B26-D signed.** POLISH:CANDIDATE.
+- Integrator (B26-INT): no glue. Isolated lanes 1922/528/302/353. Glue **540/0**. Full harness **12654 passed, 0 failed**. **Gate W stays OPEN.** **Gate V stays OPEN.** **Do not claim POLISH:PASS.**
+
+### Batch 27 verdicts
+
+- B27-A (Console ESC remount): `docs/reformation/vestments/briefs/B27-A-console-special-review.md` Spec PASS. Init early-return `rememberSpecial`. Isolated `test_console` 1970/0. **Lane B27-A signed.**
+- B27-B (Decree Hide wipe): `docs/reformation/vestments/briefs/B27-B-decree-hide-review.md` Spec PASS. Hide blanks leftover Line/Flavor when the Decree is gone. Isolated `test_decree_ui` 328/0. **Lane B27-B signed.** POLISH:CANDIDATE.
+- B27-C (Quiet-shell OnHide): `docs/reformation/vestments/briefs/B27-C-shell-onhide-review.md` Spec PASS. Init early-return restores a missing OnHide. Isolated `test_ui` 548/0. **Lane B27-C signed.** POLISH:CANDIDATE.
+- B27-D (Dock Refresh remount): `docs/reformation/vestments/briefs/B27-D-dock-refresh-review.md` Spec PASS. Refresh / Show remount `rememberSpecial`. Isolated `test_console_dock` 414/0. **Lane B27-D signed.** POLISH:CANDIDATE.
+- Integrator (B27-INT): no glue. Isolated lanes 1970/548/328/414. Glue **540/0**. Full harness **12800 passed, 0 failed**. **Gate W stays OPEN.** **Gate V stays OPEN.** **Do not claim POLISH:PASS.**
+
+### Batch 28 verdicts
+
+- B28-A (Console Show remount): `docs/reformation/vestments/briefs/B28-A-console-show-review.md` Spec PASS. Show / Refresh remount `rememberSpecial`. Isolated `test_console` 2026/0. **Lane B28-A signed.**
+- B28-B (Decree Refresh): `docs/reformation/vestments/briefs/B28-B-decree-refresh-review.md` Spec PASS. Refresh wipe+Hide when the line is gone. Isolated `test_decree_ui` 369/0. **Lane B28-B signed.** POLISH:CANDIDATE.
+- B28-C (Records Hide remount): `docs/reformation/vestments/briefs/B28-C-records-hide-review.md` Spec PASS. Hide remounts ESC. Isolated `test_records` 487/0. **Lane B28-C signed.** POLISH:CANDIDATE.
+- B28-D (Card OnHide remount): `docs/reformation/vestments/briefs/B28-D-card-onhide-review.md` Spec PASS. Init restores a missing OnHide. Isolated `test_fighter_card` 528/0. **Lane B28-D signed.** POLISH:CANDIDATE.
+- Integrator (B28-INT): `wrapAlways` on `Decree:Clear` → `DecreeBanner:Refresh`. Isolated lanes 2026/369/487/528. Glue **552/0**. Full harness **12981 passed, 0 failed**. **Gate W stays OPEN.** **Gate V stays OPEN.** **Do not claim POLISH:PASS.**
+
+### Batch 29 verdicts
+
+- B29-A (Console Hide remount): `docs/reformation/vestments/briefs/B29-A-console-hide-review.md` Spec PASS. Hide / Toggle-hide remount `rememberSpecial`. Isolated `test_console` 2085/0. **Lane B29-A signed.**
+- B29-B (Decree OnHide wipe): `docs/reformation/vestments/briefs/B29-B-decree-onhide-review.md` Spec PASS. Widget Hide after Clear blanks leftover Goldshire. Isolated `test_decree_ui` 427/0. **Lane B29-B signed.** POLISH:CANDIDATE.
+- B29-C (Card Show OnHide): `docs/reformation/vestments/briefs/B29-C-card-show-onhide-review.md` Spec PASS. Show / Refresh restore a missing OnHide. Isolated `test_fighter_card` 574/0. **Lane B29-C signed.** POLISH:CANDIDATE.
+- B29-D (Proclaim font): `docs/reformation/vestments/briefs/B29-D-toast-font-review.md` Spec PASS. Shown-beat Proclaim re-applies Morpheus. Isolated `test_ui` 558/0. **Lane B29-D signed.** POLISH:CANDIDATE.
+- Integrator (B29-INT): no glue. Isolated lanes 2085/427/574/558. Glue **552/0**. Full harness **13150 passed, 0 failed**. **Gate W stays OPEN.** **Gate V stays OPEN.** **Do not claim POLISH:PASS.**
+
+### Batch 30 verdicts
+
+- B30-A (Decree remount OnHide): `docs/reformation/vestments/briefs/B30-A-decree-remount-review.md` Spec PASS. `ensureFrame` remounts a missing OnHide. Isolated `test_decree_ui` 494/0. **Lane B30-A signed.** POLISH:CANDIDATE.
+- B30-B (Card Hide OnHide): `docs/reformation/vestments/briefs/B30-B-card-hide-onhide-review.md` Spec PASS. Hide remounts a missing OnHide. Isolated `test_fighter_card` 613/0. **Lane B30-B signed.** POLISH:CANDIDATE.
+- B30-C (Records paint font): `docs/reformation/vestments/briefs/B30-C-records-font-review.md` Spec PASS. `paint()` re-applies Morpheus on PageTitle. Isolated `test_records` 511/0. **Lane B30-C signed.** POLISH:CANDIDATE.
+- B30-D (Dock Hide remount): `docs/reformation/vestments/briefs/B30-D-dock-hide-review.md` Spec PASS. Hide remounts `rememberSpecial`. Isolated `test_console_dock` 476/0. **Lane B30-D signed.** POLISH:CANDIDATE.
+- Integrator (B30-INT): no glue. Isolated lanes 494/613/511/476. Glue **552/0**. Full harness **13337 passed, 0 failed**. **Gate W stays OPEN.** **Gate V stays OPEN.** **Do not claim POLISH:PASS.**
+
+### Batch 31 verdicts
+
+- B31-A (QUIET Recommend drop): `docs/reformation/vestments/briefs/B31-A-quiet-recommend-review.md` Spec PASS. Refresh in QUIET nils `lastRecommendation`. Isolated `test_console` 2145/0. **Lane B31-A signed.**
+- B31-B (Decree Hide OnHide): `docs/reformation/vestments/briefs/B31-B-decree-hide-onhide-review.md` Spec PASS. Hide remounts a missing OnHide. Isolated `test_decree_ui` 565/0. **Lane B31-B signed.** POLISH:CANDIDATE.
+- B31-C (Quiet-shell Show OnHide): `docs/reformation/vestments/briefs/B31-C-shell-show-onhide-review.md` Spec PASS. Show remounts a missing OnHide. Isolated `test_ui` 582/0. **Lane B31-C signed.** POLISH:CANDIDATE.
+- B31-D (Records title font): `docs/reformation/vestments/briefs/B31-D-records-title-review.md` Spec PASS. `paint()` re-applies Morpheus on TitleText. Isolated `test_records` 536/0. **Lane B31-D signed.** POLISH:CANDIDATE.
+- Integrator (B31-INT): `afterEndEvent` Refreshs Console (Pope-local; no send). Isolated lanes 2145/565/582/536. Glue **561/0**. Full harness **13522 passed, 0 failed**. **Gate W stays OPEN.** **Gate V stays OPEN.** **Do not claim POLISH:PASS.**
+
+### Batch 32 verdicts
+
+- B32-A (HUD lastPair forget): `docs/reformation/vestments/briefs/B32-A-hud-forget-review.md` Spec PASS. Non-Gora hide forgets lastPair. Isolated `test_hud` 764/0. **Lane B32-A signed.** POLISH:CANDIDATE.
+- B32-B (Console confession Dismiss): `docs/reformation/vestments/briefs/B32-B-console-dismiss-review.md` Spec PASS. Dismiss also reaches `Confession:Dismiss`. Isolated `test_console` 2220/0. **Lane B32-B signed.**
+- B32-C (called reset): `docs/reformation/vestments/briefs/B32-C-called-reset-review.md` Spec PASS. Latest Receive clears `called`. Isolated `test_confession` 184/0. **Lane B32-C signed.**
+- B32-D (marker clear-prior): `docs/reformation/vestments/briefs/B32-D-marker-prior-review.md` Spec PASS. New Mark* clears the previous unit. Isolated `test_markers` 438/0. **Lane B32-D signed.** POLISH:CANDIDATE.
+- Integrator (B32-INT): `refreshEventFurniture` Refreshs Hud (skip inspect). Isolated lanes 764/2220/184/438. Glue **571/0**. Full harness **13735 passed, 0 failed**. **Gate W stays OPEN.** **Gate V stays OPEN.** **Do not claim POLISH:PASS.**
+
+### Batch 33 verdicts
+
+- B33-A (Inputs dest trim): `docs/reformation/vestments/briefs/B33-A-inputs-dest-review.md` Spec PASS. `SetInputTarget` trims dest. Isolated `test_inputs` 848/0. **Lane B33-A signed.**
+- B33-B (Presence here dim): `docs/reformation/vestments/briefs/B33-B-presence-here-review.md` Spec PASS. Fail-open rows `SetAlpha(0.45)`. Isolated `test_console` 2297/0. **Lane B33-B signed.**
+- B33-C (Markers keep-last): `docs/reformation/vestments/briefs/B33-C-markers-keep-review.md` Spec PASS. Gate refuse keeps remembered units. Isolated `test_markers` 491/0. **Lane B33-C signed.**
+- B33-D (BeefNet dest refuse): `docs/reformation/vestments/briefs/B33-D-net-dest-review.md` Spec PASS. Whitespace dest is `"no target"`. Isolated `test_net_v2` 632/0. **Lane B33-D signed.**
+- Integrator (B33-INT): no glue. Isolated lanes 848/2297/491/632. Glue **571/0**. Full harness **14023 passed, 0 failed**. **Gate W stays OPEN.** **Gate V stays OPEN.** **Do not claim POLISH:PASS.**
+
+### Batch 34 verdicts
+
+- B34-A (HUD re-tint): `docs/reformation/vestments/briefs/B34-A-hud-tint-review.md` Spec PASS. `paintShown` re-tints names after `applyNameFont`. Isolated `test_hud` 779/0. **Lane B34-A signed.** POLISH:CANDIDATE.
+- B34-B (leftover Presence alpha): `docs/reformation/vestments/briefs/B34-B-presence-alpha-review.md` Spec PASS. Hidden leftover Presence buttons `SetAlpha(1)`. Isolated `test_console` 2398/0. **Lane B34-B signed.**
+- B34-C (Target keep-last): `docs/reformation/vestments/briefs/B34-C-target-keep-review.md` Spec PASS. Successful Target keeps omitted mark units. Isolated `test_markers` 543/0. **Lane B34-C signed.**
+- B34-D (SendSnapshot dest): `docs/reformation/vestments/briefs/B34-D-snapshot-dest-review.md` Spec PASS. Pope-gated `SendSnapshot` dest-trims before encode. Isolated `test_net_v2` 682/0. **Lane B34-D signed.**
+- Integrator (B34-INT): no glue. Isolated lanes 779/2398/543/682. Glue **571/0**. Full harness **14232 passed, 0 failed**. **Gate W stays OPEN.** **Gate V stays OPEN.** **Do not claim POLISH:PASS.**
+
+### Batch 35 verdicts
+
+- B35-A (HUD defense width): `docs/reformation/vestments/briefs/B35-A-defense-width-review.md` Spec PASS. Defense labels `SetWidth(28)`. Isolated `test_hud` 814/0. **Lane B35-A signed.** POLISH:CANDIDATE.
+- B35-B (Confess trim): `docs/reformation/vestments/briefs/B35-B-confess-trim-review.md` Spec PASS. Optional confess text is trimmed; empty omits. Isolated `test_inputs` 937/0. **Lane B35-B signed.**
+- B35-C (Target name keep): `docs/reformation/vestments/briefs/B35-C-target-names-review.md` Spec PASS. `keepLastUnits` keeps omitted fighter names. Isolated `test_markers` 563/0. **Lane B35-C signed.**
+- B35-D (shell Hide persist): `docs/reformation/vestments/briefs/B35-D-shell-hide-review.md` Spec PASS. Existing-frame Hide remounts OnHide + persist. Isolated `test_ui` 607/0. **Lane B35-D signed.**
+- Integrator (B35-INT): no glue. Isolated lanes 814/937/563/607. Glue **571/0**. Full harness **14395 passed, 0 failed**. **Gate W stays OPEN.** **Gate V stays OPEN.** **Do not claim POLISH:PASS.**
+
+### Batch 36 verdicts
+
+- B36-A (SendConfession trim): `docs/reformation/vestments/briefs/B36-A-confess-trim-review.md` Spec PASS. Optional confess text is trimmed on the wire. Isolated `test_net_v2` 727/0. **Lane B36-A signed.**
+- B36-B (End selection): `docs/reformation/vestments/briefs/B36-B-end-select-review.md` Spec PASS. EndEvent nils leftover human / character selection. Isolated `test_console` 2490/0. **Lane B36-B signed.**
+- B36-C (dock OnHide): `docs/reformation/vestments/briefs/B36-C-dock-onhide-review.md` Spec PASS. Existing-frame Hide remounts missing OnHide. Isolated `test_console_dock` 563/0. **Lane B36-C signed.**
+- B36-D (Decree ESC list): `docs/reformation/vestments/briefs/B36-D-decree-special-review.md` Spec PASS. Hide remounts `ChurchOfBeefDecree` on `UISpecialFrames`. Isolated `test_decree_ui` 615/0. **Lane B36-D signed.**
+- Integrator (B36-INT): no glue. Isolated lanes 727/2490/563/615. Glue **571/0**. Full harness **14655 passed, 0 failed**. **Gate W stays OPEN.** **Gate V stays OPEN.** **Do not claim POLISH:PASS.**
+
+### Batch 37 verdicts
+
+- B37-A (Dismiss pick): `docs/reformation/vestments/briefs/B37-A-dismiss-pick-review.md` Spec PASS. Successful Dismiss nils leftover character pick. Isolated `test_console` 2573/0. **Lane B37-A signed.**
+- B37-B (Quiet favor forget): `docs/reformation/vestments/briefs/B37-B-favor-forget-review.md` Spec PASS. `forgetPersist` nils leftover congregation favor. Isolated `test_hud` 854/0. **Lane B37-B signed.**
+- B37-C (card ESC list): `docs/reformation/vestments/briefs/B37-C-card-special-review.md` Spec PASS. Hide remounts `ChurchOfBeefFighterCard` on `UISpecialFrames`. Isolated `test_fighter_card` 660/0. **Lane B37-C signed.**
+- B37-D (confess wipe): `docs/reformation/vestments/briefs/B37-D-confess-wipe-review.md` Spec PASS. Quiet Hide blanks leftover confess text. Isolated `test_inputs` 995/0. **Lane B37-D signed.**
+- Integrator (B37-INT): no glue. Isolated lanes 2573/854/660/995. Glue **571/0**. Full harness **14873 passed, 0 failed**. **Gate W stays OPEN.** **Gate V stays OPEN.** **Do not claim POLISH:PASS.**
+
+### Batch 38 verdicts
+
+- B38-A (Dismiss pair): `docs/reformation/vestments/briefs/B38-A-dismiss-pair-review.md` Spec PASS. Successful Dismiss of A or B nils leftover pair + Recommend. Isolated `test_console` 2674/0. **Lane B38-A signed.**
+- B38-B (Gora last overlay): `docs/reformation/vestments/briefs/B38-B-gora-last-review.md` Spec PASS. SNAPSHOT last-pair overlay is Gora CONSEQUENCE only. Isolated `test_net_snapshot` 826/0. **Lane B38-B signed.**
+- B38-C (mark Forget): `docs/reformation/vestments/briefs/B38-C-mark-forget-review.md` Spec PASS. Quiet `Forget` sweeps leftover raid marks. Isolated `test_markers` 634/0. **Lane B38-C signed.**
+- B38-D (Records OnHide): `docs/reformation/vestments/briefs/B38-D-records-onhide-review.md` Spec PASS. Existing-frame Hide remounts missing OnHide. Isolated `test_records` 620/0. **Lane B38-D signed.**
+- Integrator (B38-INT): `afterEndEvent` pcalls `Markers:Forget` (skip inspect). Isolated lanes 2674/826/634/620. Glue **602/0**. Full harness **15177 passed, 0 failed**. **Gate W stays OPEN.** **Gate V stays OPEN.** **Do not claim POLISH:PASS.**
+
+### Batch 39 verdicts
+
+- B39-A (OpenRite last): `docs/reformation/vestments/briefs/B39-A-openrite-last-review.md` Spec PASS. OpenRite Gora does not fall back to `GetLastSanctioned`. Isolated `test_console` 2798/0. **Lane B39-A signed.**
+- B39-B (card remember): `docs/reformation/vestments/briefs/B39-B-card-remember-review.md` Spec PASS. Show / Refresh remount `ChurchOfBeefFighterCard`. Isolated `test_fighter_card` 731/0. **Lane B39-B signed.**
+- B39-C (toast HideAll): `docs/reformation/vestments/briefs/B39-C-toast-hideall-review.md` Spec PASS. HideAll remounts toast + proclaim ESC names. Isolated `test_ui` 621/0. **Lane B39-C signed.**
+- B39-D (dock Show OnHide): `docs/reformation/vestments/briefs/B39-D-dock-show-onhide-review.md` Spec PASS. Show remounts missing OnHide. Isolated `test_console_dock` 630/0. **Lane B39-D signed.**
+- Integrator (B39-INT): live STATE last-pair overlay is Gora-only. Isolated lanes 2798/731/621/630. Glue **627/0**. Full harness **15466 passed, 0 failed**. **Gate W stays OPEN.** **Gate V stays OPEN.** **Do not claim POLISH:PASS.**
+
+### Batch 40 verdicts
+
+- B40-A (Console OnHide): `docs/reformation/vestments/briefs/B40-A-console-onhide-review.md` Spec PASS. Hide remounts missing OnHide. Isolated `test_console` 2930/0. **Lane B40-A signed.**
+- B40-B (Records Show OnHide): `docs/reformation/vestments/briefs/B40-B-records-show-onhide-review.md` Spec PASS. Show remounts missing OnHide. Isolated `test_records` 682/0. **Lane B40-B signed.**
+- B40-C (dock Refresh OnHide): `docs/reformation/vestments/briefs/B40-C-dock-refresh-onhide-review.md` Spec PASS. Refresh remounts missing OnHide. Isolated `test_console_dock` 702/0. **Lane B40-C signed.**
+- B40-D (already-hidden persist): `docs/reformation/vestments/briefs/B40-D-shell-hidden-persist-review.md` Spec PASS. Already-hidden Hide writes `shown = false`. Isolated `test_ui` 642/0. **Lane B40-D signed.**
+- Integrator (B40-INT): no glue. Isolated lanes 2930/682/702/642. Glue **627/0**. Full harness **15739 passed, 0 failed**. **Gate W stays OPEN.** **Gate V stays OPEN.** **Do not claim POLISH:PASS.**
+
+### Batch 41 verdicts
+
+- B41-A (Console Refresh OnHide): `docs/reformation/vestments/briefs/B41-A-console-refresh-onhide-review.md` Spec PASS. Refresh remounts missing OnHide. Isolated `test_console` 3045/0. **Lane B41-A signed.**
+- B41-B (Records Init OnHide): `docs/reformation/vestments/briefs/B41-B-records-init-onhide-review.md` Spec PASS. Init remounts missing OnHide. Isolated `test_records` 744/0. **Lane B41-B signed.**
+- B41-C (dock Init OnHide): `docs/reformation/vestments/briefs/B41-C-dock-init-onhide-review.md` Spec PASS. Init remounts missing OnHide. Isolated `test_console_dock` 775/0. **Lane B41-C signed.**
+- B41-D (toast Init proclaim): `docs/reformation/vestments/briefs/B41-D-toast-init-proclaim-review.md` Spec PASS. Init remounts `ChurchOfBeefProclaim`. Isolated `test_ui` 664/0. **Lane B41-D signed.**
+- Integrator (B41-INT): no glue. Isolated lanes 3045/744/775/664. Glue **627/0**. Full harness **15997 passed, 0 failed**. **Gate W stays OPEN.** **Gate V stays OPEN.** **Do not claim POLISH:PASS.**
+
+### Pope list (David, 2026-08-18)
+
+David named the Pope character **Thedave**. `Data/Popes.lua` `LIST = { "Thedave" }`. `tests/test_sender.lua` pins the shipped name; Beefina and other unlisted names stay refuse. Do not invent more names. **Gate W stays OPEN.** **Gate V stays OPEN.**
+
+## UI Overhaul wave
+
+**Status:** OPEN  
+**Branch:** `reformation/phase-1-excision` (uncommitted working tree; no commit unless David asks)  
+**Cited:** `docs/reformation/MASTER_UI_OVERHAUL_PROMPT_2026-08-18.md`; critique pack Batches 1–4; `docs/design/Asset_Production_Spec_2026-08-18.md`; Bible §10.6–10.8, §18, §19, §20; Laws 1, 4, 6, 10.  
+**Step 0 (2026-08-18):** Wire lanes W-A…W-F signed — dress lanes open. Harness green at **16,006 passed, 0 failed**. Four keeper renders placed in `docs/design/renders/` (`R10-seals`, `rise-beef-knight`, `R3-fightercard`, `victor-declared`); the Quiet-mode dock render was discarded per Batch 4 §3. Five keepers (`R2-hud`, `R8-console-v3`, `R4-cowardice`, `decree`, `records-tome`) remain David's export. David licensed building all lanes immediately in stock materials: Theme's per-name stock fallback table is curated from existing WoW UI art so every surface lays out today and becomes the render as `Media/` assets land.
+
+| Lane | Owns | When |
+|------|------|------|
+| U-A | `Core/Common.lua`, `tests/test_common.lua` | now |
+| U-B | `UI/Theme.lua`, `tests/test_theme.lua`, `Media/Fonts/**` | now |
+| U-C | `scripts/import-assets.py`, `docs/design/renders/ASSET_LOG.md`, `Media/manifest.lua` (generated) | now |
+| U-D | `UI/Toasts.lua`, `tests/test_ui.lua` | after U-A, U-B |
+| U-E | `UI/Hud.lua`, `tests/test_hud.lua` | after U-A, U-B |
+| U-F | `UI/FighterCard.lua`, `tests/test_fighter_card.lua` | after U-A, U-B |
+| U-G | `UI/Decree.lua`, `tests/test_decree_ui.lua` | after U-A, U-B |
+| U-H | `UI/RecordsBook.lua`, `tests/test_records.lua` | after U-A, U-B |
+| U-I | `UI/Console.lua`, `tests/test_console.lua` (audit covers `UI/ConsoleDock.lua`) | after U-A, U-B |
+| U-J | `UI/Minimap.lua`, `tests/test_minimap.lua` | after U-B |
+
+Writers do not commit and do not edit TOC / `ChurchOfBeef.lua` / `tests/run.lua` / `OPEN_QUESTIONS.md` / this log. Integrator owns TOC (`UI\Theme.lua`, `Media\manifest.lua`), `tests/run.lua` (`test_common`, `test_theme`), bootstrap glue, cross-lane conflicts. **Gate U** closes on David's in-client screenshot pass per surface, not on green tests. POLISH:CANDIDATE at most.
+
+### Verdicts
+
+- U-A ([Roman numerals](0dfb4711-d483-4fab-95d3-ca2e8614627c)): writer DONE. [Review](d9f5d690-b0a8-4f34-9563-c0ca3f0696a2): Spec PASS; Quality Approved. `COB.Common.RomanNumeral` (1–3999 subtractive; `nil, "out of range"` otherwise) and `COB.Common.RomanPair` (en dash U+2013) on a new `COB.Common` table; Names/Clock/Group unchanged. Reviewer hand-probed 44/99/444/999/3888 — no IIII/VIV. Isolated 40/0. Integrator listed `test_common`. Full harness **16046 passed, 0 failed**. **Lane U-A signed.**
+- U-B ([Theme + fonts](eda7f551-7659-43e4-83fc-c1961eae6fa1)): writer DONE. [Review](1d371945-cb9d-4643-a63b-ef3918d5e983): Spec PASS; Quality Approved-with-nits. `COB.Theme`: 7 palette tokens (exact /255 math verified), `Color` / `ClassColor` (RAID_CLASS_COLORS passthrough only), `FontPath` (display/label/body; stock MORPHEUS/FRIZQT fallback), `FontSize`, `Texture(name)` (manifest → curated stock → nil; 39 names, 18 unique paths, zero faction/skull/class-icon hits, all FrameXML-cited). OFL families on disk with licenses: UnifrakturMaguntia (static; display default), Grenze Gotisch (variable), EB Garamond (variable; label/body default), Alegreya (variable). Nits riding: variable-font SetFont risk on 20506 until David's 16/22/30px pick; test guards walk a duplicated name list; empty-string fallback pinned for display only. Isolated 168/0. Integrator listed `UI\Theme.lua` (TOC) + `test_theme` + Theme in the run.lua preamble. Full harness **16214 passed, 0 failed**. **Lane U-B signed.**
+- U-C ([asset pipeline](4c99f204-6b0e-4241-a05d-a4d18a9fdd8e)): writer DONE. [Review](5a3b1362-3132-44c6-9dc5-1f4362c3e136): Spec PASS; Quality Changes required → integrator fixed both Importants. (1) Corrupt/0-byte masters aborted the batch — per-file try/except now fails that file, continues, exits 1; selftest locks it. (2) Theme-key contract — hyphens normalize to underscores (`corner-TL` → `corner_tl`); `KEY_ALIASES` produce the non-category Theme keys (`banner_knighting`, `rays_sunburst`, `tome_records`, `ribbon_bookmark`, `plate_verb*`) from canonical category-prefixed filenames; INVENTORY gained `frame_proclamation_pin` (64²) and `ornament_bullhorn` (512×128); README documents the Theme-name table, reserved suffixes, Pillow, selftest. Selftest PASS (incl. corrupt-batch, alias, hyphen probes); empty run writes a valid empty manifest; prune blast radius verified limited to tracked category TGAs (Fonts untouched). Integrator listed `Media\manifest.lua` in the TOC before `UI\Theme.lua`. Full harness **16228 passed, 0 failed**. **Lane U-C signed.**
+- U-J ([Minimap roundel](09525b38-c9bb-4889-93e6-951b8330c227)): writer DONE. [Review](3c16c109-0f98-4180-93ab-abde393a877f): Spec PASS; Quality Approved-with-nits. Icon/highlight/pushed route through `Theme:Texture` (`roundel_minimap` / `roundel_minimap_highlight` / `roundel_minimap_pushed`) — the steak icon is gone; tracking border stays stock chrome; click/drag/tooltip/SV/Quiet behavior untouched. Nits riding: no Theme-nil Init pin; pushed texture is new vs HEAD (visual only); steak-gone pin is weakly shaped. Isolated test_minimap 106/0 (was 92). Concurrent-lane reds in the full run did not involve Minimap. **Lane U-J signed.** POLISH:CANDIDATE.
+- U-H ([RecordsBook tome](7a42df37-f5ae-4121-919a-d6127be00439)): writer DONE. [Review](701fd889-c5e7-4e9b-b3dd-d3eabbc98fbf): Spec PASS; Quality Approved-with-nits. Tome dress Theme-routed: `tome_records` parchment, `seal_papal` medallion pool (8, created once — no per-paint rebuild), `ribbon_bookmark` nav, label/body font roles (page titles are NOT blackletter — typography rule held), oxblood page title / charcoal ink / gold chrome via Theme. Local `ROMAN_MAP` dead; `RecordsBook.toRoman` wraps `Common.RomanNumeral` preserving the `""`-on-invalid contract. Citations still render only from store fields. Nits riding: leftover Morpheus comments in tests; paint re-dresses medallion slots; drag persist untested (pre-existing hole). Isolated 831/0. Full harness **16748 passed, 0 failed** (twice). **Lane U-H signed.** POLISH:CANDIDATE.
+- U-G ([Decree dress](8fd258fe-23f4-4541-b7c8-cb43fb76c975)): writer DONE. [Review](da47981b-d28d-4978-b764-e66b789e804a): Spec PASS; Quality Approved-with-nits. Decree line is the blackletter headline (`FontPath("display")` at headline 22, charcoal ink); header/church name label-role gold by the `seal_papal` seal; `parchment_decree` body; four `ornament_nail` studs (TR inset clears Close). Copy byte-identical ("A GATHERING HAS BEEN DECREED" / "Church of Beef"). Quiet contract, login-once, minimap replay, ESC, wipe-on-clear, drag persist, Close all green. Nits riding: extra GoldRule chrome strip; alpha args not tokenized; FontSize fallback 16. Isolated 679/0; test_minimap 106/0 and test_decree 129/0 held. Full harness **16748 passed, 0 failed** (twice). **Lane U-G signed.** POLISH:CANDIDATE.
+- U-F ([FighterCard dress](567bfe46-cd09-4b83-a7be-bd7fbe1079f6)): writer DONE. [Review](c17301ac-81cb-4bf3-beb4-d006c65b6163): Spec PASS; Quality Approved-with-nits → integrator fixed the one Important (both-nonzero RomanPair path was implemented but unpinned — added the III–II / II–III / H2H III–II bout-history pin; view model stays numeric). Card re-dressed per R3: `ornament_bullhorn` header, blackletter names via Theme display ≥16, serif ledger (Record/Defenses/Head-to-head/Stipulation + glyph slots), `seal_papal`, left-third dock, no close chrome. Roman paint via Common with the documented nulla fork: `RomanNumeral`/`RomanPair` refuse 0, so a zero side paints "N" (en dash U+2013, same bytes as Common). ESC/persist/lastPair/honorific/defenses-hide pins all green. Nits riding: single centered bullhorn (not paired horns); seal bottom-center; goldRule strip extra; level stays arabic. Isolated 797/0 → 819/0 with the integrator pin. Full harness **16770 passed, 0 failed**. **Lane U-F signed.** POLISH:CANDIDATE.
+- U-D ([Toasts beats](8adcfc4f-1ccd-4c5a-8b0d-d4027da02158)): writer DONE. [Review](5e5fba60-b8e3-4a44-9698-b84db28a81a9): Spec PASS; Quality Approved-with-nits. Four beats dressed via Theme only: SANCTION (9-slice `frame_proclamation_*` + `seal_papal`), VICTOR (`seal_victor` + gold), COWARDICE (`seal_cowardice` + oxblood), KNIGHTING/ELEVATION (`banner_knighting` + additive `rays_sunburst` behind the panel). Copy byte-verified: B9-D chat echo "Victor declared: <name>. So ruled by the Beef Pope." intact; panel shows "VICTOR DECLARED" + "<name>. So ruled by the Beef Pope."; cowardice/knighting/elevation/sanction/void/free lines unchanged. Dim 0.45, center-third, no close chrome, ESC, §19.4 cue calls, Quiet gate, queue engine untouched. Nits riding: small-toast backdrop borrows theatrical Theme keys (no functional fill token exists); numeric font-size fallbacks 22/12; PANEL_FALLBACK_W 420. Isolated test_ui grew 135 → 701 asserts. Full harness **16748 passed, 0 failed** (twice). **Lane U-D signed.** POLISH:CANDIDATE.
+- U-I ([Console audit + plates](e184ffc4-12da-4696-9c5c-087bf56e718a)): writer DONE. [Review](5bb8c809-ebad-49e1-a412-6129a89eb206): Spec PASS; Quality Approved-with-nits. Ornament census clean: title-bar `seal_papal` (20px) + `plate_verb`/`_hover`/`_pressed` on exactly SANCTION BEEF GORA, KNIGHT THIS BEEF, and the dock SANCTION — every other button stock. No SendChatMessage/whisper/announce; SKIP and secondaries untinted stock gray (red means nothing); petitioner cards keep the mute arabic H2H (`1-0`); dock gated event-live AND registered-Pope, titled DIRECTOR CONSOLE; the last color literal (0.08 bg) now Theme charcoal. Arabic numerals kept. Nits riding: working-tree diff is large from accumulated desk work (not ornament creep); plates render stock until iron art lands; tooltip-background stock path left as furniture. Isolated console 3158/0, dock 814/0. Full harness **16748 passed, 0 failed** (twice). **Lane U-I signed.**
+- U-E ([HUD dress](70a0d34b-9b5d-4d99-8e2f-30baf7e25a3e)): writer DONE. [Review](32b65226-45f9-489b-9a01-7a70772c238f): Spec PASS; Quality Approved-with-nits. HUD-B structure: `Name · Level · Title · Class` format line (label serif, empty parts omitted), blackletter names ≥16 with class tint via Theme:ClassColor, class-tinted `bar_stainedglass_fill` mute rails, `sigil_gora` crest (never a faction crest), `bar_favor_fill` + `sigil_favor` on the labeled FAVOR gauge with outboard arabic percentages, parchment name fields via `frame_proclamation_center`, ≤12% height, movable. Roman tallies via Common with the same nulla convention as the card ("N–N"/"I–N", en dash U+2013); favor stays arabic; GetView stays numeric. W-F favor gates, plate-click rules, lastPair memory, verdict persist, QUIET exit — all behavior pins audited intact. Nits riding: Hud's romanGlyph helper differs in shape from the card's (painted output matches); hidden level FontStrings rewritten every paint. Isolated 894/0. Full harness **16748 passed, 0 failed** (twice). **Lane U-E signed.** POLISH:CANDIDATE.
+
+### Gate U status
+
+- **Gate U: OPEN — items 1–4 PASS; item 5 (David's in-client screenshot pass) is the close.**
+  1. All eleven lanes signed (U-A…U-J + integrator): writers + adversarial reviews + integrator Important fixes (U-C batch resilience + Theme-key contract; U-F both-nonzero roman pin).
+  2. Full harness green: **16770 passed, 0 failed** (`lua tests/run.lua`, exit 0). No skipped-as-red suites.
+  3. Conformance grep, **0 Criticals**: no hardcoded `Media/` or font paths outside Theme; no color literals on surfaces (integrator excised the dead `UI.Palette` literal table from MainFrame — its only live consumer was the shell hairline, now Theme gold — and routed Inputs' `0.08` ground through Theme charcoal); no prose/qualifier strings; no faction-crest references; no invented ranks (only the "No Beef Prophet" law comment); console carries only the title seal + verb plates (U-I census); QUIET renders minimap + Decree only (MODE declarations verified; Records Book is player-opened §14.2). Benign: BeefNet throttle-delay number table (timing, not color); stock tooltip-background furniture on functional surfaces.
+  4. Fresh-context ([Gate U](227edfc4-3546-44ba-814f-a403a5bb7b5b)): **GATE_U_FRESH_CONTEXT: PASS.** Bible + Ten Laws + shipped code only. Named the product (ceremony, sanctioned Gora, memory — not a points ladder) and the hybrid visual law (Theme on theater, stock on desks), cited the palette semantics, typography rule, and roman/arabic split. Zero Ten-Law contradictions.
+  5. **David's in-client screenshot pass — the wave closes on his acceptance**, surface by surface vs the REFERENCE renders in `docs/design/renders/`. POLISH:CANDIDATE at most until then.
+  6. This verdict. No commit (David has not asked; wave-boundary commit question comes at gate close).
+
+### Typography lock (David delegated the pick, 2026-08-18)
+
+- **display = UnifrakturMaguntia** (`UnifrakturMaguntia-Book.ttf`, static OFL). Grenze Gotisch is variable-only; a 20506 default-instance load of a wght-100–900 face is a weight gamble the Church's headline voice doesn't need. The static fraktur is predictable at 16/22/30px.
+- **label/body = EB Garamond** (variable, but its default instance is regular 400 — the book-serif read the ledger surfaces want). Alegreya stays on disk as the alternate.
+- Both alternates remain under `Media/Fonts/` with OFL licenses; a swap is a one-line `SHIPPED_FONTS` edit in `UI/Theme.lua`. If David's in-client look disagrees, the pick revisits — this is a decision, not a gate.
+
+
 

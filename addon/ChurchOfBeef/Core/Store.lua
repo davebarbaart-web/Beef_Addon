@@ -337,7 +337,7 @@ function Store:TombstoneCharacter(characterId, now)
   return deepcopy(ch)
 end
 
-function Store:AppendCeremony(entryType, participantIds, now)
+function Store:AppendCeremony(entryType, participantIds, now, text)
   local kind = trim(entryType)
   if not kind then return nil, "ceremony type required" end
   local ids = {}
@@ -349,6 +349,10 @@ function Store:AppendCeremony(entryType, participantIds, now)
       ids[#ids + 1] = id
     end
   end
+  if text ~= nil then
+    if type(text) ~= "string" then return nil, "text must be text" end
+    text = trim(text)
+  end
   local id
   id, nextCeremonyId = takeId(nextCeremonyId)
   local entry = {
@@ -357,6 +361,9 @@ function Store:AppendCeremony(entryType, participantIds, now)
     at = wall(now),
     participantIds = ids,
   }
+  if text ~= nil then
+    entry.text = text
+  end
   ceremonyLog[#ceremonyLog + 1] = entry
   return deepcopy(entry)
 end
@@ -385,6 +392,41 @@ function Store:GetMarkedMoments()
   return deepcopy(markedMoments)
 end
 
+function Store:CanonizeMoment(momentId, text)
+  if not isId(momentId) then return nil, "invalid moment id" end
+  local row
+  for i = 1, #markedMoments do
+    if markedMoments[i].id == momentId then
+      row = markedMoments[i]
+      break
+    end
+  end
+  if not row then return nil, "unknown moment" end
+  if type(text) ~= "string" then return nil, "scripture text required" end
+  if text:find("\n", 1, true) then return nil, "invalid text" end
+  local scripture = trim(text)
+  if not scripture then return nil, "scripture text required" end
+  row.scripture = scripture
+  return deepcopy(row)
+end
+
+function Store:FlagFamousUpset(characterId, opponentId)
+  if not isId(characterId) then return nil, "invalid character id" end
+  if not isId(opponentId) then return nil, "opponent must be a character id" end
+  local ch = characters[characterId]
+  if not ch then return nil, "unknown character" end
+  local results = ch.gora and ch.gora.results
+  if type(results) ~= "table" then return nil, "no matching victory" end
+  for i = #results, 1, -1 do
+    local result = results[i]
+    if result and result.opponentId == opponentId and result.won == true then
+      result.famousUpset = true
+      return deepcopy(ch)
+    end
+  end
+  return nil, "no matching victory"
+end
+
 function Store:RecordGoraResult(characterId, fields, now)
   if not isId(characterId) then return nil, "invalid character id" end
   local ch = characters[characterId]
@@ -398,10 +440,21 @@ function Store:RecordGoraResult(characterId, fields, now)
   if fields.opponentId == characterId then return nil, "a Gora needs two different combatants" end
   if not characters[fields.opponentId] then return nil, "unknown opponent" end
   local won = fields.won
-  if ruling ~= "void" then
-    if won ~= true and won ~= false then return nil, "ruling needs a won flag" end
-  else
+  if ruling == "void" then
     won = nil
+  elseif ruling == "free" then
+    if won == true or won == false then
+      return nil, "free ruling has no won flag"
+    end
+    won = nil
+  else
+    if won ~= true and won ~= false then return nil, "ruling needs a won flag" end
+  end
+
+  local text
+  if ruling == "free" and fields.text ~= nil then
+    if type(fields.text) ~= "string" then return nil, "text must be text" end
+    text = trim(fields.text)
   end
 
   local at = wall(now)
@@ -434,16 +487,48 @@ function Store:RecordGoraResult(characterId, fields, now)
     at = at,
     opponentId = fields.opponentId,
   }
-  gora.results[#gora.results + 1] = {
+  local result = {
     at = at,
     opponentId = fields.opponentId,
     ruling = ruling,
     won = won,
     famousUpset = famousUpset,
   }
+  if ruling == "free" then
+    result.text = text
+  end
+  gora.results[#gora.results + 1] = result
   gora.defenses = nil
   gora.defenseCount = nil
   return deepcopy(ch)
+end
+
+-- Derived story field (OPEN_QUESTIONS #9). Never writes gora.defenses.
+function Store:CountDefenses(characterId)
+  if not isId(characterId) then return 0 end
+  local ch = characters[characterId]
+  if not ch then return 0 end
+  if not isId(ch.humanId) then return 0 end
+  local human = humans[ch.humanId]
+  if not human then return 0 end
+  local elevationAt = human.elevationAt
+  if type(elevationAt) ~= "number" then return 0 end
+  local results = ch.gora and ch.gora.results
+  if type(results) ~= "table" then return 0 end
+  local n = 0
+  for i = 1, #results do
+    local result = results[i]
+    if result
+      and result.won == true
+      and result.ruling ~= "void"
+      and result.ruling ~= "free"
+      and type(result.at) == "number"
+      and result.at >= elevationAt
+    then
+      n = n + 1
+    end
+  end
+  return n
 end
 
 function Store:Snapshot()

@@ -1,0 +1,257 @@
+# B33-B — Presence rows honor here == false (implementation diff)
+
+Lane-only unified diff of the exclusive implementation files vs the pre-lane working tree.
+
+--- a/addon/ChurchOfBeef/UI/Console.lua
++++ b/addon/ChurchOfBeef/UI/Console.lua
+@@ -58,9 +58,11 @@
+ -- Open Knighting subjects use selectedHumanId, else the head of
+ -- Knighting:GetLine() when that humanId is an id. Scrollable Presence /
+ -- Gora / Confession / Line / CeremonyLog lists, click-to-select. Presence
+--- fail-opens Store names (here = false) until Roster is complete. Not
+--- parchment. Not collapsible tabs (desks stay glanceable without window
+--- switching).
++-- fail-opens Store names (here = false) until Roster is complete. After
++-- paintRowButtons, here == false rows use stock SetAlpha(0.45); here
++-- rows stay 1. No mute suffix. Petitions / confessions / knighting are
++-- not dimmed. Not parchment. Not collapsible tabs (desks stay glanceable
++-- without window switching).
+ local Console = {
+   MODE = "event",
+ }
+@@ -858,6 +860,16 @@
+       end,
+       onPresenceClick
+     )
++    for i = 1, #rows do
++      local btn = frame.PresenceRows[i]
++      if btn and btn.SetAlpha then
++        if rows[i].here == false then
++          btn:SetAlpha(0.45)
++        else
++          btn:SetAlpha(1)
++        end
++      end
++    end
+   end
+ end
+ 
+
+--- a/tests/test_console.lua
++++ b/tests/test_console.lua
+@@ -21,7 +21,8 @@
+ -- Show / Refresh remount UISpecialFrames rememberSpecial + B29-A
+ -- Hide remounts UISpecialFrames rememberSpecial + B31-A
+ -- Refresh in QUIET nils lastRecommendation + B32-B
+--- Console:Dismiss also reaches Confession:Dismiss).
++-- Console:Dismiss also reaches Confession:Dismiss + B33-B
++-- Presence here == false stock SetAlpha).
+ -- Isolated: wow_ui_stub + Common + Ranks + Runtime + Store + Gora + Knighting
+ -- + Sender + Decree + Console. Confession is stubbed when painted; this file
+ -- does not load Confession.lua. Knighting GetLine/Enqueue/Skip are stubbed
+@@ -4629,7 +4630,205 @@
+ assert_eq(COB.Popes, nil, "still no Pope list after B32-B")
+ end
+ runB32B()
++
++--------------------------------------------------------------------------------
++-- B33-B: Presence here == false stock SetAlpha(0.45) after paintRowButtons.
++-- Roster here == true stays 1. Petition rows are not dimmed. No mute
++-- suffix / offline / away. Fail-open membership stays. SaveNote nil.
++-- No SUMMON. No UnitIsDead. Nested inside runB8E after runB32B().
++--------------------------------------------------------------------------------
++local function runB33B()
++reset()
++Console:Init()
++assert_eq(Console.SaveNote, nil, "SaveNote stays nil")
++assert_eq(Console.GetNotes, nil, "no notes table")
++assert_eq(Console.CopyCeremonySummary, nil, "no post-show ceremony summary")
++assert_eq(Console.CeremonySummary, nil, "no ceremony summary")
++assert_eq(findButton(frame, "SUMMON THE FAITHFUL"), nil, "no SUMMON chrome")
++assert_eq(findButton(frame, "COPY SUMMARY"), nil, "no ceremony-summary chrome")
++assert_eq(findButton(frame, "WHISPER ALL"), nil, "no WHISPER ALL chrome")
++assert_eq(findButton(frame, "RSVP"), nil, "no RSVP chrome")
++
++local srcHere = io.open("addon/ChurchOfBeef/UI/Console.lua", "r")
++assert_true(srcHere ~= nil, "Console.lua is readable for B33-B")
++local srcHereBody = srcHere:read("*a")
++srcHere:close()
++local paintPresenceFn = srcHereBody:match(
++  "local function paintPresence%(frame, rows%)(.-)\nlocal function paintPetitions")
++assert_true(type(paintPresenceFn) == "string" and paintPresenceFn ~= "",
++  "paintPresence body is readable")
++assert_true(paintPresenceFn:find("paintRowButtons", 1, true) ~= nil,
++  "paintPresence still uses paintRowButtons")
++assert_true(paintPresenceFn:find("here == false", 1, true) ~= nil,
++  "paintPresence honors here == false after paint")
++assert_true(paintPresenceFn:find("SetAlpha(0.45)", 1, true) ~= nil,
++  "paintPresence SetAlpha(0.45) when here == false")
++assert_true(paintPresenceFn:find("SetAlpha(1)", 1, true) ~= nil,
++  "paintPresence SetAlpha(1) when here is not false")
++assert_eq(paintPresenceFn:find("offline", 1, true), nil,
++  "paintPresence does not add an offline suffix")
++assert_eq(paintPresenceFn:find("away", 1, true), nil,
++  "paintPresence does not add an away suffix")
++assert_eq(paintPresenceFn:find("UnitIsDead", 1, true), nil,
++  "paintPresence does not scrape UnitIsDead")
++local paintRowButtonsFn = srcHereBody:match(
++  "local function paintRowButtons%(pool, parent, rows, lineOf, selectedOf, onClick%)(.-)\nlocal function placeRow")
++assert_true(type(paintRowButtonsFn) == "string" and paintRowButtonsFn ~= "",
++  "paintRowButtons body is readable")
++assert_eq(paintRowButtonsFn:find("SetAlpha", 1, true), nil,
++  "paintRowButtons itself does not SetAlpha")
++local paintPetitionsFn = srcHereBody:match(
++  "local function paintPetitions%(frame, petitions%)(.-)\nlocal function paintRuntime")
++assert_true(type(paintPetitionsFn) == "string" and paintPetitionsFn ~= "",
++  "paintPetitions body is readable")
++assert_eq(paintPetitionsFn:find("SetAlpha", 1, true), nil,
++  "paintPetitions does not dim petition rows")
++local paintConfessionsFn = srcHereBody:match(
++  "local function paintConfessions%(frame, rows%)(.-)\nlocal function paintKnightingLine")
++assert_true(type(paintConfessionsFn) == "string" and paintConfessionsFn ~= "",
++  "paintConfessions body is readable")
++assert_eq(paintConfessionsFn:find("SetAlpha", 1, true), nil,
++  "paintConfessions does not dim confession rows")
++local paintKnightingFn = srcHereBody:match(
++  "local function paintKnightingLine%(frame, rows%)(.-)\nlocal function paintRecommendation")
++assert_true(type(paintKnightingFn) == "string" and paintKnightingFn ~= "",
++  "paintKnightingLine body is readable")
++assert_eq(paintKnightingFn:find("SetAlpha", 1, true), nil,
++  "paintKnightingLine does not dim knighting rows")
++local presenceLineFn = srcHereBody:match(
++  "local function presenceLine%(row%)(.-)\nlocal function h2hScore")
++assert_true(type(presenceLineFn) == "string" and presenceLineFn ~= "",
++  "presenceLine body is readable")
++assert_eq(presenceLineFn:find("offline", 1, true), nil,
++  "presenceLine does not add offline")
++assert_eq(presenceLineFn:find("away", 1, true), nil,
++  "presenceLine does not add away")
++assert_eq(presenceLineFn:find("here", 1, true), nil,
++  "presenceLine still ignores the here flag for copy")
++assert_true(srcHereBody:find("here = true", 1, true) ~= nil,
++  "GetPresence roster rows stay here true")
++assert_true(srcHereBody:find("here = false", 1, true) ~= nil,
++  "GetPresence Store-only rows stay here false")
++assert_eq(srcHereBody:find("UnitIsDead", 1, true), nil, "source must not scrape UnitIsDead")
++assert_eq(srcHereBody:find("function Console:SaveNote", 1, true), nil,
++  "source must not define SaveNote")
++assert_eq(srcHereBody:find("SUMMON THE FAITHFUL", 1, true), nil,
++  "source must not contain SUMMON")
++assert_eq(srcHereBody:find("Parchment", 1, true), nil, "console stays stock, not parchment")
++assert_eq(srcHereBody:find("PanelTabButtonTemplate", 1, true), nil,
++  "desks are not collapsed into tabs")
++
++local function pinAlpha(btn)
++  if type(btn) ~= "table" then return end
++  btn._alpha = 1
++  btn.SetAlpha = function(self, a)
++    self._alpha = a
++  end
++  btn.GetAlpha = function(self)
++    return self._alpha
++  end
+ end
++local function pinPool(pool)
++  if type(pool) ~= "table" then return end
++  for i = 1, #pool do
++    pinAlpha(pool[i])
++  end
++end
++pinPool(frame.PresenceRows)
++pinPool(frame.PetitionRows)
++pinPool(frame.ConfessionRows)
++pinPool(frame.KnightingRows)
++local savedCreate = CreateFrame
++CreateFrame = function(frameType, name, parent, template)
++  local w = savedCreate(frameType, name, parent, template)
++  if frameType == "Button" then
++    pinAlpha(w)
++  end
++  return w
++end
++local function stubAlpha(btn)
++  if type(btn) ~= "table" then return nil end
++  if type(btn.GetAlpha) == "function" then
++    local a = btn:GetAlpha()
++    if a ~= nil then return a end
++  end
++  return btn._alpha
++end
++local function almost(a, want, msg)
++  assert_true(type(a) == "number" and math.abs(a - want) < 0.001, msg)
++end
++
++local savedPred = Sender.IsRegisteredPope
++Sender.IsRegisteredPope = function() return true end
++
++reset()
++Console:Init()
++local human, localChar = seedLinked("Beefina", "Steve", 1)
++local otherHuman, otherChar = seedLinked("Chuckroast", "Chuck", 3)
++assert_eq(human.id ~= nil, true, "local human fixture exists")
++assert_eq(otherHuman.id ~= nil, true, "Store human fixture exists")
++assert_true(Console:StartEvent() ~= nil, "StartEvent for a live petition")
++assert_true(Gora:Petition(localChar.id) ~= nil, "roster member petition lands")
++COB.Roster = {
++  ready = true,
++  complete = false,
++  members = {
++    beefina = { name = "Beefina", guildRankIndex = 6 },
++  },
++}
++local presenceOpen = Console:GetPresence()
++assert_eq(#presenceOpen, 2, "fail-open membership still lists member and Store-only")
++assert_eq(presenceOpen[1] and presenceOpen[1].name, "Beefina", "seed member stays first")
++assert_eq(presenceOpen[1] and presenceOpen[1].here, true, "roster member stays here")
++assert_eq(presenceOpen[1] and presenceOpen[1].characterId, localChar.id, "seed member keeps characterId")
++assert_eq(presenceOpen[2] and presenceOpen[2].name, "Chuckroast", "Store-only character is still listed")
++assert_eq(presenceOpen[2] and presenceOpen[2].here, false, "Store-only stays not here")
++assert_eq(presenceOpen[2] and presenceOpen[2].characterId, otherChar.id, "Chuckroast keeps characterId")
++Console:Refresh()
++
++local hereBtn
++local storeBtn
++local painted = rawget(frame, "PresenceRows")
++assert_true(type(painted) == "table", "Presence rows painted")
++for i = 1, #painted do
++  local btn = painted[i]
++  local row = btn and btn._row
++  if row and row.characterId == localChar.id then
++    hereBtn = btn
++  elseif row and row.characterId == otherChar.id then
++    storeBtn = btn
++  end
++end
++assert_true(hereBtn ~= nil, "roster here == true row is painted")
++assert_true(storeBtn ~= nil, "fail-open Store row is painted")
++almost(stubAlpha(hereBtn), 1, "roster here == true stays alpha 1")
++almost(stubAlpha(storeBtn), 0.45, "fail-open here == false SetAlpha ~0.45")
++local storeLabel = storeBtn:GetText() or ""
++assert_true(storeLabel:find("Chuckroast", 1, true) ~= nil, "Store-only label keeps the name")
++assert_eq(storeLabel:find("offline", 1, true), nil, "Store-only label has no offline suffix")
++assert_eq(storeLabel:find("away", 1, true), nil, "Store-only label has no away suffix")
++assert_eq(storeLabel:find("not here", 1, true), nil, "Store-only label has no not-here suffix")
++
++local petBtn = frame.PetitionRows and frame.PetitionRows[1]
++assert_true(petBtn ~= nil, "petition row is painted")
++almost(stubAlpha(petBtn), 1, "petition rows are not dimmed")
++
++CreateFrame = savedCreate
++Sender.IsRegisteredPope = savedPred
++assert_eq(Sender:IsRegisteredPope(COB.Group.PlayerName()), false,
++  "B33-B wrapping the predicate does not stub the list true")
++
++assert_eq(Console.SaveNote, nil, "SaveNote stays nil after B33-B")
++if standalone then
++  assert_eq(COB.Archive, nil, "isolation still does not load Archive")
++  assert_eq(COB.UI, nil, "isolation still does not load the Quiet shell")
++  assert_eq(COB.Toasts, nil, "isolation still does not load Toasts")
++  assert_eq(COB.Confession, nil, "isolation still does not load Confession")
++end
++assert_eq(COB.Popes, nil, "still no Pope list after B33-B")
++end
++runB33B()
++end
+ runB8E()
+ 
+ --------------------------------------------------------------------------------

@@ -1,0 +1,201 @@
+diff --git a/addon/ChurchOfBeef/UI/Hud.lua b/addon/ChurchOfBeef/UI/Hud.lua
+--- a/addon/ChurchOfBeef/UI/Hud.lua
++++ b/addon/ChurchOfBeef/UI/Hud.lua
+@@ -2,12 +2,15 @@
+ local COB = ChurchOfBeef
+ 
+ -- Event Mode Fight HUD (Bible §10.7, §19.2 / §19.3). Compact spectator card.
+--- Appears at sanction. Persists through the verdict beat: remember the last
+--- sanctioned pair and keep painting it after GetSanctioned() is nil while
+--- Runtime is still not QUIET (favor frozen on the last split). Hide on QUIET
+--- / EndEvent / no last pair. A new Sanction replaces the remembered pair.
+--- No verdict qualifier. Defined fallback: everything except live health.
+--- Favor split is Pope-local from Gora, or congregation broadcast only.
++-- Appears at sanction. Congregation pair arrives as Runtime subjects.fighters
++-- (STATE); they never Sanction locally. livePair is GetSanctioned(), else
++-- subjects.fighters with two ids. Remember it as lastPair. Persist lastPair
++-- when both Gora and Runtime fighters are empty and the event is still live
++-- (B9-E). Hide on QUIET / EndEvent / no last pair. A new live pair replaces
++-- the remembered pair. No verdict qualifier. Defined fallback: everything
++-- except live health. Favor split is Pope-local from Gora (gora pair only,
++-- so a Runtime leftover after a ruling does not thaw the freeze), or
++-- congregation broadcast only.
+ -- Dress is stock iron/parchment (QuestBG + WHITE8X8 + tooltip border). Thin
+ -- parchment fields sit behind name+title. Center is a stock ring, not a
+ -- faction crest. Mute rails are decorative, not live HP. Defense count is
+@@ -194,12 +197,31 @@
+   return type(snap) == "table" and snap.state ~= "QUIET"
+ end
+ 
+-local function livePair()
++local function goraPair()
+   if not COB.Gora or not COB.Gora.GetSanctioned then return nil end
+   local pair = COB.Gora:GetSanctioned()
+   if type(pair) ~= "table" then return nil end
+   if pair.fighterA == nil or pair.fighterB == nil then return nil end
+   return pair
++end
++
++local function runtimePair()
++  if not COB.Runtime or not COB.Runtime.Snapshot then return nil end
++  local snap = COB.Runtime:Snapshot()
++  if type(snap) ~= "table" then return nil end
++  local subjects = snap.subjects
++  if type(subjects) ~= "table" then return nil end
++  local fighters = subjects.fighters
++  if type(fighters) ~= "table" then return nil end
++  local a, b = fighters[1], fighters[2]
++  if type(a) ~= "number" or type(b) ~= "number" then return nil end
++  return { fighterA = a, fighterB = b }
++end
++
++local function livePair()
++  local gora = goraPair()
++  if gora then return gora end
++  return runtimePair()
+ end
+ 
+ local function localSender()
+@@ -238,7 +260,7 @@
+ 
+ local function resolveFavor()
+   if isLocalPope() then
+-    if livePair() then
++    if goraPair() then
+       if not (COB.Gora and COB.Gora.GetFavorSplit) then
+         lastPopeFavor = nil
+         return nil
+
+diff --git a/tests/test_hud.lua b/tests/test_hud.lua
+--- a/tests/test_hud.lua
++++ b/tests/test_hud.lua
+@@ -1,7 +1,9 @@
+ -- Fight HUD (Wire W-F favor + Vestments V-D dress + B4-F name fields
+--- + B8-D mute defense integer + B9-E persist through the verdict). Isolated:
++-- + B8-D mute defense integer + B9-E persist through the verdict
++-- + B10-B congregation pair from Runtime subjects.fighters). Isolated:
+ -- wow_ui_stub + Common + Ranks + Runtime + Store + Gora + Hud. Event Mode
+ -- only. No live health, favor economy, sound, or toasts. Standalone wrap.
++-- Congregation never Sanctions; the star pair is subjects.fighters.
+ -- Congregation favor is broadcast-only. Pope stub fills from
+ -- Gora:GetFavorSplit; after the pair clears, the last split is frozen.
+ -- Dress is stock iron/parchment only — no faction crests, no custom Media.
+@@ -201,6 +203,9 @@
+ assert_true(src:find("nameFieldA", 1, true) ~= nil, "source names nameFieldA")
+ assert_true(src:find("nameFieldB", 1, true) ~= nil, "source names nameFieldB")
+ assert_true(src:find("CountDefenses", 1, true) ~= nil, "source reads Store:CountDefenses")
++assert_true(src:find("subjects", 1, true) ~= nil, "source reads Runtime subjects")
++assert_true(src:find("fighters", 1, true) ~= nil, "source reads subjects.fighters")
++assert_eq(src:find("Gora:Sanction", 1, true), nil, "HUD does not call Gora:Sanction")
+ assert_true(src:find("defenseA", 1, true) ~= nil, "source names defenseA")
+ assert_true(src:find("defenseB", 1, true) ~= nil, "source names defenseB")
+ assert_eq(src:find("defenses of", 1, true), nil, "source does not invent defenses copy")
+@@ -858,7 +863,108 @@
+ 
+ assert_eq(sounds, 0, "the suite played no sound")
+ assert_eq(healthReads, 0, "the suite never scraped health")
++
++--------------------------------------------------------------------------------
++-- B10-B: congregation pair from Runtime subjects.fighters. No Gora sanction.
++-- OpenRite names two ids → HUD shown. One id does not invent a pair.
++-- Persist lastPair when both sources empty and the event is still live.
++-- QUIET hides. Favor W-F intact. Existing DeclareVictor persist pins stay.
++--------------------------------------------------------------------------------
++reset()
++Runtime:StartEvent()
++local congA, congB = twoChars()
++assert_eq(Gora:GetSanctioned(), nil, "congregation never Sanctioned")
++assert_true(Runtime:OpenRite("Gora", { fighters = { congA.id, congB.id } }) ~= nil,
++  "OpenRite names the star pair")
++assert_eq(Gora:GetSanctioned(), nil, "OpenRite is not a Sanction")
++view = Hud:Refresh()
++assert_eq(Hud:IsShown(), true, "Runtime fighters show the HUD with no Gora pair")
++assert_eq(view.shown, true, "congregation subjects view is shown")
++assert_eq(view.fighterA.id, congA.id, "fighter A id is the Runtime subject")
++assert_eq(view.fighterB.id, congB.id, "fighter B id is the Runtime subject")
++assert_eq(view.fighterA.name, "Chuckroast", "congregation fighter A name comes from Store")
++assert_eq(view.fighterB.name, "Tendermage", "congregation fighter B name comes from Store")
++assert_eq(view.health, nil, "congregation subjects view has no health")
++assert_eq(view.favor, nil, "congregation without broadcast hides favor")
++assert_eq(view.verdict, nil, "subjects paint does not invent a verdict")
++assert_eq(Gora:GetSanctioned(), nil, "painting subjects does not invent a Gora pair")
++assert_eq(healthReads, 0, "subjects paint does not read health")
++
++Hud:SetBroadcastFavor({ a = 2, b = 1 })
++view = Hud:Refresh()
++assert_eq(view.favor.a, 2, "congregation subjects still follow W-F broadcast a")
++assert_eq(view.favor.b, 1, "congregation subjects still follow W-F broadcast b")
++assert_eq(view.favor.pctA, 66, "congregation subjects 2/1 is 66%")
++assert_eq(frame.favorLabel:IsShown(), true, "broadcast still shows FAVOR on subjects")
++Hud:SetBroadcastFavor(nil)
++view = Hud:Refresh()
++assert_eq(view.favor, nil, "clearing broadcast hides favor on the subjects pair")
++assert_eq(Hud:IsShown(), true, "clearing broadcast does not hide the subjects HUD")
++
++assert_true(Runtime:CloseRite() ~= nil, "CloseRite keeps the event live")
++assert_true(Runtime:Continue() ~= nil, "Continue clears Runtime fighters")
++assert_eq(Runtime:Snapshot().subjects.fighters, nil, "Runtime fighters are empty")
++assert_eq(Gora:GetSanctioned(), nil, "Gora still has no pair after Continue")
++view = Hud:Refresh()
++assert_eq(Hud:IsShown(), true, "lastPair persists when both sources are empty")
++assert_eq(view.fighterA.id, congA.id, "persisted congregation pair still paints A")
++assert_eq(view.fighterB.id, congB.id, "persisted congregation pair still paints B")
++assert_eq(view.health, nil, "persisted congregation view has no health")
++assert_eq(view.favor, nil, "persisted congregation favor still follows W-F")
+ 
++assert_true(Runtime:EndEvent() ~= nil, "EndEvent after subjects persist")
++assert_eq(Runtime:Snapshot().state, "QUIET", "runtime is QUIET after subjects")
++view = Hud:Refresh()
++assert_eq(Hud:IsShown(), false, "QUIET hides the congregation HUD")
++assert_eq(view.shown, false, "Quiet view after subjects persist is hidden")
++assert_eq(view.fighterA, nil, "Quiet after subjects has no fighter A")
++assert_eq(view.health, nil, "Quiet after subjects has no health")
++
++reset()
++Runtime:StartEvent()
++local one, _ = twoChars()
++assert_true(Runtime:OpenRite("Gora", { fighters = { one.id } }) ~= nil,
++  "one fighter is valid Runtime")
++assert_eq(Gora:GetSanctioned(), nil, "one fighter is not a Sanction")
++view = Hud:Refresh()
++assert_eq(Hud:IsShown(), false, "one fighter does not invent a pair")
++assert_eq(view.shown, false, "one-fighter view stays hidden")
++assert_eq(view.fighterA, nil, "one fighter does not mint fighter A")
++
++reset()
++Runtime:StartEvent()
++a, b = twoChars()
++Gora:Sanction(a.id, b.id)
++assert_true(Runtime:OpenRite("Gora", { fighters = { a.id, b.id } }) ~= nil,
++  "Pope OpenRite names the same pair")
++stubLocalPope(true)
++local freezeFan1 = Store:CreateCharacter({ name = "FreezeFanOne", class = "Priest", level = 70 })
++local freezeFan2 = Store:CreateCharacter({ name = "FreezeFanTwo", class = "Priest", level = 70 })
++local freezeFan3 = Store:CreateCharacter({ name = "FreezeFanThree", class = "Priest", level = 70 })
++assert_true(Gora:RecordFavor(freezeFan1.id, a.id) ~= nil, "freeze first pick lands")
++assert_true(Gora:RecordFavor(freezeFan2.id, a.id) ~= nil, "freeze second pick lands")
++assert_true(Gora:RecordFavor(freezeFan3.id, b.id) ~= nil, "freeze third pick lands")
++view = Hud:Refresh()
++assert_eq(view.favor.a, 2, "Pope live split a before ruling with subjects")
++assert_eq(view.favor.b, 1, "Pope live split b before ruling with subjects")
++Gora:DeclareVictor(a.id)
++assert_eq(Gora:GetSanctioned(), nil, "ruling cleared the live Gora pair")
++assert_true(type(Runtime:Snapshot().subjects.fighters) == "table",
++  "Runtime still names fighters after the ruling")
++assert_eq(Runtime:Snapshot().subjects.fighters[1], a.id, "Runtime fighter A remains")
++assert_eq(Gora:GetFavorSplit().a, 0, "Gora split is empty after the pair clears")
++view = Hud:Refresh()
++assert_eq(Hud:IsShown(), true, "HUD persists with Runtime subjects after the ruling")
++assert_eq(view.favor.a, 2, "Pope freeze survives Runtime subjects after the ruling")
++assert_eq(view.favor.b, 1, "Pope freeze b survives Runtime subjects")
++assert_eq(view.favor.pctA, 66, "Pope freeze stays 66 with leftover subjects")
++assert_eq(view.health, nil, "subjects leftover persist has no health")
++assert_eq(view.verdict, nil, "subjects leftover persist has no verdict qualifier")
++COB.Sender = nil
++
++assert_eq(sounds, 0, "subjects lane played no sound")
++assert_eq(healthReads, 0, "subjects lane never scraped health")
++
+ --------------------------------------------------------------------------------
+ -- V-D height budget: ≤ 12% of UIParent when the parent height is known.
+ -- Unknown parent stays the compact card (pinned at Init). Do not grow into a toast.

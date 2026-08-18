@@ -148,7 +148,7 @@ local function parseEvent(snap)
 
   local subjects, subErr = parseSubjects(snap.subjects)
   if not subjects then return nil, subErr end
-  if state == "QUIET" or state == "ASSEMBLY" then
+  if state == "QUIET" then
     if subjects.candidate ~= nil or subjects.fighters ~= nil then
       return nil, "invalid subjects"
     end

@@ -1,0 +1,104 @@
+# B27-B — Decree Hide blanks leftover paint when the line is gone (implementation diff)
+
+Lane-only unified diff of the exclusive implementation files vs the pre-lane working tree.
+
+--- a/addon/ChurchOfBeef/UI/Decree.lua
++++ b/addon/ChurchOfBeef/UI/Decree.lua
+@@ -316,8 +316,13 @@
+ end
+ 
+ function DecreeBanner:Hide()
+-  if self.frame then self.frame:Hide() end
++  if self.frame then
++    if not getDecree() then
++      wipePaint(self.frame)
++    end
++    self.frame:Hide()
++  end
+   return true
+ end
+ 
+ function DecreeBanner:GetView()
+
+--- a/tests/test_decree_ui.lua
++++ b/tests/test_decree_ui.lua
+@@ -236,6 +236,26 @@
+   "empty Show does not Show the banner")
+ assert_eq(emptyShow:find("PlaySound", 1, true), nil,
+   "empty Show does not PlaySound")
++local hideBody = src:match("function DecreeBanner:Hide%(%)%s*\n(.-)function DecreeBanner:GetView")
++assert_true(type(hideBody) == "string" and hideBody ~= "",
++  "Hide body is readable")
++assert_true(hideBody:find("getDecree()", 1, true) ~= nil,
++  "Hide checks getDecree before wiping")
++assert_true(
++  hideBody:find("wipePaint(self.frame)", 1, true) ~= nil
++    or hideBody:find("wipePaint(frame)", 1, true) ~= nil
++    or hideBody:find('LineText:SetText("")', 1, true) ~= nil,
++  "Hide blanks leftover LineText when Get is nil")
++assert_true(hideBody:find(":Hide()", 1, true) ~= nil,
++  "Hide hides the frame")
++assert_eq(hideBody:find("paint(", 1, true), nil,
++  "Hide does not paint")
++assert_eq(hideBody:find(":Show()", 1, true), nil,
++  "Hide does not Show")
++assert_eq(hideBody:find("PlaySound", 1, true), nil,
++  "Hide does not PlaySound")
++assert_eq(hideBody:find("Goldshire", 1, true), nil,
++  "Hide does not invent a line")
+ 
+ local miniFile = io.open("addon/ChurchOfBeef/UI/Minimap.lua", "r")
+ assert_true(miniFile ~= nil, "UI/Minimap.lua is readable")
+@@ -410,6 +430,50 @@
+       "second empty Show after Clear keeps FlavorText blank")
+     UISpecialFrames = savedAfter
+   end
+   runB26C()
++
++  -- B27-B: leftover Goldshire must blank on Hide after Clear (not Show).
++  -- Hide while a Decree is still set just Hides; next Show paints.
++  -- B26-C empty-Show wipe stays. Isolation wrap stays.
++  local function runB27B()
++    Decree:Set({
++      line = "Goldshire Inn — Sunday, 7:00 PM",
++      flavor = "Bring a friend.",
++    })
++    assert_eq(Banner:Show(), true, "B27-B Show paints Goldshire")
++    assert_eq(Banner:IsShown(), true, "B27-B Show opens the banner")
++    assert_eq(Banner.frame.LineText:GetText(), "Goldshire Inn — Sunday, 7:00 PM",
++      "B27-B leftover starts as Goldshire")
++    assert_eq(Banner.frame.FlavorText:GetText(), "Bring a friend.",
++      "B27-B leftover flavor starts set")
++    Decree:Clear()
++    assert_eq(Decree:Get(), nil, "B27-B Clear removes the Decree")
++    local cuesHide = sounds
++    assert_eq(Banner:Hide(), true, "Hide after Clear succeeds")
++    assert_eq(Banner:IsShown(), false, "Hide after Clear stays hidden")
++    assert_eq(Banner.frame.LineText:GetText(), "",
++      "Hide after Clear blanks leftover LineText")
++    assert_eq(Banner.frame.FlavorText:GetText(), "",
++      "Hide after Clear blanks leftover FlavorText")
++    assert_eq(Banner.frame.FlavorText:IsShown(), false,
++      "Hide after Clear hides leftover flavor")
++    assert_eq(sounds, cuesHide, "Hide after Clear plays no sound")
++
++    Decree:Set({
++      line = "Goldshire Inn — Sunday, 7:00 PM",
++      flavor = "Bring a friend.",
++    })
++    assert_eq(Banner:Show(), true, "Show with live Decree paints")
++    local cuesLive = sounds
++    assert_eq(Banner:Hide(), true, "Hide while Decree is set succeeds")
++    assert_eq(Banner:IsShown(), false, "Hide while Decree is set hides")
++    assert_eq(sounds, cuesLive, "Hide while Decree is set plays no sound")
++    assert_eq(Banner:Show(), true, "Show after Hide-with-Decree still paints")
++    assert_eq(Banner.frame.LineText:GetText(), "Goldshire Inn — Sunday, 7:00 PM",
++      "Show after Hide-with-Decree paints Goldshire")
++    assert_eq(Banner.frame.FlavorText:GetText(), "Bring a friend.",
++      "Show after Hide-with-Decree paints flavor")
++    Decree:Clear()
++    Banner:Hide()
++  end
++  runB27B()
+ end
+ runB25B()

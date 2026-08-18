@@ -128,6 +128,11 @@ local function clearList()
   end
 end
 
+local function restoreShipped()
+  clearList()
+  COB.Popes.List[1] = "Thedave"
+end
+
 --------------------------------------------------------------------------------
 -- Isolated surface: predicate + workspace list. Not transport, not Runtime.
 --------------------------------------------------------------------------------
@@ -135,7 +140,11 @@ assert_true(Sender ~= nil, "COB.Sender exists")
 assert_true(COB.Popes ~= nil, "COB.Popes exists")
 assert_eq(type(COB.Popes.List), "table", "Popes.List exists")
 assert_eq(type(COB.Popes.IsListed), "function", "Popes.IsListed exists")
-assert_eq(#COB.Popes.List, 0, "shipped List is empty")
+assert_eq(#COB.Popes.List, 1, "shipped List is Thedave")
+assert_eq(COB.Names.Key(COB.Popes.List[1]), "thedave", "shipped name keys to thedave")
+assert_eq(COB.Popes.IsListed("Thedave"), true, "Thedave is listed")
+assert_eq(Sender:IsRegisteredPope("Thedave"), true, "Thedave is a registered Pope")
+assert_eq(Sender:IsRegisteredPope("Thedave-Whitemane"), true, "realm suffix keys to Thedave")
 if standalone then
   assert_eq(COB.Net, nil, "isolated suite does not load BeefNet")
   assert_eq(COB.Codec, nil, "isolated suite does not load Codec")
@@ -184,10 +193,10 @@ assert_eq(Sender.Encode, nil, "Codec is not this lane")
 assert_eq(Sender.Decode, nil, "Codec is not this lane")
 
 --------------------------------------------------------------------------------
--- Empty List: Beefina / Pope / GM / nil stay false. STATE / SNAPSHOT refuse.
+-- Unlisted names: Beefina / Pope / GM / nil stay false. STATE / SNAPSHOT refuse.
 -- Guild rank is not the Church. The name Pope is not a registered Pope.
 --------------------------------------------------------------------------------
-assert_eq(COB.Popes.IsListed("Beefina"), false, "empty List does not list Beefina")
+assert_eq(COB.Popes.IsListed("Beefina"), false, "Thedave does not list Beefina")
 assert_eq(Sender:IsRegisteredPope("Beefina"), false, "a named sender is not a registered Pope")
 assert_eq(Sender:IsRegisteredPope("Beefina-Whitemane"), false, "a realm-suffixed sender is not a registered Pope")
 assert_eq(Sender:IsRegisteredPope("Pope"), false, "the name Pope is not a registered Pope")
@@ -214,6 +223,9 @@ end
 
 assert_eq(Sender:Accept("Beefina", "STATE"), false, "STATE is not congregation input")
 assert_eq(Sender:Accept("Beefina", "SNAPSHOT"), false, "SNAPSHOT is not congregation input")
+assert_eq(Sender:Accept("Thedave", "STATE"), true, "STATE from Thedave is accepted")
+assert_eq(Sender:Accept("thedave", "SNAPSHOT"), true, "SNAPSHOT from thedave is accepted")
+assert_eq(Sender:Accept("Thedave-Whitemane", "STATE"), true, "STATE from realm-suffixed Thedave is accepted")
 assert_eq(Sender:Accept("Beefina", nil), false, "a missing kind is discarded")
 assert_eq(Sender:Accept("Beefina", ""), false, "an empty kind is discarded")
 assert_eq(Sender:Accept("Beefina", "input"), false, "lowercase input is not INPUT")
@@ -288,17 +300,19 @@ clearList()
 COB.Popes.List[1] = "Beefina"
 assert_eq(COB.Popes.IsListed("Beefina"), true, "Display-case List entry is re-keyed")
 assert_eq(Sender:IsRegisteredPope("beefina"), true, "Display-case List entry registers")
-clearList()
-assert_eq(#COB.Popes.List, 0, "List restored empty")
+restoreShipped()
+assert_eq(#COB.Popes.List, 1, "List restored to Thedave")
+assert_eq(COB.Popes.IsListed("Thedave"), true, "restored List lists Thedave")
 assert_eq(COB.Popes.IsListed("Beefina"), false, "restored List does not list Beefina")
-assert_eq(Sender:IsRegisteredPope("Beefina"), false, "restored List is not a registered Pope")
+assert_eq(Sender:IsRegisteredPope("Beefina"), false, "Beefina is still not a registered Pope")
 assert_eq(Sender:Accept("Beefina", "STATE"), false, "STATE dies again after List restore")
 assert_eq(Sender:Accept("Beefina", "SNAPSHOT"), false, "SNAPSHOT dies again after List restore")
 
 --------------------------------------------------------------------------------
--- Override: empty List, ChurchOfBeefDB.ui.popeOverrides. Popes.lua does not
+-- Override: ChurchOfBeefDB.ui.popeOverrides. Popes.lua does not
 -- read SV. Clear after. Missing ui / override is ignored.
 --------------------------------------------------------------------------------
+clearList()
 local priorDB = ChurchOfBeefDB
 ChurchOfBeefDB = { ui = { popeOverrides = { "Beefina" } } }
 assert_eq(#COB.Popes.List, 0, "override does not write List")
@@ -322,6 +336,8 @@ assert_eq(Sender:IsRegisteredPope("Beefina"), false, "missing popeOverrides is i
 ChurchOfBeefDB = { ui = { popeOverrides = "Beefina" } }
 assert_eq(Sender:IsRegisteredPope("Beefina"), false, "a non-array override is ignored")
 ChurchOfBeefDB = priorDB
+restoreShipped()
+assert_eq(Sender:IsRegisteredPope("Thedave"), true, "shipped Thedave survives override tests")
 
 --------------------------------------------------------------------------------
 -- Discarded theater is not stored for later paint. No send. No frames.

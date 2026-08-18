@@ -1,0 +1,144 @@
+diff --git a/addon/ChurchOfBeef/UI/Markers.lua b/addon/ChurchOfBeef/UI/Markers.lua
+--- a/addon/ChurchOfBeef/UI/Markers.lua
++++ b/addon/ChurchOfBeef/UI/Markers.lua
+@@ -82,6 +82,10 @@
+   if type(GetNumGroupMembers) ~= "function" or type(UnitName) ~= "function" then
+     return nil
+   end
++  local pok, me = pcall(UnitName, "player")
++  if pok and namesSame(me, name) then
++    return "player"
++  end
+   local ok, raw = pcall(GetNumGroupMembers)
+   if not ok then return nil end
+   local size = tonumber(raw) or 0
+
+diff --git a/tests/test_markers.lua b/tests/test_markers.lua
+--- a/tests/test_markers.lua
++++ b/tests/test_markers.lua
+@@ -198,6 +198,9 @@
+ assert_true(src:find("pcall(TargetUnit", 1, true) ~= nil, "TargetUnit is pcalled")
+ assert_true(src:find('"not in a group"', 1, true) ~= nil, "ungrouped error is named")
+ assert_true(src:find('"not a registered pope"', 1, true) ~= nil, "unlisted Pope error is named")
++assert_true(src:find('return "player"', 1, true) ~= nil, "resolveUnit returns the player token")
++assert_true(src:find("namesSame(me, name)", 1, true) ~= nil, "player resolve uses namesSame")
++assert_true(src:find('pcall(UnitName, "player")', 1, true) ~= nil, "UnitName player read is pcalled")
+ assert_eq(src:find("PlaySound", 1, true), nil, "source does not play sound")
+ assert_eq(src:find("PlaySoundFile", 1, true), nil, "source does not call PlaySoundFile")
+ assert_eq(src:find("Toasts", 1, true), nil, "source does not drive Toasts")
+@@ -427,6 +430,115 @@
+ assert_eq(#targetCalls, 1, "ungrouped Target still spies TargetUnit")
+ assert_eq(#raidTargets, 0, "ungrouped Target does not mark")
+ 
++--------------------------------------------------------------------------------
++-- B16-D: grouped + Pope + Event, local stub player Beefina → "player".
++-- Party scan pins stay. Quiet / ungrouped / unlisted Pope still refuse.
++--------------------------------------------------------------------------------
++reset()
++Runtime:StartEvent()
++popeFlag = true
++armRaid("Chuckroast")
++ok, err = Markers:MarkCandidate("Beefina")
++assert_eq(ok, true, "Event Pope grouped MarkCandidate on player is true")
++assert_eq(err, nil, "successful player MarkCandidate has no error")
++assert_eq(#raidTargets, 1, "player MarkCandidate spies SetRaidTarget once")
++assert_eq(raidTargets[1].unit, "player", "MarkCandidate uses the player UnitToken")
++assert_eq(raidTargets[1].index, 1, "player MarkCandidate still places star index 1")
++assert_eq(raidTargets[1].unit ~= "raid1", true, "player mark does not use the raid1 pin")
++view = Markers:GetView()
++assert_eq(view.ok, true, "player MarkCandidate view records success")
++assert_eq(view.verb, "MarkCandidate", "player MarkCandidate view records the verb")
++assert_eq(view.name, "Beefina", "player MarkCandidate view records the local name")
++assert_eq(view.unit, "player", "player MarkCandidate view records the player token")
++assert_eq(view.index, 1, "player MarkCandidate view records star index 1")
++
++ok, err = Markers:MarkCandidate("beefina")
++assert_eq(ok, true, "Names.Same matches player case")
++assert_eq(raidTargets[#raidTargets].unit, "player", "player case fold still uses player")
++
++stub.playerName = "Beefina-Whitemane"
++ok, err = Markers:MarkCandidate("Beefina")
++assert_eq(ok, true, "Names.Same matches a player realm suffix")
++assert_eq(raidTargets[#raidTargets].unit, "player", "player realm suffix still uses player")
++stub.playerName = "Beefina"
++
++for i = #raidTargets, 1, -1 do raidTargets[i] = nil end
++ok, err = Markers:MarkFighters("Beefina", "Chuckroast")
++assert_eq(ok, true, "MarkFighters is true when A is the player")
++assert_eq(err, nil, "successful player MarkFighters has no error")
++assert_eq(#raidTargets, 2, "player MarkFighters spies two SetRaidTarget calls")
++assert_eq(raidTargets[1].unit, "player", "fighter A is the player UnitToken")
++assert_eq(raidTargets[1].index, 2, "fighter A is still index 2")
++assert_eq(raidTargets[2].unit, "raid2", "fighter B stays the scanned raid token")
++assert_eq(raidTargets[2].index, 3, "fighter B is still index 3")
++view = Markers:GetView()
++assert_eq(view.unitA, "player", "view records fighter A as player")
++assert_eq(view.unitB, "raid2", "view records fighter B as raid2")
++assert_eq(view.indexA, 2, "view records fighter A index")
++assert_eq(view.indexB, 3, "view records fighter B index")
++
++for i = #raidTargets, 1, -1 do raidTargets[i] = nil end
++ok, err = Markers:MarkFighters("Chuckroast", "Beefina")
++assert_eq(ok, true, "MarkFighters is true when B is the player")
++assert_eq(raidTargets[1].unit, "raid2", "fighter A stays the scanned raid token")
++assert_eq(raidTargets[1].index, 2, "fighter A is still index 2")
++assert_eq(raidTargets[2].unit, "player", "fighter B is the player UnitToken")
++assert_eq(raidTargets[2].index, 3, "fighter B is still index 3")
++
++reset()
++Runtime:StartEvent()
++popeFlag = true
++stub.inRaid = false
++stub.groupSize = 2
++stub.group = {
++  party1 = { name = "Chuckroast" },
++  party2 = { name = "Tendermage" },
++}
++ok, err = Markers:MarkCandidate("Chuckroast")
++assert_eq(ok, true, "party scan pin stays after player resolve")
++assert_eq(raidTargets[1].unit, "party1", "party scan still uses party1")
++assert_eq(raidTargets[1].index, 1, "party candidate is still star")
++ok, err = Markers:MarkCandidate("Beefina")
++assert_eq(ok, true, "party MarkCandidate on player is true")
++assert_eq(raidTargets[#raidTargets].unit, "player", "party player mark uses player not partyN")
++assert_eq(raidTargets[#raidTargets].index, 1, "party player mark is still star")
++ok, err = Markers:MarkFighters("Beefina", "Chuckroast")
++assert_eq(ok, true, "party MarkFighters is true when A is the player")
++assert_eq((raidTargets[#raidTargets - 1] or {}).unit, "player", "party fighter A is the player token")
++assert_eq((raidTargets[#raidTargets] or {}).unit, "party1", "party fighter B stays party1")
++
++reset()
++Runtime:StartEvent()
++popeFlag = true
++ok, err = Markers:MarkCandidate("Beefina")
++assert_eq(ok, false, "ungrouped player MarkCandidate is false")
++assert_eq(err, "not in a group", "ungrouped player Mark still refuses")
++assert_eq(#raidTargets, 0, "ungrouped player Mark does not SetRaidTarget")
++ok, err = Markers:MarkFighters("Beefina", "Chuckroast")
++assert_eq(ok, false, "ungrouped player MarkFighters is false")
++assert_eq(err, "not in a group", "ungrouped player MarkFighters still refuses")
++
++reset()
++ok, err = Markers:MarkCandidate("Beefina")
++assert_eq(ok, false, "Quiet player MarkCandidate is false")
++assert_eq(err, "quiet", "Quiet player Mark names quiet")
++assert_eq(#raidTargets, 0, "Quiet player Mark does not SetRaidTarget")
++ok, err = Markers:MarkFighters("Beefina", "Chuckroast")
++assert_eq(ok, false, "Quiet player MarkFighters is false")
++assert_eq(err, "quiet", "Quiet player MarkFighters names quiet")
++
++reset()
++Runtime:StartEvent()
++popeFlag = false
++armRaid("Chuckroast")
++ok, err = Markers:MarkCandidate("Beefina")
++assert_eq(ok, false, "unlisted Pope player MarkCandidate is false")
++assert_eq(err, "not a registered pope", "unlisted Pope player Mark names the error")
++assert_eq(#raidTargets, 0, "unlisted Pope player Mark does not SetRaidTarget")
++ok, err = Markers:MarkFighters("Beefina", "Chuckroast")
++assert_eq(ok, false, "unlisted Pope player MarkFighters is false")
++assert_eq(err, "not a registered pope", "unlisted Pope player MarkFighters names the error")
++
+ --------------------------------------------------------------------------------
+ -- Missing API fail-closed. No throw.
+ --------------------------------------------------------------------------------

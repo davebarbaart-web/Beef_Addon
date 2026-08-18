@@ -1,11 +1,15 @@
 ChurchOfBeef = ChurchOfBeef or {}
 local COB = ChurchOfBeef
 
--- Event Mode toast engine. Quiet Mode does not drive this file (Law 6).
--- Grant-driven kinds (suggest, credit, demote, excommunicate) are gone.
--- Promote / rite copy builders and those KINDS are gone — nothing live
--- called them. Engine remains: system / debug and Push. Do not invent
--- Event Mode kinds here (Phase 4).
+-- Event Mode toast engine + theatrical proclamation/verdict beats (Law 6).
+-- Quiet Mode does not drive this file. Grant-driven kinds are gone.
+-- Promote / rite copy builders and those KINDS are gone.
+-- Engine: system / debug via Push; sanction / verdict / cowardice /
+-- knighting / elevation via Proclaim.
+-- Clerical copy only. Never generate oratory. Never SendChatMessage.
+-- Theatrical dress (color, font, texture) resolves only through COB.Theme.
+-- Small system/debug toasts stay unornamented; they also take Theme tokens
+-- so this file holds no color or path literals.
 local Toasts = {}
 COB.Toasts = Toasts
 
@@ -28,10 +32,27 @@ local KINDS = {
   debug   = { priority = 10, hold = 2.0, interrupt = false },
 }
 
+local THEATER_KINDS = {
+  sanction = true,
+  verdict = true,
+  cowardice = true,
+  knighting = true,
+  elevation = true,
+}
+
+local THEATER_HOLD = 5
+local PROCLAIM_NAME = "ChurchOfBeefProclaim"
+local DIM_ALPHA = 0.45
+local PANEL_FALLBACK_W = 420
+local SLICE_CORNER = 18
+local SLICE_PIN = 12
+local SEAL_SIZE = 56
+
 local pending = {}
 local recentKeys = {}
 local gen = 0
 local arrivalSeq = 0
+local theaterGen = 0
 
 local function now()
   if type(GetTime) == "function" then
@@ -80,24 +101,111 @@ local function truncate(text)
   return text:sub(1, 117) .. "..."
 end
 
+local function themeColor(role)
+  local Theme = COB.Theme
+  if type(Theme) ~= "table" or type(Theme.Color) ~= "function" then
+    return nil
+  end
+  local r, g, b = Theme:Color(role)
+  if type(r) ~= "number" then return nil end
+  return r, g, b
+end
+
+local function themeTexture(name)
+  local Theme = COB.Theme
+  if type(Theme) ~= "table" or type(Theme.Texture) ~= "function" then
+    return nil
+  end
+  local path = Theme:Texture(name)
+  if type(path) ~= "string" or path == "" then return nil end
+  return path
+end
+
+local function themeFontPath(role)
+  local Theme = COB.Theme
+  if type(Theme) ~= "table" or type(Theme.FontPath) ~= "function" then
+    return nil
+  end
+  local path = Theme:FontPath(role)
+  if type(path) ~= "string" or path == "" then return nil end
+  return path
+end
+
+local function themeFontSize(key)
+  local Theme = COB.Theme
+  local sizes = type(Theme) == "table" and Theme.FontSize or nil
+  if type(sizes) ~= "table" then return nil end
+  local n = sizes[key]
+  if type(n) ~= "number" then return nil end
+  return n
+end
+
+local function applySlot(tex, name)
+  if not tex then return nil end
+  local path = themeTexture(name)
+  tex._cobName = name
+  tex._cobPath = path
+  if path and tex.SetTexture then
+    pcall(tex.SetTexture, tex, path)
+  end
+  return path
+end
+
+local function applyTint(tex, role, a)
+  local r, g, b = themeColor(role)
+  if type(r) ~= "number" then return end
+  if not a then a = 1 end
+  if tex and tex.SetVertexColor then
+    pcall(tex.SetVertexColor, tex, r, g, b, a)
+  end
+  if tex then
+    tex._cobRole = role
+    tex._cobR, tex._cobG, tex._cobB, tex._cobA = r, g, b, a
+  end
+  return r, g, b
+end
+
+local function applyFill(tex, role, a)
+  local r, g, b = themeColor(role)
+  if type(r) ~= "number" or not tex then return end
+  if not a then a = 1 end
+  tex._cobRole = role
+  tex._cobR, tex._cobG, tex._cobB, tex._cobA = r, g, b, a
+  if tex.SetColorTexture then
+    pcall(tex.SetColorTexture, tex, r, g, b, a)
+    return r, g, b
+  end
+  applySlot(tex, "bar_stainedglass_fill")
+  if tex.SetVertexColor then
+    pcall(tex.SetVertexColor, tex, r, g, b, a)
+  end
+  return r, g, b
+end
+
+local function applyTextColor(fs, role)
+  local r, g, b = themeColor(role)
+  if type(r) ~= "number" or not fs or not fs.SetTextColor then return end
+  pcall(fs.SetTextColor, fs, r, g, b, 1)
+end
+
 local function tryBackdrop(frame)
   if frame.SetBackdrop then
+    -- Functional scrim only — Theme tokens, no theatrical ornament.
     frame:SetBackdrop({
-      bgFile = "Interface\\Tooltips\\UI-Tooltip-Background",
-      edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+      bgFile = themeTexture("bar_stainedglass_fill"),
+      edgeFile = themeTexture("frame_proclamation_edge_top"),
       tile = true,
       tileSize = 16,
       edgeSize = 12,
       insets = { left = 3, right = 3, top = 3, bottom = 3 },
     })
-    -- Opaque iron scrim (stream-readable); dual-encode meaning in words, not hue.
-    if frame.SetBackdropColor then
-      frame:SetBackdropColor(0, 0, 0, 1)
+    local r, g, b = themeColor("charcoal")
+    if frame.SetBackdropColor and r then
+      frame:SetBackdropColor(r, g, b, 1)
     end
-    if frame.SetBackdropBorderColor then
-      local edge = (COB.UI and COB.UI.Palette and COB.UI.Palette.HeavyEdge)
-        or { 0.65, 0.55, 0.35, 1 }
-      frame:SetBackdropBorderColor(edge[1], edge[2], edge[3], edge[4] or 1)
+    local ir, ig, ib = themeColor("iron")
+    if frame.SetBackdropBorderColor and ir then
+      frame:SetBackdropBorderColor(ir, ig, ib, 1)
     end
     return true
   end
@@ -389,6 +497,10 @@ end
 pump = function(self)
   local nextEnv = table.remove(pending, 1)
   if not nextEnv then
+    -- Hide-from-empty-pump re-enters OnHide; do not loop.
+    if not self.showing and #pending == 0 then
+      return
+    end
     self.showing = nil
     if self.frame then self.frame:Hide() end
     return
@@ -411,11 +523,525 @@ local function interruptShowing(self)
 end
 
 --------------------------------------------------------------------------------
+-- Theatrical overlay (sanction / verdict / cowardice / knighting / elevation)
+--------------------------------------------------------------------------------
+
+local function theaterAllowed()
+  local runtime = COB.Runtime
+  if type(runtime) ~= "table" or type(runtime.Snapshot) ~= "function" then
+    return false
+  end
+  local snap = runtime:Snapshot()
+  local state = type(snap) == "table" and snap.state or nil
+  if state == nil or state == "QUIET" then
+    return false
+  end
+  return true
+end
+
+local function applyHeadlineFont(fs, theater)
+  if not fs then return end
+  local path = themeFontPath("display")
+  local size = themeFontSize("headline")
+  if type(size) ~= "number" or size < 16 then size = 22 end
+  local used = false
+  if path and fs.SetFont then
+    local ok, applied = pcall(fs.SetFont, fs, path, size)
+    used = ok and applied and true or false
+  end
+  if not used and fs.SetFontObject then
+    local font = GameFontNormalLarge
+    if type(font) == "string" then font = _G[font] end
+    if font then pcall(fs.SetFontObject, fs, font) end
+  end
+  if theater then theater.headlineFontPath = path end
+  fs._cobFontPath = path
+end
+
+local function applyBodyFont(fs, theater)
+  if not fs then return end
+  local path = themeFontPath("body")
+  local size = themeFontSize("body")
+  if type(size) ~= "number" then size = 12 end
+  local used = false
+  if path and fs.SetFont then
+    local ok, applied = pcall(fs.SetFont, fs, path, size)
+    used = ok and applied and true or false
+  end
+  if not used and fs.SetFontObject then
+    local font = GameFontNormal
+    if type(font) == "string" then font = _G[font] end
+    if font then pcall(fs.SetFontObject, fs, font) end
+  end
+  if theater then theater.bodyFontPath = path end
+  fs._cobFontPath = path
+end
+
+-- headline, body, chat. Chat may differ from the panel split (B9-D victor echo).
+local function clericalCopy(kind, fields)
+  if type(fields) ~= "table" then fields = {} end
+
+  if kind == "sanction" then
+    local a, b = fields.fighterA, fields.fighterB
+    if type(a) ~= "string" or a == "" or type(b) ~= "string" or b == "" then
+      return nil
+    end
+    local parts = { a, "VS", b }
+    if type(fields.stipulation) == "string" and fields.stipulation ~= "" then
+      parts[#parts + 1] = fields.stipulation
+    end
+    local head = "A Beef Gora is Sanctioned"
+    local body = table.concat(parts, "\n")
+    return head, body, head .. "\n" .. body
+  end
+
+  if kind == "cowardice" then
+    local name = fields.name
+    if type(name) ~= "string" or name == "" then return nil end
+    local line = "Cowardice recorded: " .. name .. ". So ruled by the Beef Pope."
+    return line, "", line
+  end
+
+  if kind == "verdict" then
+    local ruling = fields.ruling
+    if ruling == "victor" then
+      local name = fields.name
+      if type(name) ~= "string" or name == "" then return nil end
+      local chat = "Victor declared: " .. name .. ". So ruled by the Beef Pope."
+      return "VICTOR DECLARED", name .. ". So ruled by the Beef Pope.", chat
+    end
+    if ruling == "void" then
+      return "Void.", "", "Void."
+    end
+    if ruling == "free" then
+      local text = fields.text
+      if type(text) == "string" and text ~= "" then return text, "", text end
+      return "Free ruling.", "", "Free ruling."
+    end
+  end
+
+  if kind == "knighting" then
+    local name = fields.name
+    if type(name) ~= "string" or name == "" then return nil end
+    return "RISE, BEEF KNIGHT", name, "RISE, BEEF KNIGHT\n" .. name
+  end
+
+  if kind == "elevation" then
+    local name = fields.name
+    if type(name) ~= "string" or name == "" then return nil end
+    return "RISE, BEEF LORD", name, "RISE, BEEF LORD\n" .. name
+  end
+
+  return nil
+end
+
+local function accentRole(kind, fields)
+  if kind == "cowardice" then return "oxblood" end
+  if kind == "verdict" and type(fields) == "table" and fields.ruling == "victor" then
+    return "gold"
+  end
+  if kind == "knighting" or kind == "elevation" then return "gold" end
+  return "iron"
+end
+
+local function sealNameFor(kind, fields)
+  if kind == "cowardice" then return "seal_cowardice" end
+  if kind == "verdict" and type(fields) == "table" and fields.ruling == "victor" then
+    return "seal_victor"
+  end
+  return "seal_papal"
+end
+
+local function panelWidth()
+  local parentW
+  if UIParent and UIParent.GetWidth then
+    parentW = UIParent:GetWidth()
+  end
+  if type(parentW) == "number" and parentW > 0 then
+    return math.floor(parentW / 3)
+  end
+  return PANEL_FALLBACK_W
+end
+
+local function playTheaterCue(kind)
+  local sound = COB.Sound
+  if type(sound) ~= "table" or type(sound.Play) ~= "function" then return end
+  pcall(function()
+    sound:Play(kind)
+  end)
+end
+
+local function rememberSpecial(name)
+  if type(UISpecialFrames) ~= "table" then return end
+  for i = 1, #UISpecialFrames do
+    if UISpecialFrames[i] == name then return end
+  end
+  UISpecialFrames[#UISpecialFrames + 1] = name
+end
+
+local theaterHiding = false
+
+local function hideTheater(self)
+  -- OnHide re-enters after root:Hide(); one dismiss bumps theaterGen once.
+  if theaterHiding then return end
+  theaterHiding = true
+  theaterGen = theaterGen + 1
+  local t = self.theater
+  if t and t.root then t.root:Hide() end
+  theaterHiding = false
+end
+
+local function wireProclaimEsc(self, root)
+  if not root then return end
+  if type(root.SetScript) == "function" then
+    local existing = type(root.GetScript) == "function" and root:GetScript("OnHide")
+    if not existing then
+      root:SetScript("OnHide", function()
+        hideTheater(self)
+      end)
+    end
+  end
+  rememberSpecial(PROCLAIM_NAME)
+end
+
+local function mintTex(parent, layer)
+  if not parent or type(parent.CreateTexture) ~= "function" then return nil end
+  return parent:CreateTexture(nil, layer or "ARTWORK")
+end
+
+local function placeBox(tex, point, rel, relPoint, x, y, w, h)
+  if not tex then return end
+  if tex.ClearAllPoints then tex:ClearAllPoints() end
+  tex:SetPoint(point, rel, relPoint, x, y)
+  if w then tex:SetWidth(w) end
+  if h then tex:SetHeight(h) end
+end
+
+local function layoutTheaterDress(t, w, h)
+  if not t or not t.panel then return end
+  local panel = t.panel
+  local inset = 6
+  if t.center then
+    if t.center.ClearAllPoints then t.center:ClearAllPoints() end
+    t.center:SetPoint("TOPLEFT", panel, "TOPLEFT", inset, -inset)
+    t.center:SetPoint("BOTTOMRIGHT", panel, "BOTTOMRIGHT", -inset, inset)
+  end
+  local c = SLICE_CORNER
+  placeBox(t.cornerTL, "TOPLEFT", panel, "TOPLEFT", 0, 0, c, c)
+  placeBox(t.cornerTR, "TOPRIGHT", panel, "TOPRIGHT", 0, 0, c, c)
+  placeBox(t.cornerBL, "BOTTOMLEFT", panel, "BOTTOMLEFT", 0, 0, c, c)
+  placeBox(t.cornerBR, "BOTTOMRIGHT", panel, "BOTTOMRIGHT", 0, 0, c, c)
+  if t.edgeTop then
+    if t.edgeTop.ClearAllPoints then t.edgeTop:ClearAllPoints() end
+    t.edgeTop:SetPoint("TOPLEFT", t.cornerTL, "TOPRIGHT", 0, 0)
+    t.edgeTop:SetPoint("TOPRIGHT", t.cornerTR, "TOPLEFT", 0, 0)
+    t.edgeTop:SetHeight(c)
+  end
+  if t.edgeBottom then
+    if t.edgeBottom.ClearAllPoints then t.edgeBottom:ClearAllPoints() end
+    t.edgeBottom:SetPoint("BOTTOMLEFT", t.cornerBL, "BOTTOMRIGHT", 0, 0)
+    t.edgeBottom:SetPoint("BOTTOMRIGHT", t.cornerBR, "BOTTOMLEFT", 0, 0)
+    t.edgeBottom:SetHeight(c)
+  end
+  if t.edgeLeft then
+    if t.edgeLeft.ClearAllPoints then t.edgeLeft:ClearAllPoints() end
+    t.edgeLeft:SetPoint("TOPLEFT", t.cornerTL, "BOTTOMLEFT", 0, 0)
+    t.edgeLeft:SetPoint("BOTTOMLEFT", t.cornerBL, "TOPLEFT", 0, 0)
+    t.edgeLeft:SetWidth(c)
+  end
+  if t.edgeRight then
+    if t.edgeRight.ClearAllPoints then t.edgeRight:ClearAllPoints() end
+    t.edgeRight:SetPoint("TOPRIGHT", t.cornerTR, "BOTTOMRIGHT", 0, 0)
+    t.edgeRight:SetPoint("BOTTOMRIGHT", t.cornerBR, "TOPRIGHT", 0, 0)
+    t.edgeRight:SetWidth(c)
+  end
+  local p = SLICE_PIN
+  placeBox(t.pinTL, "TOPLEFT", panel, "TOPLEFT", 4, -4, p, p)
+  placeBox(t.pinTR, "TOPRIGHT", panel, "TOPRIGHT", -4, -4, p, p)
+  placeBox(t.pinBL, "BOTTOMLEFT", panel, "BOTTOMLEFT", 4, 4, p, p)
+  placeBox(t.pinBR, "BOTTOMRIGHT", panel, "BOTTOMRIGHT", -4, 4, p, p)
+  placeBox(t.seal, "TOP", panel, "TOP", 0, 16, SEAL_SIZE, SEAL_SIZE)
+  if t.banner then
+    if t.banner.ClearAllPoints then t.banner:ClearAllPoints() end
+    t.banner:SetPoint("TOPLEFT", panel, "TOPLEFT", inset, -inset)
+    t.banner:SetPoint("BOTTOMRIGHT", panel, "BOTTOMRIGHT", -inset, inset)
+  end
+  if t.tint then
+    if t.tint.ClearAllPoints then t.tint:ClearAllPoints() end
+    t.tint:SetPoint("BOTTOMLEFT", panel, "BOTTOMLEFT", 10, 10)
+    t.tint:SetPoint("BOTTOMRIGHT", panel, "BOTTOMRIGHT", -10, 10)
+    t.tint:SetHeight(6)
+  end
+  if t.rays then
+    if t.rays.ClearAllPoints then t.rays:ClearAllPoints() end
+    t.rays:SetPoint("CENTER", panel, "CENTER", 0, 0)
+    t.rays:SetWidth(math.floor((w or PANEL_FALLBACK_W) * 1.4))
+    t.rays:SetHeight(math.max(180, math.floor((h or 140) * 1.6)))
+  end
+end
+
+local function dressTheater(t, kind, fields)
+  if not t then return end
+  fields = type(fields) == "table" and fields or {}
+  local bannered = (kind == "knighting" or kind == "elevation")
+  local sealName = sealNameFor(kind, fields)
+  local role = accentRole(kind, fields)
+
+  if not applySlot(t.center, "frame_proclamation_center") then
+    applySlot(t.center, "frame_proclamation")
+  end
+  applySlot(t.cornerTL, "frame_proclamation_corner_tl")
+  applySlot(t.cornerTR, "frame_proclamation_corner_tr")
+  applySlot(t.cornerBL, "frame_proclamation_corner_bl")
+  applySlot(t.cornerBR, "frame_proclamation_corner_br")
+  applySlot(t.edgeTop, "frame_proclamation_edge_top")
+  applySlot(t.edgeBottom, "frame_proclamation_edge_bottom")
+  applySlot(t.edgeLeft, "frame_proclamation_edge_left")
+  applySlot(t.edgeRight, "frame_proclamation_edge_right")
+  applySlot(t.pinTL, "frame_proclamation_pin_tl")
+  applySlot(t.pinTR, "frame_proclamation_pin_tr")
+  applySlot(t.pinBL, "frame_proclamation_pin_bl")
+  applySlot(t.pinBR, "frame_proclamation_pin_br")
+  applyTint(t.cornerTL, "iron", 1)
+  applyTint(t.cornerTR, "iron", 1)
+  applyTint(t.cornerBL, "iron", 1)
+  applyTint(t.cornerBR, "iron", 1)
+  applyTint(t.edgeTop, "iron", 1)
+  applyTint(t.edgeBottom, "iron", 1)
+  applyTint(t.edgeLeft, "iron", 1)
+  applyTint(t.edgeRight, "iron", 1)
+
+  t.sealName = sealName
+  t.sealPath = applySlot(t.seal, sealName)
+  t.accentRole = role
+  local r, g, b = applyTint(t.seal, role, 1)
+  t.accentR, t.accentG, t.accentB = r, g, b
+  applyFill(t.tint, role, 1)
+  applyTint(t.pinTL, role, 1)
+  applyTint(t.pinTR, role, 1)
+  applyTint(t.pinBL, role, 1)
+  applyTint(t.pinBR, role, 1)
+
+  t.bannerName = "banner_knighting"
+  t.bannerPath = applySlot(t.banner, "banner_knighting")
+  if t.banner then
+    if bannered then t.banner:Show() else t.banner:Hide() end
+  end
+
+  t.raysName = "rays_sunburst"
+  t.raysPath = applySlot(t.rays, "rays_sunburst")
+  applyTint(t.rays, "gold", 1)
+  if t.rays then
+    if t.rays.SetBlendMode then
+      pcall(t.rays.SetBlendMode, t.rays, "ADD")
+    end
+    t.rays._blend = "ADD"
+    if bannered then t.rays:Show() else t.rays:Hide() end
+  end
+end
+
+function Toasts:InitTheater()
+  if self.theater and self.theater.root then
+    wireProclaimEsc(self, self.theater.root)
+    return self.theater
+  end
+  if type(CreateFrame) ~= "function" then return nil end
+
+  local root = CreateFrame("Frame", PROCLAIM_NAME, UIParent)
+  root:SetFrameStrata("FULLSCREEN_DIALOG")
+  if root.EnableMouse then root:EnableMouse(false) end
+  if root.SetAllPoints then
+    root:SetAllPoints(UIParent)
+  else
+    root:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 0, 0)
+    root:SetPoint("BOTTOMRIGHT", UIParent, "BOTTOMRIGHT", 0, 0)
+  end
+  root:Hide()
+
+  local dim = root:CreateTexture(nil, "BACKGROUND")
+  dim:SetAllPoints(root)
+  applyFill(dim, "charcoal", DIM_ALPHA)
+
+  -- Additive sunburst sits on the root so the panel/banner paints in front.
+  local rays = mintTex(root, "BACKGROUND")
+  if rays and rays.SetBlendMode then
+    pcall(rays.SetBlendMode, rays, "ADD")
+  end
+  if rays then rays._blend = "ADD" end
+  applySlot(rays, "rays_sunburst")
+  if rays then rays:Hide() end
+
+  local panel = CreateFrame("Frame", "ChurchOfBeefProclaimPanel", root)
+  if panel.EnableMouse then panel:EnableMouse(false) end
+
+  local center = mintTex(panel, "BACKGROUND")
+  applySlot(center, "frame_proclamation_center")
+  local cornerTL = mintTex(panel, "BORDER")
+  local cornerTR = mintTex(panel, "BORDER")
+  local cornerBL = mintTex(panel, "BORDER")
+  local cornerBR = mintTex(panel, "BORDER")
+  local edgeTop = mintTex(panel, "BORDER")
+  local edgeBottom = mintTex(panel, "BORDER")
+  local edgeLeft = mintTex(panel, "BORDER")
+  local edgeRight = mintTex(panel, "BORDER")
+  local pinTL = mintTex(panel, "OVERLAY")
+  local pinTR = mintTex(panel, "OVERLAY")
+  local pinBL = mintTex(panel, "OVERLAY")
+  local pinBR = mintTex(panel, "OVERLAY")
+  local banner = mintTex(panel, "ARTWORK")
+  applySlot(banner, "banner_knighting")
+  if banner then banner:Hide() end
+  local seal = mintTex(panel, "OVERLAY")
+  applySlot(seal, "seal_papal")
+  local tint = mintTex(panel, "OVERLAY")
+
+  local headline = panel:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+  headline:SetPoint("TOPLEFT", panel, "TOPLEFT", 16, -36)
+  headline:SetPoint("TOPRIGHT", panel, "TOPRIGHT", -16, -36)
+  headline:SetJustifyH("CENTER")
+  headline:SetJustifyV("TOP")
+  if headline.SetWordWrap then headline:SetWordWrap(true) end
+  applyHeadlineFont(headline)
+
+  local copy = panel:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+  copy:SetPoint("TOPLEFT", headline, "BOTTOMLEFT", 0, -8)
+  copy:SetPoint("BOTTOMRIGHT", panel, "BOTTOMRIGHT", -16, 20)
+  copy:SetJustifyH("CENTER")
+  copy:SetJustifyV("MIDDLE")
+  if copy.SetWordWrap then copy:SetWordWrap(true) end
+  applyBodyFont(copy)
+
+  self.theater = {
+    root = root,
+    dim = dim,
+    rays = rays,
+    panel = panel,
+    center = center,
+    cornerTL = cornerTL,
+    cornerTR = cornerTR,
+    cornerBL = cornerBL,
+    cornerBR = cornerBR,
+    edgeTop = edgeTop,
+    edgeBottom = edgeBottom,
+    edgeLeft = edgeLeft,
+    edgeRight = edgeRight,
+    pinTL = pinTL,
+    pinTR = pinTR,
+    pinBL = pinBL,
+    pinBR = pinBR,
+    banner = banner,
+    seal = seal,
+    tint = tint,
+    headline = headline,
+    copy = copy,
+    dimAlpha = DIM_ALPHA,
+  }
+  -- After the initial Hide so create does not fire OnHide teardown.
+  wireProclaimEsc(self, root)
+  return self.theater
+end
+
+--- Event Mode proclamation / verdict / cowardice / knighting / elevation.
+--- Clerical copy only. fields: { fighterA, fighterB, name, ruling, text, stipulation }
+--- @return ok boolean, reason string|nil
+function Toasts:Proclaim(kind, fields)
+  if type(kind) ~= "string" or not THEATER_KINDS[kind] then
+    return false, "invalid"
+  end
+  if not theaterAllowed() then
+    return false, "quiet"
+  end
+
+  fields = type(fields) == "table" and fields or {}
+  local headline, body, chat = clericalCopy(kind, fields)
+  if type(headline) ~= "string" or headline == "" then
+    return false, "invalid"
+  end
+  if type(body) ~= "string" then body = "" end
+  if type(chat) ~= "string" or chat == "" then
+    if body == "" then
+      chat = headline
+    else
+      chat = headline .. "\n" .. body
+    end
+  end
+
+  local theater = self:InitTheater()
+  if not theater then return false, "invalid" end
+
+  local w = panelWidth()
+  local joined = headline
+  if body ~= "" then joined = headline .. "\n" .. body end
+  local lines = 1
+  for _ in joined:gmatch("\n") do lines = lines + 1 end
+  local h = math.max(160, 64 + lines * 24)
+  theater.panel:SetWidth(w)
+  theater.panel:SetHeight(h)
+  if theater.panel.ClearAllPoints then theater.panel:ClearAllPoints() end
+  theater.panel:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
+  layoutTheaterDress(theater, w, h)
+  dressTheater(theater, kind, fields)
+
+  theater.headline:SetText(headline)
+  applyHeadlineFont(theater.headline, theater)
+  applyTextColor(theater.headline, "charcoal")
+  theater.copy:SetText(body)
+  applyBodyFont(theater.copy, theater)
+  applyTextColor(theater.copy, "charcoal")
+  if body ~= "" then
+    theater.copy:Show()
+  else
+    theater.copy:Hide()
+  end
+  theater.dimAlpha = DIM_ALPHA
+  applyFill(theater.dim, "charcoal", DIM_ALPHA)
+
+  theater.root:Show()
+  theater.panel:Show()
+
+  if DEFAULT_CHAT_FRAME and DEFAULT_CHAT_FRAME.AddMessage then
+    DEFAULT_CHAT_FRAME:AddMessage(chat)
+  end
+
+  playTheaterCue(kind)
+
+  theaterGen = theaterGen + 1
+  local myGen = theaterGen
+  after(THEATER_HOLD, function()
+    if theaterGen ~= myGen then return end
+    if theater.root then theater.root:Hide() end
+  end)
+
+  return true
+end
+
+--------------------------------------------------------------------------------
 -- Public API
 --------------------------------------------------------------------------------
 
+local function wireSmallOnHide(self, frame)
+  if not frame then return end
+  if type(frame.SetScript) == "function" then
+    local existing = type(frame.GetScript) == "function" and frame:GetScript("OnHide")
+    if not existing then
+      frame:SetScript("OnHide", function()
+        -- interruptShowing / empty-pump Hide: showing already nil; do not pump.
+        if not self.showing then return end
+        bumpGen()
+        self.showing = nil
+        pump(self)
+      end)
+    end
+  end
+end
+
 function Toasts:Init()
-  if self.frame then return self.frame end
+  if self.frame then
+    rememberSpecial("ChurchOfBeefToast")
+    rememberSpecial(PROCLAIM_NAME)
+    wireSmallOnHide(self, self.frame)
+    return self.frame
+  end
   if type(CreateFrame) ~= "function" then return nil end
 
   local frame = CreateFrame("Frame", "ChurchOfBeefToast", UIParent, "BackdropTemplate")
@@ -437,8 +1063,7 @@ function Toasts:Init()
   if not tryBackdrop(frame) then
     local bg = frame:CreateTexture(nil, "BACKGROUND")
     bg:SetAllPoints(frame)
-    bg:SetTexture("Interface\\Tooltips\\UI-Tooltip-Background")
-    if bg.SetVertexColor then bg:SetVertexColor(0, 0, 0, 1) end
+    applyFill(bg, "charcoal", 1)
   end
 
   local text = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
@@ -460,6 +1085,9 @@ function Toasts:Init()
 
   self.frame = frame
   self.showing = nil
+  -- After the initial Hide so create does not fire OnHide teardown.
+  wireSmallOnHide(self, frame)
+  rememberSpecial("ChurchOfBeefToast")
   return frame
 end
 
@@ -521,12 +1149,18 @@ end
 --- Convenience entry. Builds UI-owned copy; never touches Core.
 --- Forms:
 ---   Celebrate(text)                         → system
----   Celebrate(kind, fieldsTable)            → system / debug only
---- fields: { detail?, text?, dedupeKey?, hold?, priority? }
+---   Celebrate(kind, fieldsTable)            → system / debug, or Proclaim
+--- fields: { detail?, text?, dedupeKey?, hold?, priority?,
+---           fighterA?, fighterB?, name?, ruling?, stipulation? }
+--- Theater kinds (sanction / verdict / cowardice / knighting / elevation) go to Proclaim.
 --- Unknown / excised kinds (promote, rite, grant family) do not mint copy.
 function Toasts:Celebrate(kind, fields)
   -- Plain string → system toast (back-compat for early call sites).
+  -- Theater kind names are not copy; they must go through Proclaim.
   if type(kind) == "string" and fields == nil then
+    if THEATER_KINDS[kind] then
+      return self:Proclaim(kind, {})
+    end
     if not KINDS[kind] then
       return self:Push({ kind = "system", text = kind })
     end
@@ -534,6 +1168,9 @@ function Toasts:Celebrate(kind, fields)
   end
 
   fields = type(fields) == "table" and fields or {}
+  if type(kind) == "string" and THEATER_KINDS[kind] then
+    return self:Proclaim(kind, fields)
+  end
   if type(kind) ~= "string" or not KINDS[kind] then kind = "system" end
 
   local text = fields.text
@@ -557,7 +1194,8 @@ function Toasts:Celebrate(kind, fields)
 end
 
 function Toasts:HideAll()
-  bumpGen()
+  gen = gen + 1
+  hideTheater(self)
   clearPending()
   stopMotion(self.frame)
   self.showing = nil
@@ -566,6 +1204,8 @@ function Toasts:HideAll()
     if self.frame.SetAlpha then self.frame:SetAlpha(1) end
     self.frame:Hide()
   end
+  rememberSpecial("ChurchOfBeefToast")
+  rememberSpecial(PROCLAIM_NAME)
 end
 
 function Toasts:ResetForTests()

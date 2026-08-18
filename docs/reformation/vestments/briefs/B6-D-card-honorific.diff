@@ -1,0 +1,237 @@
+diff --git a/addon/ChurchOfBeef/UI/FighterCard.lua b/addon/ChurchOfBeef/UI/FighterCard.lua
+--- a/addon/ChurchOfBeef/UI/FighterCard.lua
++++ b/addon/ChurchOfBeef/UI/FighterCard.lua
+@@ -4,7 +4,8 @@
+ -- Event Mode mute fighter card (Bible §10.6). Tale of the tape.
+ -- The card shows; the Pope tells. Hidden in Quiet / no pair.
+ -- Stock QuestBG + WHITE8X8. Left-third, two facing plates.
+--- Names try stock Morpheus. No live health. No sound. No generated flavor.
++-- Names try stock Morpheus. Honorifics are Pope text from Store human.
++-- Empty honorifics hide. No live health. No sound. No generated flavor.
+ local FighterCard = {
+   MODE = "Event",
+ }
+@@ -116,6 +117,16 @@
+   return title
+ end
+ 
++local function honorificFrom(ch)
++  if type(ch) ~= "table" or ch.humanId == nil then return nil end
++  if not (COB.Store and COB.Store.GetHuman) then return nil end
++  local human = COB.Store:GetHuman(ch.humanId)
++  if type(human) ~= "table" or type(human.honorifics) ~= "table" then return nil end
++  local first = human.honorifics[1]
++  if type(first) ~= "string" or first == "" then return nil end
++  return first
++end
++
+ local function livePair()
+   if not COB.Gora or not COB.Gora.GetSanctioned then return nil end
+   local pair = COB.Gora:GetSanctioned()
+@@ -152,6 +163,7 @@
+       name = "",
+       level = nil,
+       title = nil,
++      honorific = nil,
+       wins = 0,
+       losses = 0,
+       nameColor = nil,
+@@ -164,6 +176,7 @@
+     class = ch.class,
+     level = ch.level,
+     title = churchTitle(id),
++    honorific = honorificFrom(ch),
+     wins = gora.wins or 0,
+     losses = gora.losses or 0,
+     nameColor = classColor(ch.class),
+@@ -186,11 +199,23 @@
+   return line
+ end
+ 
++local function paintHonorific(fs, text)
++  if type(text) == "string" and text ~= "" then
++    fs:SetText(text)
++    if fs.Show then fs:Show() end
++  else
++    fs:SetText("")
++    if fs.Hide then fs:Hide() end
++  end
++  tint(fs, MUTED)
++end
++
+ local function paintFighter(plate, fighter)
+   plate.name:SetText(fighter.name or "")
+   plate.level:SetText(levelText(fighter))
+   plate.title:SetText(fighter.title or "")
+   plate.record:SetText(recordText(fighter))
++  paintHonorific(plate.honorific, fighter.honorific)
+   tint(plate.name, fighter.nameColor or INK)
+   tint(plate.level, MUTED)
+   tint(plate.title, INK)
+@@ -208,6 +233,10 @@
+   frame.plateB.title:SetText("")
+   frame.plateA.record:SetText("")
+   frame.plateB.record:SetText("")
++  frame.plateA.honorific:SetText("")
++  frame.plateB.honorific:SetText("")
++  if frame.plateA.honorific.Hide then frame.plateA.honorific:Hide() end
++  if frame.plateB.honorific.Hide then frame.plateB.honorific:Hide() end
+   frame.headToHead:SetText("")
+   if frame.headToHead.Hide then frame.headToHead:Hide() end
+   frame.stipulation:SetText("")
+@@ -306,6 +335,8 @@
+   plate.title = makeLabel(plate, "GameFontNormal", justify)
+   plate.level = makeLabel(plate, "GameFontNormal", justify)
+   plate.record = makeLabel(plate, "GameFontNormal", justify)
++  plate.honorific = makeLabel(plate, "GameFontNormal", justify)
++  if plate.honorific.Hide then plate.honorific:Hide() end
+   return plate
+ end
+ 
+@@ -373,6 +404,8 @@
+   widget.plateB.level:SetPoint("TOPRIGHT", widget.plateB.title, "BOTTOMRIGHT", 0, -4)
+   widget.plateA.record:SetPoint("TOPLEFT", widget.plateA.level, "BOTTOMLEFT", 0, -4)
+   widget.plateB.record:SetPoint("TOPRIGHT", widget.plateB.level, "BOTTOMRIGHT", 0, -4)
++  widget.plateA.honorific:SetPoint("TOPLEFT", widget.plateA.record, "BOTTOMLEFT", 0, -4)
++  widget.plateB.honorific:SetPoint("TOPRIGHT", widget.plateB.record, "BOTTOMRIGHT", 0, -4)
+ 
+   widget.vs = makeLabel(widget, "GameFontNormal", "CENTER")
+   widget.vs:SetPoint("CENTER", widget, "CENTER", 0, 8)
+
+diff --git a/tests/test_fighter_card.lua b/tests/test_fighter_card.lua
+--- a/tests/test_fighter_card.lua
++++ b/tests/test_fighter_card.lua
+@@ -203,6 +203,7 @@
+ assert_eq(src:find("UI-PVP-Alliance", 1, true), nil, "source does not use the Alliance PVP icon")
+ assert_eq(src:find("Squire", 1, true), nil, "source does not invent Squire")
+ assert_eq(src:find("Paladin", 1, true), nil, "source does not invent Paladin-as-title")
++assert_eq(src:find("Duke of", 1, true), nil, "source does not invent Duke of")
+ assert_true(src:find("QuestBG", 1, true) ~= nil, "parchment uses stock QuestBG")
+ assert_true(src:find("WHITE8X8", 1, true) ~= nil, "iron fill uses stock WHITE8X8")
+ 
+@@ -241,6 +242,12 @@
+ assert_eq(frame.plateB.title._template, "GameFontNormal", "title B stays GameFont*")
+ assert_eq(frame.plateA.record._template, "GameFontNormal", "records stay GameFont*")
+ assert_eq(frame.plateB.record._template, "GameFontNormal", "record B stays GameFont*")
++assert_true(frame.plateA.honorific ~= nil, "honorific line exists on plate A")
++assert_true(frame.plateB.honorific ~= nil, "honorific line exists on plate B")
++assert_eq(frame.plateA.honorific._template, "GameFontNormal", "honorifics stay GameFont*")
++assert_eq(frame.plateB.honorific._template, "GameFontNormal", "honorific B stays GameFont*")
++assert_eq(frame.plateA.honorific:IsShown(), false, "honorific starts hidden")
++assert_eq(frame.plateB.honorific:IsShown(), false, "honorific B starts hidden")
+ local nameFontA = frame.plateA.name.GetFont and select(1, frame.plateA.name:GetFont())
+ if type(nameFontA) == "string" then
+   assert_true(string.find(nameFontA, "MORPHEUS", 1, true) ~= nil,
+@@ -307,6 +314,8 @@
+ assert_eq(view.defenses, nil, "defense count is not invented")
+ assert_eq(view.fighterA.defenses, nil, "fighter A has no invented defenses")
+ assert_eq(view.fighterB.defenses, nil, "fighter B has no invented defenses")
++assert_eq(view.fighterA.honorific, nil, "linked humans with no honorifics omit the line")
++assert_eq(view.fighterB.honorific, nil, "the other human also omits the line")
+ assert_eq(view.odds, nil, "no odds copy")
+ assert_eq(frame.plateA.name:GetText(), "Chuckroast", "name A is painted")
+ assert_eq(frame.plateB.name:GetText(), "Tendermage", "name B is painted")
+@@ -318,6 +327,9 @@
+ assert_eq(frame.plateB.record:GetText(), "0-0", "record B is Store W/L")
+ assert_eq(frame.headToHead:IsShown(), false, "head-to-head widget hides without history")
+ assert_eq(frame.stipulation:IsShown(), false, "stipulation widget hides when none")
++assert_eq(frame.plateA.honorific:IsShown(), false, "no honorifics → widget hidden")
++assert_eq(frame.plateB.honorific:IsShown(), false, "other plate hides without honorifics")
++assert_eq(frame.plateA.honorific:GetText(), "", "empty honorific paints empty")
+ assert_eq(findStatusBar(frame), nil, "shown card still has no StatusBar")
+ assert_eq(sounds, 0, "showing the card plays no sound")
+ assert_eq(healthReads, 0, "showing the card does not read live health")
+@@ -344,6 +356,7 @@
+ assert_eq(sameRgb(frame.plateA.level._cobColor, warrior), false, "level A is not class-colored")
+ assert_eq(sameRgb(frame.plateA.title._cobColor, warrior), false, "title A is not class-colored")
+ assert_eq(sameRgb(frame.plateA.record._cobColor, warrior), false, "record A is not class-colored")
++assert_eq(sameRgb(frame.plateA.honorific._cobColor, warrior), false, "honorific A is not class-colored")
+ assert_eq(sameRgb(frame.plateB.level._cobColor, mage), false, "level B is not class-colored")
+ assert_eq(sameRgb(frame.plateB.title._cobColor, mage), false, "title B is not class-colored")
+ assert_eq(sameRgb(frame.plateB.record._cobColor, mage), false, "record B is not class-colored")
+@@ -360,6 +373,10 @@
+ assert_eq(view.fighterA.title, nil, "unlinked characters have no invented title")
+ assert_eq(view.fighterB.title, nil, "the other unlinked character has no invented title")
+ assert_eq(frame.plateA.title:GetText(), "", "unlinked title paints empty, not Fresh Beef")
++assert_eq(view.fighterA.honorific, nil, "unlinked characters have no invented honorific")
++assert_eq(view.fighterB.honorific, nil, "the other unlinked character has no invented honorific")
++assert_eq(frame.plateA.honorific:IsShown(), false, "unlinked honorific stays hidden")
++assert_eq(frame.plateA.honorific:GetText(), "", "unlinked honorific paints empty")
+ assert_eq(view.stipulation, "no potions", "stipulation comes from GetSanctioned")
+ assert_eq(frame.stipulation:IsShown(), true, "stipulation widget shows when the Pope wrote one")
+ assert_eq(frame.stipulation:GetText(), "no potions", "stipulation is the Pope line")
+@@ -422,7 +439,51 @@
+ assert_eq(FighterCard:Show(), false, "Quiet Show is false after EndEvent")
+ assert_eq(sounds, 0, "hiding plays no sound")
+ assert_eq(healthReads, 0, "hiding does not scrape health")
++
++--------------------------------------------------------------------------------
++-- Honorifics: Pope text from Store human. Empty hides. Never invent Duke.
++--------------------------------------------------------------------------------
++local ha, hb = sanctionPair()
++assert_eq(FighterCard:Show(), true, "honorific path still needs a sanctioned pair")
++view = FighterCard:GetView()
++assert_eq(view.fighterA.honorific, nil, "fresh linked humans omit the honorific")
++assert_eq(view.fighterB.honorific, nil, "the other fresh human omits the honorific")
++assert_eq(frame.plateA.honorific:IsShown(), false, "no honorifics → widget hidden")
++assert_eq(frame.plateB.honorific:IsShown(), false, "other plate hides without honorifics")
++assert_eq(frame.plateA.honorific:GetText(), "", "empty honorific paints empty")
++assert_eq(frame.plateA.record:GetText(), "0-0", "honorific path keeps a fresh W/L")
++
++local humanA = Store:GetHuman(Store:GetCharacter(ha.id).humanId)
++assert_true(humanA ~= nil, "linked fighter has a Store human")
++Store:AddHonorific(humanA.id, "Defender of the Faith")
++view = FighterCard:Refresh()
++assert_eq(view.fighterA.honorific, "Defender of the Faith", "honorific is Pope text from Store")
++assert_eq(frame.plateA.honorific:IsShown(), true, "seeded honorific shows")
++assert_eq(frame.plateA.honorific:GetText(), "Defender of the Faith", "paints exactly that string")
++assert_eq(view.fighterB.honorific, nil, "unseeded human stays empty")
++assert_eq(frame.plateB.honorific:IsShown(), false, "unseeded honorific stays hidden")
++assert_eq(frame.plateB.honorific:GetText(), "", "unseeded honorific paints empty")
++assert_eq(frame.plateA.record:GetText(), "0-0", "seeding an honorific does not change W/L")
++assert_eq(string.find(frame.plateA.honorific:GetText() or "", "Duke of", 1, true), nil,
++  "painted honorific is not an invented Duke")
++assert_eq(sameRgb(frame.plateA.honorific._cobColor, RAID_CLASS_COLORS.WARRIOR), false,
++  "honorific is not class-colored")
+ 
++Gora:DeclareVictor(ha.id)
++local rematchHonor = Gora:Sanction(ha.id, hb.id)
++assert_true(rematchHonor ~= nil, "honorific rematch may be sanctioned")
++assert_eq(FighterCard:Show(), true, "honorific rematch Show is true")
++view = FighterCard:GetView()
++assert_eq(frame.plateA.record:GetText(), "1-0", "1-0 pin stays with honorific")
++assert_eq(frame.plateB.record:GetText(), "0-1", "loser record stays 0-1 with honorific")
++assert_eq(frame.headToHead:GetText(), "1-0", "H2H 1-0 pin stays with honorific")
++assert_eq(frame.headToHead:IsShown(), true, "H2H still shows after honorific paint")
++assert_eq(view.fighterA.honorific, "Defender of the Faith", "honorific survives rematch")
++assert_eq(frame.plateA.honorific:GetText(), "Defender of the Faith", "rematch paints the same Pope text")
++assert_eq(frame.plateA.honorific:IsShown(), true, "honorific still shown after rematch")
++assert_eq(view.fighterB.honorific, nil, "unseeded rematch plate stays empty")
++assert_eq(frame.plateB.honorific:IsShown(), false, "unseeded rematch honorific stays hidden")
++
+ --------------------------------------------------------------------------------
+ -- Missing class colors and unknown class still paint names. Level omitted if absent.
+ --------------------------------------------------------------------------------
+@@ -458,10 +519,12 @@
+ view.fighterA.name = "Mutated"
+ view.shown = false
+ view.stipulation = "invented"
++view.fighterA.honorific = "Duke of the Fountain"
+ local again = FighterCard:GetView()
+ assert_eq(again.fighterA.name, "Chuckroast", "mutating GetView does not change the live view")
+ assert_eq(again.shown, true, "mutating GetView does not hide the card")
+ assert_eq(again.stipulation, nil, "mutating GetView does not invent a stipulation")
++assert_eq(again.fighterA.honorific, nil, "mutating GetView does not invent an honorific")
+ assert_eq(Store:GetCharacter(a.id).name, "Chuckroast", "card does not write the character")
+ assert_eq(Gora:GetSanctioned().fighterA, a.id, "card does not clear the live pair")
+ 
+@@ -516,6 +579,9 @@
+ assert_eq(budgeted.plateA.name._template, "GameFontHighlight", "rebuilt name fallback is GameFontHighlight")
+ assert_true(budgeted.plateA ~= nil, "rebuilt card still has plate A")
+ assert_true(budgeted.plateB ~= nil, "rebuilt card still has plate B")
++assert_true(budgeted.plateA.honorific ~= nil, "rebuilt card still has honorific A")
++assert_true(budgeted.plateB.honorific ~= nil, "rebuilt card still has honorific B")
++assert_eq(budgeted.plateA.honorific:IsShown(), false, "rebuilt Quiet hides honorific")
+ assert_eq(findStatusBar(budgeted), nil, "rebuilt card still has no StatusBar")
+ assert_eq(budgeted:IsShown(), false, "rebuild in Quiet still hides the card")
+ local copy = FighterCard:GetView()

@@ -1,0 +1,87 @@
+# B24-D — Decree ensureFrame re-registers ESC (implementation diff)
+
+Lane-only unified diff of the exclusive implementation files vs the pre-lane working tree.
+
+--- a/addon/ChurchOfBeef/UI/Decree.lua
++++ b/addon/ChurchOfBeef/UI/Decree.lua
+@@ -255,7 +255,10 @@
+ end
+ 
+ local function ensureFrame()
+-  if DecreeBanner.frame then return DecreeBanner.frame end
++  if DecreeBanner.frame then
++    rememberSpecial(FRAME_NAME)
++    return DecreeBanner.frame
++  end
+   if type(CreateFrame) ~= "function" then return nil end
+   DecreeBanner.frame = buildFrame()
+   return DecreeBanner.frame
+
+--- a/tests/test_decree_ui.lua
++++ b/tests/test_decree_ui.lua
+@@ -202,6 +202,19 @@
+ assert_eq(src:find("MORPHEUS_CYR", 1, true), nil, "source does not use GlueFonts MORPHEUS_CYR")
+ assert_true(src:find("FRIZQT__.TTF", 1, true) ~= nil, "body font stays FRIZQT__.TTF")
+ assert_true(src:find("SetFontObject", 1, true) ~= nil, "applyFont still falls back to GameFont")
++local earlyEnsure = src:match("local function ensureFrame%(%)%s*\n%s*if DecreeBanner%.frame then(.-)return DecreeBanner%.frame")
++assert_true(type(earlyEnsure) == "string" and earlyEnsure ~= "",
++  "ensureFrame early-return body is readable")
++assert_true(earlyEnsure:find("rememberSpecial(FRAME_NAME)", 1, true) ~= nil,
++  "early-return rememberSpecial FRAME_NAME")
++assert_eq(earlyEnsure:find("buildFrame", 1, true), nil,
++  "early-return does not rebuild")
++assert_eq(earlyEnsure:find("PlaySound", 1, true), nil,
++  "early-return does not PlaySound")
++assert_eq(earlyEnsure:find("CreateFrame", 1, true), nil,
++  "early-return does not CreateFrame")
++assert_true(src:find("Fonts\\\\MORPHEUS.ttf", 1, true) ~= nil,
++  "LINE_FONT stays FrameXML lowercase Morpheus")
+ 
+ local miniFile = io.open("addon/ChurchOfBeef/UI/Minimap.lua", "r")
+ assert_true(miniFile ~= nil, "UI/Minimap.lua is readable")
+@@ -267,6 +280,45 @@
+   end
+   return false
+ end)(), "Escape can dismiss the banner")
++
++-- B24-D: ensureFrame early-return re-registers ChurchOfBeefDecree after a
++-- wiped UISpecialFrames. Do not rebuild. Quiet silent. Isolation wrap stays.
++local function runB24D()
++  local function countSpecial(name)
++    local n = 0
++    if type(UISpecialFrames) ~= "table" then return 0 end
++    for i = 1, #UISpecialFrames do
++      if UISpecialFrames[i] == name then n = n + 1 end
++    end
++    return n
++  end
++  assert_true(Banner.frame ~= nil, "Init so the frame exists")
++  assert_eq(countSpecial("ChurchOfBeefDecree"), 1,
++    "first-create uniqueness: ChurchOfBeefDecree once before wipe")
++  local savedSpecial = UISpecialFrames
++  UISpecialFrames = {}
++  assert_eq(countSpecial("ChurchOfBeefDecree"), 0,
++    "wipe clears ChurchOfBeefDecree")
++  local cuesWipe = sounds
++  local same = Banner:Init()
++  assert_eq(same, Banner.frame, "second Init returns the existing frame")
++  assert_eq(same, frame, "ensureFrame does not rebuild")
++  assert_eq(countSpecial("ChurchOfBeefDecree"), 1,
++    "wiped UISpecialFrames + second Init lists ChurchOfBeefDecree once")
++  assert_eq(sounds, cuesWipe, "second Init plays no sound")
++  Banner:Init()
++  assert_eq(countSpecial("ChurchOfBeefDecree"), 1,
++    "third Init after wipe does not duplicate ChurchOfBeefDecree")
++  UISpecialFrames = {}
++  assert_eq(Banner:Show(), false, "Show without a Decree stays silent")
++  assert_eq(Banner:Init(), frame, "Show miss still leaves ensureFrame on Init")
++  assert_eq(countSpecial("ChurchOfBeefDecree"), 1,
++    "wiped UISpecialFrames + Init after Show lists ChurchOfBeefDecree once")
++  assert_eq(Banner.frame, frame, "ensureFrame after Show does not rebuild")
++  assert_eq(sounds, cuesWipe, "ensureFrame after Show plays no sound")
++  UISpecialFrames = savedSpecial
++end
++runB24D()
+ 
+ local view0 = Banner:GetView()
+ assert_eq(view0.shown, false, "silent view is hidden")

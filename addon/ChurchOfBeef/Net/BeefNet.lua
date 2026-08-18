@@ -9,8 +9,12 @@ local COB = ChurchOfBeef
 -- a body Codec will not decode stays unknown, so HELLO-only suites stay green.
 -- Older builds may still broadcast SUGGESTION, RANK_COMMIT, SYNC_REQUEST, or
 -- SYNC_STATE; those are named so they die quietly and are never acted on.
--- INPUT is not a live channel. Outbound STATE / SNAPSHOT send only if the local
--- player is a registered Pope (always false until the #8 list — do not code it).
+-- INPUT (favor, petition, confession) is live on whisper-to-Pope. A petition
+-- may carry an opponent name. GUILD INPUT stays unknown. Outbound STATE /
+-- SNAPSHOT / DECREE send only if the local player is a registered Pope
+-- (always false until the #8 list — do not code it).
+-- SendFavor, SendPetition, SendConfession, and RequestSnapshot are congregation
+-- whisper and are not Pope-gated.
 --
 -- Classic+ port notes: the client APIs read here are behind type() guards and listed
 -- below, so a host that renames one degrades to "cannot send" instead of erroring on
@@ -75,6 +79,15 @@ local function trim(text)
   text = text:gsub("^%s+", ""):gsub("%s+$", "")
   if text == "" then return nil end
   return text
+end
+
+-- Whisper dest only. Names.Trim when Common is loaded; else the local trim.
+-- Empty after trim is no target. Do not look up a Pope name.
+local function destName(target)
+  if COB.Names and type(COB.Names.Trim) == "function" then
+    return COB.Names.Trim(target)
+  end
+  return trim(target)
 end
 
 -- Rejects NaN and infinity as well as non-numbers: tonumber("nan") succeeds on some
@@ -226,7 +239,8 @@ end
 function Net:_TransmitWhisper(payload, target)
   if type(payload) ~= "string" or payload == "" then return false, "empty payload" end
   if #payload > MAX_BODY then return false, "payload too large" end
-  if type(target) ~= "string" or target == "" then return false, "no target" end
+  target = destName(target)
+  if not target then return false, "no target" end
 
   self.sentCount = self.sentCount + 1
   self.lastSent = payload
@@ -336,14 +350,141 @@ function Net:SendState(fields, nowSeconds)
   return self:Send(payload, nowSeconds)
 end
 
+-- Pope-gated. destName before encode. Empty dest is no target and does
+-- not EncodeSnapshot. Caller supplies the whisper dest. Do not look up
+-- a Pope name.
 function Net:SendSnapshot(fields, target)
   if not self:_LocalPope() then
     return false, "not a registered pope"
+  end
+  target = destName(target)
+  if not target then
+    return false, "no target"
   end
   if not (COB.Codec and COB.Codec.EncodeSnapshot) then
     return false, "no codec"
   end
   local payload, err = COB.Codec:EncodeSnapshot(fields)
+  if not payload then
+    return false, err
+  end
+  return self:_TransmitWhisper(payload, target)
+end
+
+function Net:SendDecree(fields, nowSeconds)
+  if not self:_LocalPope() then
+    return false, "not a registered pope"
+  end
+  if not (COB.Codec and COB.Codec.EncodeDecree) then
+    return false, "no codec"
+  end
+  local payload, err = COB.Codec:EncodeDecree(fields)
+  if not payload then
+    return false, err
+  end
+  return self:Send(payload, nowSeconds)
+end
+
+-- Congregation → Pope. Not Pope-gated. Favor+pick only.
+function Net:SendFavor(fields, target, nowSeconds)
+  target = destName(target)
+  if not target then
+    return false, "no target"
+  end
+  if not (COB.Codec and COB.Codec.EncodeInput) then
+    return false, "no codec"
+  end
+  local body = type(fields) == "table" and {
+    kind = "favor",
+    characterId = fields.characterId,
+    pick = fields.pick,
+  } or { kind = "favor" }
+  local payload, err = COB.Codec:EncodeInput(body)
+  if not payload then
+    return false, err
+  end
+  return self:_TransmitWhisper(payload, target)
+end
+
+-- Congregation → Pope. Not Pope-gated. Petition id, optional opponent name.
+-- Do not copy namedOpponentId onto the wire. Caller supplies the whisper
+-- target. Do not look up a Pope name.
+function Net:SendPetition(fields, target, nowSeconds)
+  target = destName(target)
+  if not target then
+    return false, "no target"
+  end
+  if not (COB.Codec and COB.Codec.EncodeInput) then
+    return false, "no codec"
+  end
+  local body = type(fields) == "table" and {
+    kind = "petition",
+    characterId = fields.characterId,
+  } or { kind = "petition" }
+  if type(fields) == "table" and type(fields.opponent) == "string"
+      and fields.opponent ~= "" then
+    body.opponent = fields.opponent
+  end
+  local payload, err = COB.Codec:EncodeInput(body)
+  if not payload then
+    return false, err
+  end
+  return self:_TransmitWhisper(payload, target)
+end
+
+-- Congregation → Pope. Not Pope-gated. Confession text is optional.
+-- Trim text (Names.Trim or local trim). Empty after trim omits
+-- body.text and still sends. Caller supplies the whisper target.
+-- Do not look up a Pope name.
+function Net:SendConfession(fields, target, nowSeconds)
+  target = destName(target)
+  if not target then
+    return false, "no target"
+  end
+  if not (COB.Codec and COB.Codec.EncodeInput) then
+    return false, "no codec"
+  end
+  if type(fields) == "table" and type(fields.text) == "string"
+      and fields.text:find("\n", 1, true) then
+    return false, "invalid text"
+  end
+  local text
+  if type(fields) == "table" then
+    if COB.Names and type(COB.Names.Trim) == "function" then
+      text = COB.Names.Trim(fields.text)
+    else
+      text = trim(fields.text)
+    end
+  end
+  local body = type(fields) == "table" and {
+    kind = "confession",
+    characterId = fields.characterId,
+  } or { kind = "confession" }
+  if type(text) == "string" then
+    body.text = text
+  end
+  local payload, err = COB.Codec:EncodeInput(body)
+  if not payload then
+    return false, err
+  end
+  return self:_TransmitWhisper(payload, target)
+end
+
+-- Congregation → Pope. Not Pope-gated. Caller supplies the whisper target.
+-- Do not look up a Pope name.
+function Net:RequestSnapshot(target, nowSeconds)
+  target = destName(target)
+  if not target then
+    return false, "no target"
+  end
+  local payload, err
+  if COB.Snapshot and COB.Snapshot.Request then
+    payload, err = COB.Snapshot:Request()
+  elseif COB.Codec and COB.Codec.EncodeSnapshot then
+    payload, err = COB.Codec:EncodeSnapshot({ role = "request" })
+  else
+    return false, "no codec"
+  end
   if not payload then
     return false, err
   end
@@ -423,7 +564,8 @@ end
 
 function Net:OnAddonMessage(prefix, payload, channel, sender, nowSeconds)
   if prefix ~= self.Prefix then return false end
-  -- HELLO and STATE travel on GUILD. SNAPSHOT catch-up is whisper only.
+  -- HELLO, STATE, and DECREE travel on GUILD. SNAPSHOT catch-up and INPUT
+  -- (favor, petition, confession) are whisper only.
   if channel ~= self.Channel and channel ~= "WHISPER" then return false end
 
   -- Our own guild-channel traffic comes straight back to us and is not somebody
@@ -456,17 +598,41 @@ function Net:_HandleV2(payload, channel, sender)
     return false, "unknown message type"
   end
   local decoded = COB.Codec:Decode(payload)
-  if not decoded or (decoded.type ~= "STATE" and decoded.type ~= "SNAPSHOT") then
+  if not decoded then
+    return false, "unknown message type"
+  end
+  local msgType = decoded.type
+  if msgType ~= "STATE" and msgType ~= "SNAPSHOT"
+      and msgType ~= "DECREE" and msgType ~= "INPUT" then
+    return false, "unknown message type"
+  end
+  -- GUILD INPUT stays unknown — not a live channel.
+  if msgType == "INPUT" and channel ~= "WHISPER" then
     return false, "unknown message type"
   end
   if not COB.Codec:IsCompatible(decoded.version) then
     self:_WarnVersion(decoded.version)
     return false, "protocol mismatch"
   end
-  if decoded.type == "STATE" then
+  if msgType == "STATE" then
     return self:_HandleState(decoded, channel, sender)
   end
-  return self:_HandleSnapshot(decoded, channel, sender, payload)
+  if msgType == "SNAPSHOT" then
+    return self:_HandleSnapshot(decoded, channel, sender, payload)
+  end
+  if msgType == "DECREE" then
+    return self:_HandleDecree(decoded, channel, sender)
+  end
+  if decoded.kind == "favor" then
+    return self:_HandleFavor(decoded, channel, sender)
+  end
+  if decoded.kind == "petition" then
+    return self:_HandlePetition(decoded, channel, sender)
+  end
+  if decoded.kind == "confession" then
+    return self:_HandleConfession(decoded, channel, sender)
+  end
+  return false, "unknown message type"
 end
 
 function Net:_HandleState(decoded, channel, sender)
@@ -523,6 +689,115 @@ function Net:_HandleSnapshot(decoded, channel, sender, payload)
     return self:_TransmitWhisper(blob, sender)
   end
   return false
+end
+
+function Net:_HandleDecree(decoded, channel, sender)
+  if channel ~= self.Channel then
+    return false
+  end
+  -- Accept(sender, "DECREE") is false today. Call the registered-Pope predicate.
+  if not (COB.Sender and COB.Sender.IsRegisteredPope) then
+    return false
+  end
+  if not COB.Sender:IsRegisteredPope(sender) then
+    return false, "not accepted"
+  end
+  if COB.Decree and COB.Decree.Set then
+    local saved, err = COB.Decree:Set({
+      line = decoded.line,
+      flavor = decoded.flavor,
+    })
+    if not saved then
+      return false, err
+    end
+  end
+  return true
+end
+
+function Net:_HandleFavor(decoded, channel, sender)
+  if channel ~= "WHISPER" or decoded.kind ~= "favor" then
+    return false, "unknown message type"
+  end
+  if not self:_LocalPope() then
+    return false, "not a registered pope"
+  end
+  local pick = decoded.pick
+  if pick == nil then
+    return false
+  end
+  if not (COB.Gora and COB.Gora.RecordFavor) then
+    return false
+  end
+  local ok, err = COB.Gora:RecordFavor(decoded.characterId, pick)
+  if not ok then
+    return false, err
+  end
+  return true
+end
+
+-- Name → store id. First match on Snapshot().characters via Names.Key / Same.
+-- Missing Store, missing list, or no match → nil (caller refuses; do not Petition).
+local function resolveOpponentId(opponentName)
+  if not (COB.Store and type(COB.Store.Snapshot) == "function") then
+    return nil
+  end
+  if not (COB.Names and COB.Names.Key and COB.Names.Same) then
+    return nil
+  end
+  local snap = COB.Store:Snapshot()
+  local chars = type(snap) == "table" and snap.characters or nil
+  if type(chars) ~= "table" then
+    return nil
+  end
+  for i = 1, #chars do
+    local row = chars[i]
+    if type(row) == "table" and COB.Names.Same(row.name, opponentName) then
+      return row.id
+    end
+  end
+  return nil
+end
+
+function Net:_HandlePetition(decoded, channel, sender)
+  if channel ~= "WHISPER" or decoded.kind ~= "petition" then
+    return false, "unknown message type"
+  end
+  if not self:_LocalPope() then
+    return false, "not a registered pope"
+  end
+  if not (COB.Gora and COB.Gora.Petition) then
+    return false
+  end
+  local opponent = type(decoded.opponent) == "string" and trim(decoded.opponent) or nil
+  local namedOpponentId
+  if opponent then
+    namedOpponentId = resolveOpponentId(opponent)
+    if namedOpponentId == nil then
+      return false, "unknown opponent"
+    end
+  end
+  local ok, err = COB.Gora:Petition(decoded.characterId, namedOpponentId)
+  if not ok then
+    return false, err
+  end
+  return true
+end
+
+function Net:_HandleConfession(decoded, channel, sender)
+  if channel ~= "WHISPER" or decoded.kind ~= "confession" then
+    return false, "unknown message type"
+  end
+  if not self:_LocalPope() then
+    return false, "not a registered pope"
+  end
+  if not (COB.Confession and COB.Confession.Receive) then
+    return false
+  end
+  local ok, err = COB.Confession:Receive(decoded.characterId, decoded.text)
+  if not ok then
+    return false, err
+  end
+  return true
 end
 
 function Net:OnRosterUpdate()

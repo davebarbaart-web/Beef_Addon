@@ -1,0 +1,222 @@
+diff --git a/addon/ChurchOfBeef/UI/Console.lua b/addon/ChurchOfBeef/UI/Console.lua
+--- a/addon/ChurchOfBeef/UI/Console.lua
++++ b/addon/ChurchOfBeef/UI/Console.lua
+@@ -35,10 +35,13 @@
+ -- character then human. Missing Store log is an empty list. No generated
+ -- knighting prose.
+ -- Layout: two-column stock desk, large targets. Outer frame height 780 with
+--- a stock ScrollFrame around the desk body (child stays tall). Scrollable
+--- Presence / Gora / Confession / Line / CeremonyLog lists, click-to-select.
+--- Not parchment. Not collapsible tabs (desks stay glanceable without window
+--- switching).
++-- a stock ScrollFrame around the desk body (child stays tall). Type-guarded
++-- EnableMouseWheel + OnMouseWheel steps 36px; missing scroll APIs no-op.
++-- No permanent OnUpdate. Open Gora subjects use the selected pair when both
++-- ids are set, else Gora:GetSanctioned() then Gora:GetLastSanctioned().
++-- Scrollable Presence / Gora / Confession / Line / CeremonyLog lists,
++-- click-to-select. Not parchment. Not collapsible tabs (desks stay
++-- glanceable without window switching).
+ local Console = {
+   MODE = "event",
+ }
+@@ -495,6 +498,28 @@
+   end
+   if type(deskScroll.SetVerticalScroll) == "function" then
+     deskScroll:SetVerticalScroll(0)
++  end
++  if type(deskScroll.EnableMouseWheel) == "function" then
++    deskScroll:EnableMouseWheel(true)
++  end
++  if type(deskScroll.SetScript) == "function" then
++    deskScroll:SetScript("OnMouseWheel", function(self, delta)
++      if type(self.GetVerticalScroll) ~= "function"
++          or type(self.SetVerticalScroll) ~= "function"
++          or type(self.GetVerticalScrollRange) ~= "function" then
++        return
++      end
++      local current = self:GetVerticalScroll()
++      local range = self:GetVerticalScrollRange()
++      if type(current) ~= "number" or type(range) ~= "number" then
++        return
++      end
++      if type(delta) ~= "number" then return end
++      local nextScroll = current - (delta * 36)
++      if nextScroll < 0 then nextScroll = 0 end
++      if nextScroll > range then nextScroll = range end
++      self:SetVerticalScroll(nextScroll)
++    end)
+   end
+   frame.DeskScroll = deskScroll
+   frame.DeskChild = content
+@@ -1304,6 +1329,23 @@
+     subjects = { candidate = self.selectedHumanId }
+   elseif kind == "Gora" then
+     local a, b = self.selectedFighterA, self.selectedFighterB
++    if not (isId(a) and isId(b)) then
++      local pair
++      local Gora = COB.Gora
++      if Gora and type(Gora.GetSanctioned) == "function" then
++        pair = Gora:GetSanctioned()
++      end
++      if type(pair) ~= "table" or not isId(pair.fighterA) or not isId(pair.fighterB) then
++        pair = nil
++        if Gora and type(Gora.GetLastSanctioned) == "function" then
++          pair = Gora:GetLastSanctioned()
++        end
++      end
++      if type(pair) == "table" then
++        a = pair.fighterA
++        b = pair.fighterB
++      end
++    end
+     if isId(a) and isId(b) then
+       subjects = { fighters = { a, b } }
+     end
+diff --git a/tests/test_console.lua b/tests/test_console.lua
+--- a/tests/test_console.lua
++++ b/tests/test_console.lua
+@@ -4,7 +4,8 @@
+ -- B6-A GRANT HONORIFIC / Recognition Begin-Complete-Cancel + B7-B Archive
+ -- export/import / CanonizeMoment / FlagFamousUpset + B8-E multiline
+ -- ArchiveBox / stock ARCHIVE and CANONIZE labels + B9-C stock
+--- CeremonyLog desk + B10-D stock desk-body ScrollFrame, outer height 780).
++-- CeremonyLog desk + B10-D stock desk-body ScrollFrame, outer height 780
++-- + B11-C desk mouse wheel and Open Gora subject fallback).
+ -- Isolated: wow_ui_stub + Common + Ranks + Runtime + Store + Gora + Knighting
+ -- + Sender + Decree + Console. Confession is stubbed when painted; this file
+ -- does not load Confession.lua. Knighting GetLine/Enqueue/Skip are stubbed
+@@ -2373,7 +2374,134 @@
+   assert_eq(COB.Toasts, nil, "isolation still does not load Toasts")
+ end
+ assert_eq(COB.Popes, nil, "still no Pope list after B10-D")
++
++--------------------------------------------------------------------------------
++-- B11-C: DeskScroll mouse wheel + Open Gora subjects.
++-- Nested further so runB8E stays under Lua 5.1's 200-local cap.
++--------------------------------------------------------------------------------
++local function runB11C()
++reset()
++Console:Init()
++assert_true(frame.DeskScroll ~= nil, "B11-C desk ScrollFrame exists")
++assert_eq(type(frame.DeskScroll.GetScript), "function", "DeskScroll GetScript exists")
++assert_true(frame.DeskScroll:GetScript("OnMouseWheel") ~= nil, "DeskScroll has OnMouseWheel")
++assert_eq(frame.DeskScroll:GetScript("OnUpdate"), nil, "DeskScroll has no permanent OnUpdate")
++assert_eq(frame:GetScript("OnUpdate"), nil, "console frame has no permanent OnUpdate")
++local fired, fireErr = pcall(function()
++  stub.fire(frame.DeskScroll, "OnMouseWheel", -1)
++end)
++assert_eq(fired, true, "OnMouseWheel fire does not error")
++assert_eq(fireErr, nil, "OnMouseWheel fire has no error text")
++
++assert_eq(Console.SaveNote, nil, "SaveNote stays nil")
++assert_eq(Console.GetNotes, nil, "no notes table")
++assert_eq(Console.CopyCeremonySummary, nil, "no post-show ceremony summary")
++assert_eq(Console.CeremonySummary, nil, "no ceremony summary")
++assert_eq(findButton(frame, "SUMMON THE FAITHFUL"), nil, "no SUMMON chrome")
++assert_eq(findButton(frame, "COPY SUMMARY"), nil, "no ceremony-summary chrome")
++assert_eq(findButton(frame, "WHISPER ALL"), nil, "no WHISPER ALL chrome")
++assert_eq(findButton(frame, "RSVP"), nil, "no RSVP chrome")
++
++local srcWheel = io.open("addon/ChurchOfBeef/UI/Console.lua", "r")
++assert_true(srcWheel ~= nil, "Console.lua is readable for B11-C")
++local srcWheelBody = srcWheel:read("*a")
++srcWheel:close()
++assert_true(srcWheelBody:find("EnableMouseWheel", 1, true) ~= nil,
++  "source contains EnableMouseWheel")
++assert_true(srcWheelBody:find('type(deskScroll.EnableMouseWheel) == "function"', 1, true) ~= nil,
++  "EnableMouseWheel is type-guarded")
++assert_true(srcWheelBody:find('SetScript("OnMouseWheel"', 1, true) ~= nil,
++  "source wires OnMouseWheel")
++assert_true(srcWheelBody:find("GetVerticalScroll", 1, true) ~= nil,
++  "source type-guards GetVerticalScroll")
++assert_true(srcWheelBody:find("GetVerticalScrollRange", 1, true) ~= nil,
++  "source type-guards GetVerticalScrollRange")
++assert_true(srcWheelBody:find("36", 1, true) ~= nil, "wheel steps by 36px")
++assert_eq(srcWheelBody:find('deskScroll:SetScript("OnUpdate"', 1, true), nil,
++  "source must not add a DeskScroll OnUpdate")
++assert_eq(srcWheelBody:find("SUMMON THE FAITHFUL", 1, true), nil, "source must not contain SUMMON")
++assert_eq(srcWheelBody:find("CopyCeremonySummary", 1, true), nil, "source must not copy a ceremony summary")
++assert_eq(srcWheelBody:find("function Console:SaveNote", 1, true), nil, "source must not define SaveNote")
++assert_eq(srcWheelBody:find("Parchment", 1, true), nil, "console stays stock, not parchment")
++assert_eq(srcWheelBody:find("PanelTabButtonTemplate", 1, true), nil, "desks are not collapsed into tabs")
++
++local savedPred = Sender.IsRegisteredPope
++Sender.IsRegisteredPope = function() return true end
++
++reset()
++Console:Init()
++local liveA = Store:CreateCharacter({ name = "WheelA", class = "Warrior", level = 70 })
++local liveB = Store:CreateCharacter({ name = "WheelB", class = "Mage", level = 68 })
++assert_eq(Console.selectedFighterA, nil, "no selected fighter A")
++assert_eq(Console.selectedFighterB, nil, "no selected fighter B")
++assert_true(Console:StartEvent() ~= nil, "StartEvent reaches Runtime")
++assert_true(Console:Sanction(liveA.id, liveB.id) ~= nil, "Sanction reaches Gora")
++assert_eq(Gora:GetSanctioned().fighterA, liveA.id, "live pair is A")
++assert_eq(Gora:GetSanctioned().fighterB, liveB.id, "live pair is B")
++local openedLive = Console:OpenRite("Gora")
++assert_true(openedLive ~= nil, "OpenRite Gora reaches Runtime from the live pair")
++assert_eq(openedLive.state, "RITE", "OpenRite opens a typed rite")
++assert_eq(openedLive.riteType, "Gora", "rite type is Gora")
++assert_true(openedLive.subjects ~= nil, "Runtime subjects exist")
++local liveFighters = openedLive.subjects and openedLive.subjects.fighters
++assert_true(liveFighters ~= nil, "Runtime subjects have fighters")
++assert_eq(liveFighters and liveFighters[1], liveA.id, "Runtime subject A is the live pair")
++assert_eq(liveFighters and liveFighters[2], liveB.id, "Runtime subject B is the live pair")
++assert_eq(liveFighters and #liveFighters, 2, "Runtime subjects are the two live ids")
++
++reset()
++Console:Init()
++local lastA = Store:CreateCharacter({ name = "LastA", class = "Warrior", level = 70 })
++local lastB = Store:CreateCharacter({ name = "LastB", class = "Mage", level = 68 })
++local selA = Store:CreateCharacter({ name = "SelA", class = "Rogue", level = 70 })
++local selB = Store:CreateCharacter({ name = "SelB", class = "Priest", level = 69 })
++assert_true(Console:StartEvent() ~= nil, "StartEvent for selected-wins")
++assert_true(Console:Sanction(lastA.id, lastB.id) ~= nil, "Sanction last pair")
++assert_true(Console:Void() ~= nil, "VOID clears the live pair")
++assert_eq(Gora:GetSanctioned(), nil, "live pair is gone after VOID")
++assert_eq(Gora:GetLastSanctioned().fighterA, lastA.id, "last pair is A")
++assert_eq(Gora:GetLastSanctioned().fighterB, lastB.id, "last pair is B")
++Console:SelectFighters(selA.id, selB.id)
++assert_eq(Console.selectedFighterA, selA.id, "selected A is set")
++assert_eq(Console.selectedFighterB, selB.id, "selected B is set")
++local openedSel = Console:OpenRite("Gora")
++assert_true(openedSel ~= nil, "OpenRite Gora reaches Runtime from the selected pair")
++local selFighters = openedSel and openedSel.subjects and openedSel.subjects.fighters
++assert_eq(selFighters and selFighters[1], selA.id, "selected pair wins over GetLastSanctioned")
++assert_eq(selFighters and selFighters[2], selB.id, "selected pair B wins over GetLastSanctioned")
++assert_eq(selFighters and selFighters[1] == lastA.id, false, "last pair A does not win")
++assert_eq(selFighters and selFighters[2] == lastB.id, false, "last pair B does not win")
++
++reset()
++Console:Init()
++local lastOnlyA = Store:CreateCharacter({ name = "OnlyA", class = "Warrior", level = 70 })
++local lastOnlyB = Store:CreateCharacter({ name = "OnlyB", class = "Mage", level = 68 })
++assert_eq(Console.selectedFighterA, nil, "last-only has no selected A")
++assert_eq(Console.selectedFighterB, nil, "last-only has no selected B")
++assert_true(Console:StartEvent() ~= nil, "StartEvent for last-pair fallback")
++assert_true(Console:Sanction(lastOnlyA.id, lastOnlyB.id) ~= nil, "Sanction last-only pair")
++assert_true(Console:Void() ~= nil, "VOID leaves last pair only")
++assert_eq(Gora:GetSanctioned(), nil, "no live pair for last-only fallback")
++local openedLast = Console:OpenRite("Gora")
++assert_true(openedLast ~= nil, "OpenRite Gora falls back to GetLastSanctioned")
++local lastFighters = openedLast and openedLast.subjects and openedLast.subjects.fighters
++assert_eq(lastFighters and lastFighters[1], lastOnlyA.id, "last-pair fallback A")
++assert_eq(lastFighters and lastFighters[2], lastOnlyB.id, "last-pair fallback B")
++
++Sender.IsRegisteredPope = savedPred
++assert_eq(Sender:IsRegisteredPope(COB.Group.PlayerName()), false,
++  "B11-C wrapping the predicate does not stub the list true")
++
++assert_eq(Console.SaveNote, nil, "SaveNote stays nil after B11-C")
++if standalone then
++  assert_eq(COB.Archive, nil, "isolation still does not load Archive")
++  assert_eq(COB.UI, nil, "isolation still does not load the Quiet shell")
++  assert_eq(COB.Toasts, nil, "isolation still does not load Toasts")
+ end
++assert_eq(COB.Popes, nil, "still no Pope list after B11-C")
++end
++runB11C()
++end
+ runB8E()
+ 
+ --------------------------------------------------------------------------------

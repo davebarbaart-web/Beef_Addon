@@ -1,0 +1,225 @@
+# B37-A — successful Dismiss drops leftover character pick (implementation diff)
+
+Lane-only unified diff of the exclusive implementation files vs the pre-lane working tree.
+
+--- a/addon/ChurchOfBeef/UI/Console.lua
++++ b/addon/ChurchOfBeef/UI/Console.lua
+@@ -14,9 +14,12 @@
+ -- on this desk only — never theater. Rows click-select the character; a
+ -- called row appends mute "  called". Dismiss is stock furniture, not a ritual
+ -- plate. Console:Dismiss reaches Gora:Dismiss and, when Confession.Dismiss
+--- exists, that inbox too (same id). Refresh if either returns true.
+--- Isolated Gora-only Dismiss stays when Confession is nil. Knighting line
++-- exists, that inbox too (same id). Successful Dismiss (ok true, including
++-- Confession-only) nils selectedCharacterId before Refresh so leftover
++-- CallForward / DeclareVictor cannot fire on a dismissed petitioner.
++-- Failed Dismiss keeps the pick. Does not nil selectedHumanId.
++-- Isolated Gora-only Dismiss stays when Confession is nil. Knighting line
+ -- is a stock list plus Enqueue / Skip furniture.
+ -- Recommend proposes a pair and never Sanctions. lastRecommendation
+ -- and the selected fighter pair clear on successful StartEvent / EndEvent
+@@ -1703,7 +1706,10 @@
+   if COB.Confession and type(COB.Confession.Dismiss) == "function" then
+     if COB.Confession:Dismiss(id) then ok = true end
+   end
+-  if ok then self:Refresh() end
++  if ok then
++    self.selectedCharacterId = nil
++    self:Refresh()
++  end
+   return ok
+ end
+
+--- a/tests/test_console.lua
++++ b/tests/test_console.lua
+@@ -24,8 +24,9 @@
+ -- Console:Dismiss also reaches Confession:Dismiss + B33-B
+ -- Presence here == false stock SetAlpha + B34-B leftover
+ -- Presence hide SetAlpha(1) + B36-B
+--- successful EndEvent nils selectedHumanId / selectedCharacterId).
++-- successful EndEvent nils selectedHumanId / selectedCharacterId + B37-A
++-- successful Dismiss nils selectedCharacterId).
+ -- Isolated: wow_ui_stub + Common + Ranks + Runtime + Store + Gora + Knighting
+ -- + Sender + Decree + Console. Confession is stubbed when painted; this file
+ -- does not load Confession.lua. Knighting GetLine/Enqueue/Skip are stubbed
+@@ -4509,8 +4510,8 @@
+   "Dismiss type-guards Confession.Dismiss")
+ assert_true(dismissFn:find("COB.Confession:Dismiss(id)", 1, true) ~= nil,
+   "Dismiss reaches Confession with the same id")
+-assert_true(dismissFn:find("if ok then self:Refresh() end", 1, true) ~= nil,
+-  "Dismiss Refreshs when either succeeded")
++assert_true(dismissFn:find("if ok then\n    self.selectedCharacterId = nil\n    self:Refresh()\n  end", 1, true) ~= nil,
++  "Dismiss Refreshs when either succeeded, after nilling the character pick")
+ assert_eq(dismissFn:find("after(", 1, true), nil, "Dismiss does not fan-out through after()")
+ assert_eq(dismissFn:find("PlaySound", 1, true), nil, "Dismiss does not PlaySound")
+ assert_eq(dismissFn:find("playCue", 1, true), nil, "Dismiss does not playCue")
+@@ -5253,6 +5254,164 @@
+ end
+ assert_eq(COB.Popes, nil, "still no Pope list after B36-B")
+ end
+ runB36B()
++
++--------------------------------------------------------------------------------
++-- B37-A: successful Dismiss nils selectedCharacterId before Refresh.
++-- Confession-only success also nils. Failed Dismiss keeps. Does not
++-- nil selectedHumanId. End / Start / Refresh keeps stay. Leftover
++-- CallForward / DeclareVictor without an explicit id do not fire on
++-- the leftover. SaveNote nil. No SUMMON. Nested inside runB8E after
++-- runB36B().
++--------------------------------------------------------------------------------
++local function runB37A()
++reset()
++Console:Init()
++assert_eq(Console.SaveNote, nil, "SaveNote stays nil")
++assert_eq(Console.GetNotes, nil, "no notes table")
++assert_eq(Console.CopyCeremonySummary, nil, "no post-show ceremony summary")
++assert_eq(Console.CeremonySummary, nil, "no ceremony summary")
++assert_eq(findButton(frame, "SUMMON THE FAITHFUL"), nil, "no SUMMON chrome")
++assert_eq(findButton(frame, "COPY SUMMARY"), nil, "no ceremony-summary chrome")
++assert_eq(findButton(frame, "WHISPER ALL"), nil, "no WHISPER ALL chrome")
++assert_eq(findButton(frame, "RSVP"), nil, "no RSVP chrome")
++assert_eq(type(Console.Dismiss), "function", "Dismiss stays a console verb")
++assert_eq(type(Console.CallForward), "function", "CallForward pins stay")
++assert_eq(type(Console.DeclareVictor), "function", "DeclareVictor pins stay")
++
++local srcPick = io.open("addon/ChurchOfBeef/UI/Console.lua", "r")
++assert_true(srcPick ~= nil, "Console.lua is readable for B37-A")
++local srcPickBody = srcPick:read("*a")
++srcPick:close()
++local dismissFn = srcPickBody:match("function Console:Dismiss%(characterId%)(.-)\nfunction Console:DeclareVictor")
++assert_true(type(dismissFn) == "string" and dismissFn ~= "",
++  "Dismiss body is readable")
++assert_true(dismissFn:find("local id = characterId or self.selectedCharacterId", 1, true) ~= nil,
++  "Dismiss still resolves one id from the pick")
++assert_true(dismissFn:find("if ok then\n    self.selectedCharacterId = nil\n    self:Refresh()\n  end", 1, true) ~= nil,
++  "successful Dismiss nils selectedCharacterId before Refresh")
++assert_eq(dismissFn:find("selectedHumanId = nil", 1, true), nil,
++  "Dismiss does not nil selectedHumanId")
++assert_eq(dismissFn:find("after(", 1, true), nil, "Dismiss does not fan-out through after()")
++local startFn = srcPickBody:match("function Console:StartEvent%(%)(.-)\nfunction Console:OpenRite")
++assert_true(type(startFn) == "string" and startFn ~= "",
++  "StartEvent body is readable")
++assert_eq(startFn:find("selectedCharacterId", 1, true), nil,
++  "StartEvent keep stays — does not nil selectedCharacterId")
++assert_eq(startFn:find("selectedHumanId", 1, true), nil,
++  "StartEvent keep stays — does not nil selectedHumanId")
++local endFn = srcPickBody:match("function Console:EndEvent%(%)(.-)\nfunction Console:KnightThisBeef")
++assert_true(type(endFn) == "string" and endFn ~= "",
++  "EndEvent body is readable")
++assert_true(endFn:find("self.selectedCharacterId = nil", 1, true) ~= nil,
++  "EndEvent keep stays — still nils selectedCharacterId")
++assert_true(endFn:find("self.selectedHumanId = nil", 1, true) ~= nil,
++  "EndEvent keep stays — still nils selectedHumanId")
++assert_true(srcPickBody:find("local result, err = COB.Runtime:EndEvent()\n  if result ~= nil then\n    lastRecommendation = nil\n    self.selectedFighterA = nil\n    self.selectedFighterB = nil\n    self.selectedHumanId = nil\n    self.selectedCharacterId = nil\n  end\n  return after(self, result, err, nil, true)", 1, true) ~= nil,
++  "EndEvent keep stays — success still nils the pick before after")
++assert_true(srcPickBody:find("local result, err = COB.Runtime:StartEvent()\n  if result ~= nil then\n    lastRecommendation = nil\n    self.selectedFighterA = nil\n    self.selectedFighterB = nil\n  end\n  return after(self, result, err)", 1, true) ~= nil,
++  "StartEvent keep stays — still nils only lastRecommendation and the pair")
++local refreshFn = srcPickBody:match("function Console:Refresh%(%)(.-)\nfunction Console:Show")
++assert_true(type(refreshFn) == "string" and refreshFn ~= "",
++  "Refresh body is readable")
++assert_eq(refreshFn:find("selectedCharacterId", 1, true), nil,
++  "Refresh keep stays — does not nil selectedCharacterId")
++assert_eq(refreshFn:find("selectedHumanId", 1, true), nil,
++  "Refresh keep stays — does not nil selectedHumanId")
++assert_eq(srcPickBody:find("function Console:SaveNote", 1, true), nil,
++  "source must not define SaveNote")
++assert_eq(srcPickBody:find("SUMMON THE FAITHFUL", 1, true), nil,
++  "source must not contain SUMMON")
++assert_eq(srcPickBody:find("Parchment", 1, true), nil, "console stays stock, not parchment")
++assert_eq(srcPickBody:find("PanelTabButtonTemplate", 1, true), nil,
++  "desks are not collapsed into tabs")
++
++local savedPred = Sender.IsRegisteredPope
++Sender.IsRegisteredPope = function() return true end
++
++reset()
++Console:Init()
++local human, ch = seedLinked("Beefina", "Steve", 1)
++assert_eq(human.id ~= nil, true, "pick human fixture exists")
++assert_eq(ch.id ~= nil, true, "pick character fixture exists")
++assert_eq(Console:SelectHuman(human.id), true, "selects the human")
++assert_eq(Console:SelectCharacter(ch.id), true, "selects the character")
++assert_eq(Console.selectedHumanId, human.id, "stores selectedHumanId")
++assert_eq(Console.selectedCharacterId, ch.id, "stores selectedCharacterId")
++Console:Refresh()
++assert_eq(Console.selectedHumanId, human.id, "Refresh keep stays — human")
++assert_eq(Console.selectedCharacterId, ch.id, "Refresh keep stays — character")
++
++local started = Console:StartEvent()
++assert_true(started ~= nil, "StartEvent after a pick")
++assert_eq(Console.selectedHumanId, human.id, "StartEvent keep stays — human")
++assert_eq(Console.selectedCharacterId, ch.id, "StartEvent keep stays — character")
++
++local failDismiss = Console:Dismiss()
++assert_eq(failDismiss, false, "Dismiss without a petition fails")
++assert_eq(Console.selectedCharacterId, ch.id, "failed Dismiss keeps selectedCharacterId")
++assert_eq(Console.selectedHumanId, human.id, "failed Dismiss keeps selectedHumanId")
++
++assert_true(Gora:Petition(ch.id) ~= nil, "petition lands on the selected character")
++local dismissed = Console:Dismiss()
++assert_eq(dismissed, true, "successful Dismiss returns true")
++assert_eq(Console.selectedCharacterId, nil, "successful Dismiss nils selectedCharacterId")
++assert_eq(Console.selectedHumanId, human.id, "successful Dismiss does not nil selectedHumanId")
++
++assert_eq(COB.Confession, nil, "isolation Confession is nil after Dismiss")
++local called, callErr = Console:CallForward()
++assert_eq(called, nil, "CallForward without id refuses when Confession is nil")
++assert_eq(callErr, "confession is not available", "CallForward refuse is not a leftover fire")
++
++local callCount = 0
++local callId
++COB.Confession = {
++  CallForward = function(_, characterId)
++    callCount = callCount + 1
++    callId = characterId
++    if type(characterId) ~= "number" then return false end
++    return true
++  end,
++}
++local stubCalled = Console:CallForward()
++assert_eq(stubCalled, false, "CallForward without id no-ops after Dismiss")
++assert_eq(callCount, 1, "CallForward still reaches Confession with the resolved id")
++assert_eq(callId, nil, "CallForward is not called with leftover character")
++COB.Confession = nil
++
++local victorId
++local realVictor = Gora.DeclareVictor
++Gora.DeclareVictor = function(self, id)
++  victorId = id
++  return realVictor(self, id)
++end
++local declared = Console:DeclareVictor()
++Gora.DeclareVictor = realVictor
++assert_eq(declared, nil, "DeclareVictor without id refuses after Dismiss")
++assert_eq(victorId, nil, "DeclareVictor is not called with leftover character")
++
++assert_eq(Console:SelectCharacter(ch.id), true, "re-selects the character for Confession-only")
++assert_eq(Console.selectedCharacterId, ch.id, "re-select stores selectedCharacterId")
++assert_eq(Console.selectedHumanId, human.id, "re-select keeps selectedHumanId")
++COB.Confession = {
++  Dismiss = function(_, characterId)
++    return type(characterId) == "number"
++  end,
++}
++local confessionOnly = Console:Dismiss()
++assert_eq(confessionOnly, true, "Confession-only Dismiss succeeds")
++assert_eq(Console.selectedCharacterId, nil, "Confession-only success nils selectedCharacterId")
++assert_eq(Console.selectedHumanId, human.id, "Confession-only success does not nil selectedHumanId")
++COB.Confession = nil
++
++Sender.IsRegisteredPope = savedPred
++assert_eq(Sender:IsRegisteredPope(COB.Group.PlayerName()), false,
++  "B37-A wrapping the predicate does not stub the list true")
++
++assert_eq(Console.SaveNote, nil, "SaveNote stays nil after B37-A")
++if standalone then
++  assert_eq(COB.Archive, nil, "isolation still does not load Archive")
++  assert_eq(COB.UI, nil, "isolation still does not load the Quiet shell")
++  assert_eq(COB.Toasts, nil, "isolation still does not load Toasts")
++  assert_eq(COB.Confession, nil, "isolation still does not load Confession")
++end
++assert_eq(COB.Popes, nil, "still no Pope list after B37-A")
++end
++runB37A()
+ end
+ runB8E()

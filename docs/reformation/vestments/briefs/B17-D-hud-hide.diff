@@ -1,0 +1,119 @@
+diff --git a/addon/ChurchOfBeef/UI/Hud.lua b/addon/ChurchOfBeef/UI/Hud.lua
+--- a/addon/ChurchOfBeef/UI/Hud.lua
++++ b/addon/ChurchOfBeef/UI/Hud.lua
+@@ -4,7 +4,8 @@
+ -- Event Mode Fight HUD (Bible §10.7, §19.2 / §19.3). Compact spectator card.
+ -- Appears at sanction. Congregation pair arrives as Runtime subjects.fighters
+ -- (STATE); they never Sanction locally. livePair is GetSanctioned(), else
+--- subjects.fighters with two ids. Remember it as lastPair. Persist lastPair
++-- subjects.fighters with two ids only while RITE and riteType Gora
++-- (B17-D). Remember it as lastPair. Persist lastPair
+ -- when both Gora and Runtime fighters are empty and the event is still live
+ -- (B9-E). Hide on QUIET / EndEvent / no last pair. A new live pair replaces
+ -- the remembered pair. clickPlate pick pair never uses lastPair (B11-B):
+@@ -225,7 +226,15 @@
+ local function livePair()
+   local gora = goraPair()
+   if gora then return gora end
+-  return runtimePair()
++  do
++    if not COB.Runtime or not COB.Runtime.Snapshot then return nil end
++    local snap = COB.Runtime:Snapshot()
++    if type(snap) ~= "table" then return nil end
++    if snap.state == "RITE" and snap.riteType == "Gora" then
++      return runtimePair()
++    end
++  end
++  return nil
+ end
+ 
+ local function localSender()
+
+diff --git a/tests/test_hud.lua b/tests/test_hud.lua
+--- a/tests/test_hud.lua
++++ b/tests/test_hud.lua
+@@ -2,14 +2,16 @@
+ -- + B8-D mute defense integer + B9-E persist through the verdict
+ -- + B10-B congregation pair from Runtime subjects.fighters
+ -- + B11-B leftover plate clicks never use lastPair
+--- + B16-C congregation picks only while RITE and riteType Gora). Isolated:
++-- + B16-C congregation picks only while RITE and riteType Gora
++-- + B17-D livePair runtime arm only while RITE and riteType Gora). Isolated:
+ -- wow_ui_stub + Common + Ranks + Runtime + Store + Gora + Hud. Event Mode
+ -- only. No live health, favor economy, sound, or toasts. Standalone wrap.
+ -- Congregation never Sanctions; the star pair is subjects.fighters.
+ -- Congregation favor is broadcast-only. Pope stub fills from
+ -- Gora:GetFavorSplit; after the pair clears, the last split is frozen.
+ -- Plate picks: live GetSanctioned (isolated / Pope) or Runtime fighters
+--- only while RITE and riteType Gora (B16-C). Never lastPair. Dress is
++-- only while RITE and riteType Gora (B16-C). Display livePair runtime
++-- arm is the same Gora-RITE gate (B17-D). Never lastPair. Dress is
+ -- stock iron/parchment only — no faction crests, no custom Media. Thin
+ -- QuestBG fields sit behind
+ -- name+title. Defense count is Store:CountDefenses as a mute integer;
+@@ -212,6 +214,14 @@
+ assert_true(src:find("fighters", 1, true) ~= nil, "source reads subjects.fighters")
+ assert_true(src:find('riteType == "Gora"', 1, true) ~= nil,
+   "congregation pick requires snap.riteType Gora")
++do
++  local goraRiteGates = 0
++  for _ in src:gmatch('state == "RITE" and snap%.riteType == "Gora"') do
++    goraRiteGates = goraRiteGates + 1
++  end
++  assert_true(goraRiteGates >= 2,
++    "livePair and pickPair both gate runtimePair to Gora RITE")
++end
+ assert_eq(src:find("Gora:Sanction", 1, true), nil, "HUD does not call Gora:Sanction")
+ assert_true(src:find("defenseA", 1, true) ~= nil, "source names defenseA")
+ assert_true(src:find("defenseB", 1, true) ~= nil, "source names defenseB")
+@@ -1158,6 +1168,9 @@
+ local knightPicker = Store:CreateCharacter({ name = "KnightFan", class = "Priest", level = 70 })
+ Hud:SetLocalCharacterId(knightPicker.id)
+ view = Hud:Refresh()
++assert_eq(view.shown, false, "Knighting leftover pick view does not paint")
++assert_eq(view.fighterA, nil, "Knighting leftover pick does not paint fighter A")
++assert_eq(view.fighterB, nil, "Knighting leftover pick does not paint fighter B")
+ assert_eq(view.health, nil, "Knighting leftover pick view has no health")
+ assert_eq(view.verdict, nil, "Knighting leftover has no verdict qualifier")
+ knightSent = {}
+@@ -1171,6 +1184,40 @@
+ 
+ assert_eq(sounds, 0, "Knighting leftover pick played no sound")
+ assert_eq(healthReads, 0, "Knighting leftover pick never scraped health")
++
++--------------------------------------------------------------------------------
++-- B17-D: livePair runtime arm requires RITE and riteType Gora.
++-- After reset (lastPair empty), Knighting leftover fighters do not paint.
++-- Sanctioned pair still shows during Knighting. lastPair persist after
++-- Continue stays. B16-C send-0 stays. health nil.
++--------------------------------------------------------------------------------
++reset()
++Runtime:StartEvent()
++a, b = twoChars()
++assert_eq(Gora:GetSanctioned(), nil, "B17-D leftover has no Sanction")
++assert_true(
++  Runtime:OpenRite("Knighting", { candidate = a.id, fighters = { a.id, b.id } }) ~= nil,
++  "B17-D Knighting RITE can carry leftover fighters"
++)
++assert_eq(Runtime:Snapshot().state, "RITE", "B17-D leftover is RITE")
++assert_eq(Runtime:Snapshot().riteType, "Knighting", "B17-D rite type is Knighting")
++assert_eq(Gora:GetSanctioned(), nil, "B17-D OpenRite Knighting is not a Sanction")
++assert_true(type(Runtime:Snapshot().subjects.fighters) == "table",
++  "B17-D leftover still names two fighters")
++assert_eq(Runtime:Snapshot().subjects.fighters[1], a.id, "B17-D leftover fighter A remains")
++assert_eq(Runtime:Snapshot().subjects.fighters[2], b.id, "B17-D leftover fighter B remains")
++frame = Hud:Init()
++view = Hud:Refresh()
++assert_eq(Hud:IsShown(), false, "Knighting leftover fighters do not show the HUD")
++assert_eq(view.shown, false, "Knighting leftover view is hidden")
++assert_eq(view.fighterA, nil, "do not paint leftover fighter A")
++assert_eq(view.fighterB, nil, "do not paint leftover fighter B")
++assert_eq(view.health, nil, "Knighting leftover hide has no health")
++assert_eq(view.favor, nil, "Knighting leftover hide has no favor")
++assert_eq(frame.nameA:GetText(), "", "leftover fighter A name is not painted")
++assert_eq(frame.nameB:GetText(), "", "leftover fighter B name is not painted")
++assert_eq(sounds, 0, "B17-D hide played no sound")
++assert_eq(healthReads, 0, "B17-D hide never scraped health")
+ 
+ --------------------------------------------------------------------------------
+ -- V-D height budget: ≤ 12% of UIParent when the parent height is known.

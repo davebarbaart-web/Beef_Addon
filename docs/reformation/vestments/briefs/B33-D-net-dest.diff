@@ -1,0 +1,204 @@
+--- a/addon/ChurchOfBeef/Net/BeefNet.lua
++++ b/addon/ChurchOfBeef/Net/BeefNet.lua
+@@ -81,6 +81,15 @@
+   return text
+ end
+ 
++-- Whisper dest only. Names.Trim when Common is loaded; else the local trim.
++-- Empty after trim is no target. Do not look up a Pope name.
++local function destName(target)
++  if COB.Names and type(COB.Names.Trim) == "function" then
++    return COB.Names.Trim(target)
++  end
++  return trim(target)
++end
++
+ -- Rejects NaN and infinity as well as non-numbers: tonumber("nan") succeeds on some
+ -- hosts, and a NaN revision would compare false against everything forever.
+ local function finite(value)
+@@ -230,7 +239,8 @@
+ function Net:_TransmitWhisper(payload, target)
+   if type(payload) ~= "string" or payload == "" then return false, "empty payload" end
+   if #payload > MAX_BODY then return false, "payload too large" end
+-  if type(target) ~= "string" or target == "" then return false, "no target" end
++  target = destName(target)
++  if not target then return false, "no target" end
+ 
+   self.sentCount = self.sentCount + 1
+   self.lastSent = payload
+@@ -370,7 +380,8 @@
+ 
+ -- Congregation → Pope. Not Pope-gated. Favor+pick only.
+ function Net:SendFavor(fields, target, nowSeconds)
+-  if type(target) ~= "string" or target == "" then
++  target = destName(target)
++  if not target then
+     return false, "no target"
+   end
+   if not (COB.Codec and COB.Codec.EncodeInput) then
+@@ -392,7 +403,8 @@
+ -- Do not copy namedOpponentId onto the wire. Caller supplies the whisper
+ -- target. Do not look up a Pope name.
+ function Net:SendPetition(fields, target, nowSeconds)
+-  if type(target) ~= "string" or target == "" then
++  target = destName(target)
++  if not target then
+     return false, "no target"
+   end
+   if not (COB.Codec and COB.Codec.EncodeInput) then
+@@ -416,7 +428,8 @@
+ -- Congregation → Pope. Not Pope-gated. Confession text is optional.
+ -- Caller supplies the whisper target. Do not look up a Pope name.
+ function Net:SendConfession(fields, target, nowSeconds)
+-  if type(target) ~= "string" or target == "" then
++  target = destName(target)
++  if not target then
+     return false, "no target"
+   end
+   if not (COB.Codec and COB.Codec.EncodeInput) then
+@@ -441,7 +454,8 @@
+ -- Congregation → Pope. Not Pope-gated. Caller supplies the whisper target.
+ -- Do not look up a Pope name.
+ function Net:RequestSnapshot(target, nowSeconds)
+-  if type(target) ~= "string" or target == "" then
++  target = destName(target)
++  if not target then
+     return false, "no target"
+   end
+   local payload, err
+
+--- a/tests/test_net_v2.lua
+
++++ b/tests/test_net_v2.lua
+@@ -647,6 +647,131 @@
+ assert_eq(Net.LookupPope, nil, "RequestSnapshot does not grow a Pope-name lookup")
+ 
+ --------------------------------------------------------------------------------
++-- B33-D: whitespace dest is no target. Trim before whisper. No dest on INPUT.
++--------------------------------------------------------------------------------
++do
++  reset()
++  assert_eq(Sender:IsRegisteredPope(Net:PlayerName()), false, "dest pins do not invent a Pope")
++  assert_eq(Net.LookupPope, nil, "dest pins do not grow a Pope-name lookup")
++  assert_eq(Net.FindPope, nil, "dest pins do not grow FindPope")
++
++  local space = "   "
++  local hostPad = "  Host  "
++  local ok, why
++
++  ok, why = Net:SendPetition({ characterId = 12 }, space)
++  assert_eq(ok, false, "SendPetition whitespace dest fails")
++  assert_eq(why, "no target", "SendPetition whitespace dest is no target")
++  assert_eq(#wire, 0, "SendPetition whitespace dest does not whisper")
++  assert_eq(sent, 0, "SendPetition whitespace dest does not SendAddonMessage")
++
++  ok, why = Net:SendConfession({ characterId = 3, text = "free text" }, space)
++  assert_eq(ok, false, "SendConfession whitespace dest fails")
++  assert_eq(why, "no target", "SendConfession whitespace dest is no target")
++  assert_eq(#wire, 0, "SendConfession whitespace dest does not whisper")
++  assert_eq(sent, 0, "SendConfession whitespace dest does not SendAddonMessage")
++
++  ok, why = Net:RequestSnapshot(space)
++  assert_eq(ok, false, "RequestSnapshot whitespace dest fails")
++  assert_eq(why, "no target", "RequestSnapshot whitespace dest is no target")
++  assert_eq(#wire, 0, "RequestSnapshot whitespace dest does not whisper")
++  assert_eq(sent, 0, "RequestSnapshot whitespace dest does not SendAddonMessage")
++
++  ok, why = Net:_TransmitWhisper("1:SNAPSHOT:request", space)
++  assert_eq(ok, false, "_TransmitWhisper whitespace dest fails")
++  assert_eq(why, "no target", "_TransmitWhisper whitespace dest is no target")
++  assert_eq(#wire, 0, "_TransmitWhisper whitespace dest does not whisper")
++  assert_eq(sent, 0, "_TransmitWhisper whitespace dest does not SendAddonMessage")
++
++  ok, why = Net:SendFavor({ kind = "favor", characterId = 2, pick = 1 }, space)
++  assert_eq(ok, false, "SendFavor whitespace dest fails")
++  assert_eq(why, "no target", "SendFavor whitespace dest is no target")
++  assert_eq(#wire, 0, "SendFavor whitespace dest does not whisper")
++  assert_eq(sent, 0, "SendFavor whitespace dest does not SendAddonMessage")
++
++  ok, why = Net:SendPetition({ characterId = 12 }, " ")
++  assert_eq(ok, false, "SendPetition single-space dest fails")
++  assert_eq(why, "no target", "SendPetition single-space dest is no target")
++  assert_eq(#wire, 0, "SendPetition single-space dest does not whisper")
++
++  ok, why = Net:SendPetition({ characterId = 12 }, "")
++  assert_eq(ok, false, "SendPetition empty dest still fails")
++  assert_eq(why, "no target", "SendPetition empty dest stays no target")
++  ok, why = Net:SendPetition({ characterId = 12 })
++  assert_eq(ok, false, "SendPetition nil dest still fails")
++  assert_eq(why, "no target", "SendPetition nil dest stays no target")
++  ok, why = Net:_TransmitWhisper("1:SNAPSHOT:request", "")
++  assert_eq(ok, false, "_TransmitWhisper empty dest still fails")
++  assert_eq(why, "no target", "_TransmitWhisper empty dest stays no target")
++  ok, why = Net:_TransmitWhisper("1:SNAPSHOT:request")
++  assert_eq(ok, false, "_TransmitWhisper nil dest still fails")
++  assert_eq(why, "no target", "_TransmitWhisper nil dest stays no target")
++  ok, why = Net:SendFavor({ kind = "favor", characterId = 2, pick = 1 }, "")
++  assert_eq(ok, false, "SendFavor empty dest still fails")
++  assert_eq(why, "no target", "SendFavor empty dest stays no target")
++  ok, why = Net:SendConfession({ characterId = 3 }, "")
++  assert_eq(ok, false, "SendConfession empty dest still fails")
++  assert_eq(why, "no target", "SendConfession empty dest stays no target")
++  ok, why = Net:RequestSnapshot("")
++  assert_eq(ok, false, "RequestSnapshot empty dest still fails")
++  assert_eq(why, "no target", "RequestSnapshot empty dest stays no target")
++  assert_eq(#wire, 0, "empty dest pins still do not whisper")
++  assert_eq(sent, 0, "empty dest pins still do not SendAddonMessage")
++
++  reset()
++  ok, why = Net:SendPetition({ characterId = 12 }, hostPad)
++  assert_eq(ok, true, "SendPetition padded dest sends")
++  assert_eq(why, nil, "SendPetition padded dest has no refusal")
++  assert_eq(#wire, 1, "SendPetition padded dest whispers once")
++  assert_eq(wire[1].channel, "WHISPER", "SendPetition padded dest stays whisper")
++  assert_eq(wire[1].target, "Host", "SendPetition trims dest before transmit")
++  assert_eq(wire[1].payload, "1:INPUT:petition:12", "SendPetition padded dest has no dest on INPUT")
++
++  ok, why = Net:SendConfession({ characterId = 3, text = "free text" }, hostPad)
++  assert_eq(ok, true, "SendConfession padded dest sends")
++  assert_eq(why, nil, "SendConfession padded dest has no refusal")
++  assert_eq(wire[2].target, "Host", "SendConfession trims dest before transmit")
++  assert_eq(wire[2].payload, "1:INPUT:confession:3:free text",
++    "SendConfession padded dest has no dest on INPUT")
++
++  ok, why = Net:RequestSnapshot(hostPad)
++  assert_eq(ok, true, "RequestSnapshot padded dest sends")
++  assert_eq(why, nil, "RequestSnapshot padded dest is not Pope-gated")
++  assert_eq(wire[3].target, "Host", "RequestSnapshot trims dest before transmit")
++  assert_eq(wire[3].payload, "1:SNAPSHOT:request", "RequestSnapshot padded dest body is unchanged")
++
++  ok, why = Net:SendFavor({ kind = "favor", characterId = 2, pick = 1 }, hostPad)
++  assert_eq(ok, true, "SendFavor padded dest sends")
++  assert_eq(why, nil, "SendFavor padded dest has no refusal")
++  assert_eq(wire[4].target, "Host", "SendFavor trims dest before transmit")
++  assert_eq(wire[4].payload, "1:INPUT:favor:2:1", "SendFavor padded dest has no dest on INPUT")
++
++  ok, why = Net:_TransmitWhisper("1:SNAPSHOT:request", hostPad)
++  assert_eq(ok, true, "_TransmitWhisper padded dest sends")
++  assert_eq(why, nil, "_TransmitWhisper padded dest has no refusal")
++  assert_eq(wire[5].target, "Host", "_TransmitWhisper trims dest before transmit")
++  assert_eq(wire[5].payload, "1:SNAPSHOT:request", "_TransmitWhisper padded dest body is unchanged")
++  assert_eq(#wire, 5, "padded dest pins whisper five times")
++
++  assert_eq(Codec.TYPES.INPUT, true, "INPUT stays a Codec type")
++  assert_eq(Codec.TYPES.SNAPSHOT, true, "SNAPSHOT stays a Codec type")
++  assert_eq(Codec:Decode("1:INPUT:petition:12").kind, "petition", "petition kind is unchanged")
++  assert_eq(Codec:Decode("1:INPUT:favor:2:1").kind, "favor", "favor kind is unchanged")
++  assert_eq(Codec:Decode("1:INPUT:confession:3:free text").kind, "confession",
++    "confession kind is unchanged")
++  assert_eq(Runtime:Snapshot().state, "QUIET", "dest pins do not change Runtime")
++  assert_eq(Net.LookupPope, nil, "dest trim does not grow a Pope-name lookup")
++
++  if standalone then
++    assert_eq(COB.Store, nil, "dest pins do not load Store")
++    assert_eq(COB.UI, nil, "dest pins do not load UI")
++    assert_eq(COB.Popes, nil, "dest pins do not load a Pope list")
++    assert_eq(COB.Gora, nil, "dest pins do not leave a Gora stub")
++    assert_eq(COB.Confession, nil, "dest pins do not leave a Confession stub")
++  end
++end
++
++--------------------------------------------------------------------------------
+ -- Unstubbed inbound DECREE: IsRegisteredPope is false. Do not Set. Do not Restore.
+ --------------------------------------------------------------------------------
+ reset()

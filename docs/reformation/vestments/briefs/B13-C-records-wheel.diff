@@ -1,0 +1,67 @@
+diff --git a/addon/ChurchOfBeef/UI/RecordsBook.lua b/addon/ChurchOfBeef/UI/RecordsBook.lua
+--- a/addon/ChurchOfBeef/UI/RecordsBook.lua
++++ b/addon/ChurchOfBeef/UI/RecordsBook.lua
+@@ -619,6 +619,19 @@
+   frame:EnableMouse(true)
+   frame:SetMovable(true)
+   frame:SetClampedToScreen(true)
++  if type(frame.EnableMouseWheel) == "function" then
++    frame:EnableMouseWheel(true)
++  end
++  if type(frame.SetScript) == "function" then
++    frame:SetScript("OnMouseWheel", function(_, delta)
++      if type(delta) ~= "number" then return end
++      if delta > 0 then
++        turn(-1)
++      elseif delta < 0 then
++        turn(1)
++      end
++    end)
++  end
+   frame:SetWidth(720)
+   frame:SetHeight(tomeHeight())
+   frame:Hide()
+
+diff --git a/tests/test_records.lua b/tests/test_records.lua
+--- a/tests/test_records.lua
++++ b/tests/test_records.lua
+@@ -184,6 +184,11 @@
+   "parchment uses stock QuestBG or stationery")
+ assert_true(src:find("MORPHEUS", 1, true) ~= nil or src:find("FRIZQT", 1, true) ~= nil,
+   "page title uses a stock client font path")
++assert_true(src:find("EnableMouseWheel", 1, true) ~= nil, "source contains EnableMouseWheel")
++assert_true(src:find('type(frame.EnableMouseWheel) == "function"', 1, true) ~= nil,
++  "EnableMouseWheel is type-guarded")
++assert_true(src:find('SetScript("OnMouseWheel"', 1, true) ~= nil,
++  "source wires OnMouseWheel")
+ 
+ --------------------------------------------------------------------------------
+ -- Init: hidden parchment tome. No auto-open. No sound. No OnUpdate.
+@@ -594,7 +599,27 @@
+ assert_eq(sounds, 0, "leaf turns play no sound")
+ assert_eq(frame:GetScript("OnUpdate"), nil, "leaf turns install no OnUpdate")
+ 
++--------------------------------------------------------------------------------
++-- Mouse wheel turns leaves the same way Prev/Next do. Silent. No OnUpdate.
+ --------------------------------------------------------------------------------
++reset()
++assert_eq(#Book:GetPages(), #BIBLE_TITLES, "PAGE_TITLES stay the nine Bible titles")
++Book:Show()
++assert_true(frame:GetScript("OnMouseWheel") ~= nil, "frame has OnMouseWheel")
++assert_eq(frame:GetScript("OnUpdate"), nil, "wheel install has no OnUpdate")
++assert_eq(frame.PageTitle:GetText(), "Most Sanctioned Victories", "open book starts on the first leaf")
++assert_eq(frame.Body:GetText(), "", "empty leaf has no invented copy")
++assert_true(stub.fire(frame, "OnMouseWheel", -1), "wheel down is wired")
++assert_eq(frame.PageTitle:GetText(), "Longest Streak", "wheel down turns the leaf the same way Next does")
++assert_eq(frame.Body:GetText(), "", "empty leaf body stays empty after a turn")
++assert_true(stub.fire(frame, "OnMouseWheel", 1), "wheel up is wired")
++assert_eq(frame.PageTitle:GetText(), "Most Sanctioned Victories", "wheel up turns the leaf the same way Previous does")
++assert_eq(frame.Body:GetText(), "", "empty leaf body stays empty after Previous")
++assert_eq(sounds, 0, "wheel turns play no sound")
++assert_eq(frame:GetScript("OnUpdate"), nil, "wheel turns install no OnUpdate")
++assert_eq(#Book:GetPages(), 9, "wheel is not a tenth page")
++
++--------------------------------------------------------------------------------
+ -- Painted counts are roman. GetPages measures stay arabic.
+ --------------------------------------------------------------------------------
+ assert_eq(type(Book.toRoman), "function", "toRoman is a public helper")

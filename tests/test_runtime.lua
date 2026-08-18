@@ -430,6 +430,74 @@ assert_eq(cleaned.attendance, nil, "Restore does not keep attendance")
 assert_snap_shape(cleaned, "cleaned snapshot")
 
 --------------------------------------------------------------------------------
+-- ASSEMBLY may Restore candidate and/or fighters. QUIET still refuses subjects.
+-- riteType stays forbidden on ASSEMBLY / QUIET. StartEvent / Continue stay empty.
+--------------------------------------------------------------------------------
+reset()
+local asmFighters = {
+  eventId = 3,
+  state = "ASSEMBLY",
+  riteType = nil,
+  subjects = { candidate = nil, fighters = { 8, 9 } },
+  sequence = 4,
+}
+local asmFightOk, asmFightErr = Runtime:Restore(asmFighters)
+assert_eq(asmFightOk, true, "Restore ASSEMBLY with two fighters succeeds")
+assert_eq(asmFightErr, nil, "successful ASSEMBLY fighter Restore has no error")
+local asmFight = Runtime:Snapshot()
+assert_eq(asmFight.state, "ASSEMBLY", "ASSEMBLY fighter Restore stays ASSEMBLY")
+assert_eq(asmFight.riteType, nil, "ASSEMBLY fighter Restore keeps a nil rite type")
+assert_eq(asmFight.subjects.candidate, nil, "ASSEMBLY fighter Restore leaves candidate nil")
+assert_eq(type(asmFight.subjects.fighters), "table", "ASSEMBLY fighter Restore keeps fighters")
+assert_eq(#asmFight.subjects.fighters, 2, "ASSEMBLY fighter Restore keeps both ids")
+assert_eq(asmFight.subjects.fighters[1], 8, "ASSEMBLY fighter Restore keeps first id")
+assert_eq(asmFight.subjects.fighters[2], 9, "ASSEMBLY fighter Restore keeps second id")
+assert_eq(asmFight.eventId, 3, "ASSEMBLY fighter Restore keeps the event id")
+assert_eq(asmFight.sequence, 4, "ASSEMBLY fighter Restore keeps the sequence")
+assert_eq(Runtime:Snapshot().state, "ASSEMBLY", "ASSEMBLY fighter Restore does not auto-open a rite")
+
+reset()
+local asmCandidate = {
+  eventId = 3,
+  state = "ASSEMBLY",
+  riteType = nil,
+  subjects = { candidate = 7, fighters = nil },
+  sequence = 5,
+}
+local asmCandOk, asmCandErr = Runtime:Restore(asmCandidate)
+assert_eq(asmCandOk, true, "Restore ASSEMBLY with a candidate succeeds")
+assert_eq(asmCandErr, nil, "successful ASSEMBLY candidate Restore has no error")
+local asmCand = Runtime:Snapshot()
+assert_eq(asmCand.state, "ASSEMBLY", "ASSEMBLY candidate Restore stays ASSEMBLY")
+assert_eq(asmCand.riteType, nil, "ASSEMBLY candidate Restore keeps a nil rite type")
+assert_eq(asmCand.subjects.candidate, 7, "ASSEMBLY candidate Restore keeps the candidate")
+assert_eq(asmCand.subjects.fighters, nil, "ASSEMBLY candidate Restore leaves fighters nil")
+assert_eq(Runtime:Snapshot().state, "ASSEMBLY", "ASSEMBLY candidate Restore does not auto-open a rite")
+
+reset()
+local beforeQuietFight = Runtime:Snapshot()
+local quietFight, quietFightErr = Runtime:Restore({
+  eventId = 3,
+  state = "QUIET",
+  riteType = nil,
+  subjects = { candidate = nil, fighters = { 8, 9 } },
+  sequence = 6,
+})
+assert_eq(quietFight, nil, "Restore QUIET with fighters returns nil")
+assert_eq(quietFightErr, "invalid subjects", "Restore QUIET with fighters is invalid subjects")
+assert_unchanged(beforeQuietFight, Runtime:Snapshot(), "Restore QUIET with fighters")
+
+refuse("Restore", {
+  {
+    eventId = 1,
+    state = "ASSEMBLY",
+    riteType = "Gora",
+    subjects = { fighters = { 8, 9 } },
+    sequence = 1,
+  },
+}, "Restore rejects ASSEMBLY with a rite type")
+
+--------------------------------------------------------------------------------
 -- Pope-disconnect degrade: awaitingPope flag. Not a sixth state. No holdSeconds.
 --------------------------------------------------------------------------------
 reset()

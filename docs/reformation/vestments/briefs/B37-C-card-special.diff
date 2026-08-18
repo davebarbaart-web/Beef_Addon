@@ -1,0 +1,155 @@
+# B37-C — FighterCard Hide remounts UISpecialFrames membership (implementation diff)
+
+Lane-only unified diff of the exclusive implementation files vs the pre-lane working tree.
+
+--- a/addon/ChurchOfBeef/UI/FighterCard.lua
++++ b/addon/ChurchOfBeef/UI/FighterCard.lua
+@@ -6,9 +6,11 @@
+ -- Congregation pair may arrive as Runtime subjects.fighters when Gora has
+ -- no live pair. Hide on QUIET / Hide() / EndEvent. ESC Hide()s the named
+--- frame via UISpecialFrames (deduped). OnHide syncs lastView.shown
+--- without forgetting lastPair. Init / Show / Refresh / Hide remount a
+--- missing OnHide; never replace an existing script. lastPair remains
++-- frame via UISpecialFrames (deduped). Init remounts rememberSpecial.
++-- Hide remounts rememberSpecial when the frame already exists, then
++-- remounts a missing OnHide. OnHide syncs lastView.shown
++-- without forgetting lastPair. Init / Show / Refresh / Hide remount a
++-- missing OnHide; never replace an existing script. lastPair remains
+ -- until QUIET.
+ -- A new Sanction replaces the remembered pair. Stock QuestBG + WHITE8X8.
+ -- Left-third, two facing plates. Names try stock Morpheus. Honorifics
+@@ -605,6 +607,7 @@
+ 
+ function FighterCard:Hide()
+   if frame then
++    rememberSpecial(FRAME_NAME)
+     wireCardOnHide(frame)
+   end
+   paintHidden()
+--- a/tests/test_fighter_card.lua
++++ b/tests/test_fighter_card.lua
+@@ -5,7 +5,9 @@
+ -- B28-D Init remount of a missing OnHide lives in runB28D()
+ -- (Lua 5.1 200-local nest). B29-C Show / Refresh remount lives
+ -- in runB29C() nested after runB28D(). B30-B Hide remount lives
+--- in runB30B() nested after runB29C().
++-- in runB30B() nested after runB29C(). B37-C Hide remounts
++-- rememberSpecial lives in runB37C() nested after runB30B().
+ package.path = package.path .. ";./tests/?.lua"
+ 
+ local stub = require("wow_ui_stub")
+@@ -1123,6 +1125,114 @@
+     assert_eq(healthReads, 0, "Hide remount does not scrape health")
+   end
+   runB30B()
++
++  -- B37-C: Hide remounts UISpecialFrames membership when the frame
++  -- already exists. rememberSpecial(FRAME_NAME) before existing
++  -- OnHide remount + paintHidden(). Do not replace an existing
++  -- OnHide. No OnShow re-wire. No rebuild. Isolation wrap stays.
++  local function runB37C()
++    local hideBody = src:match("function FighterCard:Hide%(%)(.-)\nfunction FighterCard:ResetForTests")
++    assert_true(type(hideBody) == "string" and hideBody ~= "",
++      "B37-C Hide body is readable")
++    if type(hideBody) ~= "string" then hideBody = "" end
++    local remAt = hideBody:find("rememberSpecial(FRAME_NAME)", 1, true)
++    local wireAt = hideBody:find("wireCardOnHide", 1, true)
++    local paintAt = hideBody:find("paintHidden", 1, true)
++    assert_true(remAt ~= nil, "Hide remounts rememberSpecial FRAME_NAME")
++    assert_true(wireAt ~= nil, "Hide remounts via wireCardOnHide")
++    assert_true(paintAt ~= nil, "Hide still paintHidden")
++    assert_true(type(remAt) == "number" and type(paintAt) == "number" and remAt < paintAt,
++      "Hide remounts rememberSpecial before paintHidden")
++    assert_true(type(remAt) == "number" and type(wireAt) == "number" and remAt < wireAt,
++      "Hide remounts rememberSpecial before OnHide remount")
++    assert_true(type(wireAt) == "number" and type(paintAt) == "number" and wireAt < paintAt,
++      "Hide remounts OnHide before paintHidden")
++    assert_eq(hideBody:find("SetScript", 1, true), nil,
++      "Hide does not SetScript inline")
++    assert_eq(hideBody:find("OnShow", 1, true), nil,
++      "Hide does not re-wire OnShow")
++    assert_eq(hideBody:find("CreateFrame", 1, true), nil,
++      "Hide does not rebuild")
++    assert_eq(hideBody:find("PlaySound", 1, true), nil,
++      "Hide does not PlaySound")
++    assert_eq(hideBody:find("IG_CHARACTER_INFO", 1, true), nil,
++      "Hide does not PlaySound IG_CHARACTER_INFO")
++    assert_eq(hideBody:find("UnitHealth", 1, true), nil,
++      "Hide does not read UnitHealth")
++    assert_eq(hideBody:find("forgetPersist", 1, true), nil,
++      "Hide does not forget lastPair")
++
++    local initBody = src:match("function FighterCard:Init%(%)(.-)\nfunction FighterCard:GetView")
++    assert_true(type(initBody) == "string" and initBody ~= "",
++      "B28-D Init body stays readable")
++    if type(initBody) ~= "string" then initBody = "" end
++    assert_true(initBody:find("rememberSpecial", 1, true) ~= nil,
++      "B28-D Init still rememberSpecial")
++    assert_true(initBody:find("wireCardOnHide", 1, true) ~= nil,
++      "B28-D Init remounts OnHide via wireCardOnHide")
++    assert_true(src:find("Fonts\\\\MORPHEUS.ttf", 1, true) ~= nil,
++      "NAME_FONT stays FrameXML lowercase Morpheus")
++    assert_eq(src:find("UnitHealth", 1, true), nil,
++      "source still does not read UnitHealth")
++    assert_eq(src:find("PlaySound", 1, true), nil,
++      "source still does not play sound")
++    assert_eq(src:find("IG_CHARACTER_INFO", 1, true), nil,
++      "source still has no IG_CHARACTER_INFO")
++
++    sanctionPair()
++    assert_eq(FighterCard:Show(), true, "B37-C remount needs a live card")
++    local widget = FighterCard:Init()
++    assert_eq(widget:GetName(), "ChurchOfBeefFighterCard",
++      "B37-C frame name stays ChurchOfBeefFighterCard")
++    assert_eq(countSpecial("ChurchOfBeefFighterCard"), 1,
++      "live card is listed once before wipe")
++    local existingOnHide = widget:GetScript("OnHide")
++    assert_true(existingOnHide ~= nil, "OnHide is already wired before Hide special remount")
++    local savedSpecial = UISpecialFrames
++    UISpecialFrames = {}
++    assert_eq(countSpecial("ChurchOfBeefFighterCard"), 0,
++      "B37-C wipe clears ChurchOfBeefFighterCard")
++    local cuesHide = sounds
++    local savedCreate = CreateFrame
++    local createCalls = 0
++    CreateFrame = function(...)
++      createCalls = createCalls + 1
++      return savedCreate(...)
++    end
++    FighterCard:Hide()
++    assert_eq(createCalls, 0, "Hide remount does not rebuild")
++    assert_eq(countSpecial("ChurchOfBeefFighterCard"), 1,
++      "wiped UISpecialFrames + Hide lists ChurchOfBeefFighterCard once")
++    assert_eq(widget:GetScript("OnHide"), existingOnHide,
++      "Hide remount does not replace existing OnHide")
++    assert_eq(widget:GetScript("OnShow"), nil,
++      "Hide remount does not wire OnShow")
++    assert_eq(FighterCard:GetView().shown, false, "Hide still paintHidden")
++    assert_eq(sounds, cuesHide, "Hide remount plays no sound")
++    FighterCard:Hide()
++    assert_eq(countSpecial("ChurchOfBeefFighterCard"), 1,
++      "second Hide after wipe does not duplicate ChurchOfBeefFighterCard")
++    FighterCard:Hide()
++    assert_eq(countSpecial("ChurchOfBeefFighterCard"), 1,
++      "third Hide does not duplicate ChurchOfBeefFighterCard")
++    assert_eq(widget:GetScript("OnHide"), existingOnHide,
++      "third Hide keeps OnHide identity")
++    assert_eq(createCalls, 0, "third Hide does not rebuild")
++    CreateFrame = savedCreate
++    UISpecialFrames = savedSpecial
++
++    assert_true(Gora:GetSanctioned() ~= nil,
++      "Hide special remount does not clear the live pair")
++    local persist = FighterCard:Refresh()
++    assert_eq(persist.shown, true, "Refresh after Hide special remount still paints")
++    assert_eq(persist.fighterA.name, "Chuckroast",
++      "Hide special remount did not forget lastPair")
++    assert_eq(persist.fighterB.name, "Tendermage",
++      "Hide special remount did not forget the other fighter")
++    assert_eq(persist.health, nil, "Hide special remount persist still has no health")
++    assert_eq(sounds, 0, "Hide special remount plays no sound")
++    assert_eq(healthReads, 0, "Hide special remount does not scrape health")
++  end
++  runB37C()
+ end
+ runB28D()

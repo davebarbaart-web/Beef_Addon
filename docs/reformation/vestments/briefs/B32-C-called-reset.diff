@@ -1,0 +1,67 @@
+# B32-C — Latest confession line clears called (implementation diff)
+
+Lane-only unified diff of the exclusive implementation files vs the pre-lane working tree.
+
+--- a/addon/ChurchOfBeef/Core/Confession.lua
++++ b/addon/ChurchOfBeef/Core/Confession.lua
+@@ -80,6 +80,7 @@
+   if existing then
+     existing.text = line
+     existing.eventId = eventId
++    existing.called = false
+     return copyRow(existing)
+   end
+--- a/tests/test_confession.lua
++++ b/tests/test_confession.lua
+@@ -259,6 +259,42 @@
+ COB.Toasts = savedToasts
+ COB.Sound = savedSound
+ 
++--------------------------------------------------------------------------------
++-- B32-C: Latest Receive on an existing row clears called. Seq/order stay.
++--------------------------------------------------------------------------------
++assert_eq(Confession:GetQueue()[1].called, true, "precondition: first arrival is called")
++assert_eq(Confession:GetQueue()[1].characterId, tender.id, "precondition: first arrival is still oldest")
++local latest, latestErr = Confession:Receive(tender.id, "a later line")
++assert_true(latest ~= nil, "Receive after CallForward is accepted")
++assert_eq(latestErr, nil, "replace after CallForward has no error")
++assert_eq(latest.called, false, "latest line clears called")
++assert_eq(latest.text, "a later line", "the replacement line is stored")
++
++local afterLatest = Confession:GetQueue()
++assert_eq(#afterLatest, 2, "replace does not add a row")
++assert_eq(afterLatest[1].characterId, tender.id, "seq keeps the first arrival first")
++assert_eq(afterLatest[1].called, false, "GetQueue shows called cleared")
++assert_eq(afterLatest[1].text, "a later line", "GetQueue shows the new line")
++assert_eq(afterLatest[2].characterId, chuck.id, "the later arrival stays second")
++assert_eq(afterLatest[2].called, false, "the other row is untouched")
++
++assert_eq(Confession:CallForward(tender.id), true, "CallForward after replace still marks")
++assert_eq(Confession:GetQueue()[1].called, true, "CallForward still sets called")
++assert_eq(Confession:GetQueue()[1].characterId, tender.id, "CallForward after replace does not reorder")
++
++local wsCalled, wsCalledErr = Confession:Receive(tender.id, "   ")
++assert_true(wsCalled ~= nil, "whitespace-only text is still accepted")
++assert_eq(wsCalledErr, nil, "whitespace-only text still has no error")
++assert_eq(wsCalled.text, nil, "whitespace-only still stores no text")
++assert_eq(wsCalled.called, false, "whitespace replace also clears called")
++assert_eq(Confession:GetQueue()[1].characterId, tender.id, "whitespace replace does not jump order")
++assert_eq(Confession:GetQueue()[1].text, nil, "the inbox row has no text after whitespace")
++
++local noneCalled, noneCalledErr = Confession:Receive(tender.id)
++assert_true(noneCalled ~= nil, "omitted text is still accepted")
++assert_eq(noneCalledErr, nil, "omitted text still has no error")
++assert_eq(noneCalled.text, nil, "omitted text still stores no text")
++assert_eq(noneCalled.called, false, "empty replace leaves called false")
++
+ --------------------------------------------------------------------------------
+ -- OpenRite / CONSEQUENCE / Continue keep. QUIET / EndEvent / missing eventId wipe.
+ --------------------------------------------------------------------------------
+@@ -350,6 +386,7 @@
+ assert_eq(src:find("COB.Net", 1, true), nil, "source does not call Net")
+ assert_eq(src:find("Penance", 1, true), nil, "source does not invent penance")
+ assert_eq(src:find("Grant(", 1, true), nil, "source does not Grant")
++assert_true(src:find("existing.called = false", 1, true) ~= nil, "existing-row Receive clears called")
+ 
+ if standalone then
+   print(string.format("Tests finished: %d passed, %d failed", passed, failed))

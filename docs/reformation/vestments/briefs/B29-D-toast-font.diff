@@ -1,0 +1,60 @@
+# B29-D — Proclaim re-applies Morpheus on the headline (implementation diff)
+
+Lane-only unified diff of the exclusive implementation files vs the pre-lane working tree.
+
+--- a/addon/ChurchOfBeef/UI/Toasts.lua
++++ b/addon/ChurchOfBeef/UI/Toasts.lua
+@@ -710,6 +710,7 @@
+ 
+   local headline, body = splitHeadline(text)
+   theater.headline:SetText(headline)
++  applyHeadlineFont(theater.headline)
+   theater.copy:SetText(body)
+   if body ~= "" then
+     theater.copy:Show()
+--- a/tests/test_ui.lua
++++ b/tests/test_ui.lua
+@@ -6,7 +6,8 @@
+ -- B23-C Init early-return rememberSpecial,
+ -- B24-C Quiet-shell Init early-return rememberSpecial,
+ -- B26-B Init early-return restores a missing OnHide,
+--- and B27-C Quiet-shell Init restores a missing OnHide
++-- B27-C Quiet-shell Init restores a missing OnHide,
++-- and B29-D Proclaim re-applies applyHeadlineFont
+ -- live in runB12D() (Lua 5.1 200-local cap).
+ -- No tab registry. No Standing / Ladder / Officer IA. No promote / rite toast
+ -- kinds. Isolation stays under standalone.
+@@ -1211,6 +1212,33 @@
+   assert_eq(ChurchOfBeefDB.ui.shown, false,
+     "restored OnHide persists shown = false")
+   assert_eq(COB.UI._sizing, false, "restored OnHide calls _StopSizing")
++
++  -- B29-D: applyHeadlineFont is called from Proclaim, not only InitTheater.
++  -- Hidden / refused Proclaim does not need it. HEADLINE_FONT stays
++  -- Fonts\MORPHEUS.ttf. Fallback GameFontNormalLarge stays. No MORPHEUS_CYR.
++  -- No new cue names. No PlaySound.
++  assert_true(src:find('HEADLINE_FONT = "Fonts\\\\MORPHEUS.ttf"', 1, true) ~= nil,
++    "HEADLINE_FONT stays FrameXML lowercase Morpheus")
++  assert_eq(src:find("MORPHEUS_CYR", 1, true), nil,
++    "source does not use GlueFonts MORPHEUS_CYR")
++  assert_true(src:find("GameFontNormalLarge", 1, true) ~= nil,
++    "headline fallback stays GameFontNormalLarge")
++  assert_eq(src:find("PlaySound(", 1, true), nil,
++    "B29-D source does not PlaySound")
++  local proclaimAt = src:find("function Toasts:Proclaim", 1, true)
++  assert_true(proclaimAt ~= nil, "Proclaim exists")
++  local proclaimEnd = src:find("\nlocal function wireSmallOnHide", proclaimAt + 1, true)
++  assert_true(proclaimEnd ~= nil, "Proclaim body has a following function")
++  local proclaimBody = src:sub(proclaimAt, proclaimEnd - 1)
++  assert_true(proclaimBody:find("applyHeadlineFont", 1, true) ~= nil,
++    "Proclaim re-applies headline font on a shown beat")
++  local initTheaterAt = src:find("function Toasts:InitTheater", 1, true)
++  assert_true(initTheaterAt ~= nil, "InitTheater exists")
++  local initTheaterEnd = src:find("\nfunction Toasts:Proclaim", initTheaterAt + 1, true)
++  assert_true(initTheaterEnd ~= nil, "InitTheater body has a following function")
++  local initTheaterBody = src:sub(initTheaterAt, initTheaterEnd - 1)
++  assert_true(initTheaterBody:find("applyHeadlineFont", 1, true) ~= nil,
++    "InitTheater still applies headline font")
+ 
+   if standalone then
+     assert_eq(COB.Console, nil, "isolation still does not load Console")

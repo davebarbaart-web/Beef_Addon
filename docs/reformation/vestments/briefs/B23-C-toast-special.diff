@@ -1,0 +1,82 @@
+# B23-C — Init early-return re-registers the small toast special frame (implementation diff)
+
+Lane-only unified diff of the exclusive implementation files vs the pre-lane working tree.
+
+--- a/addon/ChurchOfBeef/UI/Toasts.lua
++++ b/addon/ChurchOfBeef/UI/Toasts.lua
+@@ -752,7 +752,10 @@
+ --------------------------------------------------------------------------------
+ 
+ function Toasts:Init()
+-  if self.frame then return self.frame end
++  if self.frame then
++    rememberSpecial("ChurchOfBeefToast")
++    return self.frame
++  end
+   if type(CreateFrame) ~= "function" then return nil end
+ 
+   local frame = CreateFrame("Frame", "ChurchOfBeefToast", UIParent, "BackdropTemplate")
+
+--- a/tests/test_ui.lua
++++ b/tests/test_ui.lua
+@@ -2,7 +2,8 @@
+ -- toggle, system/debug toasts. Event Mode Proclaim (sanction / verdict /
+ -- cowardice / knighting / elevation). B12-D Proclaim ESC, B15-C Quiet-shell
+ -- UISpecialFrames, B18-C HideAll theaterGen, B19-B small-toast ESC,
+--- B20-D small-toast OnHide pump, and B21-C interrupt Hide idle
++-- B20-D small-toast OnHide pump, B21-C interrupt Hide idle,
++-- and B23-C Init early-return rememberSpecial
+ -- live in runB12D() (Lua 5.1 200-local cap).
+ -- No tab registry. No Standing / Ladder / Officer IA. No promote / rite toast
+ -- kinds. Isolation stays under standalone.
+@@ -1018,7 +1019,50 @@
+   assert_eq(countSpecial("ChurchOfBeefToast"), 1,
+     "interrupt does not re-register ChurchOfBeefToast")
+   assert_eq(findButton(COB.Toasts.frame), nil, "interrupt path adds no close button")
++
++  -- B23-C: Init early-return re-registers ChurchOfBeefToast after a
++  -- wiped UISpecialFrames. Do not re-wire OnHide. First-create
++  -- uniqueness pins stay. Isolation wrap stays.
++  local earlyInit = src:match("function Toasts:Init%(%)%s*\n%s*if self%.frame then(.-)return self%.frame")
++  assert_true(type(earlyInit) == "string" and earlyInit ~= "",
++    "Init early-return body is readable")
++  assert_true(earlyInit:find('rememberSpecial("ChurchOfBeefToast")', 1, true) ~= nil,
++    "early-return rememberSpecial ChurchOfBeefToast")
++  assert_eq(earlyInit:find("SetScript", 1, true), nil,
++    "early-return does not SetScript")
++  assert_eq(earlyInit:find("OnHide", 1, true), nil,
++    "early-return does not re-wire OnHide")
++  assert_eq(earlyInit:find("hideTheater", 1, true), nil,
++    "early-return does not hideTheater")
++  assert_eq(earlyInit:find("PlaySound", 1, true), nil,
++    "early-return does not PlaySound")
++  assert_true(src:find("interrupt = false", 1, true) ~= nil,
++    "default KINDS stay interrupt = false")
++  assert_true(initBody:find("if not self.showing then return", 1, true) ~= nil,
++    "OnHide idle-return when showing is nil stays")
+ 
++  COB.Toasts:Init()
++  assert_eq(countSpecial("ChurchOfBeefToast"), 1,
++    "first-create uniqueness: ChurchOfBeefToast once before wipe")
++  local toastOnHide = COB.Toasts.frame:GetScript("OnHide")
++  local savedSpecial = UISpecialFrames
++  UISpecialFrames = {}
++  assert_eq(countSpecial("ChurchOfBeefToast"), 0,
++    "wipe clears ChurchOfBeefToast")
++  local cuesWipe = #played
++  assert_eq(COB.Toasts:Init(), COB.Toasts.frame,
++    "second Init returns the existing frame")
++  assert_eq(countSpecial("ChurchOfBeefToast"), 1,
++    "wiped UISpecialFrames + second Init lists ChurchOfBeefToast once")
++  assert_eq(COB.Toasts.frame:GetScript("OnHide"), toastOnHide,
++    "early-return does not re-wire OnHide")
++  assert_eq(#played, cuesWipe, "second Init plays no sound")
++  assert_eq(findButton(COB.Toasts.frame), nil, "wipe remount adds no close button")
++  COB.Toasts:Init()
++  assert_eq(countSpecial("ChurchOfBeefToast"), 1,
++    "third Init after wipe does not duplicate ChurchOfBeefToast")
++  UISpecialFrames = savedSpecial
++
+   if standalone then
+     assert_eq(COB.Console, nil, "isolation still does not load Console")
+     assert_eq(COB.Hud, nil, "isolation still does not load Hud")

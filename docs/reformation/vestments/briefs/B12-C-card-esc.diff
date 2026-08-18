@@ -1,0 +1,102 @@
+diff --git a/addon/ChurchOfBeef/UI/FighterCard.lua b/addon/ChurchOfBeef/UI/FighterCard.lua
+--- a/addon/ChurchOfBeef/UI/FighterCard.lua
++++ b/addon/ChurchOfBeef/UI/FighterCard.lua
+@@ -4,13 +4,14 @@
+ -- Event Mode mute fighter card (Bible §10.6, §10.7 persist). Tale of the
+ -- tape. The card shows; the Pope tells. Remember the last sanctioned pair
+ -- and stay painted after GetSanctioned() is nil while Runtime is not QUIET.
+ -- Congregation pair may arrive as Runtime subjects.fighters when Gora has
+--- no live pair. Hide on QUIET / Hide() / EndEvent. A new Sanction replaces
+--- the remembered pair. Stock QuestBG + WHITE8X8. Left-third, two facing
+--- plates. Names try stock Morpheus. Honorifics are Pope text from Store
+--- human. Empty honorifics hide. Defenses are a mute CountDefenses integer.
+--- Zero or a missing method hides the line. No live health. No sound.
+--- No generated flavor.
++-- no live pair. Hide on QUIET / Hide() / EndEvent. ESC Hide()s the named
++-- frame via UISpecialFrames (deduped). lastPair remains until QUIET.
++-- A new Sanction replaces the remembered pair. Stock QuestBG + WHITE8X8.
++-- Left-third, two facing plates. Names try stock Morpheus. Honorifics
++-- are Pope text from Store human. Empty honorifics hide. Defenses are a
++-- mute CountDefenses integer. Zero or a missing method hides the line.
++-- No live health. No sound. No generated flavor.
+ local FighterCard = {
+   MODE = "Event",
+ }
+@@ -40,6 +41,14 @@
+     out[deepcopy(k)] = deepcopy(v)
+   end
+   return out
+ end
+ 
++local function rememberSpecial(name)
++  if type(UISpecialFrames) ~= "table" then return end
++  for i = 1, #UISpecialFrames do
++    if UISpecialFrames[i] == name then return end
++  end
++  UISpecialFrames[#UISpecialFrames + 1] = name
++end
++
+ local function hiddenView()
+   return {
+     shown = false,
+@@ -519,6 +528,7 @@
+ function FighterCard:Init()
+   if not frame then
+     frame = build()
+   end
++  rememberSpecial(FRAME_NAME)
+   self:Refresh()
+   return frame
+ end
+diff --git a/tests/test_fighter_card.lua b/tests/test_fighter_card.lua
+--- a/tests/test_fighter_card.lua
++++ b/tests/test_fighter_card.lua
+@@ -126,6 +126,15 @@
+     and color.r == sample.r and color.g == sample.g and color.b == sample.b
+ end
+ 
++local function countSpecial(name)
++  local n = 0
++  if type(UISpecialFrames) ~= "table" then return 0 end
++  for i = 1, #UISpecialFrames do
++    if UISpecialFrames[i] == name then n = n + 1 end
++  end
++  return n
++end
++
+ --------------------------------------------------------------------------------
+ -- Isolated surface. Other modules stay nil only when this file is the process.
+ --------------------------------------------------------------------------------
+@@ -208,6 +217,8 @@
+ assert_eq(src:find("defenses of the realm", 1, true), nil, "source has no realm flavor")
+ assert_true(src:find("QuestBG", 1, true) ~= nil, "parchment uses stock QuestBG")
+ assert_true(src:find("WHITE8X8", 1, true) ~= nil, "iron fill uses stock WHITE8X8")
++assert_true(src:find("UISpecialFrames", 1, true) ~= nil, "source registers UISpecialFrames")
++assert_eq(src:find("✕", 1, true), nil, "source has no close mark")
+ 
+ --------------------------------------------------------------------------------
+ -- Init: hidden, left-third, two plates. No per-frame script at rest.
+@@ -217,7 +228,14 @@
+ assert_true(frame ~= nil, "Init creates the card frame")
+ assert_eq(frame:GetName(), "ChurchOfBeefFighterCard", "frame has a stable name")
+ assert_eq(frame:GetParent(), UIParent, "card is parented to UIParent")
++assert_eq(countSpecial("ChurchOfBeefFighterCard"), 1, "Init registers the card once")
+ assert_eq(FighterCard:Init(), frame, "Init is idempotent")
++assert_eq(countSpecial("ChurchOfBeefFighterCard"), 1, "second Init does not duplicate")
++local savedSpecial = UISpecialFrames
++UISpecialFrames = nil
++assert_eq(FighterCard:Init(), frame, "Init survives a missing UISpecialFrames table")
++UISpecialFrames = savedSpecial
++assert_eq(countSpecial("ChurchOfBeefFighterCard"), 1, "restored table still has one entry")
+ assert_eq(frame:IsShown(), false, "the widget starts hidden")
+ assert_eq(FighterCard:GetView().shown, false, "Quiet view is hidden")
+ assert_eq(frame:GetScript("OnUpdate"), nil, "a resting card runs nothing per frame")
+@@ -731,6 +749,7 @@
+ UIParent:SetHeight(768)
+ dofile("addon/ChurchOfBeef/UI/FighterCard.lua")
+ FighterCard = COB.FighterCard
+ reset()
+ local budgeted = FighterCard:Init()
++assert_eq(countSpecial("ChurchOfBeefFighterCard"), 1, "rebuild Init still does not duplicate")
+ assert_eq(budgeted:GetWidth(), math.floor(1024 / 3), "known UIParent width is the left third")
+ assert_true(budgeted:GetWidth() < 1024, "width is not full-screen")

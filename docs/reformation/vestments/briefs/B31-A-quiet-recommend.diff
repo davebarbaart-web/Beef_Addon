@@ -1,0 +1,181 @@
+# B31-A — Refresh in QUIET drops a leftover Recommend line (implementation diff)
+
+Lane-only unified diff of the exclusive implementation files vs the pre-lane working tree.
+
+--- a/addon/ChurchOfBeef/UI/Console.lua
++++ b/addon/ChurchOfBeef/UI/Console.lua
+@@ -17,8 +17,10 @@
+ -- Recommend proposes a pair and never Sanctions. lastRecommendation
+ -- and the selected fighter pair clear on successful StartEvent / EndEvent
+ -- (before after() Refresh); failed Start / failed End / Continue keep
+--- the table and the pair. A selected pair does not inherit Core
+--- namedOpponent onto lastRecommendation.
++-- the table and the pair. Refresh in QUIET (or when Runtime state is
++-- nil) nils lastRecommendation before paintRecommendation; it does
++-- not nil the selected pair. A selected pair does not inherit Core
++-- namedOpponent onto lastRecommendation.
+ -- CallForward marks the inbox
+ -- only — no Toasts, chat, or Sound. FlagMoment may read GetSubZoneText when
+@@ -1091,6 +1093,16 @@
+   paintFavor(self.frame)
+   paintProposedBout(self.frame)
+   paintConfessions(self.frame, self:GetConfessions())
+   paintKnightingLine(self.frame, self:GetKnightingLine())
++  local state
++  if COB.Runtime and COB.Runtime.Snapshot then
++    local snap = COB.Runtime:Snapshot()
++    if type(snap) == "table" then
++      state = snap.state
++    end
++  end
++  if state == nil or state == "QUIET" then
++    lastRecommendation = nil
++  end
+   paintRecommendation(self.frame)
+   paintCeremonyLog(self.frame, self:GetCeremonyLog())
+   applyGate(self.frame)
+--- a/tests/test_console.lua
++++ b/tests/test_console.lua
+@@ -19,7 +19,9 @@
+ -- selected pair dies with successful StartEvent / EndEvent + B27-A
+ -- Init early-return remounts UISpecialFrames rememberSpecial + B28-A
+ -- Show / Refresh remount UISpecialFrames rememberSpecial + B29-A
+--- Hide remounts UISpecialFrames rememberSpecial).
++-- Hide remounts UISpecialFrames rememberSpecial + B31-A
++-- Refresh in QUIET nils lastRecommendation).
+ -- Isolated: wow_ui_stub + Common + Ranks + Runtime + Store + Gora + Knighting
+ -- + Sender + Decree + Console. Confession is stubbed when painted; this file
+ -- does not load Confession.lua. Knighting GetLine/Enqueue/Skip are stubbed
+@@ -3644,8 +3646,8 @@
+ 
+ assert_true(Runtime:EndEvent() ~= nil, "Runtime EndEvent bypasses the desk")
+ Console:Refresh()
+-assert_eq(frame.Recommendation:GetText() or "", againText,
+-  "Runtime EndEvent leaves lastRecommendation")
++assert_eq(frame.Recommendation:GetText() or "", "",
++  "Runtime EndEvent then Refresh paints empty Recommendation")
+ assert_true(Console:StartEvent() ~= nil, "StartEvent after a leftover recommendation")
+ assert_eq(frame.Recommendation:GetText() or "", "",
+   "successful StartEvent clears leftover Recommendation")
+@@ -4338,6 +4340,117 @@
+ assert_eq(COB.Popes, nil, "still no Pope list after B29-A")
+ end
+ runB29A()
++
++--------------------------------------------------------------------------------
++-- B31-A: Refresh in QUIET (or nil Runtime state) nils lastRecommendation
++-- before paintRecommendation. Runtime:EndEvent leftover is empty.
++-- Recommend during a live event still paints. Selected pair stays.
++-- StartEvent / EndEvent pair-clear stay. Continue does not clear.
++-- SaveNote nil. No SUMMON. Nested inside runB8E after runB29A().
++--------------------------------------------------------------------------------
++local function runB31A()
++reset()
++Console:Init()
++assert_eq(Console.SaveNote, nil, "SaveNote stays nil")
++assert_eq(Console.GetNotes, nil, "no notes table")
++assert_eq(Console.CopyCeremonySummary, nil, "no post-show ceremony summary")
++assert_eq(Console.CeremonySummary, nil, "no ceremony summary")
++assert_eq(findButton(frame, "SUMMON THE FAITHFUL"), nil, "no SUMMON chrome")
++assert_eq(findButton(frame, "COPY SUMMARY"), nil, "no ceremony-summary chrome")
++assert_eq(findButton(frame, "WHISPER ALL"), nil, "no WHISPER ALL chrome")
++assert_eq(findButton(frame, "RSVP"), nil, "no RSVP chrome")
++assert_true(frame.Recommendation ~= nil, "recommendation line exists")
++assert_eq(frame.Recommendation._type, "FontString", "recommendation is a FontString")
++
++local srcQuiet = io.open("addon/ChurchOfBeef/UI/Console.lua", "r")
++assert_true(srcQuiet ~= nil, "Console.lua is readable for B31-A")
++local srcQuietBody = srcQuiet:read("*a")
++srcQuiet:close()
++local refreshFn = srcQuietBody:match("function Console:Refresh%(%)(.-)\nfunction Console:Show")
++assert_true(type(refreshFn) == "string" and refreshFn ~= "",
++  "Refresh body is readable")
++assert_true(refreshFn:find('state == nil or state == "QUIET"', 1, true) ~= nil,
++  "Refresh treats nil or QUIET Runtime state as a leftover drop")
++assert_true(refreshFn:find("lastRecommendation = nil", 1, true) ~= nil,
++  "Refresh nils lastRecommendation when state is QUIET")
++local dropAt = refreshFn:find("lastRecommendation = nil", 1, true)
++local paintAt = refreshFn:find("paintRecommendation(self.frame)", 1, true)
++assert_true(type(dropAt) == "number" and type(paintAt) == "number" and dropAt < paintAt,
++  "Refresh nils lastRecommendation before paintRecommendation")
++assert_eq(refreshFn:find("selectedFighterA", 1, true), nil,
++  "Refresh does not nil selectedFighterA")
++assert_eq(refreshFn:find("selectedFighterB", 1, true), nil,
++  "Refresh does not nil selectedFighterB")
++assert_true(srcQuietBody:find("local result, err = COB.Runtime:StartEvent()\n  if result ~= nil then\n    lastRecommendation = nil\n    self.selectedFighterA = nil\n    self.selectedFighterB = nil\n  end\n  return after(self, result, err)", 1, true) ~= nil,
++  "B26-A successful StartEvent still nils the selected pair")
++assert_true(srcQuietBody:find("local result, err = COB.Runtime:EndEvent()\n  if result ~= nil then\n    lastRecommendation = nil\n    self.selectedFighterA = nil\n    self.selectedFighterB = nil\n  end\n  return after(self, result, err, nil, true)", 1, true) ~= nil,
++  "B26-A successful EndEvent still nils the selected pair")
++assert_true(srcQuietBody:find("local result, err = COB.Runtime:Continue()\n  return after(self, result, err)", 1, true) ~= nil,
++  "Continue does not clear lastRecommendation")
++assert_true(srcQuietBody:find('label = label .. "  names  "', 1, true) ~= nil,
++  "recommendation line still appends the names token")
++assert_eq(srcQuietBody:find("DEMANDED", 1, true), nil, "source must not invent DEMANDED")
++assert_eq(srcQuietBody:find("function Console:SaveNote", 1, true), nil,
++  "source must not define SaveNote")
++assert_eq(srcQuietBody:find("SUMMON THE FAITHFUL", 1, true), nil,
++  "source must not contain SUMMON")
++assert_eq(srcQuietBody:find("Parchment", 1, true), nil, "console stays stock, not parchment")
++assert_eq(srcQuietBody:find("PanelTabButtonTemplate", 1, true), nil,
++  "desks are not collapsed into tabs")
++
++local savedPred = Sender.IsRegisteredPope
++Sender.IsRegisteredPope = function() return true end
++
++reset()
++Console:Init()
++local nameA = Store:CreateCharacter({ name = "Chuckroast", class = "Warrior", level = 70 })
++local nameB = Store:CreateCharacter({ name = "Tendermage", class = "Mage", level = 68 })
++Console:SelectFighters(nameA.id, nameB.id)
++assert_eq(Console.selectedFighterA, nameA.id, "QUIET pick seats fighter A")
++assert_eq(Console.selectedFighterB, nameB.id, "QUIET pick seats fighter B")
++Console:Refresh()
++assert_eq(Console.selectedFighterA, nameA.id, "QUIET Refresh keeps selected fighter A")
++assert_eq(Console.selectedFighterB, nameB.id, "QUIET Refresh keeps selected fighter B")
++
++assert_true(Console:StartEvent() ~= nil, "StartEvent for live Recommend")
++assert_true(Gora:Petition(nameB.id, nameA.id) ~= nil, "named petition lands")
++COB.Roster = {
++  ready = true,
++  members = {
++    chuckroast = { name = "Chuckroast", guildRankIndex = 4 },
++    tendermage = { name = "Tendermage", guildRankIndex = 5 },
++  },
++}
++local recLive = Console:Recommend()
++assert_true(recLive ~= nil, "Recommend during a live event reaches Gora")
++local liveText = frame.Recommendation:GetText() or ""
++assert_true(liveText ~= "", "live Recommend paints a pair")
++assert_true(liveText:find("  names  ", 1, true) ~= nil,
++  "live Recommend paints the names token")
++assert_true(liveText:find("Chuckroast", 1, true) ~= nil,
++  "live Recommend keeps name A")
++assert_true(liveText:find("Tendermage", 1, true) ~= nil,
++  "live Recommend keeps name B")
++Console:Refresh()
++assert_eq(frame.Recommendation:GetText() or "", liveText,
++  "Recommend during a live event still paints")
++
++assert_true(Runtime:EndEvent() ~= nil, "Runtime EndEvent bypasses the desk")
++Console:Refresh()
++assert_eq(frame.Recommendation:GetText() or "", "",
++  "Runtime EndEvent then Refresh paints empty Recommendation")
++assert_eq((frame.Recommendation:GetText() or ""):find("  names  ", 1, true), nil,
++  "Runtime EndEvent Recommendation has no names token")
++
++Sender.IsRegisteredPope = savedPred
++assert_eq(Sender:IsRegisteredPope(COB.Group.PlayerName()), false,
++  "B31-A wrapping the predicate does not stub the list true")
++
++assert_eq(Console.SaveNote, nil, "SaveNote stays nil after B31-A")
++if standalone then
++  assert_eq(COB.Archive, nil, "isolation still does not load Archive")
++  assert_eq(COB.UI, nil, "isolation still does not load the Quiet shell")
++  assert_eq(COB.Toasts, nil, "isolation still does not load Toasts")
++  assert_eq(COB.Confession, nil, "isolation still does not load Confession")
++end
++assert_eq(COB.Popes, nil, "still no Pope list after B31-A")
++end
++runB31A()
+ end
+ runB8E()

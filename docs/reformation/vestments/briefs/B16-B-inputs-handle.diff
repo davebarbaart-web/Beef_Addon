@@ -1,0 +1,208 @@
+diff --git a/addon/ChurchOfBeef/UI/Inputs.lua b/addon/ChurchOfBeef/UI/Inputs.lua
+--- a/addon/ChurchOfBeef/UI/Inputs.lua
++++ b/addon/ChurchOfBeef/UI/Inputs.lua
+@@ -9,9 +9,10 @@
+ -- Confess box type-guards SetMultiLine(true) and OnEscapePressed to ClearFocus;
+ -- the box does not Hide the panel. Missing SetScript / ClearFocus / SetMultiLine
+ -- no-op. Hide stays Runtime Quiet, not box ESC.
++-- TitleBar drag persist writes ChurchOfBeefDB.ui.inputs as a flat point table.
+ -- Missing ChurchOfBeefDB restores the default; save no-ops. ResetForTests
++-- does not wipe SavedVariables. Root stays SetMovable + SetClampedToScreen;
++-- drag is on TitleBar, not the root.
+ local Inputs = {
+   MODE = "Event",
+ }
+@@ -115,9 +116,6 @@
+   widget:SetClampedToScreen(true)
+   widget:EnableMouse(true)
+   widget:SetMovable(true)
+-  if widget.RegisterForDrag then
+-    widget:RegisterForDrag("LeftButton")
+-  end
+   restorePoint(widget)
+ 
+   local bg = widget:CreateTexture(nil, "BACKGROUND")
+@@ -128,6 +126,23 @@
+   if bg.SetVertexColor then
+     bg:SetVertexColor(0.08, 0.08, 0.08, 1)
+   end
++
++  local titleBar = CreateFrame("Frame", nil, widget)
++  titleBar:SetHeight(12)
++  titleBar:SetPoint("TOPLEFT", widget, "TOPLEFT", 0, 0)
++  titleBar:SetPoint("TOPRIGHT", widget, "TOPRIGHT", 0, 0)
++  titleBar:EnableMouse(true)
++  if titleBar.RegisterForDrag then
++    titleBar:RegisterForDrag("LeftButton")
++  end
++  titleBar:SetScript("OnDragStart", function()
++    if widget.StartMoving then widget:StartMoving() end
++  end)
++  titleBar:SetScript("OnDragStop", function()
++    if widget.StopMovingOrSizing then widget:StopMovingOrSizing() end
++    savePoint(widget)
++  end)
++  widget.TitleBar = titleBar
+ 
+   local box = CreateFrame("EditBox", nil, widget, "InputBoxTemplate")
+   box:SetWidth(WIDTH - 24)
+@@ -160,14 +175,6 @@
+     Inputs:Confess()
+   end)
+   confess:SetPoint("BOTTOMRIGHT", widget, "BOTTOMRIGHT", -12, 10)
+-
+-  widget:SetScript("OnDragStart", function(self)
+-    if self.StartMoving then self:StartMoving() end
+-  end)
+-  widget:SetScript("OnDragStop", function(self)
+-    if self.StopMovingOrSizing then self:StopMovingOrSizing() end
+-    savePoint(self)
+-  end)
+ 
+   widget:Hide()
+   return widget
+diff --git a/tests/test_inputs.lua b/tests/test_inputs.lua
+--- a/tests/test_inputs.lua
++++ b/tests/test_inputs.lua
+@@ -1,10 +1,11 @@
++-- Event congregation Petition / Confess / Catchup (B4-G, B5-E, B14-B, B15-A,
++-- B16-B). Isolated: wow_ui_stub + Common + Runtime + Inputs. Stub
++-- COB.Net.SendPetition / SendConfession / RequestSnapshot. Event Mode only.
++-- No Pope-name lookup. No Gora:Petition. No Proclaim. No sound. No
++-- SendChatMessage. Isolation wrap. No TOC / bootstrap / run.lua. Confess
++-- box: OnEscapePressed ClearFocus only; type-guarded SetMultiLine(true).
++-- Not on UISpecialFrames. TitleBar drag persist writes ChurchOfBeefDB.ui.inputs.
++-- Root has no RegisterForDrag. ResetForTests does not wipe SV.
+ package.path = package.path .. ";./tests/?.lua"
+ 
+ local stub = require("wow_ui_stub")
+@@ -575,10 +576,12 @@
+ assert_eq(frame:IsShown(), false, "rebuilt Init in Quiet stays hidden")
+ 
+ --------------------------------------------------------------------------------
++-- B15-A + B16-B: TitleBar OnDragStop persists ChurchOfBeefDB.ui.inputs (dock
++-- pattern). Root has no OnDragStart. TitleBar exists, height 12–14,
++-- TOPLEFT/TOPRIGHT, no title string. Invalid saved point falls back. Quiet
++-- Init with a saved point still hides. ResetForTests must not wipe SV.
++-- Missing DB: default restore; save no-ops. Nested so the main chunk stays
++-- under Lua 5.1's 200-local cap.
+ --------------------------------------------------------------------------------
+ local function runB15A()
+ ChurchOfBeefDB = { ui = {} }
+@@ -590,15 +593,31 @@
+ assert_eq(frame:GetWidth(), 328, "persist WIDTH stays 328")
+ assert_eq(frame:GetHeight(), 72, "persist HEIGHT stays 72")
+ assert_eq(frame._movable, true, "root is SetMovable(true)")
+-assert_true(frame:GetScript("OnDragStart") ~= nil, "drag start is on the root")
+-assert_true(frame:GetScript("OnDragStop") ~= nil, "drag stop is on the root")
+-
+-stub.fire(frame, "OnDragStart")
+-assert_eq(frame._moving, true, "drag starts a move")
+-frame:ClearAllPoints()
+-frame:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 24, 90)
+-stub.fire(frame, "OnDragStop")
+-assert_eq(frame._moving, false, "drop stops the move")
++assert_eq(frame._clamped, true, "root stays SetClampedToScreen")
++assert_eq(frame:GetScript("OnDragStart"), nil, "root has no OnDragStart")
++assert_eq(frame:GetScript("OnDragStop"), nil, "drag stop is on TitleBar, not the root")
++local titleBar = rawget(frame, "TitleBar")
++assert_true(titleBar ~= nil, "TitleBar exists")
++if titleBar then
++  assert_eq(titleBar:GetParent(), frame, "TitleBar is a child of the root")
++  local th = titleBar:GetHeight()
++  assert_true(th ~= nil and th >= 12 and th <= 14, "TitleBar height is 12–14")
++  assert_eq(select(1, titleBar:GetPoint(1)), "TOPLEFT", "TitleBar TOPLEFT")
++  assert_eq(select(2, titleBar:GetPoint(1)), frame, "TitleBar TOPLEFT relative is the root")
++  assert_eq(select(1, titleBar:GetPoint(2)), "TOPRIGHT", "TitleBar TOPRIGHT")
++  assert_eq(select(2, titleBar:GetPoint(2)), frame, "TitleBar TOPRIGHT relative is the root")
++  assert_true(titleBar:GetScript("OnDragStart") ~= nil, "drag start is on TitleBar")
++  assert_true(titleBar:GetScript("OnDragStop") ~= nil, "drag stop is on TitleBar")
++  assert_eq(titleBar:GetNumRegions(), 0, "TitleBar has no title FontString")
++  stub.fire(titleBar, "OnDragStart")
++  assert_eq(frame._moving, true, "TitleBar drag starts a move on the root")
++  frame:ClearAllPoints()
++  frame:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 24, 90)
++  stub.fire(titleBar, "OnDragStop")
++  assert_eq(frame._moving, false, "drop stops the move")
++else
++  assert_true(false, "TitleBar drag persist cannot fire")
++end
+ assert_eq(frame:GetScript("OnUpdate"), nil, "drop leaves no animator")
+ local saved = ChurchOfBeefDB.ui and ChurchOfBeefDB.ui.inputs
+ assert_true(type(saved) == "table", "moved position is saved")
+@@ -618,6 +637,8 @@
+ assert_eq(rx, 24, "saved x restores")
+ assert_eq(ry, 90, "saved y restores")
+ assert_eq(reloaded:GetParent(), UIParent, "dofile Init restores parented UIParent")
++assert_true(rawget(reloaded, "TitleBar") ~= nil, "TitleBar survives dofile Init")
++assert_eq(reloaded:GetScript("OnDragStart"), nil, "reloaded root has no OnDragStart")
+ frame = reloaded
+ 
+ ChurchOfBeefDB.ui.inputs = { point = "MIDDLE-OF-NOWHERE", relativePoint = "CENTER", x = 1, y = 2 }
+@@ -644,6 +665,8 @@
+ assert_eq(select(2, frame:GetPoint(1)), UIParent, "Quiet restore still parents to UIParent")
+ assert_eq(select(4, frame:GetPoint(1)), 24, "Quiet Init restores saved x")
+ assert_eq(select(5, frame:GetPoint(1)), 90, "Quiet Init restores saved y")
++assert_true(rawget(frame, "TitleBar") ~= nil, "Quiet Init still has TitleBar")
++assert_eq(frame:GetScript("OnDragStart"), nil, "Quiet restored root has no OnDragStart")
+ 
+ assert_true(Runtime:StartEvent() ~= nil, "B15-A Event after Quiet persist")
+ assert_eq(Inputs:Show(), true, "Event Show after persist restore")
+@@ -686,8 +709,22 @@
+ assert_true(persistSrc:find("restorePoint", 1, true) ~= nil, "source has restorePoint")
+ assert_true(persistSrc:find("db.inputs", 1, true) ~= nil, "source keys ChurchOfBeefDB.ui.inputs")
+ assert_true(persistSrc:find("SetMovable(true)", 1, true) ~= nil, "source SetMovable(true)")
++assert_true(persistSrc:find("SetClampedToScreen(true)", 1, true) ~= nil, "source SetClampedToScreen(true)")
+ assert_true(persistSrc:find('RegisterForDrag("LeftButton")', 1, true) ~= nil,
+   "source RegisterForDrag LeftButton")
++assert_true(persistSrc:find("TitleBar", 1, true) ~= nil, "source names TitleBar")
++assert_true(persistSrc:find("titleBar:EnableMouse(true)", 1, true) ~= nil,
++  "TitleBar EnableMouse")
++assert_true(persistSrc:find('titleBar:RegisterForDrag("LeftButton")', 1, true) ~= nil,
++  "TitleBar RegisterForDrag LeftButton")
++assert_eq(persistSrc:find("widget:RegisterForDrag", 1, true), nil, "root RegisterForDrag is gone")
++assert_eq(persistSrc:find('widget:SetScript("OnDragStart"', 1, true), nil,
++  "root OnDragStart is gone")
++assert_eq(persistSrc:find('widget:SetScript("OnDragStop"', 1, true), nil,
++  "root OnDragStop is gone")
++assert_eq(persistSrc:find("titleBar:SetText", 1, true), nil, "TitleBar has no SetText")
++assert_eq(persistSrc:find("TitleText", 1, true), nil, "source has no TitleText")
++assert_eq(persistSrc:find("CreateFontString", 1, true), nil, "source has no title FontString")
+ assert_eq(persistSrc:find("relativeTo", 1, true), nil, "source never stores relativeTo")
+ assert_eq(persistSrc:find("UISpecialFrames", 1, true), nil, "persist source does not use UISpecialFrames")
+ assert_true(persistSrc:find("OnEscapePressed", 1, true) ~= nil, "persist source keeps OnEscapePressed")
+@@ -710,6 +747,12 @@
+   assert_eq(COB.Sound, nil, "still no Sound after B15-A")
+   assert_eq(COB.Hud, nil, "still no Hud after B15-A")
+   assert_eq(type(SLASH_CHURCHOFBEEF1), "nil", "B15-A still does not register a slash")
++  assert_eq(COB.Console, nil, "still no Console after B16-B")
++  assert_eq(COB.Popes, nil, "still no Pope list after B16-B")
++  assert_eq(COB.Sender, nil, "still no Sender after B16-B")
++  assert_eq(COB.Sound, nil, "still no Sound after B16-B")
++  assert_eq(COB.Hud, nil, "still no Hud after B16-B")
++  assert_eq(type(SLASH_CHURCHOFBEEF1), "nil", "B16-B still does not register a slash")
+ end
+ 
+ ChurchOfBeefDB = nil
+@@ -720,11 +763,16 @@
+ assert_eq(select(2, frame:GetPoint(1)), UIParent, "missing ChurchOfBeefDB still parents to UIParent")
+ assert_eq(select(4, frame:GetPoint(1)), 0, "missing ChurchOfBeefDB restores x 0")
+ assert_eq(select(5, frame:GetPoint(1)), 80, "missing ChurchOfBeefDB restores y 80")
+-assert_true(frame:GetScript("OnDragStop") ~= nil, "missing-DB root still has OnDragStop")
+-stub.fire(frame, "OnDragStart")
+-frame:ClearAllPoints()
+-frame:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 99, 99)
+-stub.fire(frame, "OnDragStop")
++assert_eq(frame:GetScript("OnDragStart"), nil, "missing-DB root has no OnDragStart")
++assert_eq(frame:GetScript("OnDragStop"), nil, "missing-DB root has no OnDragStop")
++titleBar = rawget(frame, "TitleBar")
++assert_true(titleBar ~= nil, "missing-DB TitleBar is still the drag handle")
++if titleBar then
++  stub.fire(titleBar, "OnDragStart")
++  frame:ClearAllPoints()
++  frame:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 99, 99)
++  stub.fire(titleBar, "OnDragStop")
++end
+ assert_eq(ChurchOfBeefDB, nil, "save no-ops when ChurchOfBeefDB is missing")
+ assert_eq(sounds, 0, "persist path plays no sound")
+ end

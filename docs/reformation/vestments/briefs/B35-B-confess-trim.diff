@@ -1,0 +1,293 @@
+# B35-B — Confess trims optional text (implementation diff)
+
+Lane-only unified diff of the exclusive implementation files vs the pre-lane working tree.
+
+--- a/addon/ChurchOfBeef/UI/Inputs.lua
++++ b/addon/ChurchOfBeef/UI/Inputs.lua
+@@ -23,6 +23,9 @@
+ -- SetInputTarget trims the whisper dest (Names.Trim, fallback ^%s+ /
+ -- %s+$). Empty after trim is no target. readyToSend / Petition /
+ -- Catchup / Confess keep. No Pope-name lookup.
++-- Confess trims optional text (Names.Trim, fallback ^%s+ / %s+$).
++-- Empty after trim omits fields.text and still sends. Dest /
++-- readyToSend stay. Opponent trim stays. No Pope-name lookup.
+ -- Confess box sits TOP / -14 so it stays fully below the 12px TitleBar.
+ local Inputs = {
+   MODE = "Event",
+@@ -311,10 +314,21 @@
+     if box and box.GetText then
+       text = box:GetText()
+     end
+   end
++  local trimmed
++  if COB.Names and type(COB.Names.Trim) == "function" then
++    trimmed = COB.Names.Trim(text)
++  elseif type(text) == "string" then
++    trimmed = text:gsub("^%s+", ""):gsub("%s+$", "")
++    if trimmed == "" then
++      trimmed = nil
++    end
++  end
+   if not (COB.Net and COB.Net.SendConfession) then
+     return false, "no net"
+   end
+   local fields = { characterId = localCharacterId }
+-  if type(text) == "string" then
+-    fields.text = text
++  if type(trimmed) == "string" then
++    fields.text = trimmed
+   end
+   return COB.Net:SendConfession(fields, inputTarget)
+ end
+
+--- a/tests/test_inputs.lua
++++ b/tests/test_inputs.lua
+@@ -1,5 +1,5 @@
+ -- Event congregation Petition / Confess / Catchup (B4-G, B5-E, B14-B, B15-A,
+--- B16-B, B17-C, B18-A, B21-D, B23-D, B33-A). Isolated: wow_ui_stub + Common + Runtime + Inputs. Stub
++-- B16-B, B17-C, B18-A, B21-D, B23-D, B33-A, B35-B). Isolated: wow_ui_stub + Common + Runtime + Inputs. Stub
+ -- COB.Net.SendPetition / SendConfession / RequestSnapshot. Event Mode only.
+ -- No Pope-name lookup. No Gora:Petition. No Proclaim. No sound. No
+ -- SendChatMessage. Isolation wrap. No TOC / bootstrap / run.lua. Confess
+@@ -14,7 +14,9 @@
+ -- (fail-closed). Player name is trimmed the same way; empty after trim omits.
+ -- Dest-same and player-same still omit. SetInputTarget trims the whisper
+ -- dest (Names.Trim, fallback ^%s+ / %s+$); empty after trim is no target.
++-- Confess trims optional text (Names.Trim, fallback ^%s+ / %s+$);
++-- empty after trim omits fields.text and still sends.
+ package.path = package.path .. ";./tests/?.lua"
+ 
+ local stub = require("wow_ui_stub")
+@@ -993,7 +995,7 @@
+ -- Trim opponent: whitespace-only omits; padded "  Chuckroast  " sends
+ -- "Chuckroast". B17-C challenge law, TitleBar persist, ESC ClearFocus,
+ -- not UISpecialFrames stay. Nested so the main chunk stays under Lua 5.1's
+--- 200-local cap. B21-D / B23-D / B33-A nest inside runB18A() (no new main-chunk locals).
++-- 200-local cap. B21-D / B23-D / B33-A / B35-B nest inside runB18A() (no new main-chunk locals).
+ --------------------------------------------------------------------------------
+ local function runB18A()
+ ChurchOfBeefDB = { ui = {} }
+@@ -1189,7 +1191,7 @@
+ -- (fail-closed). Unpadded Chuckroast + successful player still names
+ -- opponent. Quiet / ESC / TitleBar / isolation wrap stay. Nested in
+ -- runB18A() so the main chunk stays under Lua 5.1's 200-local cap.
+--- B23-D / B33-A nest inside runB21D().
++-- B23-D / B33-A / B35-B nest inside runB21D().
+ --------------------------------------------------------------------------------
+ local function runB21D()
+ ChurchOfBeefDB = { ui = {} }
+@@ -1361,7 +1363,7 @@
+ -- Beefina still names opponent. pcall fail / dest-same / missing
+ -- UnitName still omit. Quiet / ESC / TitleBar / isolation wrap stay.
+ -- Nested in runB21D() / runB18A() so the main chunk stays under
+--- Lua 5.1's 200-local cap. B33-A follows runB23D().
++-- Lua 5.1's 200-local cap. B33-A / B35-B follow runB23D().
+ --------------------------------------------------------------------------------
+ local function runB23D()
+ ChurchOfBeefDB = { ui = {} }
+@@ -1538,8 +1540,8 @@
+ -- Confess return "no target" and do not send. Padded "  Host  " stores
+ -- "Host". Opponent / player trim pins stay. Isolation wrap stays.
+ -- Nested after runB23D() so the main chunk stays under Lua 5.1's
+--- 200-local cap.
++-- 200-local cap. B35-B follows runB33A().
+ --------------------------------------------------------------------------------
+ local function runB33A()
+ ChurchOfBeefDB = { ui = {} }
+@@ -1751,6 +1753,196 @@
+ end
+ runB33A()
++
++--------------------------------------------------------------------------------
++-- B35-B: Confess trims optional text (Names.Trim, fallback ^%s+ /
++-- %s+$). Empty after trim omits fields.text and still sends. Dest /
++-- readyToSend stay. Opponent trim stays. Isolation wrap stays.
++-- Nested after runB33A() inside runB21D() so the main chunk stays
++-- under Lua 5.1's 200-local cap.
++--------------------------------------------------------------------------------
++local function runB35B()
++ChurchOfBeefDB = { ui = {} }
++reset()
++assert_true(Runtime:StartEvent() ~= nil, "B35-B StartEvent reaches ASSEMBLY")
++local frame = Inputs:Init()
++assert_true(frame ~= nil, "B35-B Init creates the frame")
++assert_eq(frame:IsShown(), true, "B35-B Event Init shows the Inputs panel")
++assert_eq(frame:GetWidth(), 328, "B35-B WIDTH stays 328")
++assert_eq(frame:GetHeight(), 72, "B35-B HEIGHT stays 72")
++
++local titleBar = rawget(frame, "TitleBar")
++assert_true(titleBar ~= nil, "B35-B TitleBar stays")
++if titleBar then
++  assert_eq(titleBar:GetHeight(), 12, "B35-B TitleBar height stays 12")
++end
++assert_eq(frame:GetScript("OnDragStart"), nil, "B35-B root still has no OnDragStart")
++
++local box = editBox()
++assert_true(box ~= nil, "B35-B confess box stays")
++assert_true(box:GetScript("OnEscapePressed") ~= nil, "B35-B OnEscapePressed stays")
++
++Inputs:SetLocalCharacterId(7)
++Inputs:SetInputTarget("  Host  ")
++assert_eq(Inputs:GetView().target, "Host", "B35-B padded dest still stores Host")
++
++sentConfessions = {}
++local ok, err = Inputs:Confess("  forgive me  ")
++assert_eq(ok, true, "B35-B padded text still sends")
++assert_eq(err, nil, "B35-B padded text has no error")
++assert_eq(#sentConfessions, 1, "B35-B padded text sends once")
++assert_eq(sentConfessions[1].target, "Host", "B35-B padded text whispers trimmed Host")
++assert_eq(sentConfessions[1].fields.characterId, 7, "B35-B padded text keeps characterId")
++assert_eq(sentConfessions[1].fields.text, "forgive me", "B35-B padded text trims to forgive me")
++
++sentConfessions = {}
++ok, err = Inputs:Confess("   ")
++assert_eq(ok, true, "B35-B whitespace text still sends")
++assert_eq(err, nil, "B35-B whitespace text has no error")
++assert_eq(#sentConfessions, 1, "B35-B whitespace text sends once")
++assert_eq(sentConfessions[1].target, "Host", "B35-B whitespace text whispers Host")
++assert_eq(sentConfessions[1].fields.characterId, 7, "B35-B whitespace text keeps characterId")
++assert_eq(sentConfessions[1].fields.text, nil, "B35-B whitespace text omits fields.text")
++
++box:SetText("   ")
++sentConfessions = {}
++ok, err = Inputs:Confess()
++assert_eq(ok, true, "B35-B box-only whitespace still sends")
++assert_eq(err, nil, "B35-B box-only whitespace has no error")
++assert_eq(#sentConfessions, 1, "B35-B box-only whitespace sends once")
++assert_eq(sentConfessions[1].target, "Host", "B35-B box-only whitespace whispers Host")
++assert_eq(sentConfessions[1].fields.characterId, 7, "B35-B box-only whitespace keeps characterId")
++assert_eq(sentConfessions[1].fields.text, nil, "B35-B box-only whitespace omits fields.text")
++
++box:SetText("  typed in the box  ")
++sentConfessions = {}
++ok, err = Inputs:Confess()
++assert_eq(ok, true, "B35-B padded box text still sends")
++assert_eq(err, nil, "B35-B padded box text has no error")
++assert_eq(#sentConfessions, 1, "B35-B padded box text sends once")
++assert_eq(sentConfessions[1].fields.text, "typed in the box",
++  "B35-B padded box text trims")
++assert_eq(sentConfessions[1].target, "Host", "B35-B padded box dest stays Host")
++
++sentConfessions = {}
++ok, err = Inputs:Confess("forgive me")
++assert_eq(ok, true, "B35-B unpadded text still sends")
++assert_eq(err, nil, "B35-B unpadded text has no error")
++assert_eq(sentConfessions[1].fields.text, "forgive me", "B35-B unpadded text stays")
++assert_eq(sentConfessions[1].target, "Host", "B35-B unpadded text dest stays Host")
++
++Inputs:SetInputTarget("   ")
++assert_eq(Inputs:GetView().target, nil, "B35-B whitespace dest is still no target")
++sentConfessions = {}
++ok, err = Inputs:Confess("forgive me")
++assert_eq(ok, false, "B35-B whitespace dest still refuses Confess")
++assert_eq(err, "no target", "B35-B whitespace dest Confess is still no target")
++assert_eq(#sentConfessions, 0, "B35-B whitespace dest does not send Confess")
++
++Inputs:SetInputTarget("  Host  ")
++assert_eq(Inputs:GetView().target, "Host", "B35-B re-set padded dest still stores Host")
++
++UnitName = function(unit)
++  if unit == "target" then return "   " end
++  if unit == "player" then return "Beefina" end
++  return nil
++end
++sentPetitions = {}
++ok, err = Inputs:Petition()
++assert_eq(ok, true, "B35-B whitespace-only opponent still sends")
++assert_eq(err, nil, "B35-B whitespace-only opponent has no error")
++assert_eq(#sentPetitions, 1, "B35-B whitespace-only opponent sends once")
++assert_eq(sentPetitions[1].fields.opponent, nil, "B35-B whitespace-only opponent omits")
++assert_eq(sentPetitions[1].target, "Host", "B35-B whitespace-only opponent dest stays Host")
++
++UnitName = function(unit)
++  if unit == "target" then return "  Chuckroast  " end
++  if unit == "player" then return "Beefina" end
++  return nil
++end
++sentPetitions = {}
++ok, err = Inputs:Petition()
++assert_eq(ok, true, "B35-B padded Chuckroast still sends")
++assert_eq(err, nil, "B35-B padded Chuckroast has no error")
++assert_eq(#sentPetitions, 1, "B35-B padded Chuckroast sends once")
++assert_eq(sentPetitions[1].fields.opponent, "Chuckroast",
++  "B35-B padded Chuckroast trims to Chuckroast")
++assert_eq(sentPetitions[1].target, "Host", "B35-B padded Chuckroast dest stays Host")
++
++UnitName = function(unit)
++  if unit == "target" then return "  Host  " end
++  if unit == "player" then return "Beefina" end
++  return nil
++end
++sentPetitions = {}
++Inputs:Petition()
++assert_eq(sentPetitions[1].fields.opponent, nil, "B35-B padded Host after trim omits opponent")
++assert_eq(sentPetitions[1].target, "Host", "B35-B padded Host dest-same whisper dest stays")
++
++UnitName = function(unit)
++  if unit == "target" then return "Chuckroast" end
++  if unit == "player" then return "   " end
++  return nil
++end
++sentPetitions = {}
++ok, err = Inputs:Petition()
++assert_eq(ok, true, "B35-B whitespace player still sends")
++assert_eq(err, nil, "B35-B whitespace player has no error")
++assert_eq(sentPetitions[1].fields.opponent, nil, "B35-B whitespace player omits opponent")
++assert_eq(sentPetitions[1].target, "Host", "B35-B whitespace player dest stays Host")
++
++assert_true(Runtime:EndEvent() ~= nil, "B35-B EndEvent returns QUIET")
++sentConfessions = {}
++ok = Inputs:Confess("forgive me")
++assert_eq(ok, false, "B35-B Quiet Confess is false")
++assert_eq(#sentConfessions, 0, "B35-B Quiet does not send")
++
++assert_eq(sounds, 0, "B35-B plays no sound")
++assert_eq(goraCalls, 0, "B35-B does not call Gora")
++
++local confessSrcFile = io.open("addon/ChurchOfBeef/UI/Inputs.lua", "r")
++assert_true(confessSrcFile ~= nil, "Inputs.lua is readable after B35-B pins")
++local confessSrc = confessSrcFile:read("*a")
++confessSrcFile:close()
++local confessAt = confessSrc:find("function Inputs:Confess", 1, true)
++assert_true(confessAt ~= nil, "B35-B Confess exists")
++local confessEnd = confessSrc:find("\nfunction Inputs:", confessAt + 1, true)
++local confessBody = confessSrc:sub(confessAt, confessEnd or #confessSrc)
++assert_true(confessBody:find("Names.Trim", 1, true) ~= nil, "B35-B Confess uses Names.Trim")
++assert_true(confessBody:find('gsub("^%s+", "")', 1, true) ~= nil,
++  "B35-B Confess fallback trims leading whitespace")
++assert_true(confessBody:find('gsub("%s+$", "")', 1, true) ~= nil,
++  "B35-B Confess fallback trims trailing whitespace")
++local setAt = confessSrc:find("function Inputs:SetInputTarget", 1, true)
++assert_true(setAt ~= nil, "B35-B SetInputTarget exists")
++local setEnd = confessSrc:find("\nfunction Inputs:", setAt + 1, true)
++local setBody = confessSrc:sub(setAt, setEnd or #confessSrc)
++assert_true(setBody:find("Names.Trim", 1, true) ~= nil, "B35-B SetInputTarget still uses Names.Trim")
++assert_true(confessSrc:find('playerName:gsub("^%s+", ""):gsub("%s+$", "")', 1, true) ~= nil,
++  "B35-B player name trim stays")
++assert_true(confessSrc:find('targetName:gsub("^%s+", ""):gsub("%s+$", "")', 1, true) ~= nil,
++  "B35-B opponent target trim stays")
++assert_true(confessSrc:find('if type(inputTarget) ~= "string" or inputTarget == ""', 1, true) ~= nil,
++  "B35-B readyToSend / Catchup still refuse empty dest")
++assert_eq(confessSrc:find("Popes", 1, true), nil, "B35-B source has no Popes lookup")
++assert_eq(confessSrc:find("IsRegisteredPope", 1, true), nil, "B35-B source has no IsRegisteredPope")
++assert_eq(confessSrc:find("TargetUnit", 1, true), nil, "B35-B source does not TargetUnit")
++assert_eq(confessSrc:find("PlaySound", 1, true), nil, "B35-B source does not play sound")
++assert_true(confessSrc:find("OnEscapePressed", 1, true) ~= nil, "B35-B source keeps OnEscapePressed")
++assert_true(confessSrc:find("TitleBar", 1, true) ~= nil, "B35-B source keeps TitleBar")
++assert_true(confessSrc:find("local WIDTH, HEIGHT = 328, 72", 1, true) ~= nil,
++  "B35-B source HEIGHT stays 72")
++
++if standalone then
++  assert_eq(COB.Console, nil, "still no Console after B35-B")
++  assert_eq(COB.Popes, nil, "still no Pope list after B35-B")
++  assert_eq(COB.Sender, nil, "still no Sender after B35-B")
++  assert_eq(COB.Sound, nil, "still no Sound after B35-B")
++  assert_eq(COB.Hud, nil, "still no Hud after B35-B")
++  assert_eq(type(SLASH_CHURCHOFBEEF1), "nil", "B35-B still does not register a slash")
++end
++end
++runB35B()
+ end
+ runB21D()
+ 
+ UnitName = savedUnitName

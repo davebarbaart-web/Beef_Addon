@@ -1,0 +1,110 @@
+# B15-C — Quiet shell UISpecialFrames dedupe (implementation diff)
+
+Lane-only unified diff of the exclusive implementation files vs the pre-lane working tree.
+
+--- a/addon/ChurchOfBeef/UI/MainFrame.lua
++++ b/addon/ChurchOfBeef/UI/MainFrame.lua
+@@ -465,6 +465,16 @@
+   restorePoint(frame)
+   return frame, content
+ end
+ 
++-- Named Quiet shell on UISpecialFrames (scan then append). Missing table
++-- no-ops. No panel whoosh on ESC / show / hide.
++local function rememberSpecial(name)
++  if type(UISpecialFrames) ~= "table" then return end
++  for i = 1, #UISpecialFrames do
++    if UISpecialFrames[i] == name then return end
++  end
++  UISpecialFrames[#UISpecialFrames + 1] = name
++end
++
+ --------------------------------------------------------------------------------
+ -- Lifecycle
+ --------------------------------------------------------------------------------
+@@ -510,9 +520,7 @@
+     if ui then ui.shown = false end
+   end)
+ 
+-  if type(UISpecialFrames) == "table" then
+-    table.insert(UISpecialFrames, FRAME_NAME)
+-  end
++  rememberSpecial(FRAME_NAME)
+ 
+   self:OnStatusChanged()
+
+--- a/tests/test_ui.lua
++++ b/tests/test_ui.lua
+@@ -1,8 +1,8 @@
+ -- Quiet shell: frame creation, drag/resize/coalesce, saved position, minimap
+ -- toggle, system/debug toasts. Event Mode Proclaim (sanction / verdict /
+--- cowardice / knighting / elevation). B12-D Proclaim ESC lives in runB12D()
+--- (Lua 5.1 200-local cap). No tab registry. No Standing / Ladder / Officer IA.
+--- No promote / rite toast kinds. Isolation stays under standalone.
++-- cowardice / knighting / elevation). B12-D Proclaim ESC and B15-C Quiet-shell
++-- UISpecialFrames rememberSpecial live in runB12D() (Lua 5.1 200-local cap).
++-- No tab registry. No Standing / Ladder / Officer IA. No promote / rite toast
++-- kinds. Isolation stays under standalone.
+ local standalone = (type(assert_eq) ~= "function")
+ local passed = 0
+ local failed = 0
+@@ -786,6 +786,60 @@
+   assert_eq(countSpecial("ChurchOfBeefProclaim"), 1,
+     "ESC Hide does not re-register ChurchOfBeefProclaim")
+   assert_eq(findButton(COB.Toasts.theater.root), nil, "ESC path adds no close button")
++
++  -- B15-C: Quiet shell UISpecialFrames rememberSpecial dedupe. Nested here
++  -- so the main chunk stays under Lua 5.1's 200-local cap. No new main-chunk
++  -- locals. Existing Init pin and B12-D Proclaim pins stay.
++  local shellSrcFile = io.open("addon/ChurchOfBeef/UI/MainFrame.lua", "r")
++  assert_true(shellSrcFile ~= nil, "B15-C MainFrame.lua is readable")
++  local shellSrc = shellSrcFile:read("*a")
++  shellSrcFile:close()
++  assert_true(shellSrc:find("local function rememberSpecial", 1, true) ~= nil,
++    "source has rememberSpecial")
++  assert_true(shellSrc:find("UISpecialFrames[i] == name", 1, true) ~= nil,
++    "source has a dedupe loop")
++  assert_true(shellSrc:find("rememberSpecial(FRAME_NAME)", 1, true) ~= nil,
++    "Init remembers the named Quiet shell")
++  assert_eq(shellSrc:find("table.insert(UISpecialFrames", 1, true), nil,
++    "source does not bare-insert UISpecialFrames")
++  assert_eq(shellSrc:find("IG_CHARACTER_INFO", 1, true), nil,
++    "source does not PlaySound IG_CHARACTER_INFO_*")
++  assert_eq(shellSrc:find("PlaySound", 1, true), nil,
++    "source does not PlaySound on ESC / show / hide")
++  assert_true(shellSrc:find("BasicFrameTemplate", 1, true) ~= nil,
++    "Quiet shell stays BasicFrameTemplate")
++  assert_true(shellSrc:find("RecordsBook:Toggle", 1, true) ~= nil,
++    "UI:Toggle still opens Records Book")
++  assert_eq(shellSrc:find("PanelTabButtonTemplate", 1, true), nil,
++    "no Ladder / Standing / Officer tabs")
++
++  assert_eq(UISpecialFrames[1], "ChurchOfBeefFrame",
++    "existing Init pin: escape still closes ChurchOfBeefFrame")
++  assert_eq(countSpecial("ChurchOfBeefFrame"), 1,
++    "after UI:Init, ChurchOfBeefFrame is on UISpecialFrames once")
++  assert_eq(countSpecial("ChurchOfBeefProclaim"), 1,
++    "B12-D Proclaim pin stays after shell count")
++
++  -- Force a second build so rememberSpecial must dedupe (Init is otherwise
++  -- idempotent; MainFrame has no ResetForTests).
++  COB.UI.frame = nil
++  local rebuilt = COB.UI:Init()
++  assert_true(rebuilt ~= nil, "forced rebuild creates the Quiet shell")
++  assert_eq(rebuilt:GetName(), "ChurchOfBeefFrame", "rebuilt frame keeps the special name")
++  assert_eq(rebuilt._template, "BasicFrameTemplate", "rebuilt shell stays BasicFrameTemplate")
++  assert_eq(countSpecial("ChurchOfBeefFrame"), 1,
++    "second build does not duplicate ChurchOfBeefFrame")
++  assert_eq(countSpecial("ChurchOfBeefProclaim"), 1,
++    "second shell build does not touch ChurchOfBeefProclaim")
++  assert_eq(UISpecialFrames[1], "ChurchOfBeefFrame",
++    "forced rebuild keeps ChurchOfBeefFrame first")
++
++  if standalone then
++    assert_eq(COB.Console, nil, "isolation still does not load Console")
++    assert_eq(COB.Hud, nil, "isolation still does not load Hud")
++    assert_eq(COB.RecordsBook, nil, "isolation still does not load Records Book")
++    assert_eq(COB.Gora, nil, "isolation still does not load Gora")
++  end
+ end
+ runB12D()

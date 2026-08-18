@@ -38,6 +38,27 @@ local function isInt(n)
 end
 
 --------------------------------------------------------------------------------
+-- Isolated surface: Common + Ranks + Store. Not Gora, UI, Net, Archive.
+--------------------------------------------------------------------------------
+assert_true(Store ~= nil, "isolated suite loads Store")
+assert_true(Ranks ~= nil, "isolated suite loads Ranks")
+assert_true(COB.Names ~= nil, "Common name law is loaded")
+if standalone then
+  assert_eq(COB.Gora, nil, "isolated suite does not load Gora")
+  assert_eq(COB.UI, nil, "isolated suite does not load UI")
+  assert_eq(COB.Net, nil, "isolated suite does not load BeefNet")
+  assert_eq(COB.DB, nil, "isolated suite does not load DB")
+  assert_eq(COB.Console, nil, "isolated suite does not load Console")
+  assert_eq(COB.Archive, nil, "isolated suite does not load Archive")
+  assert_eq(COB.RecordsBook, nil, "isolated suite does not load Records Book")
+  assert_eq(COB.Officer, nil, "isolated suite does not load Officer")
+  assert_eq(COB.Recognition, nil, "isolated suite does not load Recognition")
+  assert_eq(COB.Popes, nil, "isolated suite does not load a Pope list")
+  assert_eq(COB.Sender, nil, "isolated suite does not load Sender")
+  assert_eq(COB.Runtime, nil, "isolated suite does not load Runtime")
+end
+
+--------------------------------------------------------------------------------
 -- ResetForTests is inert outside the harness
 --------------------------------------------------------------------------------
 reset()
@@ -360,14 +381,88 @@ assert_eq(voided.gora.headToHeads[1].fights, 4, "Void still happened as a sancti
 assert_eq(voided.gora.results[4].ruling, "void", "Void is stored as the Pope's ruling")
 assert_eq(voided.gora.defenses, nil, "Void does not store a defense")
 
-local free = Store:RecordGoraResult(a.id, {
+local beforeFreeWins = Store:GetCharacter(a.id).gora.wins
+local beforeFreeLosses = Store:GetCharacter(a.id).gora.losses
+local beforeFreeStreak = Store:GetCharacter(a.id).gora.streak
+local beforeFreeResults = #Store:GetCharacter(a.id).gora.results
+local beforeFreeFights = Store:GetCharacter(a.id).gora.headToHeads[1].fights
+local beforeFreeH2hWins = Store:GetCharacter(a.id).gora.headToHeads[1].wins
+local beforeFreeH2hLosses = Store:GetCharacter(a.id).gora.headToHeads[1].losses
+
+local freeWin, freeWinErr = Store:RecordGoraResult(a.id, {
   opponentId = b.id,
   ruling = "free",
   won = true,
 }, 2104)
-assert_eq(free.gora.wins, 2, "a free ruling may be a victory if the Pope says so")
-assert_eq(free.gora.streak, 1, "a free-ruling win starts a win streak")
-assert_eq(free.gora.results[5].ruling, "free", "free ruling is stored")
+assert_eq(freeWin, nil, "free + won = true is refused")
+assert_true(type(freeWinErr) == "string", "free + won = true returns an error string")
+assert_eq(Store:GetCharacter(a.id).gora.wins, beforeFreeWins, "refused free+won does not increment wins")
+assert_eq(Store:GetCharacter(a.id).gora.losses, beforeFreeLosses, "refused free+won does not increment losses")
+assert_eq(Store:GetCharacter(a.id).gora.streak, beforeFreeStreak, "refused free+won does not change the streak")
+assert_eq(#Store:GetCharacter(a.id).gora.results, beforeFreeResults, "refused free+won does not append a result")
+
+local freeLoss, freeLossErr = Store:RecordGoraResult(a.id, {
+  opponentId = b.id,
+  ruling = "free",
+  won = false,
+}, 2105)
+assert_eq(freeLoss, nil, "free + won = false is refused")
+assert_true(type(freeLossErr) == "string", "free + won = false returns an error string")
+assert_eq(#Store:GetCharacter(a.id).gora.results, beforeFreeResults, "refused free+won=false leaves the store unchanged")
+assert_eq(Store:GetCharacter(a.id).gora.wins, beforeFreeWins, "refused free+won=false does not increment wins")
+assert_eq(Store:GetCharacter(a.id).gora.losses, beforeFreeLosses, "refused free+won=false does not increment losses")
+
+local free = Store:RecordGoraResult(a.id, {
+  opponentId = b.id,
+  ruling = "free",
+  text = "  rematch at the Pope's pleasure  ",
+}, 2106)
+assert_true(free ~= nil, "free without won writes the bout")
+assert_eq(free.gora.wins, beforeFreeWins, "free ruling does not increment wins")
+assert_eq(free.gora.losses, beforeFreeLosses, "free ruling does not increment losses")
+assert_eq(free.gora.streak, beforeFreeStreak, "free ruling does not change the fight-record streak")
+assert_eq(free.gora.headToHeads[1].wins, beforeFreeH2hWins, "free ruling does not increment h2h wins")
+assert_eq(free.gora.headToHeads[1].losses, beforeFreeH2hLosses, "free ruling does not increment h2h losses")
+assert_eq(free.gora.headToHeads[1].fights, beforeFreeFights + 1, "free ruling increments h2h fights")
+assert_eq(#free.gora.results, beforeFreeResults + 1, "free ruling appends a result")
+assert_eq(free.gora.results[#free.gora.results].ruling, "free", "free ruling is stored")
+assert_eq(free.gora.results[#free.gora.results].won, nil, "free ruling has no won flag")
+assert_eq(free.gora.results[#free.gora.results].text, "rematch at the Pope's pleasure", "free ruling stores trimmed Pope text")
+assert_eq(free.gora.results[#free.gora.results].famousUpset, false, "free ruling famousUpset defaults false")
+assert_eq(free.gora.rulings[#free.gora.rulings].ruling, "free", "free ruling is appended to rulings")
+
+local quietFree = Store:RecordGoraResult(a.id, {
+  opponentId = b.id,
+  ruling = "free",
+}, 2107)
+assert_true(quietFree ~= nil, "free may omit text")
+assert_eq(quietFree.gora.results[#quietFree.gora.results].text, nil, "omitted free text is nil")
+assert_eq(quietFree.gora.results[#quietFree.gora.results].won, nil, "omitted-text free still has no won flag")
+
+local blankFree = Store:RecordGoraResult(a.id, {
+  opponentId = b.id,
+  ruling = "free",
+  text = "   ",
+}, 2108)
+assert_true(blankFree ~= nil, "empty free text is accepted as omitted")
+assert_eq(blankFree.gora.results[#blankFree.gora.results].text, nil, "empty free text is stored as nil")
+
+local nilWonFree = Store:RecordGoraResult(a.id, {
+  opponentId = b.id,
+  ruling = "free",
+  won = nil,
+}, 2109)
+assert_true(nilWonFree ~= nil, "free with explicit won = nil is accepted")
+assert_eq(nilWonFree.gora.results[#nilWonFree.gora.results].won, nil, "explicit nil won stays nil")
+
+local badFreeText, badFreeTextErr = Store:RecordGoraResult(a.id, {
+  opponentId = b.id,
+  ruling = "free",
+  text = 42,
+}, 2110)
+assert_eq(badFreeText, nil, "non-string free text is refused")
+assert_true(type(badFreeTextErr) == "string", "non-string free text returns an error string")
+assert_eq(#Store:GetCharacter(a.id).gora.results, #nilWonFree.gora.results, "refused non-string text does not append")
 
 -- Human and character sequences both start at 1, so human.id may equal a
 -- character id. Create extra humans until the id is not a character row.
@@ -464,6 +559,26 @@ local noType, noTypeErr = Store:AppendCeremony("", { c1.id }, 4002)
 assert_eq(noType, nil, "empty ceremony type is refused")
 assert_true(type(noTypeErr) == "string", "empty ceremony type returns an error string")
 
+local withLine = Store:AppendCeremony("free", { c1.id }, 4003, "  rematch at the Pope's pleasure  ")
+assert_true(withLine ~= nil, "AppendCeremony accepts optional text")
+assert_eq(withLine.type, "free", "4-arg ceremony type is stored")
+assert_eq(withLine.text, "rematch at the Pope's pleasure", "4-arg stores trimmed Pope-authored text")
+assert_eq(withLine.narration, nil, "4-arg ceremony has no narration")
+assert_eq(withLine.scripture, nil, "4-arg ceremony has no scripture")
+
+local emptyLine = Store:AppendCeremony("free", { c1.id }, 4004, "   ")
+assert_true(emptyLine ~= nil, "empty ceremony text is accepted as omitted")
+assert_eq(emptyLine.text, nil, "empty ceremony text is omitted")
+
+local threeArg = Store:AppendCeremony("Recognition", { c1.id, p1.id }, 4005)
+assert_true(threeArg ~= nil, "3-arg AppendCeremony still works")
+assert_eq(threeArg.text, nil, "3-arg ceremony has no text field")
+
+local badLine, badLineErr = Store:AppendCeremony("free", { c1.id }, 4006, 99)
+assert_eq(badLine, nil, "non-string ceremony text is refused")
+assert_true(type(badLineErr) == "string", "non-string ceremony text returns an error string")
+assert_eq(#Store:GetCeremonyLog(), 4, "refused 4-arg text is not stored")
+
 --------------------------------------------------------------------------------
 -- Marked moments: flag-hot only — timestamp, optional location; no canon text
 --------------------------------------------------------------------------------
@@ -485,7 +600,192 @@ local moments = Store:GetMarkedMoments()
 assert_eq(#moments, 2, "marked moments are append-only")
 moments[1].text = "auto scripture"
 assert_eq(Store:GetMarkedMoments()[1].text, nil, "mutating a moment copy does not invent scripture")
-assert_eq(Store.Canonize, nil, "no Canonize API in this lane")
+assert_eq(type(Store.CanonizeMoment), "function", "CANONIZE is Store:CanonizeMoment")
+assert_eq(type(Store.FlagFamousUpset), "function", "Famous Upset is a Pope flag, not a computation")
+
+--------------------------------------------------------------------------------
+-- CanonizeMoment: cold Pope-authored scripture on a marked moment
+--------------------------------------------------------------------------------
+reset()
+local goldshire = Store:FlagMoment("Goldshire", 5100)
+local painted, paintErr = Store:CanonizeMoment(goldshire.id, "  The fountain held.  ")
+assert_true(painted ~= nil, "CanonizeMoment returns the row")
+assert_eq(paintErr, nil, "successful canonize has no error")
+assert_eq(painted.id, goldshire.id, "canonize writes the same marked-moment id")
+assert_eq(painted.at, 5100, "canonize does not rewrite the flag timestamp")
+assert_eq(painted.location, "Goldshire", "canonize does not invent or rewrite location")
+assert_eq(painted.scripture, "The fountain held.", "CanonizeMoment stores trimmed Pope text as scripture")
+assert_eq(painted.narration, nil, "canonize does not invent narration")
+assert_eq(painted.canon, nil, "canonize does not invent a canon generator field")
+assert_eq(Store:GetMarkedMoments()[1].scripture, "The fountain held.", "GetMarkedMoments copies scripture")
+assert_eq(#Store:GetMarkedMoments(), 1, "canonize does not delete or duplicate the moment")
+
+local liveMoment = Store:GetMarkedMoments()[1]
+liveMoment.scripture = "hacked"
+assert_eq(Store:GetMarkedMoments()[1].scripture, "The fountain held.", "mutating a canonized copy does not rewrite scripture")
+
+local quietCanon = Store:FlagMoment(nil, 5101)
+local quietPainted = Store:CanonizeMoment(quietCanon.id, "A quiet mark.")
+assert_eq(quietPainted.location, nil, "canonize does not invent a location")
+assert_eq(quietPainted.scripture, "A quiet mark.", "a location-less moment may still carry scripture")
+
+local unknownMoment, unknownMomentErr = Store:CanonizeMoment(99, "Lost words.")
+assert_eq(unknownMoment, nil, "unknown moment id is refused")
+assert_true(type(unknownMomentErr) == "string", "unknown moment returns an error string")
+assert_eq(#Store:GetMarkedMoments(), 2, "refused unknown id does not append a moment")
+
+local emptyScript, emptyScriptErr = Store:CanonizeMoment(goldshire.id, "")
+assert_eq(emptyScript, nil, "empty scripture is refused")
+assert_true(type(emptyScriptErr) == "string", "empty scripture returns an error string")
+assert_eq(Store:GetMarkedMoments()[1].scripture, "The fountain held.", "refused empty does not wipe scripture")
+
+local blankScript, blankScriptErr = Store:CanonizeMoment(goldshire.id, "   ")
+assert_eq(blankScript, nil, "whitespace-only scripture is refused")
+assert_true(type(blankScriptErr) == "string", "whitespace-only scripture returns an error string")
+
+local newlineScript, newlineScriptErr = Store:CanonizeMoment(goldshire.id, "The fountain held.\nSo ruled.")
+assert_eq(newlineScript, nil, "scripture with a newline is refused")
+assert_true(type(newlineScriptErr) == "string", "newline scripture returns an error string")
+assert_eq(Store:GetMarkedMoments()[1].scripture, "The fountain held.", "refused newline does not rewrite scripture")
+
+local missingText, missingTextErr = Store:CanonizeMoment(goldshire.id)
+assert_eq(missingText, nil, "missing scripture is refused")
+assert_true(type(missingTextErr) == "string", "missing scripture returns an error string")
+
+local badText, badTextErr = Store:CanonizeMoment(goldshire.id, 42)
+assert_eq(badText, nil, "non-string scripture is refused")
+assert_true(type(badTextErr) == "string", "non-string scripture returns an error string")
+
+local badMomentId, badMomentIdErr = Store:CanonizeMoment("goldshire", "The fountain held.")
+assert_eq(badMomentId, nil, "a name string is not a moment id")
+assert_true(type(badMomentIdErr) == "string", "name-string moment id returns an error string")
+
+--------------------------------------------------------------------------------
+-- FlagFamousUpset: Pope flag on the latest matching victory; never computed
+--------------------------------------------------------------------------------
+reset()
+local champ = Store:CreateCharacter({ name = "Chuckroast", level = 60 })
+local foe = Store:CreateCharacter({ name = "Tendermage", level = 70 })
+local other = Store:CreateCharacter({ name = "Brisket" })
+
+local firstWin = Store:RecordGoraResult(champ.id, {
+  opponentId = foe.id,
+  ruling = "victor",
+  won = true,
+}, 5200)
+assert_eq(firstWin.gora.results[1].famousUpset, false, "a victory is not an Upset until the Pope flags it")
+assert_eq(#firstWin.gora.notableVictims, 0, "a victory does not invent notable")
+
+local flagged, flagErr = Store:FlagFamousUpset(champ.id, foe.id)
+assert_true(flagged ~= nil, "FlagFamousUpset after a victor writes the flag")
+assert_eq(flagErr, nil, "successful flag has no error")
+assert_eq(flagged.gora.results[1].famousUpset, true, "the matching victory is flagged")
+assert_eq(flagged.gora.results[1].won, true, "flag does not rewrite won")
+assert_eq(#flagged.gora.notableVictims, 0, "FlagFamousUpset does not set notable")
+assert_eq(flagged.level, 60, "flag does not read levels to compute an upset")
+
+local rematchA = Store:CreateCharacter({ name = "Rematcha" })
+local rematchB = Store:CreateCharacter({ name = "Rematchb" })
+Store:RecordGoraResult(rematchA.id, {
+  opponentId = rematchB.id,
+  ruling = "victor",
+  won = true,
+}, 5201)
+Store:RecordGoraResult(rematchA.id, {
+  opponentId = rematchB.id,
+  ruling = "victor",
+  won = true,
+}, 5202)
+local latestFlag = Store:FlagFamousUpset(rematchA.id, rematchB.id)
+assert_eq(latestFlag.gora.results[1].famousUpset, false, "the earlier of two wins is not the flagged row")
+assert_eq(latestFlag.gora.results[2].famousUpset, true, "the latest of two wins is the row that is flagged")
+
+Store:RecordGoraResult(champ.id, {
+  opponentId = other.id,
+  ruling = "victor",
+  won = true,
+}, 5203)
+Store:FlagFamousUpset(champ.id, other.id)
+assert_eq(Store:GetCharacter(champ.id).gora.results[1].famousUpset, true, "flagging another opponent does not clear the prior flag")
+assert_eq(Store:GetCharacter(champ.id).gora.results[2].famousUpset, true, "a later opponent win is flagged on its own row")
+
+local lossOnly = Store:CreateCharacter({ name = "Lossalt" })
+Store:RecordGoraResult(lossOnly.id, {
+  opponentId = foe.id,
+  ruling = "victor",
+  won = false,
+}, 5203)
+local lossFlag, lossFlagErr = Store:FlagFamousUpset(lossOnly.id, foe.id)
+assert_eq(lossFlag, nil, "a loss is not a Famous Upset")
+assert_true(type(lossFlagErr) == "string", "loss flag returns an error string")
+assert_eq(Store:GetCharacter(lossOnly.id).gora.results[1].famousUpset, false, "refused loss does not set the flag")
+assert_eq(#Store:GetCharacter(lossOnly.id).gora.notableVictims, 0, "refused loss does not set notable")
+
+local voidOnly = Store:CreateCharacter({ name = "Voidalt" })
+Store:RecordGoraResult(voidOnly.id, {
+  opponentId = foe.id,
+  ruling = "void",
+}, 5204)
+local voidFlag, voidFlagErr = Store:FlagFamousUpset(voidOnly.id, foe.id)
+assert_eq(voidFlag, nil, "a void is not a Famous Upset")
+assert_true(type(voidFlagErr) == "string", "void flag returns an error string")
+assert_eq(Store:GetCharacter(voidOnly.id).gora.results[1].famousUpset, false, "refused void does not set the flag")
+
+local winThenLoss = Store:CreateCharacter({ name = "Winloss" })
+Store:RecordGoraResult(winThenLoss.id, {
+  opponentId = foe.id,
+  ruling = "victor",
+  won = true,
+}, 5205)
+Store:RecordGoraResult(winThenLoss.id, {
+  opponentId = foe.id,
+  ruling = "victor",
+  won = false,
+}, 5206)
+local afterLoss = Store:FlagFamousUpset(winThenLoss.id, foe.id)
+assert_eq(afterLoss.gora.results[1].famousUpset, true, "the latest matching win is flagged even if a later bout is a loss")
+assert_eq(afterLoss.gora.results[2].famousUpset, false, "a later loss is not flagged")
+
+local noMatch, noMatchErr = Store:FlagFamousUpset(champ.id, 99)
+assert_eq(noMatch, nil, "no matching victory is refused")
+assert_true(type(noMatchErr) == "string", "no-match flag returns an error string")
+
+local missingChamp, missingChampErr = Store:FlagFamousUpset(99, foe.id)
+assert_eq(missingChamp, nil, "unknown character is refused")
+assert_true(type(missingChampErr) == "string", "unknown character flag returns an error string")
+
+local nameChamp, nameChampErr = Store:FlagFamousUpset("chuckroast", foe.id)
+assert_eq(nameChamp, nil, "a name string is not a character id")
+assert_true(type(nameChampErr) == "string", "name-string character id returns an error string")
+
+local nameFoe, nameFoeErr = Store:FlagFamousUpset(champ.id, "tendermage")
+assert_eq(nameFoe, nil, "opponent must be a character id, not a name")
+assert_true(type(nameFoeErr) == "string", "name-string opponent returns an error string")
+
+--------------------------------------------------------------------------------
+-- Snapshot / Restore keep FlagFamousUpset on the latest win
+--------------------------------------------------------------------------------
+reset()
+local flagA = Store:CreateCharacter({ name = "Flaga" })
+local flagB = Store:CreateCharacter({ name = "Flagb" })
+Store:RecordGoraResult(flagA.id, {
+  opponentId = flagB.id,
+  ruling = "victor",
+  won = true,
+}, 5300)
+Store:RecordGoraResult(flagA.id, {
+  opponentId = flagB.id,
+  ruling = "victor",
+  won = true,
+}, 5301)
+Store:FlagFamousUpset(flagA.id, flagB.id)
+local flagSnap = Store:Snapshot()
+assert_eq(flagSnap.characters[1].gora.results[1].famousUpset, false, "Snapshot keeps the earlier win unflagged")
+assert_eq(flagSnap.characters[1].gora.results[2].famousUpset, true, "Snapshot keeps the flagged latest win")
+reset()
+assert_eq(Store:Restore(flagSnap), true, "Restore accepts a flagged-upset snapshot")
+assert_eq(Store:GetCharacter(flagA.id).gora.results[1].famousUpset, false, "Restore keeps the earlier win unflagged")
+assert_eq(Store:GetCharacter(flagA.id).gora.results[2].famousUpset, true, "Restore brings back the flagged result")
 
 --------------------------------------------------------------------------------
 -- Snapshot / Restore lock the in-memory shape for Archive (Lane B)
@@ -505,7 +805,8 @@ Store:RecordGoraResult(snapC.id, {
 }, 6004)
 Store:TombstoneHuman(snapH.id, 6005)
 Store:AppendCeremony("Gora", { snapC.id }, 6006)
-Store:FlagMoment("Shattrath", 6007)
+local snapMoment = Store:FlagMoment("Shattrath", 6007)
+Store:CanonizeMoment(snapMoment.id, "The fountain held.")
 
 local snap = Store:Snapshot()
 assert_eq(type(snap), "table", "Snapshot returns a table")
@@ -524,6 +825,7 @@ assert_eq(snap.characters[1].gora.results[1].famousUpset, true, "Snapshot keeps 
 assert_eq(snap.characters[1].gora.defenses, nil, "Snapshot does not invent defenses")
 assert_eq(snap.ceremonyLog[1].type, "Gora", "Snapshot keeps the ceremony log")
 assert_eq(snap.markedMoments[1].location, "Shattrath", "Snapshot keeps marked moments")
+assert_eq(snap.markedMoments[1].scripture, "The fountain held.", "Snapshot keeps Pope-authored scripture")
 assert_true(isInt(snap.nextHumanId), "Snapshot carries nextHumanId")
 assert_true(isInt(snap.nextCharacterId), "Snapshot carries nextCharacterId")
 
@@ -541,6 +843,7 @@ assert_eq(Store:GetHuman(snapH.id).inactive, true, "Restore brings back tombston
 assert_eq(Store:GetCharacter(snapC.id).gora.wins, 1, "Restore brings back Gora wins")
 assert_eq(Store:GetCeremonyLog()[1].type, "Gora", "Restore brings back the ceremony log")
 assert_eq(Store:GetMarkedMoments()[1].location, "Shattrath", "Restore brings back marked moments")
+assert_eq(Store:GetMarkedMoments()[1].scripture, "The fountain held.", "Restore brings back scripture")
 
 local after = Store:CreateHuman()
 assert_true(after.id >= snap.nextHumanId, "ids after Restore do not reuse snapshot ids")
@@ -548,6 +851,128 @@ assert_true(after.id >= snap.nextHumanId, "ids after Restore do not reuse snapsh
 local badRestore, badRestoreErr = Store:Restore("nope")
 assert_eq(badRestore, nil, "Restore refuses a non-table")
 assert_true(type(badRestoreErr) == "string", "bad Restore returns an error string")
+
+--------------------------------------------------------------------------------
+-- Restore keeps free rulings with won == nil and optional text
+--------------------------------------------------------------------------------
+reset()
+local restA = Store:CreateCharacter({ name = "Resta" })
+local restB = Store:CreateCharacter({ name = "Restb" })
+Store:RecordGoraResult(restA.id, {
+  opponentId = restB.id,
+  ruling = "free",
+  text = "the fountain stays",
+}, 7000)
+local freeSnap = Store:Snapshot()
+freeSnap.characters[1].gora.results[1].leftoverNote = "keep"
+freeSnap.characters[1].customMark = "keep"
+reset()
+assert_eq(Store:Restore(freeSnap), true, "Restore accepts a free-ruling snapshot")
+local restored = Store:GetCharacter(restA.id)
+assert_eq(restored.gora.results[1].ruling, "free", "Restore keeps free ruling")
+assert_eq(restored.gora.results[1].won, nil, "Restore does not invent won = false on free")
+assert_eq(restored.gora.results[1].text, "the fountain stays", "Restore keeps free ruling text")
+assert_eq(restored.gora.wins, 0, "restored free ruling has no wins")
+assert_eq(restored.gora.losses, 0, "restored free ruling has no losses")
+assert_eq(restored.gora.results[1].leftoverNote, "keep", "Restore does not wipe leftover result keys")
+assert_eq(restored.customMark, "keep", "Restore does not wipe leftover character keys")
+
+--------------------------------------------------------------------------------
+-- CountDefenses: derived from elevationAt + won == true; never a stored field
+--------------------------------------------------------------------------------
+local function runCountDefenses()
+  assert_eq(type(Store.CountDefenses), "function", "CountDefenses is a Store read")
+  reset()
+  local lordH = Store:CreateHuman({ name = "Lord" })
+  local lordC = Store:CreateCharacter({ name = "Lordalt" })
+  local foe = Store:CreateCharacter({ name = "Foealt" })
+  local unlinked = Store:CreateCharacter({ name = "Strayalt" })
+  Store:LinkCharacter(lordC.id, lordH.id)
+  Store:SetRank(lordH.id, 3, 8000)
+
+  Store:RecordGoraResult(lordC.id, {
+    opponentId = foe.id,
+    ruling = "victor",
+    won = true,
+    famousUpset = true,
+    notable = true,
+  }, 8010)
+  assert_eq(Store:CountDefenses(lordC.id), 0, "a Knight win before elevation is not a defense")
+  assert_eq(Store:GetHuman(lordH.id).elevationAt, nil, "Knight still has no elevationAt")
+  assert_eq(Store:GetCharacter(lordC.id).gora.defenses, nil, "pre-elevation win does not write defenses")
+
+  Store:SetRank(lordH.id, 4, 8100)
+  assert_eq(Store:GetHuman(lordH.id).elevationAt, 8100, "first Lord write stamps elevationAt")
+  assert_eq(Store:CountDefenses(lordC.id), 0, "the pre-elevation win is still not counted")
+
+  Store:RecordGoraResult(lordC.id, {
+    opponentId = foe.id,
+    ruling = "victor",
+    won = true,
+  }, 8200)
+  Store:RecordGoraResult(lordC.id, {
+    opponentId = foe.id,
+    ruling = "victor",
+    won = true,
+    famousUpset = true,
+    notable = true,
+  }, 8210)
+  assert_eq(Store:CountDefenses(lordC.id), 2, "Lord + two post-elevation wins is 2")
+  assert_eq(Store:GetCharacter(lordC.id).gora.defenses, nil, "two post-elevation wins do not store defenses")
+  assert_eq(Store:GetCharacter(lordC.id).gora.defenseCount, nil, "two post-elevation wins do not store defenseCount")
+  assert_eq(Store:GetCharacter(lordC.id).gora.results[2].famousUpset, false, "CountDefenses does not invent famousUpset")
+  assert_eq(Store:GetCharacter(lordC.id).gora.results[3].famousUpset, true, "a Pope-flagged win is still one defense")
+
+  Store:RecordGoraResult(lordC.id, {
+    opponentId = foe.id,
+    ruling = "void",
+  }, 8300)
+  Store:RecordGoraResult(lordC.id, {
+    opponentId = foe.id,
+    ruling = "free",
+    text = "rematch at the Pope's pleasure",
+  }, 8310)
+  assert_eq(Store:CountDefenses(lordC.id), 2, "void and free after elevation are not defenses")
+  assert_eq(Store:GetCharacter(lordC.id).gora.results[4].won, nil, "void has no won flag")
+  assert_eq(Store:GetCharacter(lordC.id).gora.results[5].won, nil, "free has no won flag")
+
+  Store:RecordGoraResult(lordC.id, {
+    opponentId = foe.id,
+    ruling = "victor",
+    won = false,
+  }, 8320)
+  assert_eq(Store:CountDefenses(lordC.id), 2, "a post-elevation loss is not a defense")
+
+  Store:RecordGoraResult(lordC.id, {
+    opponentId = foe.id,
+    ruling = "cowardice",
+    won = true,
+  }, 8400)
+  assert_eq(Store:CountDefenses(lordC.id), 3, "Cowardice on the Lord with won == true is a defense")
+  assert_eq(Store:GetCharacter(lordC.id).gora.results[7].ruling, "cowardice", "the counted cowardice row keeps its ruling")
+  assert_eq(Store:GetCharacter(lordC.id).gora.results[7].won, true, "the counted cowardice row keeps won == true")
+  assert_eq(Store:GetCharacter(lordC.id).gora.defenses, nil, "cowardice defense does not write gora.defenses")
+
+  Store:SetRank(lordH.id, 3, 8500)
+  assert_eq(Store:GetHuman(lordH.id).rankId, 3, "rank may leave Lord")
+  assert_eq(Store:GetHuman(lordH.id).elevationAt, 8100, "leaving Lord keeps elevationAt")
+  assert_eq(Store:CountDefenses(lordC.id), 3, "leaving Lord does not erase derived defenses")
+
+  assert_eq(Store:CountDefenses(unlinked.id), 0, "unlinked character is 0")
+  assert_eq(Store:CountDefenses(99), 0, "unknown character id is 0")
+  assert_eq(Store:CountDefenses("lordalt"), 0, "a name string is 0")
+  assert_eq(Store:CountDefenses(nil), 0, "nil id is 0")
+  assert_eq(Store:CountDefenses(0), 0, "id 0 is 0")
+
+  local snap = Store:Snapshot()
+  assert_eq(snap.characters[1].gora.defenses, nil, "Snapshot still strips defenses")
+  assert_eq(snap.humans[1].elevationAt, 8100, "Snapshot still keeps elevationAt")
+  reset()
+  assert_eq(Store:Restore(snap), true, "Restore accepts the CountDefenses snapshot")
+  assert_eq(Store:CountDefenses(lordC.id), 3, "Restore still derives defenses from results + elevationAt")
+  assert_eq(Store:GetCharacter(lordC.id).gora.defenses, nil, "Restore still strips gora.defenses")
+end
+runCountDefenses()
 
 --------------------------------------------------------------------------------
 -- Banned product: no Grant, standing, points, Prophet, Director, Archive codec

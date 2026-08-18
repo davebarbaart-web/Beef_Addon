@@ -1,0 +1,133 @@
+diff --git a/addon/ChurchOfBeef/Core/Knighting.lua b/addon/ChurchOfBeef/Core/Knighting.lua
+--- a/addon/ChurchOfBeef/Core/Knighting.lua
++++ b/addon/ChurchOfBeef/Core/Knighting.lua
+@@ -165,5 +165,9 @@
+   if not Store then return nil, storeErr end
+   local human, err = knownHuman(Store, humanId)
+   if not human then return nil, err end
+-  return Store:SetRank(humanId, LORD_ID, now)
++  local row, setErr = Store:SetRank(humanId, LORD_ID, now)
++  if not row then return nil, setErr end
++  self:_Expire()
++  line[human.id] = nil
++  return row
+ end
+
+diff --git a/tests/test_knighting.lua b/tests/test_knighting.lua
+--- a/tests/test_knighting.lua
++++ b/tests/test_knighting.lua
+@@ -59,6 +59,14 @@
+ 
+ local function seed(name)
+   return Store:CreateHuman({ name = name or "Steve" }, 1000)
++end
++
++local function lineHas(humanId)
++  local rows = Knighting:GetLine()
++  for i = 1, #rows do
++    if rows[i].humanId == humanId then return true end
++  end
++  return false
+ end
+ 
+ --------------------------------------------------------------------------------
+@@ -450,7 +458,7 @@
+ assert_eq(#Knighting:GetLine(), 3, "refused Enqueues do not grow the line")
+ 
+ --------------------------------------------------------------------------------
+--- Rank 3+ refuses already knighted. ElevateToLord does not use the line.
++-- Rank 3+ refuses already knighted. Successful ElevateToLord removes that human.
+ --------------------------------------------------------------------------------
+ reset()
+ steve = seed("Steve")
+@@ -486,14 +494,14 @@
+ 
+ local elevated = Knighting:ElevateToLord(steve.id, 3010)
+ assert_eq(elevated.rankId, 4, "ElevateToLord still writes Lord")
+-assert_eq(#Knighting:GetLine(), 1, "ElevateToLord does not remove from the line")
+-assert_eq(Knighting:GetLine()[1].humanId, steve.id, "ElevateToLord does not skip the line")
+-assert_eq(Knighting:GetLine()[1].rankId, 4, "GetLine shows the elevated rank")
++assert_eq(#Knighting:GetLine(), 0, "successful ElevateToLord removes that human")
++assert_eq(lineHas(steve.id), false, "GetLine does not contain the elevated id")
+ 
+ local elevEnq, elevEnqErr = Knighting:Enqueue(steve.id)
+ assert_eq(elevEnq, nil, "Enqueue after ElevateToLord refuses")
+ assert_eq(elevEnqErr, "already knighted", "elevated Enqueue names already knighted")
+-assert_eq(#Knighting:GetLine(), 1, "refused Enqueue after elevation does not duplicate")
++assert_eq(#Knighting:GetLine(), 0, "refused Enqueue after elevation does not re-enter")
++assert_eq(lineHas(steve.id), false, "refused Enqueue after elevation does not restore the id")
+ 
+ --------------------------------------------------------------------------------
+ -- Successful KnightThisBeef removes that human. Others stay. Not AdvanceQueue.
+@@ -529,6 +537,71 @@
+ assert_eq(#Knighting:GetLine(), 2, "knighting an off-line human does not change the line")
+ 
+ --------------------------------------------------------------------------------
++-- Successful ElevateToLord removes that human. Others stay. Not AdvanceQueue.
++--------------------------------------------------------------------------------
++reset()
++steve = seed("Steve")
++local peer = Store:CreateHuman({ name = "Peer" }, 3400)
++local tail = Store:CreateHuman({ name = "Tail" }, 3401)
++Knighting:Enqueue(steve.id)
++Knighting:Enqueue(peer.id)
++Knighting:Enqueue(tail.id)
++assert_eq(#Knighting:GetLine(), 3, "three candidates wait before elevation")
++assert_eq(lineHas(peer.id), true, "the middle human is on the line")
++
++COB.Runtime = {
++  OpenRite = function()
++    riteCalls = riteCalls + 1
++  end,
++  EndEvent = function()
++    riteCalls = riteCalls + 1
++  end,
++  CloseRite = function()
++    riteCalls = riteCalls + 1
++  end,
++  Continue = function()
++    riteCalls = riteCalls + 1
++  end,
++}
++
++local missLordLine, missLordLineErr = Knighting:ElevateToLord(99, 3410)
++assert_eq(missLordLine, nil, "unknown ElevateToLord still refuses")
++assert_true(type(missLordLineErr) == "string", "unknown ElevateToLord returns an error string")
++assert_eq(#Knighting:GetLine(), 3, "refused ElevateToLord does not dequeue")
++assert_eq(lineHas(peer.id), true, "refused ElevateToLord leaves the waiting ids")
++
++local elevatedPeer = Knighting:ElevateToLord(peer.id, 3411)
++assert_eq(elevatedPeer.rankId, 4, "ElevateToLord still writes Beef Lord")
++assert_eq(#Knighting:GetLine(), 2, "successful ElevateToLord removes that human")
++assert_eq(lineHas(peer.id), false, "GetLine does not contain the elevated id")
++assert_eq(Knighting:GetLine()[1].humanId, steve.id, "the oldest remains first")
++assert_eq(Knighting:GetLine()[2].humanId, tail.id, "the newest remains last")
++assert_eq(Store:GetHuman(steve.id).rankId, nil, "ElevateToLord does not knight the next human")
++assert_eq(Store:GetHuman(tail.id).rankId, nil, "ElevateToLord does not knight the remainder")
++assert_eq(Store:GetHuman(peer.id).rankId, 4, "only the clicked human is Lord")
++assert_eq(Knighting.queue, nil, "elevation removal is not a public queue")
++assert_eq(Knighting.next, nil, "elevation removal is not a next pointer")
++assert_eq(Knighting.AdvanceQueue, nil, "elevation removal is not AdvanceQueue")
++assert_eq(Knighting.NextCandidate, nil, "elevation removal is not NextCandidate")
++assert_eq(riteCalls, 0, "ElevateToLord does not call Runtime verbs")
++assert_eq(promoteCalls, 0, "ElevateToLord still does not GuildPromote")
++
++local againLord = Knighting:ElevateToLord(peer.id, 3412)
++assert_eq(againLord.rankId, 4, "a second elevation of the same human still succeeds")
++assert_eq(#Knighting:GetLine(), 2, "elevating a human already off the line leaves the others")
++assert_eq(lineHas(peer.id), false, "a second elevation does not restore the id")
++
++local offLordHuman = Store:CreateHuman({ name = "OffLineLord" }, 3413)
++local offLord = Knighting:ElevateToLord(offLordHuman.id, 3414)
++assert_eq(offLord.rankId, 4, "ElevateToLord works for a human not on the line")
++assert_eq(#Knighting:GetLine(), 2, "elevating an off-line human does not change the line")
++assert_eq(lineHas(steve.id), true, "off-line elevation keeps the oldest")
++assert_eq(lineHas(tail.id), true, "off-line elevation keeps the newest")
++assert_eq(lineHas(offLordHuman.id), false, "an off-line elevation does not enqueue")
++
++COB.Runtime = nil
++
++--------------------------------------------------------------------------------
+ -- Event-scoped when Runtime.Snapshot is loaded. Inline stub. Never OpenRite.
+ --------------------------------------------------------------------------------
+ reset()

@@ -1,0 +1,108 @@
+diff --git a/addon/ChurchOfBeef/UI/Hud.lua b/addon/ChurchOfBeef/UI/Hud.lua
+--- a/addon/ChurchOfBeef/UI/Hud.lua
++++ b/addon/ChurchOfBeef/UI/Hud.lua
+@@ -5,8 +5,9 @@
+ -- Show only when Runtime is not QUIET and Gora:GetSanctioned() is a live pair.
+ -- Defined fallback: everything except live health. Favor split is Pope-local
+ -- from Gora, or congregation broadcast only. Dress is stock iron/parchment
+--- (QuestBG + WHITE8X8 + tooltip border). Center is a stock ring, not a faction
+--- crest. Mute rails are decorative, not live HP. No sound. No toasts. Cards stay mute.
++-- (QuestBG + WHITE8X8 + tooltip border). Thin parchment fields sit behind
++-- name+title. Center is a stock ring, not a faction crest. Mute rails are
++-- decorative, not live HP. No sound. No toasts. Cards stay mute.
+ local Hud = {
+   MODE = "Event",
+ }
+@@ -521,6 +522,19 @@
+ 
+   widget.titleA:SetPoint("TOPLEFT", widget.nameA, "BOTTOMLEFT", 0, -4)
+   widget.titleB:SetPoint("TOPRIGHT", widget.nameB, "BOTTOMRIGHT", 0, -4)
++
++  -- Thin parchment behind name+title only. Not a new row. Not a StatusBar.
++  widget.nameFieldA = widget:CreateTexture(nil, "BORDER")
++  widget.nameFieldB = widget:CreateTexture(nil, "BORDER")
++  applyParchment(widget.nameFieldA)
++  applyParchment(widget.nameFieldB)
++  widget.nameFieldA:SetPoint("TOPLEFT", widget.nameA, "TOPLEFT", -4, 3)
++  widget.nameFieldA:SetPoint("BOTTOMLEFT", widget.titleA, "BOTTOMLEFT", -4, -3)
++  widget.nameFieldA:SetPoint("RIGHT", widget.railA, "RIGHT", 4, 0)
++  widget.nameFieldB:SetPoint("TOPRIGHT", widget.nameB, "TOPRIGHT", 4, 3)
++  widget.nameFieldB:SetPoint("BOTTOMRIGHT", widget.titleB, "BOTTOMRIGHT", 4, -3)
++  widget.nameFieldB:SetPoint("LEFT", widget.railB, "LEFT", -4, 0)
++
+   widget.levelA:SetPoint("TOPLEFT", widget.titleA, "BOTTOMLEFT", 0, -2)
+   widget.levelB:SetPoint("TOPRIGHT", widget.titleB, "BOTTOMRIGHT", 0, -2)
+   widget.recordA:SetPoint("LEFT", widget.levelA, "RIGHT", 8, 0)
+diff --git a/tests/test_hud.lua b/tests/test_hud.lua
+--- a/tests/test_hud.lua
++++ b/tests/test_hud.lua
+@@ -1,9 +1,10 @@
+--- Fight HUD (Wire W-F favor + Vestments V-D dress). Isolated: wow_ui_stub +
+--- Common + Ranks + Runtime + Store + Gora + Hud. Event Mode only. No live
+--- health, favor economy, sound, or toasts. Standalone wrap. Congregation favor
+--- is broadcast-only. Pope stub fills from Gora:GetFavorSplit. Dress is stock
+--- iron/parchment only — no faction crests, no custom Media. Ranks is Data for
+--- Church titles. No TOC / bootstrap / run.lua edits.
++-- Fight HUD (Wire W-F favor + Vestments V-D dress + B4-F name fields).
++-- Isolated: wow_ui_stub + Common + Ranks + Runtime + Store + Gora + Hud.
++-- Event Mode only. No live health, favor economy, sound, or toasts.
++-- Standalone wrap. Congregation favor is broadcast-only. Pope stub fills
++-- from Gora:GetFavorSplit. Dress is stock iron/parchment only — no faction
++-- crests, no custom Media. Thin QuestBG fields sit behind name+title.
++-- Ranks is Data for Church titles. No TOC / bootstrap / run.lua edits.
+ package.path = package.path .. ";./tests/?.lua"
+ 
+ local stub = require("wow_ui_stub")
+@@ -194,6 +195,8 @@
+ assert_eq(src:find("PlusManz-Alliance", 1, true), nil, "source does not use PlusManz-Alliance")
+ assert_eq(src:find("Beef Paladin", 1, true), nil, "source does not invent Beef Paladin")
+ assert_true(src:find("QuestBG", 1, true) ~= nil, "parchment uses stock QuestBG")
++assert_true(src:find("nameFieldA", 1, true) ~= nil, "source names nameFieldA")
++assert_true(src:find("nameFieldB", 1, true) ~= nil, "source names nameFieldB")
+ assert_true(
+   src:find("UI-EmptySlot-White", 1, true) ~= nil
+     or src:find("MiniMap-TrackingBorder", 1, true) ~= nil,
+@@ -221,6 +224,34 @@
+ assert_true(frame.parchment ~= nil, "iron/parchment dress has a parchment field")
+ assert_eq(frame.parchment._cobTexture, "Interface\\QuestFrame\\QuestBG",
+   "parchment is stock QuestBG")
++assert_true(frame.nameFieldA ~= nil, "name field A sits behind name+title")
++assert_true(frame.nameFieldB ~= nil, "name field B sits behind name+title")
++assert_eq(frame.nameFieldA._type, "Texture", "name field A is a texture, not a StatusBar")
++assert_eq(frame.nameFieldB._type, "Texture", "name field B is a texture, not a StatusBar")
++assert_true(
++  frame.nameFieldA._cobTexture == "Interface\\QuestFrame\\QuestBG"
++    or (frame.nameFieldA._cobColor
++      and frame.nameFieldA._cobColor.r == 0.78
++      and frame.nameFieldA._cobColor.g == 0.70
++      and frame.nameFieldA._cobColor.b == 0.52),
++  "name field A is QuestBG or the parchment fill fallback"
++)
++assert_true(
++  frame.nameFieldB._cobTexture == "Interface\\QuestFrame\\QuestBG"
++    or (frame.nameFieldB._cobColor
++      and frame.nameFieldB._cobColor.r == 0.78
++      and frame.nameFieldB._cobColor.g == 0.70
++      and frame.nameFieldB._cobColor.b == 0.52),
++  "name field B is QuestBG or the parchment fill fallback"
++)
++assert_true(
++  frame.nameFieldA._layer == "BACKGROUND" or frame.nameFieldA._layer == "BORDER",
++  "name field A draws behind name+title"
++)
++assert_true(
++  frame.nameFieldB._layer == "BACKGROUND" or frame.nameFieldB._layer == "BORDER",
++  "name field B draws behind name+title"
++)
+ assert_true(frame.seal ~= nil, "center has a stock ring")
+ assert_true(
+   (frame.seal._cobTexture or ""):find("UI-EmptySlot-White", 1, true)
+@@ -696,6 +727,8 @@
+ assert_true(budgeted:GetHeight() <= 100, "the 12% cap does not grow the card into a toast")
+ assert_eq(budgeted:GetWidth(), 420, "rebuilt HUD keeps the compact width")
+ assert_true(budgeted.parchment ~= nil, "rebuilt HUD still has parchment")
++assert_true(budgeted.nameFieldA ~= nil, "rebuilt HUD still has name field A")
++assert_true(budgeted.nameFieldB ~= nil, "rebuilt HUD still has name field B")
+ assert_eq(countStatusBars(budgeted), 2, "rebuilt HUD still has only favor StatusBars")
+ assert_eq(Hud:IsShown(), false, "rebuild in Quiet still hides the HUD")
+ local copy = Hud:GetView()

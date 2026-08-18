@@ -1,0 +1,76 @@
+# B21-C — interrupt Hide does not pump a queued toast (implementation diff)
+
+Lane-only unified diff of the exclusive implementation files vs the pre-lane working tree.
+
+--- a/addon/ChurchOfBeef/UI/Toasts.lua
++++ b/addon/ChurchOfBeef/UI/Toasts.lua
+@@ -802,10 +802,8 @@
+     local existing = type(frame.GetScript) == "function" and frame:GetScript("OnHide")
+     if not existing then
+       frame:SetScript("OnHide", function()
+-        -- Hide-from-empty-pump: already idle; do not re-enter.
+-        if not self.showing and #pending == 0 then
+-          return
+-        end
++        -- interruptShowing / empty-pump Hide: showing already nil; do not pump.
++        if not self.showing then return end
+         bumpGen()
+         self.showing = nil
+         pump(self)
+--- a/tests/test_ui.lua
++++ b/tests/test_ui.lua
+@@ -1,8 +1,9 @@
+ -- Quiet shell: frame creation, drag/resize/coalesce, saved position, minimap
+ -- toggle, system/debug toasts. Event Mode Proclaim (sanction / verdict /
+ -- cowardice / knighting / elevation). B12-D Proclaim ESC, B15-C Quiet-shell
+--- UISpecialFrames, B18-C HideAll theaterGen, B19-B small-toast ESC, and
+--- B20-D small-toast OnHide pump live in runB12D() (Lua 5.1 200-local cap).
++-- UISpecialFrames, B18-C HideAll theaterGen, B19-B small-toast ESC,
++-- B20-D small-toast OnHide pump, and B21-C interrupt Hide idle
++-- live in runB12D() (Lua 5.1 200-local cap).
+ -- No tab registry. No Standing / Ladder / Officer IA. No promote / rite toast
+ -- kinds. Isolation stays under standalone.
+ local standalone = (type(assert_eq) ~= "function")
+@@ -883,6 +884,12 @@
+     "small-toast OnHide bumpGen")
+   assert_true(initBody:find("pump(self)", 1, true) ~= nil,
+     "small-toast OnHide pumps next")
++  assert_true(initBody:find("if not self.showing then return", 1, true) ~= nil,
++    "OnHide idle-returns when showing is already nil")
++  assert_eq(initBody:find("#pending == 0", 1, true), nil,
++    "OnHide idle guard does not require empty pending")
++  assert_true(src:find("interrupt = false", 1, true) ~= nil,
++    "default KINDS stay interrupt = false")
+ 
+   local pumpBody = src:match("pump = function%(self%)(.-)local function interruptShowing")
+   assert_true(type(pumpBody) == "string" and pumpBody ~= "",
+@@ -988,6 +995,29 @@
+     "ESC pump keeps ChurchOfBeefProclaim once")
+   assert_eq(countSpecial("ChurchOfBeefToast"), 1,
+     "ESC pump keeps ChurchOfBeefToast once")
++
++  -- B21-C: interrupt Hide must not pump a queued row before Push
++  -- inserts the interrupter. Default KINDS stay interrupt = false.
++  -- Push may pass interrupt = true and a higher priority. Do not drain pending.
++  theaterReset()
++  assert_eq(COB.Toasts:Show("shown first"), true, "first system toast shows")
++  assert_eq(COB.Toasts:Show("queued second"), true, "second system toast queues")
++  assert_eq(COB.Toasts.frame.text:GetText(), "shown first", "first envelope is showing")
++  assert_eq(COB.Toasts:ShowingKind(), "system", "first showing kind is system")
++  assert_eq(COB.Toasts:PendingCount(), 1, "one envelope waits before interrupt")
++  local cuesInterrupt = #played
++  assert_eq(COB.Toasts:Push({
++    kind = "system", text = "interrupt", interrupt = true, priority = 99,
++  }), true, "interrupt Push accepted")
++  assert_eq(COB.Toasts.frame.text:GetText(), "interrupt",
++    "showing text is the interrupter")
++  assert_eq(COB.Toasts:ShowingKind(), "system", "interrupter kind is system")
++  assert_eq(COB.Toasts:PendingCount(), 1, "queued row stays pending")
++  assert_eq(COB.Toasts.frame:IsShown(), true, "interrupter is shown")
++  assert_eq(#played, cuesInterrupt, "interrupt Hide plays no sound")
++  assert_eq(countSpecial("ChurchOfBeefToast"), 1,
++    "interrupt does not re-register ChurchOfBeefToast")
++  assert_eq(findButton(COB.Toasts.frame), nil, "interrupt path adds no close button")
+ 
+   if standalone then
+     assert_eq(COB.Console, nil, "isolation still does not load Console")

@@ -1,0 +1,114 @@
+# B25-D — HUD re-applies Morpheus on Refresh (implementation diff)
+
+Lane-only unified diff of the exclusive implementation files vs the pre-lane working tree.
+
+diff --git a/addon/ChurchOfBeef/UI/Hud.lua b/addon/ChurchOfBeef/UI/Hud.lua
+--- a/addon/ChurchOfBeef/UI/Hud.lua
++++ b/addon/ChurchOfBeef/UI/Hud.lua
+@@ -16,7 +16,8 @@
+ -- Isolated suite with a live GetSanctioned still sends even if Sender
+ -- is nil. No verdict qualifier. Names try stock Morpheus
+ -- (Fonts\\MORPHEUS.ttf) via pcall SetFont; GameFontHighlight fallback
+--- (B22-B). Titles, records, defenses, vs, and favor stay GameFont.
++-- (B22-B). Refresh re-applies on a shown pair (B25-D). Titles, records,
++-- defenses, vs, and favor stay GameFont.
+ -- Defined fallback: everything except live health. Favor split is
+ -- Pope-local from Gora (gora pair only, so a Runtime leftover after a
+ -- ruling does not thaw the freeze), or congregation broadcast only.
+@@ -515,6 +516,20 @@
+   return lastView
+ end
+ 
++local function applyNameFont(fs)
++  if not fs then return end
++  local used = false
++  if fs.SetFont then
++    local ok, applied = pcall(fs.SetFont, fs, NAME_FONT, 14)
++    used = ok and applied and true or false
++  end
++  if not used and fs.SetFontObject then
++    local font = GameFontHighlight
++    if type(font) == "string" then font = _G[font] end
++    if font then pcall(fs.SetFontObject, fs, font) end
++  end
++end
++
+ local function paintShown(pair)
+   local fighterA = fighterFrom(pair.fighterA)
+   local fighterB = fighterFrom(pair.fighterB)
+@@ -546,6 +561,8 @@
+     health = nil,
+     favor = favor,
+   }
++  applyNameFont(frame.nameA)
++  applyNameFont(frame.nameB)
+   frame:Show()
+   return lastView
+ end
+@@ -554,20 +571,6 @@
+   local fs = parent:CreateFontString(name, "OVERLAY", template or "GameFontNormal")
+   if fs.SetJustifyH and justify then fs:SetJustifyH(justify) end
+   return fs
+-end
+-
+-local function applyNameFont(fs)
+-  if not fs then return end
+-  local used = false
+-  if fs.SetFont then
+-    local ok, applied = pcall(fs.SetFont, fs, NAME_FONT, 14)
+-    used = ok and applied and true or false
+-  end
+-  if not used and fs.SetFontObject then
+-    local font = GameFontHighlight
+-    if type(font) == "string" then font = _G[font] end
+-    if font then pcall(fs.SetFontObject, fs, font) end
+-  end
+ end
+ 
+ local function build()
+
+diff --git a/tests/test_hud.lua b/tests/test_hud.lua
+--- a/tests/test_hud.lua
++++ b/tests/test_hud.lua
+@@ -6,7 +6,8 @@
+ -- + B17-D livePair runtime arm only while RITE and riteType Gora
+ -- + B19-C lastPair does not paint during a non-Gora RITE
+ -- + B21-B lastPair does not paint during a non-Gora CONSEQUENCE
+--- + B22-B fighter names try Fonts\\MORPHEUS.ttf). Isolated:
++-- + B22-B fighter names try Fonts\\MORPHEUS.ttf
++-- + B25-D Refresh/paintShown re-applies applyNameFont). Isolated:
+ -- wow_ui_stub + Common + Ranks + Runtime + Store + Gora + Hud. Event Mode
+ -- only. No live health, favor economy, sound, or toasts. Standalone wrap.
+ -- Congregation never Sanctions; the star pair is subjects.fighters.
+@@ -201,6 +202,7 @@
+ assert_eq(src:find(".blp", 1, true), nil, "source does not load custom blp")
+ do
+   -- B22-B: stock FrameXML Morpheus on fighter names. No new main-chunk locals.
++  -- B25-D: applyNameFont is called from paintShown, not only build().
+   assert_true(src:find("Fonts\\\\MORPHEUS.ttf", 1, true) ~= nil,
+     "NAME_FONT uses FrameXML lowercase Morpheus")
+   assert_eq(src:find("MORPHEUS.TTF", 1, true), nil, "name path is not uppercase TTF")
+@@ -208,6 +210,23 @@
+   assert_true(src:find("SetFontObject", 1, true) ~= nil, "applyNameFont still falls back to GameFont")
+   assert_eq(src:gsub("Fonts\\\\MORPHEUS%.ttf", ""):find(".ttf", 1, true), nil,
+     "source does not load custom fonts")
++  local paintAt = src:find("function paintShown", 1, true)
++  assert_true(paintAt ~= nil, "paintShown exists")
++  local paintEnd = src:find("\nlocal function ", paintAt + 1, true)
++  if not paintEnd then
++    paintEnd = src:find("\nfunction ", paintAt + 1, true)
++  end
++  assert_true(paintEnd ~= nil, "paintShown body has a following function")
++  local paintBody = src:sub(paintAt, paintEnd - 1)
++  assert_true(paintBody:find("applyNameFont", 1, true) ~= nil,
++    "paintShown re-applies name font on a shown pair")
++  local buildAt = src:find("function build", 1, true)
++  assert_true(buildAt ~= nil, "build exists")
++  local buildEnd = src:find("\nfunction ", buildAt + 1, true)
++  assert_true(buildEnd ~= nil, "build body has a following function")
++  local buildBody = src:sub(buildAt, buildEnd - 1)
++  assert_true(buildBody:find("applyNameFont", 1, true) ~= nil,
++    "build still applies name font")
+ end
+ assert_eq(src:find("Media\\", 1, true), nil, "source does not require custom Media")
+ assert_eq(src:find("Toasts", 1, true), nil, "source does not drive Toasts")

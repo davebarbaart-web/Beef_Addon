@@ -1,0 +1,99 @@
+# B31-C — Quiet shell Show remounts a missing OnHide (implementation diff)
+
+Lane-only unified diff of the exclusive implementation files vs the pre-lane working tree.
+
+--- a/addon/ChurchOfBeef/UI/MainFrame.lua
++++ b/addon/ChurchOfBeef/UI/MainFrame.lua
+@@ -593,6 +593,8 @@
+ function UI:Show()
+   if not self.frame then self:Init() end
+   if not self.frame then return end
++  wireShellOnHide(self.frame)
++  rememberSpecial(FRAME_NAME)
+   self.frame:Show()
+   self:OnStatusChanged()
+ end
+--- a/tests/test_ui.lua
++++ b/tests/test_ui.lua
+@@ -8,7 +8,8 @@
+ -- B24-C Quiet-shell Init early-return rememberSpecial,
+ -- B26-B Init early-return restores a missing OnHide,
+ -- B27-C Quiet-shell Init restores a missing OnHide,
+--- and B29-D Proclaim re-applies applyHeadlineFont
++-- B29-D Proclaim re-applies applyHeadlineFont,
++-- and B31-C Quiet-shell Show remounts a missing OnHide
+ -- live in runB12D() (Lua 5.1 200-local cap).
+ -- No tab registry. No Standing / Ladder / Officer IA. No promote / rite toast
+ -- kinds. Isolation stays under standalone.
+@@ -1240,6 +1241,70 @@
+   local initTheaterBody = src:sub(initTheaterAt, initTheaterEnd - 1)
+   assert_true(initTheaterBody:find("applyHeadlineFont", 1, true) ~= nil,
+     "InitTheater still applies headline font")
++
++  -- B31-C: UI:Show remounts a missing OnHide when the frame exists.
++  -- wireShellOnHide + rememberSpecial(FRAME_NAME) before Show. Do not
++  -- replace an existing script. Do not rebuild. Init remount stays.
++  -- FRAME_NAME is ChurchOfBeefFrame. No PlaySound / IG_CHARACTER_INFO_*.
++  local showBody = shellSrc:match("function UI:Show%(%)(.-)\nfunction UI:Hide")
++  assert_true(type(showBody) == "string" and showBody ~= "",
++    "UI:Show body is readable")
++  assert_true(showBody:find("wireShellOnHide", 1, true) ~= nil,
++    "Show calls wireShellOnHide")
++  assert_true(showBody:find("rememberSpecial(FRAME_NAME)", 1, true) ~= nil,
++    "Show rememberSpecial FRAME_NAME")
++  local showWireAt = showBody:find("wireShellOnHide", 1, true)
++  local showRememberAt = showBody:find("rememberSpecial(FRAME_NAME)", 1, true)
++  local showFrameAt = showBody:find("self.frame:Show()", 1, true)
++  assert_true(showWireAt ~= nil and showFrameAt ~= nil and showWireAt < showFrameAt,
++    "Show wires OnHide before frame:Show")
++  assert_true(showRememberAt ~= nil and showFrameAt ~= nil and showRememberAt < showFrameAt,
++    "Show rememberSpecial before frame:Show")
++  assert_eq(showBody:find("SetScript", 1, true), nil,
++    "Show does not SetScript inline")
++  assert_eq(showBody:find("OnShow", 1, true), nil,
++    "Show does not re-wire OnShow")
++  assert_eq(showBody:find("buildFrame", 1, true), nil,
++    "Show does not rebuild")
++  assert_eq(showBody:find("PlaySound", 1, true), nil,
++    "Show does not PlaySound")
++  assert_true(shellSrc:find('FRAME_NAME = "ChurchOfBeefFrame"', 1, true) ~= nil,
++    "FRAME_NAME stays ChurchOfBeefFrame")
++  assert_eq(shellSrc:find("IG_CHARACTER_INFO", 1, true), nil,
++    "Show remount still has no IG_CHARACTER_INFO")
++
++  assert_true(COB.UI.frame ~= nil, "Quiet shell frame still exists for Show remount")
++  local showOnShow = COB.UI.frame:GetScript("OnShow")
++  local existingShowShell = COB.UI.frame
++  UISpecialFrames = {}
++  assert_eq(countSpecial("ChurchOfBeefFrame"), 0,
++    "wipe clears ChurchOfBeefFrame before Show remount")
++  COB.UI.frame:SetScript("OnHide", nil)
++  assert_eq(COB.UI.frame:GetScript("OnHide"), nil,
++    "OnHide niled before Show")
++  local cuesShowRestore = #played
++  COB.UI:Show()
++  local restoredShowOnHide = COB.UI.frame:GetScript("OnHide")
++  assert_true(restoredShowOnHide ~= nil, "Show restores missing OnHide")
++  assert_eq(COB.UI.frame, existingShowShell, "Show remount does not rebuild")
++  assert_eq(COB.UI.frame:GetScript("OnShow"), showOnShow,
++    "Show remount does not re-wire OnShow")
++  assert_eq(#played, cuesShowRestore, "Show remount plays no sound")
++  assert_eq(countSpecial("ChurchOfBeefFrame"), 1,
++    "Show remounts ChurchOfBeefFrame after wipe")
++  COB.UI:Show()
++  assert_eq(COB.UI.frame:GetScript("OnHide"), restoredShowOnHide,
++    "third Show does not replace OnHide")
++  assert_eq(COB.UI.frame, existingShowShell, "third Show does not rebuild")
++  assert_eq(countSpecial("ChurchOfBeefFrame"), 1,
++    "third Show does not duplicate ChurchOfBeefFrame")
++  UISpecialFrames = savedSpecial
++
++  ChurchOfBeefDB.ui.shown = true
++  COB.UI._sizing = true
++  COB.UI.frame:Hide()
++  assert_eq(ChurchOfBeefDB.ui.shown, false,
++    "Show-restored OnHide persists shown = false")
++  assert_eq(COB.UI._sizing, false, "Show-restored OnHide calls _StopSizing")
+ 
+   if standalone then
+     assert_eq(COB.Console, nil, "isolation still does not load Console")

@@ -1,0 +1,146 @@
+diff --git a/addon/ChurchOfBeef/UI/Inputs.lua b/addon/ChurchOfBeef/UI/Inputs.lua
+--- a/addon/ChurchOfBeef/UI/Inputs.lua
++++ b/addon/ChurchOfBeef/UI/Inputs.lua
+@@ -6,6 +6,9 @@
+ -- Whisper destination is injected; this file does not look up a Pope name.
+ -- Catchup calls Net:RequestSnapshot on that target only.
+ -- Stock functional chrome. Quiet Mode: hidden, verbs return false.
++-- Confess box type-guards SetMultiLine(true) and OnEscapePressed to ClearFocus;
++-- the box does not Hide the panel. Missing SetScript / ClearFocus / SetMultiLine
++-- no-op. Hide stays Runtime Quiet, not box ESC.
+ local Inputs = {
+   MODE = "Event",
+ }
+@@ -88,6 +91,16 @@
+   box:SetHeight(22)
+   box:SetPoint("TOP", widget, "TOP", 0, -8)
+   box:SetAutoFocus(false)
++  if type(box.SetMultiLine) == "function" then
++    box:SetMultiLine(true)
++  end
++  if type(box.SetScript) == "function" then
++    box:SetScript("OnEscapePressed", function(self)
++      if type(self.ClearFocus) == "function" then
++        self:ClearFocus()
++      end
++    end)
++  end
+   widget.confessBox = box
+ 
+   local petition = stockButton(widget, "Petition", function()
+
+diff --git a/tests/test_inputs.lua b/tests/test_inputs.lua
+--- a/tests/test_inputs.lua
++++ b/tests/test_inputs.lua
+@@ -1,8 +1,9 @@
+--- Event congregation Petition / Confess / Catchup (B4-G, B5-E). Isolated:
++-- Event congregation Petition / Confess / Catchup (B4-G, B5-E, B14-B). Isolated:
+ -- wow_ui_stub + Common + Runtime + Inputs. Stub COB.Net.SendPetition /
+ -- SendConfession / RequestSnapshot. Event Mode only. No Pope-name lookup.
+ -- No Gora:Petition. No Proclaim. No sound. No SendChatMessage. Isolation
+--- wrap. No TOC / bootstrap / run.lua.
++-- wrap. No TOC / bootstrap / run.lua. Confess box: OnEscapePressed ClearFocus
++-- only; type-guarded SetMultiLine(true). Not on UISpecialFrames.
+ package.path = package.path .. ";./tests/?.lua"
+ 
+ local stub = require("wow_ui_stub")
+@@ -189,6 +190,13 @@
+ assert_true(src:find('"Confess"', 1, true) ~= nil, "Confess label is stock")
+ assert_true(src:find('"Catch up"', 1, true) ~= nil, "Catch up label is stock")
+ assert_true(src:find("RequestSnapshot", 1, true) ~= nil, "Catchup calls RequestSnapshot")
++assert_true(src:find("OnEscapePressed", 1, true) ~= nil, "source contains OnEscapePressed")
++assert_true(src:find("ClearFocus", 1, true) ~= nil, "source contains ClearFocus")
++assert_true(src:find("SetMultiLine", 1, true) ~= nil, "source contains SetMultiLine")
++assert_eq(src:find("UISpecialFrames", 1, true), nil, "source does not use UISpecialFrames")
++assert_eq(src:find("SUMMON", 1, true), nil, "source has no SUMMON")
++assert_eq(src:find("Popes", 1, true), nil, "source has no Popes lookup")
++assert_eq(src:find("IsRegisteredPope", 1, true), nil, "source has no IsRegisteredPope")
+ 
+ --------------------------------------------------------------------------------
+ -- Init is hidden in Quiet. Stock Petition / Confess / Catch up. Optional EditBox.
+@@ -456,6 +464,85 @@
+ assert_eq(#sentSnapshots, 0, "Quiet after EndEvent does not request a snapshot")
+ 
+ --------------------------------------------------------------------------------
++-- B14-B: confess box OnEscapePressed ClearFocus. Box does not Hide the panel.
++-- Nested so the main chunk stays under Lua 5.1's 200-local cap.
++--------------------------------------------------------------------------------
++local function runB14B()
++reset()
++assert_true(Runtime:StartEvent() ~= nil, "B14-B StartEvent reaches ASSEMBLY")
++local frame = Inputs:Init()
++assert_true(frame ~= nil, "B14-B Init creates the frame")
++assert_eq(frame:IsShown(), true, "Event Init shows the Inputs panel")
++assert_eq(Inputs:GetView().shown, true, "Event view is shown before ESC")
++assert_eq(frame:GetWidth(), 328, "WIDTH stays 328")
++assert_eq(frame:GetHeight(), 72, "HEIGHT stays 72")
++
++local box = editBox()
++assert_true(box ~= nil, "B14-B editBox exists")
++assert_eq(box:GetHeight(), 22, "box height stays 22")
++assert_eq(box._autoFocus, false, "SetAutoFocus(false) stays")
++assert_eq(type(box.GetScript), "function", "editBox GetScript exists")
++assert_true(box:GetScript("OnEscapePressed") ~= nil, "editBox has OnEscapePressed")
++
++box:SetFocus()
++assert_eq(box:HasFocus(), true, "editBox can take focus")
++local fired, fireErr = pcall(function()
++  stub.fire(box, "OnEscapePressed")
++end)
++assert_eq(fired, true, "OnEscapePressed fire does not error")
++assert_eq(fireErr, nil, "OnEscapePressed fire has no error text")
++assert_eq(box:HasFocus(), false, "OnEscapePressed ClearFocuses")
++assert_eq(frame:IsShown(), true, "frame stays shown after OnEscapePressed")
++assert_eq(Inputs:GetView().shown, true, "GetView().shown stays true")
++
++local listed = false
++for i = 1, #UISpecialFrames do
++  if UISpecialFrames[i] == "ChurchOfBeefInputs" then listed = true end
++end
++assert_eq(listed, false, "Inputs is not registered on UISpecialFrames")
++
++Inputs:SetInputTarget("Host")
++Inputs:SetLocalCharacterId(7)
++box:SetText("after esc")
++local ok, err = Inputs:Confess()
++assert_eq(ok, true, "Confess GetText still works after ESC")
++assert_eq(err, nil, "Confess after ESC has no error")
++assert_eq(#sentConfessions, 1, "Confess after ESC sends")
++assert_eq(sentConfessions[1].fields.text, "after esc", "Confess GetText pin still holds")
++
++assert_true(src:find("OnEscapePressed", 1, true) ~= nil, "source contains OnEscapePressed")
++assert_true(src:find("ClearFocus", 1, true) ~= nil, "source contains ClearFocus")
++assert_true(src:find("SetMultiLine", 1, true) ~= nil, "source contains SetMultiLine")
++assert_true(src:find('type(box.SetMultiLine) == "function"', 1, true) ~= nil,
++  "SetMultiLine is type-guarded")
++assert_true(src:find("SetMultiLine(true)", 1, true) ~= nil, "source calls SetMultiLine(true)")
++assert_true(src:find('SetScript("OnEscapePressed"', 1, true) ~= nil,
++  "source wires OnEscapePressed")
++assert_true(src:find('type(box.SetScript) == "function"', 1, true) ~= nil,
++  "SetScript is type-guarded")
++assert_true(src:find('type(self.ClearFocus) == "function"', 1, true) ~= nil,
++  "ClearFocus is type-guarded")
++assert_eq(src:find("UISpecialFrames", 1, true), nil, "source does not use UISpecialFrames")
++assert_eq(src:find("SUMMON", 1, true), nil, "source has no SUMMON")
++assert_eq(src:find("PlaySound", 1, true), nil, "source does not play sound")
++assert_eq(src:find(".tga", 1, true), nil, "source does not load custom tga")
++assert_eq(src:find(".blp", 1, true), nil, "source does not load custom blp")
++assert_eq(src:find(".ttf", 1, true), nil, "source does not load custom fonts")
++assert_eq(src:find("Popes", 1, true), nil, "source has no Popes lookup")
++assert_eq(src:find("IsRegisteredPope", 1, true), nil, "source has no IsRegisteredPope")
++
++if standalone then
++  assert_eq(COB.Console, nil, "still no Console after B14-B")
++  assert_eq(COB.Popes, nil, "still no Pope list after B14-B")
++  assert_eq(COB.Sender, nil, "still no Sender after B14-B")
++  assert_eq(COB.Sound, nil, "still no Sound after B14-B")
++  assert_eq(COB.Hud, nil, "still no Hud after B14-B")
++  assert_eq(type(SLASH_CHURCHOFBEEF1), "nil", "B14-B still does not register a slash")
++end
++end
++runB14B()
++
++--------------------------------------------------------------------------------
+ -- ResetForTests is inert outside the harness
+ --------------------------------------------------------------------------------
+ reset()

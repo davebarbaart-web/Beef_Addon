@@ -1,0 +1,225 @@
+diff --git a/addon/ChurchOfBeef/UI/Hud.lua b/addon/ChurchOfBeef/UI/Hud.lua
+--- a/addon/ChurchOfBeef/UI/Hud.lua
++++ b/addon/ChurchOfBeef/UI/Hud.lua
+@@ -1,15 +1,18 @@
+ ChurchOfBeef = ChurchOfBeef or {}
+ local COB = ChurchOfBeef
+ 
+ -- Event Mode Fight HUD (Bible §10.7, §19.2 / §19.3). Compact spectator card.
+--- Show only when Runtime is not QUIET and Gora:GetSanctioned() is a live pair.
+--- Defined fallback: everything except live health. Favor split is Pope-local
+--- from Gora, or congregation broadcast only. Dress is stock iron/parchment
+--- (QuestBG + WHITE8X8 + tooltip border). Thin parchment fields sit behind
+--- name+title. Center is a stock ring, not a faction crest. Mute rails are
+--- decorative, not live HP. Defense count is Store:CountDefenses as a mute
+--- integer per fighter; hide when 0 or the method is missing. No sound. No
+--- toasts. Cards stay mute.
++-- Appears at sanction. Persists through the verdict beat: remember the last
++-- sanctioned pair and keep painting it after GetSanctioned() is nil while
++-- Runtime is still not QUIET (favor frozen on the last split). Hide on QUIET
++-- / EndEvent / no last pair. A new Sanction replaces the remembered pair.
++-- No verdict qualifier. Defined fallback: everything except live health.
++-- Favor split is Pope-local from Gora, or congregation broadcast only.
++-- Dress is stock iron/parchment (QuestBG + WHITE8X8 + tooltip border). Thin
++-- parchment fields sit behind name+title. Center is a stock ring, not a
++-- faction crest. Mute rails are decorative, not live HP. Defense count is
++-- Store:CountDefenses as a mute integer per fighter; hide when 0 or the
++-- method is missing. No sound. No toasts. Cards stay mute.
+ local Hud = {
+   MODE = "Event",
+ }
+@@ -36,6 +39,8 @@
+ 
+ local frame = nil
+ local lastView = nil
++local lastPair = nil
++local lastPopeFavor = nil
+ local broadcastFavor = nil
+ local favorTarget = nil
+ local localCharacterId = nil
+@@ -232,13 +237,40 @@
+ end
+ 
+ local function resolveFavor()
+   if isLocalPope() then
+-    if not livePair() then return nil end
+-    if not (COB.Gora and COB.Gora.GetFavorSplit) then return nil end
+-    return favorView(COB.Gora:GetFavorSplit())
++    if livePair() then
++      if not (COB.Gora and COB.Gora.GetFavorSplit) then
++        lastPopeFavor = nil
++        return nil
++      end
++      lastPopeFavor = favorView(COB.Gora:GetFavorSplit())
++      return lastPopeFavor
++    end
++    return lastPopeFavor
+   end
+   return favorView(broadcastFavor)
+ end
+ 
++local function rememberPair(pair)
++  lastPair = { fighterA = pair.fighterA, fighterB = pair.fighterB }
++end
++
++local function displayPair()
++  local live = livePair()
++  if live then
++    rememberPair(live)
++    return live
++  end
++  if lastPair then
++    return lastPair
++  end
++  return nil
++end
++
++local function forgetPersist()
++  lastPair = nil
++  lastPopeFavor = nil
++end
++
+ local function tintBar(bar, color)
+   if not bar then return end
+   local ink = MUTED
+@@ -635,10 +667,16 @@
+   if not frame then
+     self:Init()
+     return self:GetView()
+   end
+-  local pair = eventLive() and livePair() or nil
++  if not eventLive() then
++    forgetPersist()
++    paintHidden()
++    return self:GetView()
++  end
++  local pair = displayPair()
+   if not pair then
+     paintHidden()
+     return self:GetView()
+   end
+   paintShown(pair)
+@@ -691,6 +729,7 @@
+   broadcastFavor = nil
+   favorTarget = nil
+   localCharacterId = nil
++  forgetPersist()
+   lastView = hiddenView()
+   if frame then
+     paintHidden()
+diff --git a/tests/test_hud.lua b/tests/test_hud.lua
+--- a/tests/test_hud.lua
++++ b/tests/test_hud.lua
+@@ -1,12 +1,13 @@
+ -- Fight HUD (Wire W-F favor + Vestments V-D dress + B4-F name fields
+--- + B8-D mute defense integer). Isolated: wow_ui_stub + Common + Ranks
+--- + Runtime + Store + Gora + Hud. Event Mode only. No live health, favor
+--- economy, sound, or toasts. Standalone wrap. Congregation favor is
+--- broadcast-only. Pope stub fills from Gora:GetFavorSplit. Dress is stock
+--- iron/parchment only — no faction crests, no custom Media. Thin QuestBG
+--- fields sit behind name+title. Defense count is Store:CountDefenses as a
+--- mute integer; zero or a missing method hides. Ranks is Data for Church
+--- titles. No TOC / bootstrap / run.lua edits.
++-- + B8-D mute defense integer + B9-E persist through the verdict). Isolated:
++-- wow_ui_stub + Common + Ranks + Runtime + Store + Gora + Hud. Event Mode
++-- only. No live health, favor economy, sound, or toasts. Standalone wrap.
++-- Congregation favor is broadcast-only. Pope stub fills from
++-- Gora:GetFavorSplit; after the pair clears, the last split is frozen.
++-- Dress is stock iron/parchment only — no faction crests, no custom Media.
++-- Thin QuestBG fields sit behind name+title. Defense count is
++-- Store:CountDefenses as a mute integer; zero or a missing method hides.
++-- Ranks is Data for Church titles. No TOC / bootstrap / run.lua edits.
+ package.path = package.path .. ";./tests/?.lua"
+ 
+ local stub = require("wow_ui_stub")
+@@ -392,12 +393,19 @@
+ assert_eq(frame.titleB:GetText(), "", "unlinked title paints empty, not Fresh Beef")
+ 
+ --------------------------------------------------------------------------------
+--- Head-to-head appears only when Store already has history
++-- Head-to-head appears only when Store already has history.
++-- HUD persists through the verdict beat (Bible §10.7).
+ --------------------------------------------------------------------------------
+ Gora:DeclareVictor(a.id)
+ assert_eq(Gora:GetSanctioned(), nil, "a ruling clears the live pair")
+ view = Hud:Refresh()
+-assert_eq(Hud:IsShown(), false, "HUD hides when the pair clears, even mid-event")
++assert_eq(Hud:IsShown(), true, "HUD stays shown after DeclareVictor while the event is live")
++assert_eq(view.shown, true, "shown is true after the pair clears mid-event")
++assert_eq(view.fighterA.name, "Chuckroast", "remembered pair still paints fighter A")
++assert_eq(view.fighterB.name, "Tendermage", "remembered pair still paints fighter B")
++assert_eq(view.health, nil, "persist still has no health")
++assert_eq(view.favor, nil, "congregation persist still follows W-F (no broadcast)")
++assert_eq(view.verdict, nil, "HUD does not invent a verdict qualifier")
+ assert_eq(Store:GetCharacter(a.id).gora.wins, 1, "Store recorded the win")
+ assert_eq(Store:GetCharacter(b.id).gora.losses, 1, "Store recorded the loss")
+ 
+@@ -786,6 +794,68 @@
+ Hud:Refresh()
+ assert_eq(toastCalls, 0, "HUD does not toast")
+ COB.Toasts = savedToasts
+ 
++--------------------------------------------------------------------------------
++-- Persist: last pair while not QUIET. Pope favor frozen. QUIET hides.
++--------------------------------------------------------------------------------
++reset()
++Runtime:StartEvent()
++a, b = twoChars()
++Gora:Sanction(a.id, b.id)
++stubLocalPope(true)
++local persistFan1 = Store:CreateCharacter({ name = "PersistFanOne", class = "Priest", level = 70 })
++local persistFan2 = Store:CreateCharacter({ name = "PersistFanTwo", class = "Priest", level = 70 })
++local persistFan3 = Store:CreateCharacter({ name = "PersistFanThree", class = "Priest", level = 70 })
++assert_true(Gora:RecordFavor(persistFan1.id, a.id) ~= nil, "persist first pick lands")
++assert_true(Gora:RecordFavor(persistFan2.id, a.id) ~= nil, "persist second pick lands")
++assert_true(Gora:RecordFavor(persistFan3.id, b.id) ~= nil, "persist third pick lands")
++view = Hud:Refresh()
++assert_eq(view.favor.a, 2, "Pope live split a before the ruling")
++assert_eq(view.favor.b, 1, "Pope live split b before the ruling")
++assert_eq(view.favor.pctA, 66, "Pope live 66 before the ruling")
++assert_eq(view.favor.pctB, 34, "Pope live 34 before the ruling")
++Gora:DeclareVictor(a.id)
++assert_eq(Gora:GetSanctioned(), nil, "ruling cleared the live pair")
++assert_eq(Gora:GetFavorSplit().a, 0, "Gora split is empty after the pair clears")
++assert_eq(Gora:GetFavorSplit().b, 0, "Gora split b is empty after the pair clears")
++view = Hud:Refresh()
++assert_eq(Hud:IsShown(), true, "Pope HUD persists through the verdict")
++assert_eq(view.shown, true, "Pope shown stays true after the ruling")
++assert_eq(view.fighterA.name, "Chuckroast", "Pope persist still paints fighter A")
++assert_eq(view.favor.a, 2, "Pope favor frozen on last split a")
++assert_eq(view.favor.b, 1, "Pope favor frozen on last split b")
++assert_eq(view.favor.pctA, 66, "Pope favor frozen at 66")
++assert_eq(view.favor.pctB, 34, "Pope favor frozen at 34")
++assert_eq(frame.pctA:GetText(), "66%", "frozen bar still paints 66%")
++assert_eq(view.health, nil, "frozen persist has no health")
++assert_eq(view.verdict, nil, "Pope persist does not invent a verdict qualifier")
++assert_eq(sameRgb(frame.barA._cobColor, warrior), true, "frozen bar A stays fighter-tinted")
++
++COB.Sender = nil
++Hud:SetBroadcastFavor({ a = 2, b = 1 })
++view = Hud:Refresh()
++assert_eq(Hud:IsShown(), true, "congregation HUD still persists after the ruling")
++assert_eq(view.favor.a, 2, "congregation persist still follows W-F broadcast a")
++assert_eq(view.favor.b, 1, "congregation persist still follows W-F broadcast b")
++assert_eq(view.favor.pctA, 66, "congregation persist 66")
++Hud:SetBroadcastFavor(nil)
++view = Hud:Refresh()
++assert_eq(view.favor, nil, "congregation persist hides favor without broadcast")
++assert_eq(Hud:IsShown(), true, "clearing broadcast does not hide the persisted HUD")
++
++assert_true(Runtime:EndEvent() ~= nil, "EndEvent after persist")
++assert_eq(Runtime:Snapshot().state, "QUIET", "runtime is QUIET after persist")
++view = Hud:Refresh()
++assert_eq(Hud:IsShown(), false, "QUIET hides the persisted HUD")
++assert_eq(view.shown, false, "Quiet view after persist is hidden")
++assert_eq(view.favor, nil, "Quiet after persist has no favor")
++assert_eq(view.fighterA, nil, "Quiet after persist has no fighter A")
++
++Runtime:StartEvent()
++view = Hud:Refresh()
++assert_eq(Hud:IsShown(), false, "ASSEMBLY after QUIET does not revive the last pair")
++assert_eq(Gora:GetSanctioned(), nil, "no new Sanction yet")
++COB.Sender = nil
++
+ assert_eq(sounds, 0, "the suite played no sound")
+ assert_eq(healthReads, 0, "the suite never scraped health")

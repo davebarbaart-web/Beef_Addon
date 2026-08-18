@@ -1,0 +1,70 @@
+diff --git a/addon/ChurchOfBeef/UI/Markers.lua b/addon/ChurchOfBeef/UI/Markers.lua
+--- a/addon/ChurchOfBeef/UI/Markers.lua
++++ b/addon/ChurchOfBeef/UI/Markers.lua
+@@ -183,6 +183,12 @@
+   if fields.indexB == nil then
+     fields.indexB = last.indexB
+   end
++  if fields.nameA == nil then
++    fields.nameA = last.nameA
++  end
++  if fields.nameB == nil then
++    fields.nameB = last.nameB
++  end
+   return fields
+ end
+ 
+diff --git a/tests/test_markers.lua b/tests/test_markers.lua
+--- a/tests/test_markers.lua
++++ b/tests/test_markers.lua
+@@ -931,6 +931,50 @@
+   stubMarkApis()
+ end
+ 
++--------------------------------------------------------------------------------
++-- B35-C: keepLastUnits also copies last.nameA / last.nameB when omitted
++-- (== nil). Target success still sets name = trimmed (who was targeted).
++-- Do not merge name vs unit. Mark* / Clear success still replace.
++-- First Quiet refuse stays empty names. Do not call Markers:Clear from Target.
++--------------------------------------------------------------------------------
++do
++  local keepStart = src:find("local function keepLastUnits", 1, true)
++  local refuseStart = src:find("local function refuse", 1, true)
++  assert_true(keepStart ~= nil and refuseStart ~= nil, "keepLastUnits and refuse are findable")
++  local keepBody = src:sub(keepStart, refuseStart - 1)
++  assert_true(keepBody:find("fields.nameA = last.nameA", 1, true) ~= nil, "keepLastUnits copies last.nameA when omitted")
++  assert_true(keepBody:find("fields.nameB = last.nameB", 1, true) ~= nil, "keepLastUnits copies last.nameB when omitted")
++end
++
++reset()
++Runtime:StartEvent()
++popeFlag = true
++armRaid("Chuckroast", "Tendermage")
++ok, err = Markers:MarkFighters("Chuckroast", "Tendermage")
++assert_eq(ok, true, "B35-C MarkFighters pair is true")
++ok, err = Markers:Target("Beefina")
++assert_eq(ok, true, "B35-C Target after fighters is true")
++view = Markers:GetView()
++assert_eq(view.verb, "Target", "B35-C Target after fighters records Target")
++assert_eq(view.ok, true, "B35-C Target after fighters records ok")
++assert_eq(view.name, "Beefina", "B35-C Target after fighters name is the targeted name")
++assert_eq(view.nameA, "Chuckroast", "B35-C Target after fighters keeps nameA")
++assert_eq(view.nameB, "Tendermage", "B35-C Target after fighters keeps nameB")
++assert_eq(view.unitA, "raid2", "B35-C Target after fighters keeps unitA")
++assert_eq(view.unitB, "raid3", "B35-C Target after fighters keeps unitB")
++
++reset()
++Runtime:StartEvent()
++popeFlag = true
++armRaid("Chuckroast")
++ok, err = Markers:MarkCandidate("Chuckroast")
++assert_eq(ok, true, "B35-C MarkCandidate A is true")
++ok, err = Markers:Target("Tendermage")
++assert_eq(ok, true, "B35-C Target after A is true")
++view = Markers:GetView()
++assert_eq(view.name, "Tendermage", "B35-C Target after A name is the Target")
++assert_eq(view.unit, "raid2", "B35-C Target after A keeps prior unit")
++
+ --------------------------------------------------------------------------------
+ -- Missing API fail-closed. No throw.
+ --------------------------------------------------------------------------------

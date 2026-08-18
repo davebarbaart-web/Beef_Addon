@@ -1,0 +1,90 @@
+# B41-D — Toasts Init remounts ChurchOfBeefProclaim (implementation diff)
+
+Lane-only unified diff of the exclusive implementation files vs the pre-lane working tree.
+
+--- a/addon/ChurchOfBeef/UI/Toasts.lua
++++ b/addon/ChurchOfBeef/UI/Toasts.lua
+@@ -771,6 +771,7 @@
+ function Toasts:Init()
+   if self.frame then
+     rememberSpecial("ChurchOfBeefToast")
++    rememberSpecial(PROCLAIM_NAME)
+     wireSmallOnHide(self, self.frame)
+     return self.frame
+   end
+
+--- a/tests/test_ui.lua
++++ b/tests/test_ui.lua
+@@ -11,8 +11,9 @@
+ -- B29-D Proclaim re-applies applyHeadlineFont,
+ -- B31-C Quiet-shell Show remounts a missing OnHide,
+ -- B35-D Quiet-shell Hide remounts a missing OnHide,
+--- B39-C HideAll remounts toast + proclaim ESC names,
+--- and B40-D already-hidden Hide still persists shown = false
++-- B39-C HideAll remounts toast + proclaim ESC names,
++-- B40-D already-hidden Hide still persists shown = false,
++-- and B41-D existing-frame Init remounts ChurchOfBeefProclaim
+ -- live in runB12D() (Lua 5.1 200-local cap).
+ -- No tab registry. No Standing / Ladder / Officer IA. No promote / rite toast
+ -- kinds. Isolation stays under standalone.
+@@ -867,6 +868,60 @@
+   assert_eq(#played, cuesHideAllRemount, "second HideAll plays no sound")
+   UISpecialFrames = savedSpecialHideAll
+ 
++  -- B41-D: existing-frame Init remounts ChurchOfBeefToast and
++  -- ChurchOfBeefProclaim after a wiped UISpecialFrames. Keep
++  -- wireSmallOnHide. Do not add a close button. Do not PlaySound.
++  -- Do not tear theater. Isolation wrap stays. No new main-chunk locals.
++  hideAllBody = src:match("function Toasts:Init%(%)%s*\n%s*if self%.frame then(.-)return self%.frame")
++  assert_true(type(hideAllBody) == "string" and hideAllBody ~= "",
++    "Init early-return body is readable")
++  assert_true(hideAllBody:find('rememberSpecial("ChurchOfBeefToast")', 1, true) ~= nil,
++    "existing-frame Init remounts ChurchOfBeefToast")
++  assert_true(
++    hideAllBody:find("rememberSpecial(PROCLAIM_NAME)", 1, true) ~= nil
++      or hideAllBody:find('rememberSpecial("ChurchOfBeefProclaim")', 1, true) ~= nil,
++    "existing-frame Init remounts ChurchOfBeefProclaim")
++  assert_true(hideAllBody:find("wireSmallOnHide", 1, true) ~= nil,
++    "existing-frame Init keeps wireSmallOnHide")
++  assert_eq(hideAllBody:find("PlaySound", 1, true), nil,
++    "existing-frame Init does not PlaySound")
++  assert_eq(hideAllBody:find("hideTheater", 1, true), nil,
++    "existing-frame Init does not tear theater")
++  assert_eq(hideAllBody:find("CreateFrame", 1, true), nil,
++    "existing-frame Init does not rebuild")
++  assert_eq(COB.Toasts:Proclaim("verdict", { ruling = "void" }), true,
++    "Proclaim before Init remount")
++  assert_eq(COB.Toasts.theater.root:IsShown(), true, "theater shown before Init remount")
++  savedSpecialHideAll = UISpecialFrames
++  UISpecialFrames = {}
++  assert_eq(countSpecial("ChurchOfBeefToast"), 0,
++    "wipe clears ChurchOfBeefToast before Init remount")
++  assert_eq(countSpecial("ChurchOfBeefProclaim"), 0,
++    "wipe clears ChurchOfBeefProclaim before Init remount")
++  cuesHideAllRemount = #played
++  assert_eq(COB.Toasts:Init(), COB.Toasts.frame,
++    "Init remount returns the existing frame")
++  assert_eq(countSpecial("ChurchOfBeefToast"), 1,
++    "wiped UISpecialFrames + Init lists ChurchOfBeefToast once")
++  assert_eq(countSpecial("ChurchOfBeefProclaim"), 1,
++    "wiped UISpecialFrames + Init lists ChurchOfBeefProclaim once")
++  assert_eq(#played, cuesHideAllRemount, "Init remount plays no sound")
++  assert_eq(COB.Toasts.theater.root:IsShown(), true,
++    "Init remount does not tear theater")
++  assert_eq(findButton(COB.Toasts.theater.root), nil,
++    "Init remount adds no close button")
++  assert_eq(findButton(COB.Toasts.frame), nil,
++    "Init remount adds no toast close button")
++  COB.Toasts:Init()
++  assert_eq(countSpecial("ChurchOfBeefToast"), 1,
++    "second Init does not duplicate ChurchOfBeefToast")
++  assert_eq(countSpecial("ChurchOfBeefProclaim"), 1,
++    "second Init does not duplicate ChurchOfBeefProclaim")
++  assert_eq(#played, cuesHideAllRemount, "second Init plays no sound")
++  assert_eq(COB.Toasts.theater.root:IsShown(), true,
++    "second Init does not tear theater")
++  UISpecialFrames = savedSpecialHideAll
++
+   -- B15-C: Quiet shell UISpecialFrames rememberSpecial dedupe. Nested here
+   -- so the main chunk stays under Lua 5.1's 200-local cap. No new main-chunk
+   -- locals. Existing Init pin and B12-D Proclaim pins stay.

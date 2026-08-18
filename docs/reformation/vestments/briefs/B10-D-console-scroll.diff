@@ -1,0 +1,156 @@
+diff --git a/addon/ChurchOfBeef/UI/Console.lua b/addon/ChurchOfBeef/UI/Console.lua
+--- a/addon/ChurchOfBeef/UI/Console.lua
++++ b/addon/ChurchOfBeef/UI/Console.lua
+@@ -34,9 +34,11 @@
+ -- Elevation use GetHuman; Gora rulings use GetCharacter; Recognition is
+ -- character then human. Missing Store log is an empty list. No generated
+ -- knighting prose.
+--- Layout: two-column stock desk, large targets, scrollable Presence / Gora /
+--- Confession / Line / CeremonyLog lists, click-to-select. Not parchment. Not
+--- collapsible tabs (desks stay glanceable without window switching).
++-- Layout: two-column stock desk, large targets. Outer frame height 780 with
++-- a stock ScrollFrame around the desk body (child stays tall). Scrollable
++-- Presence / Gora / Confession / Line / CeremonyLog lists, click-to-select.
++-- Not parchment. Not collapsible tabs (desks stay glanceable without window
++-- switching).
+ local Console = {
+   MODE = "event",
+ }
+@@ -44,7 +46,8 @@
+ 
+ local FRAME_NAME = "ChurchOfBeefConsoleFrame"
+ local REFUSE = "not the registered pope"
+-local DEFAULT_WIDTH, DEFAULT_HEIGHT = 780, 1050
++local DEFAULT_WIDTH, DEFAULT_HEIGHT = 780, 780
++local DESK_CHILD_H = 1050
+ local BTN_W, BTN_H, BTN_GAP = 172, 28, 8
+ local COL_W, COL_GAP = 370, 12
+ local ROW_H = 20
+@@ -481,9 +484,20 @@
+     end
+   end
+ 
+-  local content = CreateFrame("Frame", nil, frame)
+-  content:SetPoint("TOPLEFT", frame, "TOPLEFT", 14, -30)
+-  content:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -14, 12)
++  local deskScroll = CreateFrame("ScrollFrame", FRAME_NAME .. "DeskScroll", frame, "UIPanelScrollFrameTemplate")
++  deskScroll:SetPoint("TOPLEFT", frame, "TOPLEFT", 14, -30)
++  deskScroll:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -14, 12)
++  local content = CreateFrame("Frame", nil, deskScroll)
++  content:SetWidth(DEFAULT_WIDTH - 28)
++  content:SetHeight(DESK_CHILD_H)
++  if type(deskScroll.SetScrollChild) == "function" then
++    deskScroll:SetScrollChild(content)
++  end
++  if type(deskScroll.SetVerticalScroll) == "function" then
++    deskScroll:SetVerticalScroll(0)
++  end
++  frame.DeskScroll = deskScroll
++  frame.DeskChild = content
+   frame.Content = content
+ 
+   local function ritual(label, onClick)
+diff --git a/tests/test_console.lua b/tests/test_console.lua
+--- a/tests/test_console.lua
++++ b/tests/test_console.lua
+@@ -4,7 +4,7 @@
+ -- B6-A GRANT HONORIFIC / Recognition Begin-Complete-Cancel + B7-B Archive
+ -- export/import / CanonizeMoment / FlagFamousUpset + B8-E multiline
+ -- ArchiveBox / stock ARCHIVE and CANONIZE labels + B9-C stock
+--- CeremonyLog desk).
++-- CeremonyLog desk + B10-D stock desk-body ScrollFrame, outer height 780).
+ -- Isolated: wow_ui_stub + Common + Ranks + Runtime + Store + Gora + Knighting
+ -- + Sender + Decree + Console. Confession is stubbed when painted; this file
+ -- does not load Confession.lua. Knighting GetLine/Enqueue/Skip are stubbed
+@@ -368,7 +368,9 @@
+ assert_true(findFont(frame, "A GATHERING HAS BEEN DECREED") ~= nil, "Decree header is UI copy")
+ assert_true(findButton(frame, "Post Decree") ~= nil, "Post Decree is one click")
+ assert_true(frame:GetWidth() >= 740, "console is a two-column desk")
+-assert_true(frame:GetHeight() >= 540, "console fits the two desks without a tall stack")
++assert_eq(frame:GetHeight(), 780, "outer frame height is 780")
++assert_true(frame.DeskScroll ~= nil, "desk body ScrollFrame exists")
++assert_eq(frame.DeskScroll._type, "ScrollFrame", "desk body is a ScrollFrame")
+ local startBtn = findButton(frame, "Start Event")
+ assert_true(startBtn:GetHeight() >= 28, "sacred verbs are large targets")
+ assert_true(startBtn:GetWidth() >= 160, "sacred verbs are wide enough")
+@@ -2298,7 +2300,80 @@
+   assert_eq(COB.Toasts, nil, "isolation still does not load Toasts")
+ end
+ assert_eq(COB.Popes, nil, "still no Pope list after B9-C")
++
++--------------------------------------------------------------------------------
++-- B10-D: stock ScrollFrame around the desk. Outer height 780. Child stays
++-- tall. CeremonyLog / Archive / Canonize / SaveNote pins stay. No SUMMON.
++-- Nested inside runB8E so the main chunk stays under Lua 5.1's 200-local cap.
++--------------------------------------------------------------------------------
++reset()
++Console:Init()
++assert_eq(frame:GetHeight(), 780, "B10-D outer frame height is 780")
++assert_true(frame.DeskScroll ~= nil, "B10-D desk body ScrollFrame exists")
++assert_eq(frame.DeskScroll._type, "ScrollFrame", "B10-D desk body is a ScrollFrame")
++assert_eq(frame.DeskScroll._template, "UIPanelScrollFrameTemplate",
++  "desk ScrollFrame is stock")
++assert_eq(frame.DeskScroll:GetName(), "ChurchOfBeefConsoleFrameDeskScroll",
++  "desk ScrollFrame has a stable name")
++assert_eq(countType(frame, "ScrollFrame"), 6, "desk body is a sixth stock ScrollFrame")
++assert_true(frame.DeskChild ~= nil, "desk scroll child exists")
++assert_eq(frame.DeskChild:GetParent(), frame.DeskScroll, "content is the scroll child")
++assert_eq(frame.Content, frame.DeskChild, "Content stays the desk child")
++assert_true((frame.DeskChild:GetHeight() or 0) > frame:GetHeight(),
++  "desk child can stay tall")
++assert_eq(frame.DeskChild:GetHeight(), 1050, "desk child keeps the tall desk height")
++assert_eq(Console.SaveNote, nil, "SaveNote stays nil")
++assert_eq(Console.GetNotes, nil, "no notes table")
++assert_eq(Console.CopyCeremonySummary, nil, "no post-show ceremony summary")
++assert_eq(Console.CeremonySummary, nil, "no ceremony summary")
++assert_eq(findButton(frame, "SUMMON THE FAITHFUL"), nil, "no SUMMON chrome")
++assert_eq(findButton(frame, "COPY SUMMARY"), nil, "no ceremony-summary chrome")
++assert_eq(findButton(frame, "WHISPER ALL"), nil, "no WHISPER ALL chrome")
++assert_eq(findButton(frame, "RSVP"), nil, "no RSVP chrome")
++assert_true(findFont(frame, "Presence") ~= nil, "Presence desk stays")
++assert_true(findFont(frame, "Knighting") ~= nil, "Knighting desk stays")
++assert_true(findFont(frame, "Gora") ~= nil, "Gora desk stays")
++assert_true(findFont(frame, "Confession") ~= nil, "Confession desk stays")
++assert_true(findFont(frame, "CeremonyLog") ~= nil, "CeremonyLog header stays")
++assert_true(findFont(frame, "ARCHIVE") ~= nil, "ARCHIVE label stays")
++assert_true(findFont(frame, "CANONIZE") ~= nil, "CANONIZE label stays")
++assert_true(findFont(frame, "Notebook") ~= nil, "Notebook label stays")
++assert_true(frame.CeremonyLog ~= nil, "CeremonyLog list stays")
++assert_true(frame.ArchiveBox ~= nil, "ArchiveBox stays")
++assert_true(frame.CanonizeText ~= nil, "CanonizeText stays")
++assert_eq(frame.ArchiveBox._multiline, true, "ArchiveBox stays multiline")
++assert_eq(countType(frame, "EditBox"), 7, "B10-D adds no extra EditBox")
++assert_true(findButton(frame, "KNIGHT THIS BEEF") ~= nil, "KNIGHT THIS BEEF stays")
++assert_true(findButton(frame, "SANCTION BEEF GORA") ~= nil, "SANCTION stays")
++assert_true(findButton(frame, "EXPORT ARCHIVE") ~= nil, "EXPORT ARCHIVE stays")
++assert_true(findButton(frame, "CANONIZE") ~= nil, "CANONIZE verb stays")
++assert_true(findButton(frame, "Post Decree") ~= nil, "Post Decree stays")
++
++local srcDesk = io.open("addon/ChurchOfBeef/UI/Console.lua", "r")
++assert_true(srcDesk ~= nil, "Console.lua is readable for B10-D")
++local srcDeskBody = srcDesk:read("*a")
++srcDesk:close()
++assert_true(srcDeskBody:find('CreateFrame("ScrollFrame", FRAME_NAME .. "DeskScroll"', 1, true) ~= nil,
++  "desk uses CreateFrame ScrollFrame")
++assert_true(srcDeskBody:find('type(deskScroll.SetScrollChild) == "function"', 1, true) ~= nil,
++  "SetScrollChild is type-guarded")
++assert_true(srcDeskBody:find('type(deskScroll.SetVerticalScroll) == "function"', 1, true) ~= nil,
++  "SetVerticalScroll is type-guarded")
++assert_eq(srcDeskBody:find("SUMMON THE FAITHFUL", 1, true), nil, "source must not contain SUMMON")
++assert_eq(srcDeskBody:find("CopyCeremonySummary", 1, true), nil, "source must not copy a ceremony summary")
++assert_eq(srcDeskBody:find("function Console:SaveNote", 1, true), nil, "source must not define SaveNote")
++assert_eq(srcDeskBody:find("WHISPER ALL", 1, true), nil, "source must not contain WHISPER ALL")
++assert_eq(srcDeskBody:find("Parchment", 1, true), nil, "console stays stock, not parchment")
++assert_eq(srcDeskBody:find("PanelTabButtonTemplate", 1, true), nil, "desks are not collapsed into tabs")
++
++assert_eq(Console.SaveNote, nil, "SaveNote stays nil after B10-D")
++if standalone then
++  assert_eq(COB.Archive, nil, "isolation still does not load Archive")
++  assert_eq(COB.UI, nil, "isolation still does not load the Quiet shell")
++  assert_eq(COB.Toasts, nil, "isolation still does not load Toasts")
+ end
++assert_eq(COB.Popes, nil, "still no Pope list after B10-D")
++end
+ runB8E()
+ 
+ --------------------------------------------------------------------------------

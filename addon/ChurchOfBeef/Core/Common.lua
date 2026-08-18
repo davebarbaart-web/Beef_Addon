@@ -115,3 +115,53 @@ function Group.CountGuildmates()
   end
   return count
 end
+
+--------------------------------------------------------------------------------
+-- Roman: theatrical record lines (XVIII–VI), never Arabic
+--------------------------------------------------------------------------------
+
+local Common = {}
+COB.Common = Common
+
+-- Subtractive glyphs through 3999. Pair lines join with U+2013, not hyphen-minus.
+local ROMAN = {
+  { 1000, "M" },
+  { 900, "CM" },
+  { 500, "D" },
+  { 400, "CD" },
+  { 100, "C" },
+  { 90, "XC" },
+  { 50, "L" },
+  { 40, "XL" },
+  { 10, "X" },
+  { 9, "IX" },
+  { 5, "V" },
+  { 4, "IV" },
+  { 1, "I" },
+}
+
+local EN_DASH = "\226\128\147"
+
+function Common.RomanNumeral(n)
+  if type(n) ~= "number" or n ~= math.floor(n) or n < 1 or n > 3999 then
+    return nil, "out of range"
+  end
+  local out = ""
+  local remain = n
+  for i = 1, #ROMAN do
+    local value, glyph = ROMAN[i][1], ROMAN[i][2]
+    while remain >= value do
+      out = out .. glyph
+      remain = remain - value
+    end
+  end
+  return out
+end
+
+function Common.RomanPair(a, b)
+  local left, err = Common.RomanNumeral(a)
+  if not left then return nil, err end
+  local right, rightErr = Common.RomanNumeral(b)
+  if not right then return nil, rightErr end
+  return left .. EN_DASH .. right
+end

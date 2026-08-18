@@ -1,0 +1,156 @@
+# B12-D — Proclaim ESC dismiss (implementation diff)
+
+Lane-only unified diff of the exclusive implementation files vs the pre-lane working tree.
+
+--- a/addon/ChurchOfBeef/UI/Toasts.lua	2026-08-18 01:53:42
++++ b/addon/ChurchOfBeef/UI/Toasts.lua	2026-08-18 01:54:56
+@@ -39,6 +39,7 @@
+ }
+ 
+ local THEATER_HOLD = 5
++local PROCLAIM_NAME = "ChurchOfBeefProclaim"
+ local DIM_ALPHA = 0.45
+ local PANEL_FALLBACK_W = 420
+ local GOLD = { 0.85, 0.72, 0.28, 1 }
+@@ -549,12 +550,33 @@
+   end)
+ end
+ 
++local function rememberSpecial(name)
++  if type(UISpecialFrames) ~= "table" then return end
++  for i = 1, #UISpecialFrames do
++    if UISpecialFrames[i] == name then return end
++  end
++  UISpecialFrames[#UISpecialFrames + 1] = name
++end
++
+ local function hideTheater(self)
+   theaterGen = theaterGen + 1
+   local t = self.theater
+   if t and t.root then t.root:Hide() end
+ end
+ 
++local function wireProclaimEsc(self, root)
++  if not root then return end
++  if type(root.SetScript) == "function" then
++    local existing = type(root.GetScript) == "function" and root:GetScript("OnHide")
++    if not existing then
++      root:SetScript("OnHide", function()
++        hideTheater(self)
++      end)
++    end
++  end
++  rememberSpecial(PROCLAIM_NAME)
++end
++
+ local function tryTheaterBackdrop(frame)
+   if frame.SetBackdrop then
+     frame:SetBackdrop({
+@@ -576,10 +598,13 @@
+ end
+ 
+ function Toasts:InitTheater()
+-  if self.theater and self.theater.root then return self.theater end
++  if self.theater and self.theater.root then
++    wireProclaimEsc(self, self.theater.root)
++    return self.theater
++  end
+   if type(CreateFrame) ~= "function" then return nil end
+ 
+-  local root = CreateFrame("Frame", "ChurchOfBeefProclaim", UIParent)
++  local root = CreateFrame("Frame", PROCLAIM_NAME, UIParent)
+   root:SetFrameStrata("FULLSCREEN_DIALOG")
+   if root.EnableMouse then root:EnableMouse(false) end
+   if root.SetAllPoints then
+@@ -640,6 +665,8 @@
+     copy = copy,
+     dimAlpha = DIM_ALPHA,
+   }
++  -- After the initial Hide so create does not fire OnHide teardown.
++  wireProclaimEsc(self, root)
+   return self.theater
+ end
+ 
+
+--- a/tests/test_ui.lua	2026-08-18 01:53:42
++++ b/tests/test_ui.lua	2026-08-18 01:54:30
+@@ -1,6 +1,7 @@
+ -- Quiet shell: frame creation, drag/resize/coalesce, saved position, minimap
+ -- toggle, system/debug toasts. Event Mode Proclaim (sanction / verdict /
+--- cowardice / knighting / elevation). No tab registry. No Standing / Ladder / Officer IA.
++-- cowardice / knighting / elevation). B12-D Proclaim ESC lives in runB12D()
++-- (Lua 5.1 200-local cap). No tab registry. No Standing / Ladder / Officer IA.
+ -- No promote / rite toast kinds. Isolation stays under standalone.
+ local standalone = (type(assert_eq) ~= "function")
+ local passed = 0
+@@ -724,7 +725,70 @@
+ assert_eq(toastSrcSansFace:find(".ttf", 1, true), nil, "source does not load custom fonts")
+ assert_eq(toastSrcSansFace:find(".TTF", 1, true), nil, "source does not load custom TTF")
+ assert_eq(toastSrc:find("Media\\", 1, true), nil, "source does not require custom Media")
++
++-- Nested so the main chunk stays under Lua 5.1's 200-local cap.
++local function runB12D()
++  local srcFile = io.open("addon/ChurchOfBeef/UI/Toasts.lua", "r")
++  assert_true(srcFile ~= nil, "B12-D Toasts.lua is readable")
++  local src = srcFile:read("*a")
++  srcFile:close()
++  assert_true(src:find("UISpecialFrames", 1, true) ~= nil,
++    "source contains UISpecialFrames")
++  assert_eq(src:find('rememberSpecial("ChurchOfBeefToast")', 1, true), nil,
++    "source does not rememberSpecial ChurchOfBeefToast")
++  assert_eq(src:find('insert(UISpecialFrames, "ChurchOfBeefToast")', 1, true), nil,
++    "source does not insert ChurchOfBeefToast")
++  assert_eq(src:find("IG_CHARACTER_INFO", 1, true), nil,
++    "source does not PlaySound IG_CHARACTER_INFO_*")
++  assert_eq(src:find("SendChatMessage(", 1, true), nil,
++    "B12-D source never SendChatMessage")
++  assert_true(src:find("MORPHEUS", 1, true) ~= nil,
++    "B12-D clerical Morpheus pin stays")
++
++  local function countSpecial(name)
++    local n = 0
++    if type(UISpecialFrames) ~= "table" then return 0 end
++    for i = 1, #UISpecialFrames do
++      if UISpecialFrames[i] == name then n = n + 1 end
++    end
++    return n
++  end
++
++  theaterReset()
++  assert_true(COB.Runtime:StartEvent() ~= nil, "StartEvent for Proclaim ESC")
++  assert_eq(COB.Toasts:Proclaim("verdict", { ruling = "void" }), true,
++    "Event Mode void for ESC register")
++  assert_true(COB.Toasts.theater ~= nil and COB.Toasts.theater.root ~= nil,
++    "Proclaim mints the theatrical root")
++  assert_eq(countSpecial("ChurchOfBeefProclaim"), 1,
++    "UISpecialFrames contains ChurchOfBeefProclaim once")
++  assert_eq(countSpecial("ChurchOfBeefToast"), 0,
++    "ChurchOfBeefToast is not on UISpecialFrames")
++  COB.Toasts:InitTheater()
++  assert_eq(countSpecial("ChurchOfBeefProclaim"), 1,
++    "InitTheater does not duplicate ChurchOfBeefProclaim")
++  assert_eq(COB.Toasts:Proclaim("verdict", { ruling = "void" }), true,
++    "second Proclaim stays accepted")
++  assert_eq(countSpecial("ChurchOfBeefProclaim"), 1,
++    "second Proclaim does not duplicate ChurchOfBeefProclaim")
++  assert_true(COB.Toasts.theater.root:GetScript("OnHide") ~= nil,
++    "theatrical root has OnHide teardown")
+ 
++  local cues = #played
++  COB.Toasts.theater.root:Hide()
++  assert_eq(COB.Toasts.theater.root:IsShown(), false, "ESC Hide()s the proclaim root")
++  assert_eq(#played, cues, "ESC Hide plays no sound")
++  stub.flushTimers()
++  assert_eq(COB.Toasts:Proclaim("verdict", { ruling = "void" }), true,
++    "Proclaim after ESC leftover Hide")
++  assert_eq(COB.Toasts.theater.root:IsShown(), true,
++    "next Proclaim is not stuck after ESC Hide")
++  assert_eq(countSpecial("ChurchOfBeefProclaim"), 1,
++    "ESC Hide does not re-register ChurchOfBeefProclaim")
++  assert_eq(findButton(COB.Toasts.theater.root), nil, "ESC path adds no close button")
++end
++runB12D()
++
+ theaterReset()
+ assert_eq(COB.Toasts:Push({ kind = "system", text = "system still lives" }), true,
+   "system Push stays green after theater")

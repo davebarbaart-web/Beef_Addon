@@ -1,0 +1,164 @@
+# B28-B — Decree Refresh hides leftover paint when the line is gone (implementation diff)
+
+Lane-only unified diff of the exclusive implementation files vs the pre-lane working tree.
+
+--- a/addon/ChurchOfBeef/UI/Decree.lua
++++ b/addon/ChurchOfBeef/UI/Decree.lua
+@@ -335,3 +335,18 @@
+     flavor = decree and decree.flavor or nil,
+   }
+ end
++
++function DecreeBanner:Refresh()
++  local frame = ensureFrame()
++  if not frame then return false end
++  local decree = getDecree()
++  if not decree then
++    wipePaint(frame)
++    frame:Hide()
++    return false
++  end
++  if self:IsShown() then
++    paint(frame, decree)
++    return true
++  end
++  return false
++end
+
+--- a/tests/test_decree_ui.lua
++++ b/tests/test_decree_ui.lua
+@@ -124,6 +124,7 @@
+ assert_eq(type(Banner.Hide), "function", "Hide dismisses the banner")
+ assert_eq(type(Banner.IsShown), "function", "IsShown reads visibility")
+ assert_eq(type(Banner.GetView), "function", "GetView returns a copy")
++assert_eq(type(Banner.Refresh), "function", "Refresh syncs leftover paint")
+ assert_eq(type(Banner.ResetForTests), "function", "ResetForTests is a harness hatch")
+ assert_eq(Banner.Grant, nil, "no Grant")
+ assert_eq(Banner.Standing, nil, "no Standing")
+@@ -131,6 +132,7 @@
+ assert_eq(Banner.RSVP, nil, "no RSVP")
+ assert_eq(Banner.Summon, nil, "no SUMMON")
+ assert_eq(Banner.Deputy, nil, "no deputy picker")
++assert_eq(Banner.ClearDecree, nil, "no Clear Decree verb")
+ assert_eq(Banner.Post, nil, "no Console Post")
+ assert_eq(Banner.Narrate, nil, "software does not narrate")
+ assert_eq(Banner.PlayCue, nil, "no sound this lane")
+@@ -256,6 +258,36 @@
+ assert_eq(hideBody:find("PlaySound", 1, true), nil,
+   "Hide does not PlaySound")
+ assert_eq(hideBody:find("Goldshire", 1, true), nil,
+   "Hide does not invent a line")
++local refreshBody = src:match("function DecreeBanner:Refresh%(%)%s*\n(.+)$")
++assert_true(type(refreshBody) == "string" and refreshBody ~= "",
++  "Refresh body is readable")
++assert_true(refreshBody:find("ensureFrame()", 1, true) ~= nil,
++  "Refresh calls ensureFrame")
++assert_true(refreshBody:find("getDecree()", 1, true) ~= nil,
++  "Refresh checks getDecree")
++assert_true(
++  refreshBody:find("wipePaint(frame)", 1, true) ~= nil
++    or refreshBody:find("wipePaint(self.frame)", 1, true) ~= nil
++    or refreshBody:find('LineText:SetText("")', 1, true) ~= nil,
++  "Refresh blanks leftover LineText when Get is nil")
++assert_true(refreshBody:find(":Hide()", 1, true) ~= nil,
++  "Refresh Hides when Get is nil")
++assert_true(refreshBody:find("paint(frame", 1, true) ~= nil
++    or refreshBody:find("paint(", 1, true) ~= nil,
++  "Refresh paints when a Decree is shown")
++assert_true(refreshBody:find("IsShown", 1, true) ~= nil,
++  "Refresh checks shown before paint")
++assert_eq(refreshBody:find(":Show()", 1, true), nil,
++  "Refresh does not Show a hidden banner")
++assert_eq(refreshBody:find("PlaySound", 1, true), nil,
++  "Refresh does not PlaySound")
++assert_eq(refreshBody:find("Goldshire", 1, true), nil,
++  "Refresh does not invent a line")
++assert_eq(refreshBody:find("Clear Decree", 1, true), nil,
++  "Refresh has no Clear Decree chrome")
++assert_eq(src:find("Clear Decree", 1, true), nil,
++  "source has no Clear Decree chrome")
++assert_true(src:find("Fonts\\\\MORPHEUS.ttf", 1, true) ~= nil,
++  "LINE_FONT stays FrameXML lowercase Morpheus after Refresh")
+ 
+ local miniFile = io.open("addon/ChurchOfBeef/UI/Minimap.lua", "r")
+ assert_true(miniFile ~= nil, "UI/Minimap.lua is readable")
+@@ -313,6 +345,7 @@
+ assert_eq(buttonFor("Calendar"), nil, "no calendar chrome")
+ assert_eq(buttonFor("Deputy"), nil, "no deputy picker")
++assert_eq(buttonFor("Clear Decree"), nil, "no Clear Decree chrome")
+ assert_eq(buttonFor("Grant"), nil, "no Grant chrome")
+ assert_eq(buttonFor("I will attend"), nil, "no RSVP verb")
+ assert_true(UISpecialFrames[1] == "ChurchOfBeefDecree" or (function()
+@@ -476,6 +509,71 @@
+     Decree:Clear()
+     Banner:Hide()
+   end
+   runB27B()
++
++  -- B28-B: leftover Goldshire must blank on Refresh after Clear (not Hide/Show).
++  -- Hidden + Set + Refresh does not Show. Shown + live Decree Refresh paints.
++  -- B27-B Hide wipe / B26-C empty Show stay. Isolation wrap stays.
++  local function runB28B()
++    Decree:Set({
++      line = "Goldshire Inn — Sunday, 7:00 PM",
++      flavor = "Bring a friend.",
++    })
++    assert_eq(Banner:Show(), true, "B28-B Show paints Goldshire")
++    assert_eq(Banner:IsShown(), true, "B28-B Show opens the banner")
++    assert_eq(Banner.frame.LineText:GetText(), "Goldshire Inn — Sunday, 7:00 PM",
++      "B28-B leftover starts as Goldshire")
++    assert_eq(Banner.frame.FlavorText:GetText(), "Bring a friend.",
++      "B28-B leftover flavor starts set")
++    Decree:Clear()
++    assert_eq(Decree:Get(), nil, "B28-B Clear removes the Decree")
++    local cuesRefresh = sounds
++    local savedRefresh = UISpecialFrames
++    UISpecialFrames = {}
++    assert_eq(Banner:Refresh(), false, "Refresh after Clear hides leftover")
++    assert_eq(Banner:IsShown(), false, "Refresh after Clear is hidden")
++    assert_eq(Banner.frame.LineText:GetText(), "",
++      "Refresh after Clear blanks leftover LineText")
++    assert_eq(Banner.frame.FlavorText:GetText(), "",
++      "Refresh after Clear blanks leftover FlavorText")
++    assert_eq(Banner.frame.FlavorText:IsShown(), false,
++      "Refresh after Clear hides leftover flavor")
++    assert_eq(countSpecial("ChurchOfBeefDecree"), 1,
++      "Refresh remounts ChurchOfBeefDecree once")
++    assert_eq(sounds, cuesRefresh, "Refresh after Clear plays no sound")
++    UISpecialFrames = savedRefresh
++
++    Decree:Set({
++      line = "Goldshire Inn — Sunday, 7:00 PM",
++      flavor = "Bring a friend.",
++    })
++    assert_eq(Banner:IsShown(), false, "Set after Refresh stays hidden")
++    local cuesHidden = sounds
++    assert_eq(Banner:Refresh(), false, "Hidden + Set + Refresh does not Show")
++    assert_eq(Banner:IsShown(), false, "Hidden + Set + Refresh stays hidden")
++    assert_eq(Banner.frame.LineText:GetText(), "",
++      "Hidden + Set + Refresh does not paint")
++    assert_eq(Banner.frame.FlavorText:GetText(), "",
++      "Hidden + Set + Refresh does not paint flavor")
++    assert_eq(sounds, cuesHidden, "Hidden + Set + Refresh plays no sound")
++
++    assert_eq(Banner:Show(), true, "Show after hidden Refresh paints")
++    assert_eq(Banner.frame.LineText:GetText(), "Goldshire Inn — Sunday, 7:00 PM",
++      "Show after hidden Refresh paints Goldshire")
++    Decree:Set({
++      line = "Shattrath — Friday, 8:00 PM",
++      flavor = "The Gathering.",
++    })
++    local cuesLive = sounds
++    assert_eq(Banner:Refresh(), true, "Refresh while shown paints")
++    assert_eq(Banner:IsShown(), true, "Refresh while shown stays shown")
++    assert_eq(Banner.frame.LineText:GetText(), "Shattrath — Friday, 8:00 PM",
++      "Refresh while shown paints the new line")
++    assert_eq(Banner.frame.FlavorText:GetText(), "The Gathering.",
++      "Refresh while shown paints the new flavor")
++    assert_eq(sounds, cuesLive, "Refresh while shown plays no sound")
++    Decree:Clear()
++    Banner:Hide()
++  end
++  runB28B()
+ end
+ runB25B()

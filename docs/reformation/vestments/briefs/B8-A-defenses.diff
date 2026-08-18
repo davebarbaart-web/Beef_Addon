@@ -1,0 +1,146 @@
+diff --git a/addon/ChurchOfBeef/Core/Store.lua b/addon/ChurchOfBeef/Core/Store.lua
+--- a/addon/ChurchOfBeef/Core/Store.lua
++++ b/addon/ChurchOfBeef/Core/Store.lua
+@@ -501,6 +501,34 @@
+   gora.defenses = nil
+   gora.defenseCount = nil
+   return deepcopy(ch)
++end
++
++-- Derived story field (OPEN_QUESTIONS #9). Never writes gora.defenses.
++function Store:CountDefenses(characterId)
++  if not isId(characterId) then return 0 end
++  local ch = characters[characterId]
++  if not ch then return 0 end
++  if not isId(ch.humanId) then return 0 end
++  local human = humans[ch.humanId]
++  if not human then return 0 end
++  local elevationAt = human.elevationAt
++  if type(elevationAt) ~= "number" then return 0 end
++  local results = ch.gora and ch.gora.results
++  if type(results) ~= "table" then return 0 end
++  local n = 0
++  for i = 1, #results do
++    local result = results[i]
++    if result
++      and result.won == true
++      and result.ruling ~= "void"
++      and result.ruling ~= "free"
++      and type(result.at) == "number"
++      and result.at >= elevationAt
++    then
++      n = n + 1
++    end
++  end
++  return n
+ end
+ 
+ function Store:Snapshot()
+
+diff --git a/tests/test_store.lua b/tests/test_store.lua
+--- a/tests/test_store.lua
++++ b/tests/test_store.lua
+@@ -878,6 +878,103 @@
+ assert_eq(restored.customMark, "keep", "Restore does not wipe leftover character keys")
+ 
+ --------------------------------------------------------------------------------
++-- CountDefenses: derived from elevationAt + won == true; never a stored field
++--------------------------------------------------------------------------------
++local function runCountDefenses()
++  assert_eq(type(Store.CountDefenses), "function", "CountDefenses is a Store read")
++  reset()
++  local lordH = Store:CreateHuman({ name = "Lord" })
++  local lordC = Store:CreateCharacter({ name = "Lordalt" })
++  local foe = Store:CreateCharacter({ name = "Foealt" })
++  local unlinked = Store:CreateCharacter({ name = "Strayalt" })
++  Store:LinkCharacter(lordC.id, lordH.id)
++  Store:SetRank(lordH.id, 3, 8000)
++
++  Store:RecordGoraResult(lordC.id, {
++    opponentId = foe.id,
++    ruling = "victor",
++    won = true,
++    famousUpset = true,
++    notable = true,
++  }, 8010)
++  assert_eq(Store:CountDefenses(lordC.id), 0, "a Knight win before elevation is not a defense")
++  assert_eq(Store:GetHuman(lordH.id).elevationAt, nil, "Knight still has no elevationAt")
++  assert_eq(Store:GetCharacter(lordC.id).gora.defenses, nil, "pre-elevation win does not write defenses")
++
++  Store:SetRank(lordH.id, 4, 8100)
++  assert_eq(Store:GetHuman(lordH.id).elevationAt, 8100, "first Lord write stamps elevationAt")
++  assert_eq(Store:CountDefenses(lordC.id), 0, "the pre-elevation win is still not counted")
++
++  Store:RecordGoraResult(lordC.id, {
++    opponentId = foe.id,
++    ruling = "victor",
++    won = true,
++  }, 8200)
++  Store:RecordGoraResult(lordC.id, {
++    opponentId = foe.id,
++    ruling = "victor",
++    won = true,
++    famousUpset = true,
++    notable = true,
++  }, 8210)
++  assert_eq(Store:CountDefenses(lordC.id), 2, "Lord + two post-elevation wins is 2")
++  assert_eq(Store:GetCharacter(lordC.id).gora.defenses, nil, "two post-elevation wins do not store defenses")
++  assert_eq(Store:GetCharacter(lordC.id).gora.defenseCount, nil, "two post-elevation wins do not store defenseCount")
++  assert_eq(Store:GetCharacter(lordC.id).gora.results[2].famousUpset, false, "CountDefenses does not invent famousUpset")
++  assert_eq(Store:GetCharacter(lordC.id).gora.results[3].famousUpset, true, "a Pope-flagged win is still one defense")
++
++  Store:RecordGoraResult(lordC.id, {
++    opponentId = foe.id,
++    ruling = "void",
++  }, 8300)
++  Store:RecordGoraResult(lordC.id, {
++    opponentId = foe.id,
++    ruling = "free",
++    text = "rematch at the Pope's pleasure",
++  }, 8310)
++  assert_eq(Store:CountDefenses(lordC.id), 2, "void and free after elevation are not defenses")
++  assert_eq(Store:GetCharacter(lordC.id).gora.results[4].won, nil, "void has no won flag")
++  assert_eq(Store:GetCharacter(lordC.id).gora.results[5].won, nil, "free has no won flag")
++
++  Store:RecordGoraResult(lordC.id, {
++    opponentId = foe.id,
++    ruling = "victor",
++    won = false,
++  }, 8320)
++  assert_eq(Store:CountDefenses(lordC.id), 2, "a post-elevation loss is not a defense")
++
++  Store:RecordGoraResult(lordC.id, {
++    opponentId = foe.id,
++    ruling = "cowardice",
++    won = true,
++  }, 8400)
++  assert_eq(Store:CountDefenses(lordC.id), 3, "Cowardice on the Lord with won == true is a defense")
++  assert_eq(Store:GetCharacter(lordC.id).gora.results[7].ruling, "cowardice", "the counted cowardice row keeps its ruling")
++  assert_eq(Store:GetCharacter(lordC.id).gora.results[7].won, true, "the counted cowardice row keeps won == true")
++  assert_eq(Store:GetCharacter(lordC.id).gora.defenses, nil, "cowardice defense does not write gora.defenses")
++
++  Store:SetRank(lordH.id, 3, 8500)
++  assert_eq(Store:GetHuman(lordH.id).rankId, 3, "rank may leave Lord")
++  assert_eq(Store:GetHuman(lordH.id).elevationAt, 8100, "leaving Lord keeps elevationAt")
++  assert_eq(Store:CountDefenses(lordC.id), 3, "leaving Lord does not erase derived defenses")
++
++  assert_eq(Store:CountDefenses(unlinked.id), 0, "unlinked character is 0")
++  assert_eq(Store:CountDefenses(99), 0, "unknown character id is 0")
++  assert_eq(Store:CountDefenses("lordalt"), 0, "a name string is 0")
++  assert_eq(Store:CountDefenses(nil), 0, "nil id is 0")
++  assert_eq(Store:CountDefenses(0), 0, "id 0 is 0")
++
++  local snap = Store:Snapshot()
++  assert_eq(snap.characters[1].gora.defenses, nil, "Snapshot still strips defenses")
++  assert_eq(snap.humans[1].elevationAt, 8100, "Snapshot still keeps elevationAt")
++  reset()
++  assert_eq(Store:Restore(snap), true, "Restore accepts the CountDefenses snapshot")
++  assert_eq(Store:CountDefenses(lordC.id), 3, "Restore still derives defenses from results + elevationAt")
++  assert_eq(Store:GetCharacter(lordC.id).gora.defenses, nil, "Restore still strips gora.defenses")
++end
++runCountDefenses()
++
++--------------------------------------------------------------------------------
+ -- Banned product: no Grant, standing, points, Prophet, Director, Archive codec
+ --------------------------------------------------------------------------------
+ assert_eq(Store.Grant, nil, "no Grant")

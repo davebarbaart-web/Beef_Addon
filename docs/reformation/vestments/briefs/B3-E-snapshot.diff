@@ -1,0 +1,110 @@
+diff --git a/addon/ChurchOfBeef/Net/BeefNet.lua b/addon/ChurchOfBeef/Net/BeefNet.lua
+--- a/addon/ChurchOfBeef/Net/BeefNet.lua
++++ b/addon/ChurchOfBeef/Net/BeefNet.lua
+@@ -12,7 +12,7 @@
+ -- INPUT is live only for favor whisper-to-Pope. Petition and confession stay
+ -- unknown. Outbound STATE / SNAPSHOT / DECREE send only if the local player is
+ -- a registered Pope (always false until the #8 list — do not code it).
+--- SendFavor is congregation whisper and is not Pope-gated.
++-- SendFavor and RequestSnapshot are congregation whisper and are not Pope-gated.
+ --
+ -- Classic+ port notes: the client APIs read here are behind type() guards and listed
+ -- below, so a host that renames one degrades to "cannot send" instead of erroring on
+@@ -385,6 +385,26 @@
+     return false, err
+   end
+   return self:_TransmitWhisper(payload, target)
+ end
++
++-- Congregation → Pope. Not Pope-gated. Caller supplies the whisper target.
++-- Do not look up a Pope name.
++function Net:RequestSnapshot(target, nowSeconds)
++  if type(target) ~= "string" or target == "" then
++    return false, "no target"
++  end
++  local payload, err
++  if COB.Snapshot and COB.Snapshot.Request then
++    payload, err = COB.Snapshot:Request()
++  elseif COB.Codec and COB.Codec.EncodeSnapshot then
++    payload, err = COB.Codec:EncodeSnapshot({ role = "request" })
++  else
++    return false, "no codec"
++  end
++  if not payload then
++    return false, err
++  end
++  return self:_TransmitWhisper(payload, target)
++end
+ 
+ --------------------------------------------------------------------------------
+ -- Inbound
+ --------------------------------------------------------------------------------
+
+diff --git a/tests/test_net_v2.lua b/tests/test_net_v2.lua
+--- a/tests/test_net_v2.lua
++++ b/tests/test_net_v2.lua
+@@ -196,6 +196,7 @@
+ assert_eq(type(Net.SendSnapshot), "function", "SendSnapshot exists")
+ assert_eq(type(Net.SendDecree), "function", "SendDecree exists")
+ assert_eq(type(Net.SendFavor), "function", "SendFavor exists")
++assert_eq(type(Net.RequestSnapshot), "function", "RequestSnapshot exists")
+ assert_eq(type(Net.OnAddonMessage), "function", "OnAddonMessage stays")
+ 
+ assert_eq(Net.SendSuggestion, nil, "SUGGESTION send is gone")
+@@ -520,6 +521,55 @@
+ assert_eq(noTgtWhy, "no target", "SendFavor names the missing target")
+ 
+ assert_eq(Runtime:Snapshot().state, "QUIET", "outbound gates do not change Runtime")
++
++--------------------------------------------------------------------------------
++-- Outbound RequestSnapshot: congregation whisper. Not Pope-gated.
++--------------------------------------------------------------------------------
++reset()
++assert_eq(Sender:IsRegisteredPope(Net:PlayerName()), false, "local player is not a registered Pope")
++assert_eq(COB.Popes, nil, "empty Popes list — RequestSnapshot does not invent one")
++
++local snapAskOk, snapAskWhy = Net:RequestSnapshot()
++assert_eq(snapAskOk, false, "RequestSnapshot without target fails")
++assert_eq(snapAskWhy, "no target", "RequestSnapshot names the missing target")
++assert_eq(#wire, 0, "RequestSnapshot without target does not whisper")
++assert_eq(sent, 0, "RequestSnapshot without target does not SendAddonMessage")
++assert_eq(#Net.queue, 0, "RequestSnapshot without target does not enqueue")
++
++snapAskOk, snapAskWhy = Net:RequestSnapshot("")
++assert_eq(snapAskOk, false, "RequestSnapshot empty target fails")
++assert_eq(snapAskWhy, "no target", "RequestSnapshot empty target is missing")
++
++snapAskOk, snapAskWhy = Net:RequestSnapshot("Steakina")
++assert_eq(snapAskOk, true, "RequestSnapshot with a target whispers")
++assert_eq(snapAskWhy, nil, "RequestSnapshot is not Pope-gated")
++assert_eq(#wire, 1, "RequestSnapshot whispers once")
++assert_eq(wire[1].channel, "WHISPER", "RequestSnapshot is whisper")
++assert_eq(wire[1].target, "Steakina", "RequestSnapshot uses the given target")
++assert_eq(wire[1].payload, Snapshot:Request(), "RequestSnapshot body is Snapshot:Request")
++assert_eq(wire[1].payload, "1:SNAPSHOT:request", "RequestSnapshot encodes request role only")
++assert_eq(sent, 1, "RequestSnapshot SendAddonMessage once")
++assert_eq(#Net.queue, 0, "RequestSnapshot does not enqueue on GUILD")
++
++local stillBlocked, stillWhy = Net:SendState({
++  eventId = 1,
++  state = "ASSEMBLY",
++  sequence = 1,
++})
++assert_eq(stillBlocked, false, "empty Popes list still blocks SendState")
++assert_eq(stillWhy, "not a registered pope", "SendState stays Pope-gated after RequestSnapshot")
++assert_eq(#Net.queue, 0, "SendState still does not enqueue")
++
++local stillDec, stillDecWhy = Net:SendDecree({ line = "Gather at the Pit" })
++assert_eq(stillDec, false, "SendDecree stays Pope-gated")
++assert_eq(stillDecWhy, "not a registered pope", "SendDecree names the local Pope gate")
++
++local stillSnap, stillSnapWhy = Net:SendSnapshot({ role = "request" }, "Steakina")
++assert_eq(stillSnap, false, "SendSnapshot request stays Pope-gated")
++assert_eq(stillSnapWhy, "not a registered pope", "SendSnapshot is not RequestSnapshot")
++
++assert_eq(Runtime:Snapshot().state, "QUIET", "RequestSnapshot does not change Runtime")
++assert_eq(Net.LookupPope, nil, "RequestSnapshot does not grow a Pope-name lookup")
+ 
+ --------------------------------------------------------------------------------
+ -- Unstubbed inbound DECREE: IsRegisteredPope is false. Do not Set. Do not Restore.
+ --------------------------------------------------------------------------------

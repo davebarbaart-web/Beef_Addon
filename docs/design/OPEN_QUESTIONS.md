@@ -19,7 +19,11 @@ Resolved by Design Lead 2026-08-14 (`GATE1_DESIGN_LEAD_DIRECTIVE.md` §4):
 
 9. **Gora “defense”:** a victory by a sitting Beef Lord in a sanctioned Beef Gora fought after their elevation. Derived statistic from the character Gora record plus elevation timestamp — not a title-defense system. Draws/Voids are not defenses; opponent Cowardice Recorded is a defense. Phase 2 store must timestamp elevations.
 
-10. **Free ruling vs Store `won`:** `Store:RecordGoraResult` requires `won` for every non-void ruling, including `free`. Lane C `FreeRuling` therefore writes `won = false` on both characters, which increments two losses. Bible §10.8 names a free ruling as any other Pope judgment — it does not say whether that is a win, a loss, or neither. Do not invent a fifth outcome or a silent Void.
+Resolved by David 2026-08-18 (`docs/reformation/CONTINUE_2026-08-18.md`):
+
+10. **Free ruling vs Store `won`:** ~~`Store:RecordGoraResult` requires `won` for every non-void ruling, including `free`, so `FreeRuling` writes `won = false` on both characters — two losses.~~ **Ruled: a FREE RULING records the Pope's ruling text in the bout record and ceremony log and writes no win/loss to either character's Gora record.** Not a fifth W/L outcome and not a silent Void: the bout is recorded, sealed, and searchable; the tally is simply untouched. Store must accept a free ruling without a `won` field.
+
+12. **Favor INPUT transport:** the Bible names congregation inputs "to Pope console only" (§18.5, §13.4) and Phase 3 codecs include INPUT, but the transport was deliberately unspecified. **Ruled by David 2026-08-18: favor picks travel as INPUT whisper-to-Pope on the kept BeefNet transport** (mirror of SNAPSHOT's whisper path). The Pope's client tallies; the split reaches the congregation only via STATE when the Pope's per-event display toggle is on (§10.6). Still banned regardless of transport: favor history, streaks, accuracy records, favor economy, wagering.
 
 Phase 0 process notes (not product):
 

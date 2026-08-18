@@ -1,0 +1,123 @@
+diff --git a/addon/ChurchOfBeef/Core/Gora.lua b/addon/ChurchOfBeef/Core/Gora.lua
+--- a/addon/ChurchOfBeef/Core/Gora.lua
++++ b/addon/ChurchOfBeef/Core/Gora.lua
+@@ -378,6 +378,9 @@
+   local loserId = otherFighter(self.sanctioned, winnerId)
+   if not loserId then return nil, "winner is not a fighter" end
+   local ok, err = writeBoth(winnerId, loserId, "victor", true, false)
+   if not ok then return nil, err end
++  if COB.Store.AppendCeremony then
++    COB.Store:AppendCeremony("victor", { winnerId, loserId }, resolveTime())
++  end
+   clearLive(self)
+   return { ruling = "victor", winnerId = winnerId }
+ end
+@@ -389,6 +392,9 @@
+   local otherId = otherFighter(self.sanctioned, fleerId)
+   if not otherId then return nil, "fleer is not a fighter" end
+   local ok, err = writeBoth(fleerId, otherId, "cowardice", false, true)
+   if not ok then return nil, err end
++  if COB.Store.AppendCeremony then
++    COB.Store:AppendCeremony("cowardice", { fleerId, otherId }, resolveTime())
++  end
+   clearLive(self)
+   return { ruling = "cowardice", fleerId = fleerId }
+ end
+@@ -399,6 +405,9 @@
+   if not self.sanctioned then return nil, "no sanctioned gora" end
+   local a, b = self.sanctioned.fighterA, self.sanctioned.fighterB
+   local ok, err = writeBoth(a, b, "void")
+   if not ok then return nil, err end
++  if COB.Store.AppendCeremony then
++    COB.Store:AppendCeremony("void", { a, b }, resolveTime())
++  end
+   clearLive(self)
+   return { ruling = "void" }
+ end
+diff --git a/tests/test_gora.lua b/tests/test_gora.lua
+--- a/tests/test_gora.lua
++++ b/tests/test_gora.lua
+@@ -402,11 +402,18 @@
+ assert_eq(Gora:GetSanctioned(), nil, "the live pair clears after the ruling")
+ assert_eq(Gora:GetProposal(), nil, "the proposal clears after the Pope rules")
+ assert_eq(Store:GetCharacter(a.id).gora.results[1].famousUpset, false, "Famous Upsets are not computed")
++assert_eq(#Store:GetCeremonyLog(), 1, "DeclareVictor appends one ceremony row")
++assert_eq(Store:GetCeremonyLog()[1].type, "victor", "DeclareVictor appends a victor ceremony row")
++assert_eq(Store:GetCeremonyLog()[1].participantIds[1], a.id, "victor ceremony log names the winner")
++assert_eq(Store:GetCeremonyLog()[1].participantIds[2], b.id, "victor ceremony log names the loser")
++assert_eq(Store:GetCeremonyLog()[1].text, nil, "victor ceremony row has no text")
++assert_eq(Store:GetCeremonyLog()[1].scripture, nil, "victor ceremony row has no scripture")
+ 
+ local twice, twiceErr = Gora:DeclareVictor(a.id)
+ assert_eq(twice, nil, "DeclareVictor without a live pair is refused")
+ assert_true(type(twiceErr) == "string", "double DeclareVictor returns an error string")
+ assert_eq(Store:GetCharacter(a.id).gora.wins, 1, "a refused second ruling does not write again")
++assert_eq(#Store:GetCeremonyLog(), 1, "a refused second ruling does not append again")
+ 
+ a, b = livePair()
+ Gora:Sanction(a.id, b.id)
+@@ -415,8 +422,22 @@
+ assert_eq(notFighter, nil, "DeclareVictor refuses a winner who is not in the pair")
+ assert_true(type(notFighterErr) == "string", "outsider winner returns an error string")
+ assert_eq(Store:GetCharacter(a.id).gora.wins, 0, "refused DeclareVictor does not write Store")
+ assert_eq(Gora:GetSanctioned().fighterA, a.id, "refused DeclareVictor leaves the live pair")
++assert_eq(#Store:GetCeremonyLog(), 0, "refused DeclareVictor does not append ceremony")
++
++a, b = livePair()
++Gora:Sanction(a.id, b.id)
++local keepAppend = Store.AppendCeremony
++Store.AppendCeremony = nil
++local missingLog, missingLogErr = Gora:DeclareVictor(a.id)
++Store.AppendCeremony = keepAppend
++assert_true(missingLog ~= nil, "DeclareVictor still records when AppendCeremony is missing")
++assert_eq(missingLogErr, nil, "missing AppendCeremony is not an error")
++assert_eq(Store:GetCharacter(a.id).gora.wins, 1, "missing AppendCeremony still writes the bout")
++assert_eq(#Store:GetCeremonyLog(), 0, "missing AppendCeremony leaves the log empty")
++assert_eq(Gora:GetSanctioned(), nil, "missing AppendCeremony still clears the pair")
++assert_eq(Store:GetCharacter(a.id).gora.results[1].famousUpset, false, "missing AppendCeremony does not compute Famous Upsets")
+ 
+ --------------------------------------------------------------------------------
+ -- CowardiceRecorded writes Store for both. Fleer lost. Ruling is cowardice.
+@@ -433,6 +454,12 @@
+ assert_eq(Store:GetCharacter(a.id).gora.results[1].ruling, "cowardice", "standing result stores the same ruling")
+ assert_eq(Store:GetCharacter(a.id).gora.results[1].won, true, "standing result is a win")
+ assert_eq(Gora:GetSanctioned(), nil, "CowardiceRecorded clears the live pair")
++assert_eq(#Store:GetCeremonyLog(), 1, "CowardiceRecorded appends one ceremony row")
++assert_eq(Store:GetCeremonyLog()[1].type, "cowardice", "CowardiceRecorded appends a cowardice ceremony row")
++assert_eq(Store:GetCeremonyLog()[1].participantIds[1], b.id, "cowardice ceremony log names the fleer")
++assert_eq(Store:GetCeremonyLog()[1].participantIds[2], a.id, "cowardice ceremony log names the other fighter")
++assert_eq(Store:GetCeremonyLog()[1].text, nil, "cowardice ceremony row has no text")
++assert_eq(Store:GetCeremonyLog()[1].scripture, nil, "cowardice ceremony row has no scripture")
+ 
+ a, b = livePair()
+ Gora:Sanction(a.id, b.id)
+@@ -440,6 +467,7 @@
+ assert_eq(badFlee, nil, "CowardiceRecorded refuses a fleer who is not in the pair")
+ assert_true(type(badFleeErr) == "string", "outsider fleer returns an error string")
+ assert_eq(Store:GetCharacter(a.id).gora.losses, 0, "refused CowardiceRecorded does not write")
++assert_eq(#Store:GetCeremonyLog(), 0, "refused CowardiceRecorded does not append ceremony")
+ 
+ --------------------------------------------------------------------------------
+ -- Void writes Store for both. No win, no loss, no shame increment.
+@@ -459,6 +487,12 @@
+ assert_eq(Store:GetCharacter(a.id).gora.results[1].won, nil, "Void has no won flag")
+ assert_eq(Store:GetCharacter(a.id).gora.headToHeads[1].fights, 1, "Void still happened as a sanctioned fight")
+ assert_eq(Gora:GetSanctioned(), nil, "Void clears the live pair")
++assert_eq(#Store:GetCeremonyLog(), 1, "Void appends one ceremony row")
++assert_eq(Store:GetCeremonyLog()[1].type, "void", "Void appends a void ceremony row")
++assert_eq(Store:GetCeremonyLog()[1].participantIds[1], a.id, "void ceremony log names fighter A")
++assert_eq(Store:GetCeremonyLog()[1].participantIds[2], b.id, "void ceremony log names fighter B")
++assert_eq(Store:GetCeremonyLog()[1].text, nil, "void ceremony row has no text")
++assert_eq(Store:GetCeremonyLog()[1].scripture, nil, "void ceremony row has no scripture")
+ 
+ --------------------------------------------------------------------------------
+ -- FreeRuling writes Store for both. No win/loss. Text is free text, not a new enum.
+@@ -522,6 +556,7 @@
+ a, b = livePair()
+ local noPair, noPairErr = Gora:Void()
+ assert_eq(noPair, nil, "Void without a sanctioned pair is refused")
+ assert_true(type(noPairErr) == "string", "unsanctioned Void returns an error string")
++assert_eq(#Store:GetCeremonyLog(), 0, "unsanctioned Void does not append ceremony")
+ 
+ --------------------------------------------------------------------------------
+ -- Favor tally: one standing pick per member. Memory only. Cleared on Sanction / expire.

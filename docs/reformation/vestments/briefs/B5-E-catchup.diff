@@ -1,0 +1,255 @@
+diff --git a/addon/ChurchOfBeef/UI/Inputs.lua b/addon/ChurchOfBeef/UI/Inputs.lua
+--- a/addon/ChurchOfBeef/UI/Inputs.lua
++++ b/addon/ChurchOfBeef/UI/Inputs.lua
+@@ -1,9 +1,10 @@
+ ChurchOfBeef = ChurchOfBeef or {}
+ local COB = ChurchOfBeef
+ 
+--- Event Mode congregation input (Bible §13.1, §18.5, §19.1).
++-- Event Mode congregation input (Bible §13.1, §18.5, §19.1, §20.3).
+ -- Display terminals plus input devices. Inputs never trigger public theater.
+ -- Whisper destination is injected; this file does not look up a Pope name.
++-- Catchup calls Net:RequestSnapshot on that target only.
+ -- Stock functional chrome. Quiet Mode: hidden, verbs return false.
+ local Inputs = {
+   MODE = "Event",
+@@ -11,7 +12,7 @@
+ COB.Inputs = Inputs
+ 
+ local FRAME_NAME = "ChurchOfBeefInputs"
+-local WIDTH, HEIGHT = 280, 72
++local WIDTH, HEIGHT = 328, 72
+ local BTN_W, BTN_H = 96, 22
+ local inputTarget = nil
+ local localCharacterId = nil
+@@ -94,6 +95,11 @@
+   end)
+   petition:SetPoint("BOTTOMLEFT", widget, "BOTTOMLEFT", 12, 10)
+ 
++  local catchup = stockButton(widget, "Catch up", function()
++    Inputs:Catchup()
++  end)
++  catchup:SetPoint("BOTTOM", widget, "BOTTOM", 0, 10)
++
+   local confess = stockButton(widget, "Confess", function()
+     Inputs:Confess()
+   end)
+@@ -161,6 +167,20 @@
+   return COB.Net:SendPetition({ characterId = localCharacterId }, inputTarget)
+ end
+ 
++function Inputs:Catchup()
++  if not eventLive() then
++    paintHidden()
++    return false
++  end
++  if type(inputTarget) ~= "string" or inputTarget == "" then
++    return false, "no target"
++  end
++  if not (COB.Net and COB.Net.RequestSnapshot) then
++    return false, "no net"
++  end
++  return COB.Net:RequestSnapshot(inputTarget)
++end
++
+ function Inputs:Confess(text)
+   local ok, why = readyToSend()
+   if not ok then return false, why end
+diff --git a/tests/test_inputs.lua b/tests/test_inputs.lua
+--- a/tests/test_inputs.lua
++++ b/tests/test_inputs.lua
+@@ -1,7 +1,8 @@
+--- Event congregation Petition / Confess (B4-G). Isolated: wow_ui_stub +
+--- Common + Runtime + Inputs. Stub COB.Net.SendPetition / SendConfession.
+--- Event Mode only. No Pope-name lookup. No Gora:Petition. No Proclaim.
+--- No sound. No SendChatMessage. Isolation wrap. No TOC / bootstrap / run.lua.
++-- Event congregation Petition / Confess / Catchup (B4-G, B5-E). Isolated:
++-- wow_ui_stub + Common + Runtime + Inputs. Stub COB.Net.SendPetition /
++-- SendConfession / RequestSnapshot. Event Mode only. No Pope-name lookup.
++-- No Gora:Petition. No Proclaim. No sound. No SendChatMessage. Isolation
++-- wrap. No TOC / bootstrap / run.lua.
+ package.path = package.path .. ";./tests/?.lua"
+ 
+ local stub = require("wow_ui_stub")
+@@ -49,12 +50,14 @@
+ 
+ local sentPetitions = {}
+ local sentConfessions = {}
++local sentSnapshots = {}
+ local goraCalls = 0
+ local proclaimCalls = 0
+ 
+ local function stubNet()
+   sentPetitions = {}
+   sentConfessions = {}
++  sentSnapshots = {}
+   COB.Net = {
+     SendPetition = function(_, fields, target)
+       sentPetitions[#sentPetitions + 1] = { fields = fields, target = target }
+@@ -62,6 +65,10 @@
+     end,
+     SendConfession = function(_, fields, target)
+       sentConfessions[#sentConfessions + 1] = { fields = fields, target = target }
++      return true
++    end,
++    RequestSnapshot = function(_, target)
++      sentSnapshots[#sentSnapshots + 1] = { target = target }
+       return true
+     end,
+   }
+@@ -105,6 +112,7 @@
+ assert_eq(type(Inputs.SetLocalCharacterId), "function", "SetLocalCharacterId stores the local id")
+ assert_eq(type(Inputs.Petition), "function", "Petition is the congregation verb")
+ assert_eq(type(Inputs.Confess), "function", "Confess is the congregation verb")
++assert_eq(type(Inputs.Catchup), "function", "Catchup is the congregation snapshot verb")
+ assert_eq(type(Inputs.Show), "function", "Show needs Event Mode")
+ assert_eq(type(Inputs.Hide), "function", "Hide dismisses the surface")
+ assert_eq(type(Inputs.Refresh), "function", "Refresh paints from Runtime")
+@@ -179,9 +187,11 @@
+ assert_true(src:find("InputBoxTemplate", 1, true) ~= nil, "confession box uses InputBoxTemplate")
+ assert_true(src:find('"Petition"', 1, true) ~= nil, "Petition label is stock")
+ assert_true(src:find('"Confess"', 1, true) ~= nil, "Confess label is stock")
++assert_true(src:find('"Catch up"', 1, true) ~= nil, "Catch up label is stock")
++assert_true(src:find("RequestSnapshot", 1, true) ~= nil, "Catchup calls RequestSnapshot")
+ 
+ --------------------------------------------------------------------------------
+--- Init is hidden in Quiet. Stock Petition / Confess. Optional EditBox.
++-- Init is hidden in Quiet. Stock Petition / Confess / Catch up. Optional EditBox.
+ --------------------------------------------------------------------------------
+ reset()
+ assert_eq(Runtime:Snapshot().state, "QUIET", "fresh runtime is QUIET")
+@@ -198,10 +208,13 @@
+ 
+ local petitionBtn = buttonFor("Petition")
+ local confessBtn = buttonFor("Confess")
++local catchupBtn = buttonFor("Catch up")
+ assert_true(petitionBtn ~= nil, "Petition button exists")
+ assert_true(confessBtn ~= nil, "Confess button exists")
++assert_true(catchupBtn ~= nil, "Catch up button exists")
+ assert_eq(petitionBtn._template, "UIPanelButtonTemplate", "Petition is a stock panel button")
+ assert_eq(confessBtn._template, "UIPanelButtonTemplate", "Confess is a stock panel button")
++assert_eq(catchupBtn._template, "UIPanelButtonTemplate", "Catch up is a stock panel button")
+ assert_eq(buttonFor("Proclaim"), nil, "no Proclaim chrome")
+ assert_eq(buttonFor("SANCTION"), nil, "no SANCTION chrome")
+ local box = editBox()
+@@ -221,6 +234,9 @@
+ ok, err = Inputs:Confess("forgive me")
+ assert_eq(ok, false, "Quiet Confess is false")
+ assert_eq(#sentConfessions, 0, "Quiet Confess does not send")
++ok, err = Inputs:Catchup()
++assert_eq(ok, false, "Quiet Catchup is false")
++assert_eq(#sentSnapshots, 0, "Quiet Catchup does not send")
+ assert_eq(sounds, 0, "Quiet plays no sound")
+ assert_eq(#stub.chat, 0, "Quiet does not SendChatMessage")
+ assert_eq(#stub.addonMessages, 0, "Quiet does not SendAddonMessage")
+@@ -240,17 +256,29 @@
+ assert_eq(ok, false, "Petition without target is refused")
+ assert_eq(err, "no target", "missing target names the error")
+ assert_eq(#sentPetitions, 0, "missing target does not send")
++ok, err = Inputs:Catchup()
++assert_eq(ok, false, "Catchup without target is refused")
++assert_eq(err, "no target", "Catchup missing target names the error")
++assert_eq(#sentSnapshots, 0, "Catchup missing target does not send")
+ 
+ Inputs:SetInputTarget("")
+ ok, err = Inputs:Petition()
+ assert_eq(ok, false, "empty target is refused")
+ assert_eq(err, "no target", "empty target is no target")
++ok, err = Inputs:Catchup()
++assert_eq(ok, false, "Catchup empty target is refused")
++assert_eq(err, "no target", "Catchup empty target is no target")
+ 
+ Inputs:SetInputTarget("Host")
+ ok, err = Inputs:Petition()
+ assert_eq(ok, false, "Petition without character is refused")
+ assert_eq(err, "no character", "missing character names the error")
+ assert_eq(#sentPetitions, 0, "missing character does not send")
++ok, err = Inputs:Catchup()
++assert_eq(ok, true, "Catchup does not require a character id")
++assert_eq(err, nil, "successful Catchup has no error")
++assert_eq(#sentSnapshots, 1, "Catchup without character still requests")
++assert_eq(sentSnapshots[1].target, "Host", "Catchup without character uses the target")
+ 
+ Inputs:SetLocalCharacterId(nil)
+ ok, err = Inputs:Confess("forgive me")
+@@ -267,6 +295,7 @@
+ 
+ --------------------------------------------------------------------------------
+ -- StartEvent + target + id → Petition spies Net. Confess spies text.
++-- Catchup spies the injected target.
+ --------------------------------------------------------------------------------
+ reset()
+ Runtime:StartEvent()
+@@ -284,6 +313,12 @@
+ assert_eq(sentPetitions[1].fields.kind, nil, "Inputs does not invent a kind field")
+ assert_eq(sentPetitions[1].fields.opponent, nil, "Inputs does not name an opponent")
+ 
++ok, err = Inputs:Catchup()
++assert_eq(ok, true, "Catchup sends when target is present")
++assert_eq(err, nil, "successful Catchup has no error")
++assert_eq(#sentSnapshots, 1, "RequestSnapshot is called once")
++assert_eq(sentSnapshots[1].target, "Host", "RequestSnapshot uses SetInputTarget")
++
+ ok, err = Inputs:Confess("forgive me")
+ assert_eq(ok, true, "Confess sends when target, id, and text are present")
+ assert_eq(err, nil, "successful Confess has no error")
+@@ -304,8 +339,10 @@
+ 
+ petitionBtn = buttonFor("Petition")
+ confessBtn = buttonFor("Confess")
++catchupBtn = buttonFor("Catch up")
+ sentPetitions = {}
+ sentConfessions = {}
++sentSnapshots = {}
+ assert_eq(stub.fire(petitionBtn, "OnClick"), true, "Petition button is wired")
+ assert_eq(#sentPetitions, 1, "Petition click spies Net")
+ assert_eq(sentPetitions[1].target, "Host", "Petition click uses the stored target")
+@@ -314,6 +351,9 @@
+ assert_eq(stub.fire(confessBtn, "OnClick"), true, "Confess button is wired")
+ assert_eq(#sentConfessions, 1, "Confess click spies Net")
+ assert_eq(sentConfessions[1].fields.text, "from the button", "Confess click reads the box")
++assert_eq(stub.fire(catchupBtn, "OnClick"), true, "Catch up button is wired")
++assert_eq(#sentSnapshots, 1, "Catch up click spies Net")
++assert_eq(sentSnapshots[1].target, "Host", "Catch up click uses the stored target")
+ 
+ assert_eq(sounds, 0, "sending plays no sound")
+ assert_eq(#stub.chat, 0, "sending does not SendChatMessage")
+@@ -334,6 +374,9 @@
+ assert_eq(#sentPetitions, 0, "missing Runtime does not send")
+ ok, err = Inputs:Confess("x")
+ assert_eq(ok, false, "missing Runtime Confess is false")
++ok, err = Inputs:Catchup()
++assert_eq(ok, false, "missing Runtime Catchup is false")
++assert_eq(#sentSnapshots, 0, "missing Runtime does not request a snapshot")
+ COB.Runtime = savedRuntime
+ assert_eq(Inputs:Show(), true, "restored Runtime Show is true")
+ 
+@@ -344,6 +387,9 @@
+ ok, err = Inputs:Confess("x")
+ assert_eq(ok, false, "missing Net Confess is false")
+ assert_eq(err, "no net", "missing Net Confess names the error")
++ok, err = Inputs:Catchup()
++assert_eq(ok, false, "missing Net Catchup is false")
++assert_eq(err, "no net", "missing Net Catchup names the error")
+ stubNet()
+ 
+ COB.Gora = {
+@@ -361,6 +407,9 @@
+ assert_eq(proclaimCalls, 0, "Petition does not Proclaim")
+ assert_eq(Inputs:Confess("still private"), true, "Confess still sends with a toast spy present")
+ assert_eq(proclaimCalls, 0, "Confess does not Proclaim")
++assert_eq(Inputs:Catchup(), true, "Catchup still sends with a Gora spy present")
++assert_eq(goraCalls, 0, "Catchup does not call Gora locally")
++assert_eq(proclaimCalls, 0, "Catchup does not Proclaim")
+ COB.Gora = nil
+ COB.Toasts = nil
+ 
+@@ -403,6 +452,8 @@
+ assert_eq(Inputs:Show(), false, "Quiet Show is false after EndEvent")
+ assert_eq(Inputs:Petition(), false, "Quiet Petition is false after EndEvent")
+ assert_eq(#sentPetitions, 0, "Quiet after EndEvent does not send")
++assert_eq(Inputs:Catchup(), false, "Quiet Catchup is false after EndEvent")
++assert_eq(#sentSnapshots, 0, "Quiet after EndEvent does not request a snapshot")
+ 
+ --------------------------------------------------------------------------------
+ -- ResetForTests is inert outside the harness

@@ -1,0 +1,196 @@
+diff --git a/tests/test_console.lua b/tests/test_console.lua
+--- a/tests/test_console.lua
++++ b/tests/test_console.lua
+@@ -13,7 +13,8 @@
+ -- Confession rows click-select and mute called token + B21-A
+ -- GetPresence fail-opens Store names until Roster is complete + B22-A
+ -- Recommendation paints named-opponent "  names  " + B23-A
+--- playCue no-ops when Toasts.Proclaim exists).
++-- playCue no-ops when Toasts.Proclaim exists + B24-A
++-- lastRecommendation clears on successful StartEvent / EndEvent).
+ -- Isolated: wow_ui_stub + Common + Ranks + Runtime + Store + Gora + Knighting
+ -- + Sender + Decree + Console. Confession is stubbed when painted; this file
+ -- does not load Confession.lua. Knighting GetLine/Enqueue/Skip are stubbed
+@@ -3537,7 +3538,148 @@
+ assert_eq(COB.Popes, nil, "still no Pope list after B23-A")
+ end
+ runB23A()
++
++--------------------------------------------------------------------------------
++-- B24-A: lastRecommendation clears on successful StartEvent / EndEvent
++-- before after() so Refresh paints empty. Failed Start (already live)
++-- / failed End keep the table. Continue does not clear. Recommend still
++-- stores namedOpponent. SaveNote nil. No DEMANDED.
++-- Nested inside runB8E so the main chunk stays under Lua 5.1's 200-local cap.
++--------------------------------------------------------------------------------
++local function runB24A()
++reset()
++Console:Init()
++assert_eq(Console.SaveNote, nil, "SaveNote stays nil")
++assert_eq(Console.GetNotes, nil, "no notes table")
++assert_eq(Console.CopyCeremonySummary, nil, "no post-show ceremony summary")
++assert_eq(Console.CeremonySummary, nil, "no ceremony summary")
++assert_eq(findButton(frame, "SUMMON THE FAITHFUL"), nil, "no SUMMON chrome")
++assert_eq(findButton(frame, "COPY SUMMARY"), nil, "no ceremony-summary chrome")
++assert_eq(findButton(frame, "WHISPER ALL"), nil, "no WHISPER ALL chrome")
++assert_eq(findButton(frame, "RSVP"), nil, "no RSVP chrome")
++assert_true(frame.Recommendation ~= nil, "recommendation line exists")
++assert_eq(frame.Recommendation._type, "FontString", "recommendation is a FontString")
++
++local savedPred = Sender.IsRegisteredPope
++Sender.IsRegisteredPope = function() return true end
++
++reset()
++Console:Init()
++local nameA = Store:CreateCharacter({ name = "Chuckroast", class = "Warrior", level = 70 })
++local nameB = Store:CreateCharacter({ name = "Tendermage", class = "Mage", level = 68 })
++assert_true(Console:StartEvent() ~= nil, "StartEvent for named Recommend")
++assert_true(Gora:Petition(nameB.id, nameA.id) ~= nil, "named petition lands")
++COB.Roster = {
++  ready = true,
++  members = {
++    chuckroast = { name = "Chuckroast", guildRankIndex = 4 },
++    tendermage = { name = "Tendermage", guildRankIndex = 5 },
++  },
++}
++local recNamed = Console:Recommend()
++assert_true(recNamed ~= nil, "Recommend uses a named opponent")
++assert_eq(recNamed.namedOpponent, true, "Gora:Recommend flags the named pair")
++local namedText = frame.Recommendation:GetText() or ""
++assert_true(namedText:find("  names  ", 1, true) ~= nil,
++  "named Recommend paints the names token")
++assert_true(namedText:find("Chuckroast", 1, true) ~= nil,
++  "named Recommend keeps name A")
++assert_true(namedText:find("Tendermage", 1, true) ~= nil,
++  "named Recommend keeps name B")
++assert_eq(namedText:find("DEMANDED", 1, true), nil, "named Recommend has no DEMANDED")
++
++local failStart = Console:StartEvent()
++assert_eq(failStart, nil, "StartEvent refuses when already live")
++Console:Refresh()
++assert_eq(frame.Recommendation:GetText() or "", namedText,
++  "failed StartEvent while live does not clear Recommendation")
++
++assert_true(Console:OpenRite("Gora") ~= nil, "OpenRite for Continue pin")
++assert_true(Console:CloseRite() ~= nil, "CloseRite reaches CONSEQUENCE")
++assert_true(Console:Continue() ~= nil, "Continue returns to ASSEMBLY")
++Console:Refresh()
++assert_eq(frame.Recommendation:GetText() or "", namedText,
++  "Continue does not clear Recommendation")
++
++assert_true(Console:OpenRite("Gora") ~= nil, "OpenRite for failed End pin")
++local failEnd = Console:EndEvent()
++assert_eq(failEnd, nil, "EndEvent refuses from RITE")
++Console:Refresh()
++assert_eq(frame.Recommendation:GetText() or "", namedText,
++  "failed EndEvent does not clear Recommendation")
++assert_true(Console:CloseRite() ~= nil, "CloseRite after failed End")
++
++local ended = Console:EndEvent()
++assert_true(ended ~= nil, "EndEvent returns to QUIET")
++Console:Refresh()
++assert_eq(frame.Recommendation:GetText() or "", "",
++  "EndEvent then Refresh paints empty Recommendation")
++assert_eq((frame.Recommendation:GetText() or ""):find("  names  ", 1, true), nil,
++  "EndEvent Recommendation has no names token")
++
++local started = Console:StartEvent()
++assert_true(started ~= nil, "later StartEvent opens a new gathering")
++assert_eq(frame.Recommendation:GetText() or "", "",
++  "later StartEvent still paints empty Recommendation")
++
++assert_true(Gora:Petition(nameB.id, nameA.id) ~= nil, "named petition lands on the next event")
++local recAgain = Console:Recommend()
++assert_true(recAgain ~= nil, "new Recommend reaches Gora")
++assert_eq(recAgain.namedOpponent, true, "new Recommend still stores namedOpponent")
++local againText = frame.Recommendation:GetText() or ""
++assert_true(againText:find("  names  ", 1, true) ~= nil,
++  "new Recommend paints the names token again")
++assert_true(againText:find("Chuckroast", 1, true) ~= nil,
++  "new Recommend keeps name A")
++assert_true(againText:find("Tendermage", 1, true) ~= nil,
++  "new Recommend keeps name B")
++
++assert_true(Runtime:EndEvent() ~= nil, "Runtime EndEvent bypasses the desk")
++Console:Refresh()
++assert_eq(frame.Recommendation:GetText() or "", againText,
++  "Runtime EndEvent leaves lastRecommendation")
++assert_true(Console:StartEvent() ~= nil, "StartEvent after a leftover recommendation")
++assert_eq(frame.Recommendation:GetText() or "", "",
++  "successful StartEvent clears leftover Recommendation")
++
++local srcLife = io.open("addon/ChurchOfBeef/UI/Console.lua", "r")
++assert_true(srcLife ~= nil, "Console.lua is readable for B24-A")
++local srcLifeBody = srcLife:read("*a")
++srcLife:close()
++assert_true(srcLifeBody:find("local result, err = COB.Runtime:StartEvent()\n  if result ~= nil then\n    lastRecommendation = nil\n  end\n  return after(self, result, err)", 1, true) ~= nil,
++  "successful StartEvent clears lastRecommendation before after")
++assert_true(srcLifeBody:find("local result, err = COB.Runtime:EndEvent()\n  if result ~= nil then\n    lastRecommendation = nil\n  end\n  return after(self, result, err, nil, true)", 1, true) ~= nil,
++  "successful EndEvent clears lastRecommendation before after")
++assert_true(srcLifeBody:find("local result, err = COB.Runtime:Continue()\n  return after(self, result, err)", 1, true) ~= nil,
++  "Continue does not clear lastRecommendation")
++assert_true(srcLifeBody:find("result.namedOpponent == true", 1, true) ~= nil,
++  "Recommend still stores the namedOpponent flag")
++assert_true(srcLifeBody:find('label = label .. "  names  "', 1, true) ~= nil,
++  "recommendation line still appends the names token")
++assert_eq(srcLifeBody:find("DEMANDED", 1, true), nil, "source must not invent DEMANDED")
++assert_eq(srcLifeBody:find("function Console:SaveNote", 1, true), nil,
++  "source must not define SaveNote")
++assert_eq(srcLifeBody:find("SUMMON THE FAITHFUL", 1, true), nil,
++  "source must not contain SUMMON")
++assert_eq(srcLifeBody:find("Parchment", 1, true), nil, "console stays stock, not parchment")
++assert_eq(srcLifeBody:find("PanelTabButtonTemplate", 1, true), nil,
++  "desks are not collapsed into tabs")
++
++Sender.IsRegisteredPope = savedPred
++assert_eq(Sender:IsRegisteredPope(COB.Group.PlayerName()), false,
++  "B24-A wrapping the predicate does not stub the list true")
++
++assert_eq(Console.SaveNote, nil, "SaveNote stays nil after B24-A")
++if standalone then
++  assert_eq(COB.Archive, nil, "isolation still does not load Archive")
++  assert_eq(COB.UI, nil, "isolation still does not load the Quiet shell")
++  assert_eq(COB.Toasts, nil, "isolation still does not load Toasts")
++  assert_eq(COB.Confession, nil, "isolation still does not load Confession")
+ end
++assert_eq(COB.Popes, nil, "still no Pope list after B24-A")
++end
++runB24A()
++end
+ runB8E()
+ 
+ --------------------------------------------------------------------------------
+diff --git a/addon/ChurchOfBeef/UI/Console.lua b/addon/ChurchOfBeef/UI/Console.lua
+--- a/addon/ChurchOfBeef/UI/Console.lua
++++ b/addon/ChurchOfBeef/UI/Console.lua
+@@ -14,7 +14,9 @@
+ -- on this desk only — never theater. Rows click-select the character; a
+ -- called row appends mute "  called". Dismiss is stock furniture, not a ritual
+ -- plate. Knighting line is a stock list plus Enqueue / Skip furniture.
+--- Recommend proposes a pair and never Sanctions. CallForward marks the inbox
++-- Recommend proposes a pair and never Sanctions. lastRecommendation
++-- clears on successful StartEvent / EndEvent (before after() Refresh);
++-- failed Start / failed End / Continue keep the table. CallForward marks the inbox
+ -- only — no Toasts, chat, or Sound. FlagMoment may read GetSubZoneText when
+ -- location is omitted. GRANT HONORIFIC writes Store:AddHonorific (Pope-authored
+ -- plain text; empty and embedded newline refuse). Recognition Begin / Complete /
+@@ -1440,6 +1442,9 @@
+     return nil, "runtime is not available"
+   end
+   local result, err = COB.Runtime:StartEvent()
++  if result ~= nil then
++    lastRecommendation = nil
++  end
+   return after(self, result, err)
+ end
+ 
+@@ -1518,6 +1523,9 @@
+     return nil, "runtime is not available"
+   end
+   local result, err = COB.Runtime:EndEvent()
++  if result ~= nil then
++    lastRecommendation = nil
++  end
+   return after(self, result, err, nil, true)
+ end
+ 

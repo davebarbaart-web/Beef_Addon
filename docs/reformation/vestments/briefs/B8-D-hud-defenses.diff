@@ -1,0 +1,253 @@
+diff --git a/addon/ChurchOfBeef/UI/Hud.lua b/addon/ChurchOfBeef/UI/Hud.lua
+--- a/addon/ChurchOfBeef/UI/Hud.lua
++++ b/addon/ChurchOfBeef/UI/Hud.lua
+@@ -7,7 +7,9 @@
+ -- from Gora, or congregation broadcast only. Dress is stock iron/parchment
+ -- (QuestBG + WHITE8X8 + tooltip border). Thin parchment fields sit behind
+ -- name+title. Center is a stock ring, not a faction crest. Mute rails are
+--- decorative, not live HP. No sound. No toasts. Cards stay mute.
++-- decorative, not live HP. Defense count is Store:CountDefenses as a mute
++-- integer per fighter; hide when 0 or the method is missing. No sound. No
++-- toasts. Cards stay mute.
+ local Hud = {
+   MODE = "Event",
+ }
+@@ -319,18 +321,40 @@
+   end
+   return nil
+ end
+ 
++local function defenseCount(characterId)
++  if not (COB.Store and type(COB.Store.CountDefenses) == "function") then
++    return nil
++  end
++  local n = COB.Store:CountDefenses(characterId)
++  if type(n) ~= "number" then return nil end
++  local whole = math.floor(n)
++  if whole <= 0 then return nil end
++  return whole
++end
++
+ local function fighterFrom(id)
+   local ch = COB.Store and COB.Store.GetCharacter and COB.Store:GetCharacter(id) or nil
+   if type(ch) ~= "table" then
+     return {
+       id = id,
+       name = "",
+       level = nil,
+       title = nil,
+       wins = 0,
+       losses = 0,
+       nameColor = nil,
++      defenses = defenseCount(id),
+     }
+   end
+   local gora = type(ch.gora) == "table" and ch.gora or {}
+   return {
+     id = id,
+     name = ch.name,
+     class = ch.class,
+     level = ch.level,
+     title = churchTitle(id),
+     wins = gora.wins or 0,
+     losses = gora.losses or 0,
+     nameColor = classColor(ch.class),
++    defenses = defenseCount(id),
+   }
+ end
+ 
+@@ -354,6 +378,21 @@
+   if type(fighter.level) ~= "number" then return "" end
+   return tostring(fighter.level)
+ end
+ 
++local function paintDefense(side, n)
++  local fs = frame["defense" .. side]
++  if not fs then return end
++  tint(fs, MUTED)
++  if type(n) == "number" and n > 0 then
++    fs:SetText(tostring(n))
++    if fs.Show then fs:Show() end
++  else
++    fs:SetText("")
++    if fs.Hide then fs:Hide() end
++  end
++end
++
+ local function paintFighter(side, fighter)
+   local nameFS = frame["name" .. side]
+   local levelFS = frame["level" .. side]
+@@ -367,6 +406,7 @@
+   tint(levelFS, MUTED)
+   tint(titleFS, INK)
+   tint(recordFS, MUTED)
++  paintDefense(side, fighter.defenses)
+   tintRail(frame["rail" .. side], fighter.nameColor)
+ end
+ 
+@@ -381,6 +421,8 @@
+   frame.titleB:SetText("")
+   frame.recordA:SetText("")
+   frame.recordB:SetText("")
++  paintDefense("A", nil)
++  paintDefense("B", nil)
+   if frame.headToHead.Hide then frame.headToHead:Hide() end
+   hideFavorWidgets()
+   frame:Hide()
+@@ -483,6 +525,8 @@
+   widget.levelB = makeLabel(widget, nil, "GameFontNormal", "RIGHT")
+   widget.recordA = makeLabel(widget, nil, "GameFontNormal", "LEFT")
+   widget.recordB = makeLabel(widget, nil, "GameFontNormal", "RIGHT")
++  widget.defenseA = makeLabel(widget, nil, "GameFontNormal", "LEFT")
++  widget.defenseB = makeLabel(widget, nil, "GameFontNormal", "RIGHT")
+   widget.vs = makeLabel(widget, nil, "GameFontNormal", "CENTER")
+   widget.headToHead = makeLabel(widget, nil, "GameFontNormal", "CENTER")
+   widget.favorLabel = makeLabel(widget, nil, "GameFontHighlightSmall", "CENTER")
+@@ -539,6 +583,10 @@
+   widget.levelB:SetPoint("TOPRIGHT", widget.titleB, "BOTTOMRIGHT", 0, -2)
+   widget.recordA:SetPoint("LEFT", widget.levelA, "RIGHT", 8, 0)
+   widget.recordB:SetPoint("RIGHT", widget.levelB, "LEFT", -8, 0)
++  widget.defenseA:SetPoint("LEFT", widget.recordA, "RIGHT", 8, 0)
++  widget.defenseB:SetPoint("RIGHT", widget.recordB, "LEFT", -8, 0)
++  widget.defenseA:Hide()
++  widget.defenseB:Hide()
+   widget.headToHead:SetPoint("BOTTOM", widget, "BOTTOM", 0, 22)
+   widget.headToHead:Hide()
+ 
+diff --git a/tests/test_hud.lua b/tests/test_hud.lua
+--- a/tests/test_hud.lua
++++ b/tests/test_hud.lua
+@@ -1,10 +1,12 @@
+--- Fight HUD (Wire W-F favor + Vestments V-D dress + B4-F name fields).
+--- Isolated: wow_ui_stub + Common + Ranks + Runtime + Store + Gora + Hud.
+--- Event Mode only. No live health, favor economy, sound, or toasts.
+--- Standalone wrap. Congregation favor is broadcast-only. Pope stub fills
+--- from Gora:GetFavorSplit. Dress is stock iron/parchment only — no faction
+--- crests, no custom Media. Thin QuestBG fields sit behind name+title.
+--- Ranks is Data for Church titles. No TOC / bootstrap / run.lua edits.
++-- Fight HUD (Wire W-F favor + Vestments V-D dress + B4-F name fields
++-- + B8-D mute defense integer). Isolated: wow_ui_stub + Common + Ranks
++-- + Runtime + Store + Gora + Hud. Event Mode only. No live health, favor
++-- economy, sound, or toasts. Standalone wrap. Congregation favor is
++-- broadcast-only. Pope stub fills from Gora:GetFavorSplit. Dress is stock
++-- iron/parchment only — no faction crests, no custom Media. Thin QuestBG
++-- fields sit behind name+title. Defense count is Store:CountDefenses as a
++-- mute integer; zero or a missing method hides. Ranks is Data for Church
++-- titles. No TOC / bootstrap / run.lua edits.
+ package.path = package.path .. ";./tests/?.lua"
+ 
+ local stub = require("wow_ui_stub")
+@@ -197,6 +199,10 @@
+ assert_true(src:find("QuestBG", 1, true) ~= nil, "parchment uses stock QuestBG")
+ assert_true(src:find("nameFieldA", 1, true) ~= nil, "source names nameFieldA")
+ assert_true(src:find("nameFieldB", 1, true) ~= nil, "source names nameFieldB")
++assert_true(src:find("CountDefenses", 1, true) ~= nil, "source reads Store:CountDefenses")
++assert_true(src:find("defenseA", 1, true) ~= nil, "source names defenseA")
++assert_true(src:find("defenseB", 1, true) ~= nil, "source names defenseB")
++assert_eq(src:find("defenses of", 1, true), nil, "source does not invent defenses copy")
++assert_eq(src:find("of the realm", 1, true), nil, "source does not invent realm copy")
+ assert_true(
+   src:find("UI-EmptySlot-White", 1, true) ~= nil
+     or src:find("MiniMap-TrackingBorder", 1, true) ~= nil,
+@@ -264,6 +270,12 @@
+ assert_eq(frame.favorLabel:IsShown(), false, "FAVOR label starts hidden")
+ assert_eq(frame.barA:IsShown(), false, "favor bar A starts hidden")
+ assert_eq(frame.barB:IsShown(), false, "favor bar B starts hidden")
++assert_true(frame.defenseA ~= nil, "defense A is a mute integer slot")
++assert_true(frame.defenseB ~= nil, "defense B is a mute integer slot")
++assert_eq(frame.defenseA:IsShown(), false, "defense A starts hidden")
++assert_eq(frame.defenseB:IsShown(), false, "defense B starts hidden")
++assert_eq(frame.defenseA._template, "GameFontNormal", "defense A is stock GameFont")
++assert_eq(frame.defenseB._template, "GameFontNormal", "defense B is stock GameFont")
+ 
+ local point, relativeTo, relativePoint, x, y = frame:GetPoint(1)
+ assert_eq(point, "TOP", "default anchor is the top")
+@@ -319,7 +331,11 @@
+ assert_eq(view.health, nil, "shown view still has no health")
+ assert_eq(view.favor, nil, "congregation with no broadcast hides favor")
+-assert_eq(view.defenses, nil, "defense count is not invented")
++assert_eq(view.defenses, nil, "pair view does not invent a defenses table")
++assert_eq(view.fighterA.defenses, nil, "fresh fighter A hides defenses")
++assert_eq(view.fighterB.defenses, nil, "fresh fighter B hides defenses")
++assert_eq(frame.defenseA:IsShown(), false, "fresh pair hides defense A")
++assert_eq(frame.defenseB:IsShown(), false, "fresh pair hides defense B")
+ assert_eq(view.odds, nil, "no odds copy")
+ assert_eq(frame.nameA:GetText(), "Chuckroast", "name A is painted")
+ assert_eq(frame.nameB:GetText(), "Tendermage", "name B is painted")
+@@ -488,6 +504,64 @@
+ assert_eq(Store:GetCharacter(a.id).name, "Chuckroast", "HUD does not write the character")
+ assert_eq(Gora:GetSanctioned().fighterA, a.id, "HUD does not clear the live pair")
+ 
++--------------------------------------------------------------------------------
++-- Mute defense integer: stub or real CountDefenses. Zero / missing hides.
++-- Favor STATE-off (no congregation broadcast) still omits the split paint.
++--------------------------------------------------------------------------------
++local savedCountDefenses = Store.CountDefenses
++local aDef, bDef = sanctionPair()
++Store.CountDefenses = nil
++view = Hud:Refresh()
++assert_eq(view.fighterA.defenses, nil, "missing CountDefenses hides fighter A")
++assert_eq(view.fighterB.defenses, nil, "missing CountDefenses hides fighter B")
++assert_eq(frame.defenseA:IsShown(), false, "missing method hides defense A widget")
++assert_eq(frame.defenseB:IsShown(), false, "missing method hides defense B widget")
++assert_eq(view.defenses, nil, "missing method does not invent a pair defenses table")
++assert_eq(view.health, nil, "missing CountDefenses still has no health")
++assert_eq(view.favor, nil, "missing CountDefenses does not invent congregation favor")
++assert_eq(frame.favorLabel:IsShown(), false, "STATE-off still omits FAVOR")
++assert_eq(frame.barA:IsShown(), false, "STATE-off still omits bar A")
++assert_eq(frame.barB:IsShown(), false, "STATE-off still omits bar B")
++
++Store.CountDefenses = function(_, id)
++  if id == aDef.id then return 3 end
++  if id == bDef.id then return 0 end
++  return 0
++end
++view = Hud:Refresh()
++assert_eq(view.fighterA.defenses, 3, "CountDefenses 3 is the mute integer")
++assert_eq(view.fighterB.defenses, nil, "CountDefenses 0 hides fighter B")
++assert_eq(frame.defenseA:IsShown(), true, "nonzero defense A is visible")
++assert_eq(frame.defenseA:GetText(), "3", "defense A paints the integer")
++assert_eq(frame.defenseB:IsShown(), false, "zero defense B hides")
++assert_eq(frame.defenseB:GetText(), "", "hidden defense B has no zero glyph")
++assert_eq(string.find(frame.defenseA:GetText() or "", "odds", 1, true), nil,
++  "defense integer has no odds copy")
++assert_eq(string.find(frame.defenseA:GetText() or "", "realm", 1, true), nil,
++  "defense integer has no realm copy")
++assert_eq(view.health, nil, "stub CountDefenses still has no health")
++assert_eq(view.favor, nil, "stub CountDefenses does not paint STATE-off favor")
++assert_eq(frame.favorLabel:IsShown(), false, "stub CountDefenses keeps FAVOR hidden")
++assert_eq(sameRgb(frame.defenseA._cobColor, warrior), false, "defense A is not class-colored")
++assert_eq(healthReads, 0, "CountDefenses paint does not read health")
++
++Store.CountDefenses = function()
++  return 0
++end
++view = Hud:Refresh()
++assert_eq(view.fighterA.defenses, nil, "zero CountDefenses hides A")
++assert_eq(view.fighterB.defenses, nil, "zero CountDefenses hides B")
++assert_eq(frame.defenseA:IsShown(), false, "zero hides defense A widget")
++assert_eq(frame.defenseB:IsShown(), false, "zero hides defense B widget")
++
++Store.CountDefenses = function(_, id)
++  if id == aDef.id then return 2 end
++  return 0
++end
++view = Hud:Refresh()
++view.fighterA.defenses = 99
++assert_eq(Hud:GetView().fighterA.defenses, 2, "mutating GetView defenses does not change live view")
++Store.CountDefenses = savedCountDefenses
++
+ --------------------------------------------------------------------------------
+ -- Drag persists when ChurchOfBeefDB.ui exists. Invalid saved point falls back.
+ --------------------------------------------------------------------------------
+@@ -730,6 +802,10 @@
+ assert_true(budgeted.parchment ~= nil, "rebuilt HUD still has parchment")
+ assert_true(budgeted.nameFieldA ~= nil, "rebuilt HUD still has name field A")
+ assert_true(budgeted.nameFieldB ~= nil, "rebuilt HUD still has name field B")
++assert_true(budgeted.defenseA ~= nil, "rebuilt HUD still has defense A")
++assert_true(budgeted.defenseB ~= nil, "rebuilt HUD still has defense B")
++assert_eq(budgeted.defenseA:IsShown(), false, "Quiet rebuild hides defense A")
++assert_eq(budgeted.defenseB:IsShown(), false, "Quiet rebuild hides defense B")
+ assert_eq(countStatusBars(budgeted), 2, "rebuilt HUD still has only favor StatusBars")
+ assert_eq(Hud:IsShown(), false, "rebuild in Quiet still hides the HUD")
+ local copy = Hud:GetView()

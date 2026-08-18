@@ -1,0 +1,263 @@
+# B41-C — ConsoleDock Init remounts missing OnHide (implementation diff)
+
+Lane-only unified diff of the exclusive implementation files vs the pre-lane working tree.
+
+--- a/addon/ChurchOfBeef/UI/ConsoleDock.lua
++++ b/addon/ChurchOfBeef/UI/ConsoleDock.lua
+@@ -6,12 +6,13 @@
+ -- local player is the registered Pope. Stock SANCTION calls
+ -- Console:Sanction when present. Expand calls Console:Show.
+ -- ESC Hide()s ChurchOfBeefConsoleDock via UISpecialFrames (deduped).
+--- Init remounts rememberSpecial when the frame already exists.
+--- Refresh, Show, and Hide remount rememberSpecial when the frame
+--- already exists. Hide remounts a missing OnHide before
+--- rememberSpecial then paint(false). Show remounts a missing
+--- OnHide before rememberSpecial. Refresh remounts a missing
+--- OnHide before rememberSpecial. OnHide (after create-time
++-- Init remounts a missing OnHide before rememberSpecial then
++-- Refresh when the frame already exists. Refresh, Show, and Hide
++-- remount rememberSpecial when the frame already exists. Hide
++-- remounts a missing OnHide before rememberSpecial then
++-- paint(false). Show remounts a missing OnHide before
++-- rememberSpecial. Refresh remounts a missing OnHide before
++-- rememberSpecial. OnHide (after create-time
+ -- Hide) remembers Runtime eventId while the event is live and
+ -- sets lastView.shown false. Refresh stays hidden while mayShow
+ -- and that eventId is still current. A new eventId or QUIET / nil
+@@ -272,6 +273,7 @@
+     frame = build()
+   end
+   if not frame then return nil end
++  wireDockOnHide(frame)
+   rememberSpecial(FRAME_NAME)
+   self:Refresh()
+   return frame
+
+--- a/tests/test_console_dock.lua
++++ b/tests/test_console_dock.lua
+@@ -18,8 +18,11 @@
+ -- runB36C() inside runB27D(); no new main-chunk locals. B40-C:
+ -- existing-frame Refresh remounts a missing OnHide via
+ -- wireDockOnHide then rememberSpecial. Nested after runB39D()
+--- inside runB27D(); no new main-chunk locals. No TOC /
+--- bootstrap / run.lua / Console.lua / Hud / Toasts.
++-- inside runB27D(); no new main-chunk locals. B41-C:
++-- existing-frame Init remounts a missing OnHide via
++-- wireDockOnHide then rememberSpecial then Refresh. Nested
++-- after runB40C() inside runB27D(); no new main-chunk locals.
++-- No TOC / bootstrap / run.lua / Console.lua / Hud / Toasts.
+ -- Isolation wrap.
+ ChurchOfBeef = ChurchOfBeef or {}
+ ChurchOfBeef._IN_TEST = true
+@@ -1026,8 +1029,8 @@
+       "B26-D Init remount body stays readable")
+     assert_true(remountInit:find("rememberSpecial(FRAME_NAME)", 1, true) ~= nil,
+       "B26-D Init remount rememberSpecial FRAME_NAME stays")
+-    assert_eq(remountInit:find("wireDockOnHide", 1, true), nil,
+-      "Init remount does not remount OnHide")
++    assert_true(remountInit:find("wireDockOnHide", 1, true) ~= nil,
++      "Init remounts OnHide via wireDockOnHide")
+     assert_true(src:find("local function rememberSpecial", 1, true) ~= nil,
+       "rememberSpecial helper stays")
+     assert_true(src:find("rememberSpecial(FRAME_NAME)", 1, true) ~= nil,
+@@ -1182,8 +1185,8 @@
+       "B26-D Init remount body stays readable")
+     assert_true(remountInit:find("rememberSpecial(FRAME_NAME)", 1, true) ~= nil,
+       "B26-D Init remount rememberSpecial FRAME_NAME stays")
+-    assert_eq(remountInit:find("wireDockOnHide", 1, true), nil,
+-      "Init remount does not remount OnHide")
++    assert_true(remountInit:find("wireDockOnHide", 1, true) ~= nil,
++      "Init remounts OnHide via wireDockOnHide")
+     assert_true(src:find("local function wireDockOnHide", 1, true) ~= nil,
+       "wireDockOnHide helper stays")
+     assert_true(src:find("if existing then return", 1, true) ~= nil,
+@@ -1343,8 +1346,8 @@
+         "B26-D Init remount body stays readable")
+       assert_true(remountInit:find("rememberSpecial(FRAME_NAME)", 1, true) ~= nil,
+         "B26-D Init remount rememberSpecial FRAME_NAME stays")
+-      assert_eq(remountInit:find("wireDockOnHide", 1, true), nil,
+-        "Init remount does not remount OnHide")
++      assert_true(remountInit:find("wireDockOnHide", 1, true) ~= nil,
++        "Init remounts OnHide via wireDockOnHide")
+       assert_true(src:find("local function wireDockOnHide", 1, true) ~= nil,
+         "wireDockOnHide helper stays")
+       assert_true(src:find("if existing then return", 1, true) ~= nil,
+@@ -1442,6 +1445,178 @@
+       end
+     end
+   runB40C()
++
++  --------------------------------------------------------------------------------
++  -- B41-C: existing-frame Init remounts a missing OnHide.
++  -- wireDockOnHide then rememberSpecial(FRAME_NAME) then Refresh.
++  -- Never replace an existing script. Wipe list, nil OnHide, Init:
++  -- OnHide restored, ChurchOfBeefConsoleDock re-listed once, no
++  -- sound. Third Init does not replace OnHide. Do not reset drag
++  -- persist. Do not pop a dismissed dock. No OnShow re-wire.
++  -- No rebuild. Isolation wrap stays.
++  --------------------------------------------------------------------------------
++  local function runB41C()
++    local remountInit = src:match("if not frame then return nil end(.-)return frame")
++    assert_true(type(remountInit) == "string" and remountInit ~= "",
++      "B41-C Init remount body is readable")
++    local wireAt = remountInit:find("wireDockOnHide", 1, true)
++    local rememberAt = remountInit:find("rememberSpecial(FRAME_NAME)", 1, true)
++    local refreshAt = remountInit:find("self:Refresh()", 1, true)
++    assert_true(wireAt ~= nil, "Init remounts OnHide via wireDockOnHide")
++    assert_true(rememberAt ~= nil, "Init remount still rememberSpecial FRAME_NAME")
++    assert_true(refreshAt ~= nil, "Init remount still Refresh")
++    assert_true(type(wireAt) == "number" and type(rememberAt) == "number" and wireAt < rememberAt,
++      "Init remounts OnHide before rememberSpecial")
++    assert_true(type(rememberAt) == "number" and type(refreshAt) == "number" and rememberAt < refreshAt,
++      "Init remounts rememberSpecial before Refresh")
++    assert_eq(remountInit:find("SetScript", 1, true), nil,
++      "Init remount does not SetScript inline")
++    assert_eq(remountInit:find("OnShow", 1, true), nil,
++      "Init remount does not re-wire OnShow")
++    assert_eq(remountInit:find("build()", 1, true), nil,
++      "Init remount does not rebuild")
++    assert_eq(remountInit:find("CreateFrame", 1, true), nil,
++      "Init remount does not CreateFrame")
++    assert_eq(remountInit:find("PlaySound", 1, true), nil,
++      "Init remount does not PlaySound")
++    assert_eq(remountInit:find("IG_CHARACTER_INFO", 1, true), nil,
++      "Init remount has no IG_CHARACTER_INFO")
++    assert_eq(remountInit:find("restorePoint", 1, true), nil,
++      "Init remount does not restorePoint")
++    assert_eq(remountInit:find("savePoint", 1, true), nil,
++      "Init remount does not savePoint")
++    assert_eq(remountInit:find("consoleDock", 1, true), nil,
++      "Init remount does not reset drag persist")
++
++    local refreshBody = src:match("function ConsoleDock:Refresh%(%)(.-)\nfunction ConsoleDock:Show")
++    assert_true(type(refreshBody) == "string" and refreshBody ~= "",
++      "B40-C Refresh body stays readable")
++    assert_true(refreshBody:find("wireDockOnHide", 1, true) ~= nil,
++      "B40-C Refresh remount still wireDockOnHide")
++    local remountRefresh = refreshBody:match("return self:GetView%(%)%s+end%s+(.-)if not mayShow")
++    assert_true(type(remountRefresh) == "string" and remountRefresh ~= "",
++      "B40-C Refresh remount body stays readable")
++    local refreshWire = remountRefresh:find("wireDockOnHide", 1, true)
++    local refreshRemember = remountRefresh:find("rememberSpecial(FRAME_NAME)", 1, true)
++    assert_true(refreshWire ~= nil, "Refresh remount still wireDockOnHide")
++    assert_true(refreshRemember ~= nil, "Refresh remount still rememberSpecial FRAME_NAME")
++    assert_true(type(refreshWire) == "number" and type(refreshRemember) == "number"
++        and refreshWire < refreshRemember,
++      "Refresh remount still wires OnHide before rememberSpecial")
++
++    local showBody = src:match("function ConsoleDock:Show%(%)(.-)\nfunction ConsoleDock:Hide")
++    assert_true(type(showBody) == "string" and showBody ~= "",
++      "B39-D Show body stays readable")
++    assert_true(showBody:find("wireDockOnHide", 1, true) ~= nil,
++      "B39-D Show remount still wireDockOnHide")
++    assert_true(showBody:find("rememberSpecial(FRAME_NAME)", 1, true) ~= nil,
++      "B39-D Show remount still rememberSpecial FRAME_NAME")
++
++    local hideBody = src:match("function ConsoleDock:Hide%(%)(.-)\nfunction ConsoleDock:ResetForTests")
++    assert_true(type(hideBody) == "string" and hideBody ~= "",
++      "B36-C Hide body stays readable")
++    assert_true(hideBody:find("wireDockOnHide", 1, true) ~= nil,
++      "B36-C Hide remount still wireDockOnHide")
++    assert_true(hideBody:find("rememberSpecial(FRAME_NAME)", 1, true) ~= nil,
++      "B36-C Hide remount still rememberSpecial FRAME_NAME")
++
++    assert_true(src:find("local function wireDockOnHide", 1, true) ~= nil,
++      "wireDockOnHide helper stays")
++    assert_true(src:find("if existing then return", 1, true) ~= nil,
++      "wireDockOnHide still does not replace an existing OnHide")
++    assert_true(src:find("local function rememberSpecial", 1, true) ~= nil,
++      "rememberSpecial helper stays")
++    assert_true(src:find('FRAME_NAME = "ChurchOfBeefConsoleDock"', 1, true) ~= nil,
++      "FRAME_NAME stays ChurchOfBeefConsoleDock")
++    assert_true(src:find("eventId", 1, true) ~= nil,
++      "per-event dismiss still keys eventId")
++    assert_true(src:find("dismissed", 1, true) ~= nil,
++      "per-event dismiss stays")
++    assert_eq(src:find("PlaySound", 1, true), nil,
++      "source still does not play sound")
++    assert_eq(src:find("IG_CHARACTER_INFO", 1, true), nil,
++      "source still has no IG_CHARACTER_INFO")
++    assert_eq(src:find("cooldown", 1, true), nil,
++      "source still has no dismiss-cooldown")
++    assert_eq(src:find("parchment", 1, true), nil,
++      "dock still has no parchment")
++
++    reset()
++    local existing = ConsoleDock:Init()
++    assert_true(existing ~= nil, "B41-C Init creates the dock")
++    assert_eq(existing:GetName(), "ChurchOfBeefConsoleDock",
++      "B41-C dock name stays ChurchOfBeefConsoleDock")
++    assert_eq(countSpecial("ChurchOfBeefConsoleDock"), 1,
++      "B41-C first Init lists ChurchOfBeefConsoleDock once")
++    local persistPoint, persistRel, persistRelPoint, persistX, persistY = existing:GetPoint(1)
++    popeFlag = true
++    Runtime:StartEvent()
++    assert_eq(ConsoleDock:Show(), true, "B41-C StartEvent + Pope Show is true")
++    assert_eq(existing:IsShown(), true, "B41-C StartEvent + Pope shows")
++    existing:Hide()
++    assert_eq(existing:IsShown(), false, "B41-C widget Hide dismisses")
++    assert_eq(ConsoleDock:GetView().shown, false, "B41-C widget Hide sets shown false")
++    local savedInitList = UISpecialFrames
++    UISpecialFrames = {}
++    assert_eq(countSpecial("ChurchOfBeefConsoleDock"), 0,
++      "B41-C wipe clears ChurchOfBeefConsoleDock")
++    existing:SetScript("OnHide", nil)
++    assert_eq(existing:GetScript("OnHide"), nil, "OnHide niled before Init")
++    local cuesInit = sounds
++    local initCreates = 0
++    local savedInitCreate = CreateFrame
++    CreateFrame = function(...)
++      initCreates = initCreates + 1
++      return savedInitCreate(...)
++    end
++    local remounted = ConsoleDock:Init()
++    CreateFrame = savedInitCreate
++    local restored = existing:GetScript("OnHide")
++    assert_true(restored ~= nil, "Init remounts missing OnHide")
++    assert_eq(remounted, existing, "Init remount keeps the same frame")
++    assert_eq(ConsoleDock:GetView().shown, false, "Init does not pop a dismissed dock")
++    assert_eq(existing:IsShown(), false, "Init after dismiss stays hidden")
++    assert_eq(countSpecial("ChurchOfBeefConsoleDock"), 1,
++      "ChurchOfBeefConsoleDock re-listed once")
++    assert_eq(initCreates, 0, "Init remount does not rebuild")
++    assert_eq(sounds, cuesInit, "Init remount plays no sound")
++    assert_eq(existing:GetName(), "ChurchOfBeefConsoleDock",
++      "Init remount keeps FRAME_NAME ChurchOfBeefConsoleDock")
++    assert_eq(select(1, existing:GetPoint(1)), persistPoint,
++      "Init remount does not reset drag point")
++    assert_eq(select(2, existing:GetPoint(1)), persistRel,
++      "Init remount does not reset drag relative")
++    assert_eq(select(3, existing:GetPoint(1)), persistRelPoint,
++      "Init remount does not reset drag relativePoint")
++    assert_eq(select(4, existing:GetPoint(1)), persistX,
++      "Init remount does not reset drag x")
++    assert_eq(select(5, existing:GetPoint(1)), persistY,
++      "Init remount does not reset drag y")
++
++    ConsoleDock:Init()
++    assert_eq(existing:GetScript("OnHide"), restored,
++      "second Init does not replace OnHide")
++    assert_eq(existing:IsShown(), false, "second Init stays dismissed")
++    ConsoleDock:Init()
++    assert_eq(existing:GetScript("OnHide"), restored,
++      "third Init does not replace OnHide")
++    assert_eq(countSpecial("ChurchOfBeefConsoleDock"), 1,
++      "third Init does not duplicate UISpecialFrames")
++    assert_eq(sounds, cuesInit, "third Init plays no sound")
++    assert_eq(ConsoleDock:Init(), existing, "third Init still same frame pointer")
++    assert_eq(existing:IsShown(), false, "third Init stays dismissed")
++
++    UISpecialFrames = savedInitList
++
++    if standalone then
++      assert_eq(COB.Hud, nil, "B41-C isolation still does not load Hud")
++      assert_eq(COB.Toasts, nil, "B41-C isolation still does not load Toasts")
++      assert_eq(COB.DecreeBanner, nil, "B41-C isolation still does not load Decree")
++      assert_eq(COB.RecordsBook, nil, "B41-C isolation still does not load Records Book")
++      assert_eq(type(SLASH_CHURCHOFBEEF1), "nil", "B41-C isolation still does not register a slash")
++    end
++  end
++  runB41C()
+ end
+ runB27D()
+ 

@@ -1,0 +1,535 @@
+diff --git a/addon/ChurchOfBeef/Core/Knighting.lua b/addon/ChurchOfBeef/Core/Knighting.lua
+index 21c5a51..d7063f6 100644
+--- a/addon/ChurchOfBeef/Core/Knighting.lua
++++ b/addon/ChurchOfBeef/Core/Knighting.lua
+@@ -2,14 +2,22 @@ ChurchOfBeef = ChurchOfBeef or {}
+ local COB = ChurchOfBeef
+ 
+ -- KNIGHT THIS BEEF and Lord elevation (Bible §8, §10.4). Church record only.
+--- Guild-rank promotion, queue, targeting, and theater are later Console.
+--- Core never calls GuildPromote / SetGuildRank.
++-- Memory-only knighting line: the Pope sees who is next; software never
++-- auto-advances or auto-knights. Guild-rank promotion and theater are later Console.
++-- Core never writes guild display rank.
+ local Knighting = {}
+ COB.Knighting = Knighting
+ 
+ local KNIGHT_ID = 3
+ local LORD_ID = 4
+ 
++local line = {}
++local nextSeq = 1
++
++local function isId(n)
++  return type(n) == "number" and n == math.floor(n) and n >= 1
++end
++
+ local function store()
+   local Store = COB.Store
+   if not Store or not Store.SetRank or not Store.GetHuman then
+@@ -24,12 +32,132 @@ local function knownHuman(Store, humanId)
+   return human
+ end
+ 
++local function needsKnighting(rankId)
++  return rankId == nil or rankId == 1 or rankId == 2
++end
++
++local function runtimeLoaded()
++  return COB.Runtime ~= nil and type(COB.Runtime.Snapshot) == "function"
++end
++
++local function liveEventId()
++  if not runtimeLoaded() then return nil end
++  local snap = COB.Runtime:Snapshot()
++  if type(snap) ~= "table" or snap.state == "QUIET" then return nil end
++  if not isId(snap.eventId) then return nil end
++  return snap.eventId
++end
++
++local function copyRow(entry)
++  local rankId = entry.rankId
++  if COB.Store and COB.Store.GetHuman then
++    local human = COB.Store:GetHuman(entry.humanId)
++    if human then rankId = human.rankId end
++  end
++  return { humanId = entry.humanId, rankId = rankId }
++end
++
++function Knighting:_Expire()
++  if not runtimeLoaded() then return end
++  local eventId = liveEventId()
++  if not eventId then
++    line = {}
++    return
++  end
++  local drop = nil
++  for id, entry in pairs(line) do
++    if entry.eventId ~= eventId then
++      drop = drop or {}
++      drop[#drop + 1] = id
++    end
++  end
++  if drop then
++    for i = 1, #drop do line[drop[i]] = nil end
++  end
++end
++
++local function addToLine(humanId)
++  Knighting:_Expire()
++  if runtimeLoaded() then
++    local eventId = liveEventId()
++    if not eventId then return nil, "no event" end
++  end
++  local Store, storeErr = store()
++  if not Store then return nil, storeErr end
++  local human, err = knownHuman(Store, humanId)
++  if not human then return nil, err end
++  if not needsKnighting(human.rankId) then
++    return nil, "already knighted"
++  end
++  local existing = line[human.id]
++  if existing then
++    return copyRow(existing)
++  end
++  line[human.id] = {
++    humanId = human.id,
++    rankId = human.rankId,
++    eventId = liveEventId(),
++    seq = nextSeq,
++  }
++  nextSeq = nextSeq + 1
++  return copyRow(line[human.id])
++end
++
++function Knighting:Enqueue(humanId)
++  return addToLine(humanId)
++end
++
++function Knighting:Insert(humanId)
++  return addToLine(humanId)
++end
++
++function Knighting:Skip(humanId)
++  self:_Expire()
++  local Store, storeErr = store()
++  if not Store then return nil, storeErr end
++  local human, err = knownHuman(Store, humanId)
++  if not human then return nil, err end
++  local entry = line[human.id]
++  if not entry then return nil, "not in line" end
++  local copy = copyRow(entry)
++  line[human.id] = nil
++  return copy
++end
++
++function Knighting:GetLine()
++  self:_Expire()
++  local rows = {}
++  for _, entry in pairs(line) do
++    rows[#rows + 1] = entry
++  end
++  table.sort(rows, function(a, b)
++    if a.seq ~= b.seq then return a.seq < b.seq end
++    return a.humanId < b.humanId
++  end)
++  local out = {}
++  for i = 1, #rows do
++    out[i] = copyRow(rows[i])
++  end
++  return out
++end
++
++function Knighting:ResetForTests()
++  if not COB._IN_TEST then return false end
++  line = {}
++  nextSeq = 1
++  return true
++end
++
+ function Knighting:KnightThisBeef(humanId, now)
+   local Store, storeErr = store()
+   if not Store then return nil, storeErr end
+   local human, err = knownHuman(Store, humanId)
+   if not human then return nil, err end
+-  return Store:SetRank(humanId, KNIGHT_ID, now)
++  local row, setErr = Store:SetRank(humanId, KNIGHT_ID, now)
++  if not row then return nil, setErr end
++  self:_Expire()
++  line[human.id] = nil
++  return row
+ end
+ 
+ function Knighting:ElevateToLord(humanId, now)
+diff --git a/tests/test_knighting.lua b/tests/test_knighting.lua
+index 7f5ff39..7bda0af 100644
+--- a/tests/test_knighting.lua
++++ b/tests/test_knighting.lua
+@@ -1,6 +1,6 @@
+--- Knighting + Lord elevation (Phase 4 Lane D). Isolated: Common + Ranks + Store + Knighting.
++-- Knighting + Lord elevation + memory-only line (B5-A). Isolated: Common + Ranks + Store + Knighting.
+ -- Church record only. No TOC / bootstrap / run.lua / Store / Runtime / Gora / Officer / UI / Net.
+--- No GuildPromote / SetGuildRank. No queue, fairness, Prophet, demote, or Butcher/Council rite.
++-- No GuildPromote / SetGuildRank. No queue / AdvanceQueue, fairness, Prophet, demote, or Butcher/Council rite.
+ ChurchOfBeef = ChurchOfBeef or {}
+ ChurchOfBeef._IN_TEST = true
+ 
+@@ -51,6 +51,7 @@ end
+ 
+ local function reset()
+   assert_eq(Store:ResetForTests(), true, "Store ResetForTests runs under _IN_TEST")
++  assert_eq(Knighting:ResetForTests(), true, "Knighting ResetForTests runs under _IN_TEST")
+   promoteCalls = 0
+   frameCalls = 0
+   riteCalls = 0
+@@ -83,6 +84,13 @@ end
+ 
+ assert_eq(type(Knighting.KnightThisBeef), "function", "KnightThisBeef is the knighting verb")
+ assert_eq(type(Knighting.ElevateToLord), "function", "ElevateToLord is the Lord verb")
++assert_eq(type(Knighting.Enqueue), "function", "Enqueue appends to the line")
++assert_eq(type(Knighting.Insert), "function", "Insert is the latecomer append")
++assert_eq(type(Knighting.Skip), "function", "Skip removes without knighting")
++assert_eq(type(Knighting.GetLine), "function", "GetLine copies the line")
++assert_eq(type(Knighting.ResetForTests), "function", "ResetForTests wipes the line")
++assert_eq(Knighting.line, nil, "line is not a public field")
++assert_eq(Knighting.GetQueue, nil, "no GetQueue — the getter is GetLine")
+ 
+ assert_eq(Ranks.ById[3].title, "Beef Knight", "id 3 is Beef Knight")
+ assert_eq(Ranks.ById[4].title, "Beef Lord", "id 4 is Beef Lord")
+@@ -316,6 +324,336 @@ assert_eq(lordRow.rankId ~= 3, true, "ElevateToLord is not a knighting")
+ assert_eq(promoteCalls, 0, "neither verb performs a protected guild-rank write")
+ assert_eq(frameCalls, 0, "neither verb creates a frame")
+ 
++--------------------------------------------------------------------------------
++-- Memory-only line. Isolated suite: Runtime missing → Enqueue still works.
++--------------------------------------------------------------------------------
++reset()
++steve = seed("Steve")
++local cooked = Store:CreateHuman({ name = "Cooked" }, 2900)
++Store:SetRank(cooked.id, 2, 2901)
++local fresh = Store:CreateHuman({ name = "Fresh" }, 2902)
++Store:SetRank(fresh.id, 1, 2903)
++
++assert_eq(COB.Runtime, nil, "line tests start with Runtime unloaded")
++assert_eq(#Knighting:GetLine(), 0, "the line starts empty")
++
++local enq, enqErr = Knighting:Enqueue(steve.id)
++assert_true(enq ~= nil, "Enqueue without Runtime is accepted")
++assert_eq(enqErr, nil, "successful Enqueue has no error")
++assert_eq(enq.humanId, steve.id, "Enqueue row is that human")
++assert_eq(enq.rankId, nil, "unenrolled Enqueue shows nil rank")
++assert_eq(Store:GetHuman(steve.id).rankId, nil, "Enqueue does not knight")
++assert_eq(riteCalls, 0, "Enqueue does not call Runtime verbs")
++
++local cookedRow, cookedErr = Knighting:Enqueue(cooked.id)
++assert_true(cookedRow ~= nil, "Cooked Beef may enter the line")
++assert_eq(cookedErr, nil, "Cooked Enqueue has no error")
++assert_eq(cookedRow.rankId, 2, "Cooked Enqueue shows rank 2")
++
++local freshRow, freshErr = Knighting:Enqueue(fresh.id)
++assert_true(freshRow ~= nil, "Fresh Beef may enter the line")
++assert_eq(freshErr, nil, "Fresh Enqueue has no error")
++assert_eq(freshRow.rankId, 1, "Fresh Enqueue shows rank 1")
++
++local ordered = Knighting:GetLine()
++assert_eq(#ordered, 3, "three Enqueues are three rows")
++assert_eq(ordered[1].humanId, steve.id, "GetLine is oldest-first")
++assert_eq(ordered[2].humanId, cooked.id, "second Enqueue stays second")
++assert_eq(ordered[3].humanId, fresh.id, "third Enqueue is newest")
++
++local copyLine = Knighting:GetLine()[1]
++copyLine.humanId = 0
++copyLine.rankId = 9
++assert_eq(Knighting:GetLine()[1].humanId, steve.id, "mutating a GetLine copy does not rewrite the line")
++assert_eq(Knighting:GetLine()[1].rankId, nil, "mutating a GetLine copy does not rewrite rank")
++
++Store:SetRank(steve.id, 2, 2904)
++assert_eq(Knighting:GetLine()[1].rankId, 2, "GetLine reads the current store rank")
++
++local againEnq, againEnqErr = Knighting:Enqueue(steve.id)
++assert_true(againEnq ~= nil, "Enqueue of someone already in line is a no-op success")
++assert_eq(againEnqErr, nil, "already-in-line Enqueue has no error")
++assert_eq(#Knighting:GetLine(), 3, "already-in-line Enqueue does not duplicate")
++assert_eq(Knighting:GetLine()[1].humanId, steve.id, "already-in-line Enqueue does not reorder")
++
++--------------------------------------------------------------------------------
++-- Insert is a latecomer append. Already-in-line is a no-op success.
++--------------------------------------------------------------------------------
++local late = Store:CreateHuman({ name = "Latecomer" }, 2910)
++local ins, insErr = Knighting:Insert(late.id)
++assert_true(ins ~= nil, "Insert appends a latecomer")
++assert_eq(insErr, nil, "successful Insert has no error")
++assert_eq(ins.humanId, late.id, "Insert row is the latecomer")
++assert_eq(#Knighting:GetLine(), 4, "Insert appends a fourth row")
++assert_eq(Knighting:GetLine()[4].humanId, late.id, "Insert does not reorder earlier arrivals")
++assert_eq(Knighting:GetLine()[1].humanId, steve.id, "Insert leaves the oldest first")
++
++local insAgain, insAgainErr = Knighting:Insert(cooked.id)
++assert_true(insAgain ~= nil, "Insert of someone already in line is a no-op success")
++assert_eq(insAgainErr, nil, "already-in-line Insert has no error")
++assert_eq(insAgain.humanId, cooked.id, "already-in-line Insert returns that human")
++assert_eq(#Knighting:GetLine(), 4, "already-in-line Insert does not duplicate")
++assert_eq(Knighting:GetLine()[2].humanId, cooked.id, "already-in-line Insert does not reorder")
++
++--------------------------------------------------------------------------------
++-- Skip removes without knighting. Unknown / non-human ids refuse.
++--------------------------------------------------------------------------------
++local skipped, skipErr = Knighting:Skip(cooked.id)
++assert_true(skipped ~= nil, "Skip removes that human")
++assert_eq(skipErr, nil, "successful Skip has no error")
++assert_eq(skipped.humanId, cooked.id, "Skip returns the removed row")
++assert_eq(Store:GetHuman(cooked.id).rankId, 2, "Skip does not knight")
++assert_eq(#Knighting:GetLine(), 3, "Skip leaves the others")
++assert_eq(Knighting:GetLine()[1].humanId, steve.id, "Skip does not reorder the remainder")
++assert_eq(Knighting:GetLine()[2].humanId, fresh.id, "after Skip the next oldest moves up")
++assert_eq(Knighting:GetLine()[3].humanId, late.id, "the latecomer stays last")
++
++local skipGone, skipGoneErr = Knighting:Skip(cooked.id)
++assert_eq(skipGone, nil, "Skip of someone not in line is refused")
++assert_eq(skipGoneErr, "not in line", "absent Skip names not in line")
++
++local missEnq, missEnqErr = Knighting:Enqueue(99)
++assert_eq(missEnq, nil, "Enqueue refuses an unknown human")
++assert_true(type(missEnqErr) == "string", "unknown Enqueue returns an error string")
++
++local nameEnq, nameEnqErr = Knighting:Enqueue("Steve")
++assert_eq(nameEnq, nil, "Enqueue refuses a name string")
++assert_true(type(nameEnqErr) == "string", "name-string Enqueue returns an error string")
++
++local keyEnq, keyEnqErr = Knighting:Enqueue(COB.Names.Key("Steve"))
++assert_eq(keyEnq, nil, "Names.Key is not a human id for Enqueue")
++assert_true(type(keyEnqErr) == "string", "Names.Key Enqueue returns an error string")
++
++local zeroEnq, zeroEnqErr = Knighting:Enqueue(0)
++assert_eq(zeroEnq, nil, "Enqueue refuses human id 0")
++assert_true(type(zeroEnqErr) == "string", "human id 0 Enqueue returns an error string")
++
++local noneEnq, noneEnqErr = Knighting:Enqueue(nil)
++assert_eq(noneEnq, nil, "Enqueue refuses a missing human id")
++assert_true(type(noneEnqErr) == "string", "missing human id Enqueue returns an error string")
++
++local missIns, missInsErr = Knighting:Insert(99)
++assert_eq(missIns, nil, "Insert refuses an unknown human")
++assert_true(type(missInsErr) == "string", "unknown Insert returns an error string")
++
++local missSkip, missSkipErr = Knighting:Skip(99)
++assert_eq(missSkip, nil, "Skip refuses an unknown human")
++assert_true(type(missSkipErr) == "string", "unknown Skip returns an error string")
++
++local ch = Store:CreateCharacter({ name = "Chuckroast" }, 2920)
++while Store:GetHuman(ch.id) do
++  ch = Store:CreateCharacter({ name = "Alt-" .. tostring(ch.id) }, 2920)
++end
++local chEnq, chEnqErr = Knighting:Enqueue(ch.id)
++assert_eq(chEnq, nil, "Enqueue refuses a character id that is not a human")
++assert_true(type(chEnqErr) == "string", "non-human Enqueue returns an error string")
++assert_eq(#Knighting:GetLine(), 3, "refused Enqueues do not grow the line")
++
++--------------------------------------------------------------------------------
++-- Rank 3+ refuses already knighted. ElevateToLord does not use the line.
++--------------------------------------------------------------------------------
++reset()
++steve = seed("Steve")
++local knightedHuman = Store:CreateHuman({ name = "AlreadyKnight" }, 3000)
++Store:SetRank(knightedHuman.id, 3, 3001)
++local lordHuman = Store:CreateHuman({ name = "AlreadyLord" }, 3002)
++Store:SetRank(lordHuman.id, 4, 3003)
++local butcherHuman = Store:CreateHuman({ name = "Butcher" }, 3004)
++Store:SetRank(butcherHuman.id, 5, 3005)
++local councilHuman = Store:CreateHuman({ name = "Council" }, 3006)
++Store:SetRank(councilHuman.id, 6, 3007)
++
++local knEnq, knEnqErr = Knighting:Enqueue(knightedHuman.id)
++assert_eq(knEnq, nil, "Enqueue refuses a Beef Knight")
++assert_eq(knEnqErr, "already knighted", "Knight Enqueue names already knighted")
++
++local lordEnq, lordEnqErr = Knighting:Enqueue(lordHuman.id)
++assert_eq(lordEnq, nil, "Enqueue refuses a Beef Lord")
++assert_eq(lordEnqErr, "already knighted", "Lord Enqueue names already knighted")
++
++local butEnq, butEnqErr = Knighting:Insert(butcherHuman.id)
++assert_eq(butEnq, nil, "Insert refuses a Beef Butcher")
++assert_eq(butEnqErr, "already knighted", "Butcher Insert names already knighted")
++
++local coEnq, coEnqErr = Knighting:Enqueue(councilHuman.id)
++assert_eq(coEnq, nil, "Enqueue refuses Beef Council")
++assert_eq(coEnqErr, "already knighted", "Council Enqueue names already knighted")
++assert_eq(#Knighting:GetLine(), 0, "rank 3+ refuses do not enter the line")
++
++local waiting = Knighting:Enqueue(steve.id)
++assert_true(waiting ~= nil, "an unenrolled human may still enter the line")
++assert_eq(#Knighting:GetLine(), 1, "the line has the unenrolled human")
++
++local elevated = Knighting:ElevateToLord(steve.id, 3010)
++assert_eq(elevated.rankId, 4, "ElevateToLord still writes Lord")
++assert_eq(#Knighting:GetLine(), 1, "ElevateToLord does not remove from the line")
++assert_eq(Knighting:GetLine()[1].humanId, steve.id, "ElevateToLord does not skip the line")
++assert_eq(Knighting:GetLine()[1].rankId, 4, "GetLine shows the elevated rank")
++
++local elevEnq, elevEnqErr = Knighting:Enqueue(steve.id)
++assert_eq(elevEnq, nil, "Enqueue after ElevateToLord refuses")
++assert_eq(elevEnqErr, "already knighted", "elevated Enqueue names already knighted")
++assert_eq(#Knighting:GetLine(), 1, "refused Enqueue after elevation does not duplicate")
++
++--------------------------------------------------------------------------------
++-- Successful KnightThisBeef removes that human. Others stay. Not AdvanceQueue.
++--------------------------------------------------------------------------------
++reset()
++steve = seed("Steve")
++local second = Store:CreateHuman({ name = "Second" }, 3100)
++local third = Store:CreateHuman({ name = "Third" }, 3101)
++Knighting:Enqueue(steve.id)
++Knighting:Enqueue(second.id)
++Knighting:Enqueue(third.id)
++assert_eq(#Knighting:GetLine(), 3, "three candidates wait")
++
++local knightedSteve = Knighting:KnightThisBeef(steve.id, 3110)
++assert_eq(knightedSteve.rankId, 3, "KnightThisBeef still writes Beef Knight")
++assert_eq(#Knighting:GetLine(), 2, "successful KnightThisBeef removes that human")
++assert_eq(Knighting:GetLine()[1].humanId, second.id, "the next oldest remains first")
++assert_eq(Knighting:GetLine()[2].humanId, third.id, "the newest remains last")
++assert_eq(Store:GetHuman(second.id).rankId, nil, "KnightThisBeef does not knight the next human")
++assert_eq(Knighting.AdvanceQueue, nil, "removal is not AdvanceQueue")
++assert_eq(Knighting.NextCandidate, nil, "removal is not NextCandidate")
++assert_eq(Knighting.queue, nil, "still no public queue field")
++assert_eq(Knighting.next, nil, "still no next pointer")
++assert_eq(riteCalls, 0, "KnightThisBeef still does not call Runtime verbs")
++
++local againKnight = Knighting:KnightThisBeef(steve.id, 3111)
++assert_eq(againKnight.rankId, 3, "a second knighting of the same human still succeeds")
++assert_eq(#Knighting:GetLine(), 2, "knighting a human already off the line leaves the others")
++
++local offLine = Store:CreateHuman({ name = "OffLine" }, 3112)
++local offKnight = Knighting:KnightThisBeef(offLine.id, 3113)
++assert_eq(offKnight.rankId, 3, "KnightThisBeef works for a human not on the line")
++assert_eq(#Knighting:GetLine(), 2, "knighting an off-line human does not change the line")
++
++--------------------------------------------------------------------------------
++-- Event-scoped when Runtime.Snapshot is loaded. Inline stub. Never OpenRite.
++--------------------------------------------------------------------------------
++reset()
++steve = seed("Steve")
++local snapHuman = Store:CreateHuman({ name = "Snap" }, 3200)
++local savedRuntime = COB.Runtime
++local opened = 0
++local snap = { state = "QUIET", eventId = 1 }
++COB.Runtime = {
++  Snapshot = function()
++    return snap
++  end,
++  OpenRite = function()
++    opened = opened + 1
++    riteCalls = riteCalls + 1
++  end,
++  EndEvent = function()
++    riteCalls = riteCalls + 1
++  end,
++}
++
++local quietEnq, quietEnqErr = Knighting:Enqueue(steve.id)
++assert_eq(quietEnq, nil, "Enqueue from QUIET is refused")
++assert_eq(quietEnqErr, "no event", "QUIET Enqueue names the missing event")
++local quietIns, quietInsErr = Knighting:Insert(snapHuman.id)
++assert_eq(quietIns, nil, "Insert from QUIET is refused")
++assert_eq(quietInsErr, "no event", "QUIET Insert names the missing event")
++assert_eq(#Knighting:GetLine(), 0, "QUIET GetLine is empty")
++assert_eq(opened, 0, "QUIET Enqueue does not OpenRite")
++
++snap.state = "ASSEMBLY"
++local liveEnq, liveEnqErr = Knighting:Enqueue(steve.id)
++assert_true(liveEnq ~= nil, "Enqueue during ASSEMBLY is accepted")
++assert_eq(liveEnqErr, nil, "ASSEMBLY Enqueue has no error")
++Knighting:Insert(snapHuman.id)
++assert_eq(#Knighting:GetLine(), 2, "the live event holds two humans")
++assert_eq(opened, 0, "Enqueue does not OpenRite")
++assert_eq(riteCalls, 0, "line verbs do not call Runtime verbs")
++assert_eq(Store:GetHuman(steve.id).rankId, nil, "event Enqueue does not knight")
++
++snap.state = "RITE"
++assert_eq(#Knighting:GetLine(), 2, "RITE keeps the current-event line")
++snap.state = "CONSEQUENCE"
++assert_eq(#Knighting:GetLine(), 2, "CONSEQUENCE keeps the current-event line")
++snap.state = "ASSEMBLY"
++assert_eq(#Knighting:GetLine(), 2, "return to ASSEMBLY keeps the current-event line")
++
++snap.eventId = 2
++assert_eq(#Knighting:GetLine(), 0, "a new eventId expires the prior line")
++local newEnq = Knighting:Enqueue(steve.id)
++assert_true(newEnq ~= nil, "a new event accepts a fresh Enqueue")
++assert_eq(#Knighting:GetLine(), 1, "the new event has one human")
++
++snap.state = "QUIET"
++assert_eq(#Knighting:GetLine(), 0, "GetLine is empty after QUIET expire")
++local postQuiet, postQuietErr = Knighting:Enqueue(steve.id)
++assert_eq(postQuiet, nil, "Enqueue after QUIET expire is refused")
++assert_eq(postQuietErr, "no event", "post-QUIET Enqueue names the missing event")
++
++snap.state = "ASSEMBLY"
++snap.eventId = 3
++Knighting:Enqueue(steve.id)
++assert_eq(#Knighting:GetLine(), 1, "a later event can fill the line again")
++snap.eventId = nil
++assert_eq(#Knighting:GetLine(), 0, "missing eventId wipes the line")
++local missEv, missEvErr = Knighting:Insert(snapHuman.id)
++assert_eq(missEv, nil, "Insert without eventId is refused")
++assert_eq(missEvErr, "no event", "missing eventId Insert names the missing event")
++
++snap.state = "ASSEMBLY"
++snap.eventId = 4
++Knighting:Enqueue(steve.id)
++Knighting:Enqueue(snapHuman.id)
++local knightDuring = Knighting:KnightThisBeef(steve.id, 3210)
++assert_eq(knightDuring.rankId, 3, "KnightThisBeef during an event still writes Knight")
++assert_eq(#Knighting:GetLine(), 1, "KnightThisBeef removes only that human")
++assert_eq(Knighting:GetLine()[1].humanId, snapHuman.id, "the other human stays on the event line")
++assert_eq(opened, 0, "KnightThisBeef does not OpenRite")
++
++COB.Runtime = savedRuntime
++assert_eq(COB.Runtime, nil, "event stub is removed after expire tests")
++
++--------------------------------------------------------------------------------
++-- ResetForTests wipes the line. Inert outside the harness.
++--------------------------------------------------------------------------------
++reset()
++steve = seed("Steve")
++Knighting:Enqueue(steve.id)
++assert_eq(#Knighting:GetLine(), 1, "ResetForTests test has a waiting human")
++ChurchOfBeef._IN_TEST = false
++assert_eq(Knighting:ResetForTests(), false, "ResetForTests refuses to run outside tests")
++assert_eq(#Knighting:GetLine(), 1, "out-of-harness reset does not wipe the line")
++ChurchOfBeef._IN_TEST = true
++assert_eq(Knighting:ResetForTests(), true, "ResetForTests wipes under _IN_TEST")
++assert_eq(#Knighting:GetLine(), 0, "ResetForTests empties the line")
++
++--------------------------------------------------------------------------------
++-- Line verbs do not CreateFrame, promote, or persist. Source pins.
++--------------------------------------------------------------------------------
++reset()
++steve = seed("Steve")
++ChurchOfBeefDB = { sentinel = 1 }
++Knighting:Enqueue(steve.id)
++Knighting:Insert(Store:CreateHuman({ name = "Late" }, 3300).id)
++Knighting:GetLine()
++Knighting:Skip(steve.id)
++assert_eq(promoteCalls, 0, "line verbs do not call GuildPromote or SetGuildRank")
++assert_eq(frameCalls, 0, "line verbs do not CreateFrame")
++assert_eq(ChurchOfBeefDB.sentinel, 1, "line verbs do not write ChurchOfBeefDB")
++assert_eq(riteCalls, 0, "line verbs do not call Runtime verbs")
++
++local srcFile = io.open("addon/ChurchOfBeef/Core/Knighting.lua", "r")
++assert_true(srcFile ~= nil, "Knighting source is readable")
++local src = srcFile:read("*a")
++srcFile:close()
++assert_eq(src:find("GuildPromote", 1, true), nil, "source does not GuildPromote")
++assert_eq(src:find("SetGuildRank", 1, true), nil, "source does not SetGuildRank")
++assert_eq(src:find("CreateFrame", 1, true), nil, "source does not CreateFrame")
++assert_eq(src:find("SendChatMessage", 1, true), nil, "source does not send chat")
++assert_eq(src:find("SendAddonMessage", 1, true), nil, "source does not send addon messages")
++assert_eq(src:find("ChurchOfBeefDB", 1, true), nil, "source does not touch SavedVariables")
++assert_eq(src:find("function Knighting:OpenRite", 1, true), nil, "source does not define OpenRite")
++assert_eq(src:find("function Knighting:AdvanceQueue", 1, true), nil, "source does not define AdvanceQueue")
++assert_eq(src:find("function Knighting:NextCandidate", 1, true), nil, "source does not define NextCandidate")
++
+ if standalone then
+   print(string.format("Tests finished: %d passed, %d failed", passed, failed))
+   if failed > 0 then os.exit(1) end

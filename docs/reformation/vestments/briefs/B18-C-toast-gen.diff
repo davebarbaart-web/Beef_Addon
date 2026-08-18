@@ -1,0 +1,83 @@
+# B18-C — HideAll does not double-bump theaterGen (implementation diff)
+
+Lane-only unified diff of the exclusive implementation files vs the pre-lane working tree.
+
+--- a/addon/ChurchOfBeef/UI/Toasts.lua
++++ b/addon/ChurchOfBeef/UI/Toasts.lua
+@@ -557,11 +557,17 @@
+   end
+   UISpecialFrames[#UISpecialFrames + 1] = name
+ end
++
++local theaterHiding = false
+ 
+ local function hideTheater(self)
++  -- OnHide re-enters after root:Hide(); one dismiss bumps theaterGen once.
++  if theaterHiding then return end
++  theaterHiding = true
+   theaterGen = theaterGen + 1
+   local t = self.theater
+   if t and t.root then t.root:Hide() end
++  theaterHiding = false
+ end
+ 
+ local function wireProclaimEsc(self, root)
+@@ -893,7 +899,7 @@
+ end
+ 
+ function Toasts:HideAll()
+-  bumpGen()
++  gen = gen + 1
+   hideTheater(self)
+   clearPending()
+   stopMotion(self.frame)
+
+--- a/tests/test_ui.lua
++++ b/tests/test_ui.lua
+@@ -1,7 +1,8 @@
+ -- Quiet shell: frame creation, drag/resize/coalesce, saved position, minimap
+ -- toggle, system/debug toasts. Event Mode Proclaim (sanction / verdict /
+--- cowardice / knighting / elevation). B12-D Proclaim ESC and B15-C Quiet-shell
+--- UISpecialFrames rememberSpecial live in runB12D() (Lua 5.1 200-local cap).
++-- cowardice / knighting / elevation). B12-D Proclaim ESC, B15-C Quiet-shell
++-- UISpecialFrames, and B18-C HideAll theaterGen live in runB12D()
++-- (Lua 5.1 200-local cap).
+ -- No tab registry. No Standing / Ladder / Officer IA. No promote / rite toast
+ -- kinds. Isolation stays under standalone.
+ local standalone = (type(assert_eq) ~= "function")
+@@ -787,6 +788,35 @@
+   assert_eq(countSpecial("ChurchOfBeefProclaim"), 1,
+     "ESC Hide does not re-register ChurchOfBeefProclaim")
+   assert_eq(findButton(COB.Toasts.theater.root), nil, "ESC path adds no close button")
++
++  -- B18-C: HideAll tears theater down once. Nested here (200-local).
++  local hideAllBody = src:match("function Toasts:HideAll%(%)%s*\n(.-)\nfunction Toasts:ResetForTests")
++  assert_true(type(hideAllBody) == "string" and hideAllBody ~= "",
++    "HideAll body is readable")
++  local hideAllHasBump = hideAllBody:find("bumpGen", 1, true) ~= nil
++  local hideAllHasTheater = hideAllBody:find("hideTheater", 1, true) ~= nil
++  assert_true(not (hideAllHasBump and hideAllHasTheater),
++    "HideAll body does not call both bumpGen and hideTheater")
++
++  theaterReset()
++  assert_true(COB.Runtime:StartEvent() ~= nil, "StartEvent for HideAll gen")
++  assert_eq(COB.Toasts:Proclaim("verdict", { ruling = "void" }), true,
++    "Proclaim before HideAll")
++  assert_true(COB.Toasts.theater ~= nil and COB.Toasts.theater.root ~= nil,
++    "theater root exists before HideAll")
++  assert_eq(COB.Toasts.theater.root:IsShown(), true, "theater shown before HideAll")
++  local cuesHideAll = #played
++  COB.Toasts:HideAll()
++  assert_eq(COB.Toasts.theater.root:IsShown(), false, "HideAll hides the proclaim root")
++  assert_eq(#played, cuesHideAll, "HideAll plays no sound")
++  stub.flushTimers()
++  assert_eq(COB.Toasts:Proclaim("verdict", { ruling = "void" }), true,
++    "Proclaim after HideAll is accepted")
++  assert_eq(COB.Toasts.theater.root:IsShown(), true,
++    "next Proclaim still shows after HideAll")
++  assert_eq(countSpecial("ChurchOfBeefProclaim"), 1,
++    "HideAll keeps ChurchOfBeefProclaim on UISpecialFrames once")
++  assert_eq(findButton(COB.Toasts.theater.root), nil, "HideAll path adds no close button")
+ 
+   -- B15-C: Quiet shell UISpecialFrames rememberSpecial dedupe. Nested here
+   -- so the main chunk stays under Lua 5.1's 200-local cap. No new main-chunk

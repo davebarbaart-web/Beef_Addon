@@ -1,0 +1,88 @@
+# B24-C — Quiet shell Init early-return re-registers ESC (implementation diff)
+
+Lane-only unified diff of the exclusive implementation files vs the pre-lane working tree.
+
+--- a/addon/ChurchOfBeef/UI/MainFrame.lua
++++ b/addon/ChurchOfBeef/UI/MainFrame.lua
+@@ -481,7 +481,10 @@
+ --------------------------------------------------------------------------------
+ 
+ function UI:Init()
+-  if self.frame then return self.frame end
++  if self.frame then
++    rememberSpecial(FRAME_NAME)
++    return self.frame
++  end
+   if type(CreateFrame) ~= "function" then return nil end
+ 
+   local db = uiDb()
+
+--- a/tests/test_ui.lua
++++ b/tests/test_ui.lua
+@@ -3,7 +3,8 @@
+ -- cowardice / knighting / elevation). B12-D Proclaim ESC, B15-C Quiet-shell
+ -- UISpecialFrames, B18-C HideAll theaterGen, B19-B small-toast ESC,
+ -- B20-D small-toast OnHide pump, B21-C interrupt Hide idle,
+--- and B23-C Init early-return rememberSpecial
++-- B23-C Init early-return rememberSpecial,
++-- and B24-C Quiet-shell Init early-return rememberSpecial
+ -- live in runB12D() (Lua 5.1 200-local cap).
+ -- No tab registry. No Standing / Ladder / Officer IA. No promote / rite toast
+ -- kinds. Isolation stays under standalone.
+@@ -1063,6 +1064,56 @@
+   assert_eq(countSpecial("ChurchOfBeefToast"), 1,
+     "third Init after wipe does not duplicate ChurchOfBeefToast")
+   UISpecialFrames = savedSpecial
++
++  -- B24-C: UI:Init early-return re-registers ChurchOfBeefFrame after a
++  -- wiped UISpecialFrames. Do not rebuild. Do not re-wire OnShow /
++  -- OnHide. First-create / rebuild uniqueness pins stay. Isolation
++  -- wrap stays.
++  local shellEarly = shellSrc:match("function UI:Init%(%)%s*\n%s*if self%.frame then(.-)return self%.frame")
++  assert_true(type(shellEarly) == "string" and shellEarly ~= "",
++    "UI:Init early-return body is readable")
++  assert_true(shellEarly:find("rememberSpecial(FRAME_NAME)", 1, true) ~= nil,
++    "early-return rememberSpecial FRAME_NAME")
++  assert_eq(shellEarly:find("SetScript", 1, true), nil,
++    "early-return does not SetScript")
++  assert_eq(shellEarly:find("OnShow", 1, true), nil,
++    "early-return does not re-wire OnShow")
++  assert_eq(shellEarly:find("OnHide", 1, true), nil,
++    "early-return does not re-wire OnHide")
++  assert_eq(shellEarly:find("buildFrame", 1, true), nil,
++    "early-return does not rebuild")
++  assert_eq(shellEarly:find("PlaySound", 1, true), nil,
++    "early-return does not PlaySound")
++  assert_eq(shellSrc:find("PlaySound", 1, true), nil,
++    "Quiet shell still has no PlaySound")
++  assert_true(shellSrc:find("rememberSpecial(FRAME_NAME)", 1, true) ~= nil,
++    "B15-C uniqueness: Init still rememberSpecial FRAME_NAME")
++
++  COB.UI:Init()
++  assert_eq(countSpecial("ChurchOfBeefFrame"), 1,
++    "first-create uniqueness: ChurchOfBeefFrame once before wipe")
++  local shellOnShow = COB.UI.frame:GetScript("OnShow")
++  local shellOnHide = COB.UI.frame:GetScript("OnHide")
++  local existingShell = COB.UI.frame
++  UISpecialFrames = {}
++  assert_eq(countSpecial("ChurchOfBeefFrame"), 0,
++    "wipe clears ChurchOfBeefFrame")
++  local cuesShellWipe = #played
++  assert_eq(COB.UI:Init(), existingShell,
++    "second Init returns the existing frame")
++  assert_eq(COB.UI.frame, existingShell,
++    "early-return does not rebuild the Quiet shell")
++  assert_eq(countSpecial("ChurchOfBeefFrame"), 1,
++    "wiped UISpecialFrames + second Init lists ChurchOfBeefFrame once")
++  assert_eq(COB.UI.frame:GetScript("OnShow"), shellOnShow,
++    "early-return does not re-wire OnShow")
++  assert_eq(COB.UI.frame:GetScript("OnHide"), shellOnHide,
++    "early-return does not re-wire OnHide")
++  assert_eq(#played, cuesShellWipe, "second Init plays no sound")
++  COB.UI:Init()
++  assert_eq(countSpecial("ChurchOfBeefFrame"), 1,
++    "third Init after wipe does not duplicate ChurchOfBeefFrame")
++  UISpecialFrames = savedSpecial
+ 
+   if standalone then
+     assert_eq(COB.Console, nil, "isolation still does not load Console")

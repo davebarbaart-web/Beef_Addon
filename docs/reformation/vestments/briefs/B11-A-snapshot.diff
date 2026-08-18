@@ -1,0 +1,395 @@
+diff --git a/addon/ChurchOfBeef/Net/Snapshot.lua b/addon/ChurchOfBeef/Net/Snapshot.lua
+index d870355..0a972b6 100644
+--- a/addon/ChurchOfBeef/Net/Snapshot.lua
++++ b/addon/ChurchOfBeef/Net/Snapshot.lua
+@@ -4,6 +4,9 @@ local COB = ChurchOfBeef
+ -- Snapshot request / response apply (Bible §20.3, §13.1). Catch-up is not
+ -- peer SYNC: congregation Request(); only a Pope client BuildResponse().
+ -- This file encodes and Restores. It does not send, whisper, or route.
++-- BuildResponse may overlay Gora live / last pair (and toggle-gated favor)
++-- onto the encoded SNAPSHOT only. Runtime is not mutated. ApplyResponse
++-- Restores Bible fields only; favor stays off Restore.
+ local Snapshot = {}
+ COB.Snapshot = Snapshot
+ 
+@@ -18,6 +21,35 @@ local function bibleFields(src)
+   return out
+ end
+ 
++local function fighterCount(subjects)
++  if type(subjects) ~= "table" or type(subjects.fighters) ~= "table" then
++    return 0
++  end
++  return #subjects.fighters
++end
++
++local function pairIds(pair)
++  if type(pair) ~= "table" then return nil end
++  local a, b = pair.fighterA, pair.fighterB
++  if type(a) ~= "number" or type(b) ~= "number" then return nil end
++  return a, b
++end
++
++local function callPair(mod, method)
++  if type(mod) ~= "table" or type(mod[method]) ~= "function" then
++    return nil
++  end
++  return pairIds(mod[method](mod))
++end
++
++local function overlaySubjects(subjects, fighterA, fighterB)
++  local candidate = type(subjects) == "table" and subjects.candidate or nil
++  return {
++    candidate = candidate,
++    fighters = { fighterA, fighterB },
++  }
++end
++
+ function Snapshot:Request()
+   return COB.Codec:EncodeSnapshot({ role = "request" })
+ end
+@@ -28,6 +60,36 @@ function Snapshot:BuildResponse()
+     return nil, "no event"
+   end
+   local fields = bibleFields(snap)
++  local usedLive = false
++  local usedLast = false
++  local gora = COB.Gora
++  local liveA, liveB = callPair(gora, "GetSanctioned")
++  if fighterCount(fields.subjects) ~= 2 then
++    if liveA and liveB then
++      fields.subjects = overlaySubjects(fields.subjects, liveA, liveB)
++      usedLive = true
++    elseif snap.state == "CONSEQUENCE" then
++      local lastA, lastB = callPair(gora, "GetLastSanctioned")
++      if lastA and lastB then
++        fields.subjects = overlaySubjects(fields.subjects, lastA, lastB)
++        usedLast = true
++      end
++    end
++  elseif liveA and liveB then
++    usedLive = true
++  end
++
++  local console = COB.Console
++  local visible = type(console) == "table"
++    and type(console.GetCongregationFavorVisible) == "function"
++    and console:GetCongregationFavorVisible() == true
++  if visible and fighterCount(fields.subjects) == 2 then
++    if usedLive and type(gora) == "table" and type(gora.GetFavorSplit) == "function" then
++      fields.favor = gora:GetFavorSplit()
++    elseif usedLast and type(gora) == "table" and type(gora.GetLastFavorSplit) == "function" then
++      fields.favor = gora:GetLastFavorSplit()
++    end
++  end
+   fields.role = "response"
+   return COB.Codec:EncodeSnapshot(fields)
+ end
+diff --git a/tests/test_net_snapshot.lua b/tests/test_net_snapshot.lua
+index d445e9b..3d7deb1 100644
+--- a/tests/test_net_snapshot.lua
++++ b/tests/test_net_snapshot.lua
+@@ -498,6 +498,303 @@ assert_eq(Snapshot.TYPES, nil, "Snapshot does not fork TYPES")
+ assert_eq(Snapshot.SNAPSHOT_ROLES, nil, "Snapshot does not fork roles")
+ assert_eq(Snapshot.PROTOCOL, nil, "protocol major stays on Codec")
+ 
++--------------------------------------------------------------------------------
++-- B11-A: overlay live / last pair onto the encoded SNAPSHOT only.
++-- Stubs stay in-file. Do not dofile Gora.lua / Store / UI.
++--------------------------------------------------------------------------------
++
++local function clearPairStubs()
++  COB.Gora = nil
++  COB.Console = nil
++end
++
++local function encode_overlay(snap, fighters, favor)
++  local fields = {
++    role = "response",
++    eventId = snap.eventId,
++    state = snap.state,
++    riteType = snap.riteType,
++    subjects = {
++      candidate = snap.subjects and snap.subjects.candidate or nil,
++      fighters = fighters,
++    },
++    sequence = snap.sequence,
++  }
++  if favor ~= nil then
++    fields.favor = favor
++  end
++  return Codec:EncodeSnapshot(fields)
++end
++
++-- 1. No Gora / missing methods → today's encode_expected path.
++clearPairStubs()
++reset()
++Runtime:StartEvent()
++local noGora = Runtime:Snapshot()
++assert_eq(Snapshot:BuildResponse(), encode_expected(noGora), "no Gora matches encode_expected")
++assert_unchanged(noGora, Runtime:Snapshot(), "no Gora does not change Runtime")
++
++COB.Gora = {}
++assert_eq(Snapshot:BuildResponse(), encode_expected(Runtime:Snapshot()), "Gora without methods matches encode_expected")
++assert_unchanged(noGora, Runtime:Snapshot(), "Gora without methods does not change Runtime")
++
++COB.Console = {}
++assert_eq(Snapshot:BuildResponse(), encode_expected(Runtime:Snapshot()), "Console without methods matches encode_expected")
++clearPairStubs()
++
++reset()
++local quietStub = Runtime:Snapshot()
++COB.Gora = {
++  GetSanctioned = function()
++    return { fighterA = 1, fighterB = 2 }
++  end,
++  GetLastSanctioned = function()
++    return { fighterA = 3, fighterB = 4 }
++  end,
++}
++assert_eq(Snapshot:BuildResponse(), nil, "QUIET BuildResponse stays nil with Gora stubs")
++assert_eq(select(2, Snapshot:BuildResponse()), "no event", "QUIET with Gora stubs: no event")
++assert_unchanged(quietStub, Runtime:Snapshot(), "QUIET with Gora stubs does not change Runtime")
++clearPairStubs()
++
++-- 2. Live GetSanctioned + ASSEMBLY + empty Runtime fighters.
++reset()
++Runtime:StartEvent()
++local assemblyEmpty = Runtime:Snapshot()
++assert_eq(assemblyEmpty.state, "ASSEMBLY", "StartEvent is ASSEMBLY for live overlay")
++assert_eq(assemblyEmpty.subjects.fighters, nil, "ASSEMBLY start has no fighters")
++COB.Gora = {
++  GetSanctioned = function()
++    return { fighterA = 31, fighterB = 32 }
++  end,
++}
++local liveWire = Snapshot:BuildResponse()
++assert_eq(liveWire, encode_overlay(assemblyEmpty, { 31, 32 }), "live overlay encodes the sanctioned pair")
++assert_unchanged(assemblyEmpty, Runtime:Snapshot(), "live overlay does not change Runtime")
++local liveMsg = Codec:DecodeSnapshot(liveWire)
++assert_eq(liveMsg.subjects.fighters[1], 31, "live overlay fighter A")
++assert_eq(liveMsg.subjects.fighters[2], 32, "live overlay fighter B")
++assert_eq(liveMsg.state, "ASSEMBLY", "live overlay keeps ASSEMBLY")
++assert_eq(liveMsg.favor, nil, "live overlay omits favor without Console")
++assert_true(liveWire ~= encode_expected(assemblyEmpty), "live overlay is not Runtime-only encode")
++
++COB.Console = {
++  GetCongregationFavorVisible = function()
++    return true
++  end,
++}
++COB.Gora.GetFavorSplit = function()
++  return { a = 2, b = 5 }
++end
++local liveFavWire = Snapshot:BuildResponse()
++assert_eq(liveFavWire, encode_overlay(assemblyEmpty, { 31, 32 }, { a = 2, b = 5 }), "live overlay favor when toggle true")
++assert_unchanged(assemblyEmpty, Runtime:Snapshot(), "live favor overlay does not change Runtime")
++local liveFavMsg = Codec:DecodeSnapshot(liveFavWire)
++assert_true(liveFavMsg.favor ~= nil, "live overlay carries favor")
++assert_eq(liveFavMsg.favor and liveFavMsg.favor.a, 2, "live favor a")
++assert_eq(liveFavMsg.favor and liveFavMsg.favor.b, 5, "live favor b")
++
++COB.Console.GetCongregationFavorVisible = function()
++  return false
++end
++assert_eq(Snapshot:BuildResponse(), encode_overlay(assemblyEmpty, { 31, 32 }), "live overlay toggle false omits favor")
++clearPairStubs()
++
++-- 3. Last pair + CONSEQUENCE + empty Runtime fighters. Favor follows the toggle.
++reset()
++Runtime:StartEvent()
++Runtime:OpenRite("Gora")
++Runtime:CloseRite()
++local consEmpty = Runtime:Snapshot()
++assert_eq(consEmpty.state, "CONSEQUENCE", "CloseRite without fighters is CONSEQUENCE")
++assert_eq(consEmpty.subjects.fighters, nil, "CONSEQUENCE without OpenRite fighters")
++COB.Gora = {
++  GetSanctioned = function()
++    return nil
++  end,
++  GetLastSanctioned = function()
++    return { fighterA = 41, fighterB = 42 }
++  end,
++  GetLastFavorSplit = function()
++    return { a = 3, b = 1 }
++  end,
++}
++COB.Console = {
++  GetCongregationFavorVisible = function()
++    return true
++  end,
++}
++local lastFavWire = Snapshot:BuildResponse()
++assert_eq(lastFavWire, encode_overlay(consEmpty, { 41, 42 }, { a = 3, b = 1 }), "last overlay encodes pair and last favor")
++assert_unchanged(consEmpty, Runtime:Snapshot(), "last overlay does not change Runtime")
++local lastFavMsg = Codec:DecodeSnapshot(lastFavWire)
++assert_eq(lastFavMsg.subjects.fighters[1], 41, "last overlay fighter A")
++assert_eq(lastFavMsg.subjects.fighters[2], 42, "last overlay fighter B")
++assert_true(lastFavMsg.favor ~= nil, "last overlay carries favor")
++assert_eq(lastFavMsg.favor and lastFavMsg.favor.a, 3, "last favor a")
++assert_eq(lastFavMsg.favor and lastFavMsg.favor.b, 1, "last favor b")
++
++COB.Console.GetCongregationFavorVisible = function()
++  return false
++end
++local lastOffWire = Snapshot:BuildResponse()
++assert_eq(lastOffWire, encode_overlay(consEmpty, { 41, 42 }), "last overlay toggle false omits favor")
++assert_eq(Codec:DecodeSnapshot(lastOffWire).favor, nil, "toggle false decoded favor is nil")
++assert_eq(Codec:DecodeSnapshot(lastOffWire).subjects.fighters[1], 41, "toggle false still overlays last pair")
++
++COB.Console = nil
++assert_eq(Snapshot:BuildResponse(), encode_overlay(consEmpty, { 41, 42 }), "missing Console omits favor")
++
++COB.Console = {
++  GetCongregationFavorVisible = function()
++    return true
++  end,
++}
++COB.Gora.GetLastFavorSplit = nil
++assert_eq(Snapshot:BuildResponse(), encode_overlay(consEmpty, { 41, 42 }), "missing GetLastFavorSplit omits favor")
++clearPairStubs()
++
++-- Live pair wins over last pair in CONSEQUENCE when Runtime fighters are missing.
++reset()
++Runtime:StartEvent()
++Runtime:OpenRite("Gora")
++Runtime:CloseRite()
++local consLiveWins = Runtime:Snapshot()
++COB.Gora = {
++  GetSanctioned = function()
++    return { fighterA = 61, fighterB = 62 }
++  end,
++  GetLastSanctioned = function()
++    return { fighterA = 41, fighterB = 42 }
++  end,
++}
++assert_eq(Snapshot:BuildResponse(), encode_overlay(consLiveWins, { 61, 62 }), "live pair wins over last pair")
++assert_unchanged(consLiveWins, Runtime:Snapshot(), "live-over-last does not change Runtime")
++clearPairStubs()
++
++-- 4. Last pair + ASSEMBLY (post-Continue) → no last-pair overlay.
++reset()
++Runtime:StartEvent()
++Runtime:OpenRite("Gora")
++Runtime:CloseRite()
++Runtime:Continue()
++local postCont = Runtime:Snapshot()
++assert_eq(postCont.state, "ASSEMBLY", "Continue returns to ASSEMBLY")
++assert_eq(postCont.subjects.fighters, nil, "post-Continue has no fighters")
++COB.Gora = {
++  GetSanctioned = function()
++    return nil
++  end,
++  GetLastSanctioned = function()
++    return { fighterA = 51, fighterB = 52 }
++  end,
++  GetLastFavorSplit = function()
++    return { a = 9, b = 1 }
++  end,
++}
++COB.Console = {
++  GetCongregationFavorVisible = function()
++    return true
++  end,
++}
++assert_eq(Snapshot:BuildResponse(), encode_expected(postCont), "post-Continue does not overlay last pair")
++assert_unchanged(postCont, Runtime:Snapshot(), "post-Continue last pair does not change Runtime")
++local postMsg = Codec:DecodeSnapshot(Snapshot:BuildResponse())
++assert_eq(#postMsg.subjects.fighters, 0, "post-Continue wire has no fighters")
++assert_eq(postMsg.favor, nil, "post-Continue does not invent last favor")
++clearPairStubs()
++
++-- 5. Runtime already has two fighters → do not replace them.
++reset()
++Runtime:StartEvent()
++Runtime:OpenRite("Gora", { fighters = { 8, 9 } })
++local keptRite = Runtime:Snapshot()
++COB.Gora = {
++  GetSanctioned = function()
++    return { fighterA = 71, fighterB = 72 }
++  end,
++  GetLastSanctioned = function()
++    return { fighterA = 81, fighterB = 82 }
++  end,
++}
++assert_eq(Snapshot:BuildResponse(), encode_expected(keptRite), "live pair does not replace Runtime fighters")
++assert_unchanged(keptRite, Runtime:Snapshot(), "kept Runtime fighters stay on Runtime")
++local keptRiteMsg = Codec:DecodeSnapshot(Snapshot:BuildResponse())
++assert_eq(keptRiteMsg.subjects.fighters[1], 8, "kept Runtime fighter A")
++assert_eq(keptRiteMsg.subjects.fighters[2], 9, "kept Runtime fighter B")
++
++Runtime:CloseRite()
++local keptCons = Runtime:Snapshot()
++assert_eq(keptCons.state, "CONSEQUENCE", "CloseRite keeps the rite fighters")
++COB.Gora.GetSanctioned = function()
++  return nil
++end
++assert_eq(Snapshot:BuildResponse(), encode_expected(keptCons), "last pair does not replace Runtime fighters")
++assert_unchanged(keptCons, Runtime:Snapshot(), "kept CONSEQUENCE fighters stay on Runtime")
++local keptConsMsg = Codec:DecodeSnapshot(Snapshot:BuildResponse())
++assert_eq(keptConsMsg.subjects.fighters[1], 8, "CONSEQUENCE kept fighter A")
++assert_eq(keptConsMsg.subjects.fighters[2], 9, "CONSEQUENCE kept fighter B")
++clearPairStubs()
++
++-- 6. ApplyResponse of an overlay wire Restores those fighters. Favor stays off Restore.
++reset()
++Runtime:StartEvent()
++Runtime:OpenRite("Gora")
++Runtime:CloseRite()
++COB.Gora = {
++  GetSanctioned = function()
++    return nil
++  end,
++  GetLastSanctioned = function()
++    return { fighterA = 41, fighterB = 42 }
++  end,
++  GetLastFavorSplit = function()
++    return { a = 3, b = 1 }
++  end,
++}
++COB.Console = {
++  GetCongregationFavorVisible = function()
++    return true
++  end,
++}
++local overlayWire = Snapshot:BuildResponse()
++assert_true(Codec:DecodeSnapshot(overlayWire).favor ~= nil, "overlay wire may carry favor")
++clearPairStubs()
++reset()
++assert_eq(Snapshot:ApplyResponse(overlayWire), true, "ApplyResponse overlay wire")
++local landedOverlay = Runtime:Snapshot()
++assert_snap_shape(landedOverlay, "overlay land")
++assert_eq(landedOverlay.subjects.fighters[1], 41, "Restore overlay fighter A")
++assert_eq(landedOverlay.subjects.fighters[2], 42, "Restore overlay fighter B")
++assert_eq(landedOverlay.state, "CONSEQUENCE", "Restore overlay keeps CONSEQUENCE")
++assert_eq(landedOverlay.favor, nil, "Restore does not keep favor")
++
++reset()
++Runtime:StartEvent()
++Runtime:OpenRite("Gora")
++COB.Gora = {
++  GetSanctioned = function()
++    return { fighterA = 31, fighterB = 32 }
++  end,
++}
++local riteOverlay = Snapshot:BuildResponse()
++clearPairStubs()
++reset()
++assert_eq(Snapshot:ApplyResponse(riteOverlay), true, "ApplyResponse live RITE overlay")
++assert_eq(Runtime:Snapshot().subjects.fighters[1], 31, "Restore live overlay fighter A")
++assert_eq(Runtime:Snapshot().subjects.fighters[2], 32, "Restore live overlay fighter B")
++assert_eq(Runtime:Snapshot().state, "RITE", "Restore live overlay keeps RITE")
++
++clearPairStubs()
++if standalone then
++  assert_eq(COB.Net, nil, "isolation wrap stays: no BeefNet")
++  assert_eq(COB.Store, nil, "isolation wrap stays: no Store")
++  assert_eq(COB.UI, nil, "isolation wrap stays: no UI")
++  assert_eq(COB.DB, nil, "isolation wrap stays: no DB")
++  assert_eq(COB.Gora, nil, "isolation wrap stays: Gora stub cleared")
++  assert_eq(COB.Console, nil, "isolation wrap stays: Console stub cleared")
++end
++
+ if standalone then
+   print(string.format("Tests finished: %d passed, %d failed", passed, failed))
+   if failed > 0 then os.exit(1) end

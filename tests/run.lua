@@ -10,6 +10,10 @@ ChurchOfBeef._IN_TEST = true
 -- the shared identity law and clocks from it, so no suite has to remember to load it.
 dofile("addon/ChurchOfBeef/Core/Common.lua")
 
+-- Same reasoning for the design system: every dressed surface reads palette, fonts,
+-- and textures from Theme, so suites never load it themselves.
+dofile("addon/ChurchOfBeef/UI/Theme.lua")
+
 local failed = 0
 local passed = 0
 
@@ -28,6 +32,8 @@ end
 
 -- Individual suites register themselves by calling their file when required.
 local suites = {
+  "test_common",
+  "test_theme",
   "test_ranks",
   "test_roster",
   "test_officer",
@@ -46,14 +52,20 @@ local suites = {
   "test_ceremony_chaos",
   "test_ui",
   "test_console",
+  "test_console_dock",
   "test_hud",
+  "test_fighter_card",
+  "test_inputs",
+  "test_markers",
   "test_records",
   "test_minimap",
   "test_gora",
+  "test_confession",
   "test_gora_ceremony",
   "test_decree",
   "test_decree_ui",
   "test_sound",
+  "test_wire_glue",
 }
 
 --------------------------------------------------------------------------------

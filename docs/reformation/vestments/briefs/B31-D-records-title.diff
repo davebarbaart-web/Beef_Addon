@@ -1,0 +1,126 @@
+# B31-D — Records paint re-applies Morpheus on the book title (implementation diff)
+
+Lane-only unified diff of the exclusive implementation files vs the pre-lane working tree.
+
+--- a/addon/ChurchOfBeef/UI/RecordsBook.lua
++++ b/addon/ChurchOfBeef/UI/RecordsBook.lua
+@@ -535,6 +535,9 @@
+   if n >= 1 and pageIndex > n then pageIndex = n end
+   local page = pages[pageIndex]
++  if frame.TitleText then
++    applyFont(frame.TitleText, "GameFontNormalHuge", PAGE_TITLE_FONT, 20)
++  end
+   if frame.PageTitle and frame.PageTitle.SetText then
+     applyFont(frame.PageTitle, "GameFontNormalLarge", PAGE_TITLE_FONT, 18)
+     frame.PageTitle:SetText(page and page.title or "")
+--- a/tests/test_records.lua
++++ b/tests/test_records.lua
+@@ -3,6 +3,7 @@
+ -- B25-C Init early-return rememberSpecial lives in runB25C() (Lua 5.1 200-local cap).
+ -- B28-C Hide remount rememberSpecial lives in runB28C() nested in runB25C().
+ -- B30-C paint() re-applies PAGE_TITLE_FONT lives in runB30C() nested in runB25C().
++-- B31-D paint() re-applies TitleText PAGE_TITLE_FONT lives in runB31D() nested in runB25C().
+ -- No TOC / bootstrap / run.lua / MainFrame / Console / Hud / Store / Net edits. No slash.
+ ChurchOfBeef = ChurchOfBeef or {}
+ ChurchOfBeef._IN_TEST = true
+@@ -383,8 +384,8 @@
+   runB28C()
+ 
+   -- B30-C: paint() re-applies PAGE_TITLE_FONT on PageTitle when the
+-  -- leaf turns. TitleText may stay create-only. PAGE_TITLES==9 /
++  -- leaf turns. TitleText paint is B31-D. PAGE_TITLES==9 /
+   -- Hide remount / wheel / Morpheus create-path stay.
+   local function runB30C()
+     local paintAt = src:find("local function paint()", 1, true)
+@@ -397,8 +398,6 @@
+     local setAt = paintBody:find("frame.PageTitle:SetText", 1, true)
+     assert_true(applyAt ~= nil and setAt ~= nil and applyAt < setAt,
+       "paint re-applies PAGE_TITLE_FONT on PageTitle before SetText")
+-    assert_eq(paintBody:find("TitleText", 1, true), nil,
+-      "paint does not restyle TitleText")
+     assert_eq(paintBody:find("PlaySound", 1, true), nil,
+       "paint does not PlaySound")
+ 
+@@ -450,6 +449,82 @@
+   end
+   runB30C()
+ 
++  -- B31-D: paint() re-applies PAGE_TITLE_FONT on TitleText when
++  -- paint runs. PageTitle apply stays. Chrome title copy stays
++  -- "The Records Book". PAGE_TITLES==9 / Hide remount / wheel stay.
++  local function runB31D()
++    local paintAt = src:find("local function paint()", 1, true)
++    assert_true(paintAt ~= nil, "paint exists")
++    local paintEnd = src:find("\nlocal function turn(", paintAt + 1, true)
++    assert_true(paintEnd ~= nil, "paint body has a following turn")
++    local paintBody = src:sub(paintAt, paintEnd - 1)
++    local titleApplyAt = paintBody:find(
++      'applyFont(frame.TitleText, "GameFontNormalHuge", PAGE_TITLE_FONT, 20)',
++      1, true)
++    assert_true(titleApplyAt ~= nil,
++      "paint re-applies PAGE_TITLE_FONT on TitleText")
++    local pageApplyAt = paintBody:find(
++      'applyFont(frame.PageTitle, "GameFontNormalLarge", PAGE_TITLE_FONT, 18)',
++      1, true)
++    local setAt = paintBody:find("frame.PageTitle:SetText", 1, true)
++    assert_true(pageApplyAt ~= nil and setAt ~= nil and pageApplyAt < setAt,
++      "paint still re-applies PAGE_TITLE_FONT on PageTitle before SetText")
++    assert_eq(paintBody:find("frame.TitleText:SetText", 1, true), nil,
++      "paint does not rewrite the chrome title string")
++    assert_eq(paintBody:find("PlaySound", 1, true), nil,
++      "paint does not PlaySound")
++
++    assert_true(src:find('title:SetText("The Records Book")', 1, true) ~= nil,
++      "chrome title string stays The Records Book")
++    assert_true(src:find(
++      'applyFont(title, "GameFontNormalHuge", PAGE_TITLE_FONT, 20)',
++      1, true) ~= nil,
++      "buildFrame still applies TitleText Morpheus")
++    assert_true(src:find(
++      'applyFont(pageTitle, "GameFontNormalLarge", PAGE_TITLE_FONT, 18)',
++      1, true) ~= nil,
++      "buildFrame still applies PAGE_TITLE_FONT on create")
++    assert_true(src:find('PAGE_TITLE_FONT = "Fonts\\\\MORPHEUS.ttf"', 1, true) ~= nil,
++      "PAGE_TITLE_FONT stays Fonts\\MORPHEUS.ttf")
++    assert_true(src:find("Fonts\\\\MORPHEUS.ttf", 1, true) ~= nil,
++      "PAGE_TITLE_FONT stays FrameXML lowercase Morpheus")
++    assert_eq(src:find("MORPHEUS.TTF", 1, true), nil,
++      "page title path is still not uppercase TTF")
++    assert_eq(src:find("MORPHEUS_CYR", 1, true), nil,
++      "source does not use GlueFonts MORPHEUS_CYR")
++    assert_true(src:find("FRIZQT__.TTF", 1, true) ~= nil,
++      "applyFont fallback face stays FRIZQT__.TTF")
++    assert_true(src:find("SetFontObject", 1, true) ~= nil,
++      "applyFont still falls back to GameFont")
++    assert_true(src:find("EnableMouseWheel", 1, true) ~= nil,
++      "wheel EnableMouseWheel stays")
++    assert_true(src:find('SetScript("OnMouseWheel"', 1, true) ~= nil,
++      "wheel OnMouseWheel stays")
++
++    local hideBody = src:match("function RecordsBook:Hide%(%)(.-)function RecordsBook:Toggle")
++    assert_true(type(hideBody) == "string" and hideBody ~= "",
++      "B28-C Hide body stays readable")
++    local remountAt = hideBody and hideBody:find("rememberSpecial(FRAME_NAME)", 1, true)
++    local hideAt = hideBody and hideBody:find("self.frame:Hide()", 1, true)
++    assert_true(remountAt ~= nil and hideAt ~= nil and remountAt < hideAt,
++      "B28-C Hide remount rememberSpecial FRAME_NAME stays")
++
++    assert_eq(type(Book.toRoman), "function", "toRoman stays a public helper")
++    if type(Book.toRoman) == "function" then
++      assert_eq(Book.toRoman(14), "XIV", "roman tallies stay XIV")
++    end
++    assert_eq(#Book:GetPages(), #BIBLE_TITLES, "PAGE_TITLES stay the nine Bible titles")
++    assert_eq(#Book:GetPages(), 9, "PAGE_TITLES stay 9")
++    Book:Show()
++    assert_eq(Book.frame.PageTitle:GetText(), "Most Sanctioned Victories",
++      "first leaf title is unchanged")
++    assert_eq(Book.frame.TitleText:GetText(), "The Records Book",
++      "chrome title stays The Records Book")
++    assert_eq(src:find("PlaySound", 1, true), nil,
++      "source still does not play sound")
++  end
++  runB31D()
++
+   if standalone then
+     assert_eq(COB.Runtime, nil, "isolation still does not load Runtime")
+     assert_eq(COB.UI, nil, "isolation still does not load MainFrame")

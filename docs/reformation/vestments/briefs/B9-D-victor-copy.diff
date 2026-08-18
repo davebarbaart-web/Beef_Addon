@@ -1,0 +1,28 @@
+diff --git a/addon/ChurchOfBeef/UI/Toasts.lua b/addon/ChurchOfBeef/UI/Toasts.lua
+--- a/addon/ChurchOfBeef/UI/Toasts.lua
++++ b/addon/ChurchOfBeef/UI/Toasts.lua
+@@ -496,7 +496,7 @@ local function clericalCopy(kind, fields)
+     if ruling == "victor" then
+       local name = fields.name
+       if type(name) ~= "string" or name == "" then return nil end
+-      return "Victor declared: " .. name .. "."
++      return "Victor declared: " .. name .. ". So ruled by the Beef Pope."
+     end
+     if ruling == "void" then
+       return "Void."
+diff --git a/tests/test_ui.lua b/tests/test_ui.lua
+--- a/tests/test_ui.lua
++++ b/tests/test_ui.lua
+@@ -543,9 +543,11 @@ theaterReset()
+ assert_true(COB.Runtime:StartEvent() ~= nil, "StartEvent for victor")
+ assert_eq(COB.Toasts:Proclaim("verdict", { ruling = "victor", name = "Thickcut" }), true,
+   "Event Mode victor is accepted")
+-assert_eq(theaterCopy(), "Victor declared: Thickcut.", "victor copy is clerical")
+-assert_eq(COB.Toasts.theater.headline:GetText(), "Victor declared: Thickcut.",
++assert_eq(theaterCopy(), "Victor declared: Thickcut. So ruled by the Beef Pope.",
++  "victor copy is clerical")
++assert_eq(COB.Toasts.theater.headline:GetText(),
++  "Victor declared: Thickcut. So ruled by the Beef Pope.",
+   "victor headline is the clerical sentence")
+ assert_eq(played[#played], "verdict", "victor plays the verdict cue")
+ 

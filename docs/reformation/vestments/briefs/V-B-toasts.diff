@@ -1,0 +1,592 @@
+diff --git a/addon/ChurchOfBeef/UI/Toasts.lua b/addon/ChurchOfBeef/UI/Toasts.lua
+index 2442a99..e4d1d8b 100644
+--- a/addon/ChurchOfBeef/UI/Toasts.lua
++++ b/addon/ChurchOfBeef/UI/Toasts.lua
+@@ -1,11 +1,11 @@
+ ChurchOfBeef = ChurchOfBeef or {}
+ local COB = ChurchOfBeef
+ 
+--- Event Mode toast engine. Quiet Mode does not drive this file (Law 6).
+--- Grant-driven kinds (suggest, credit, demote, excommunicate) are gone.
+--- Promote / rite copy builders and those KINDS are gone — nothing live
+--- called them. Engine remains: system / debug and Push. Do not invent
+--- Event Mode kinds here (Phase 4).
++-- Event Mode toast engine + theatrical proclamation/verdict beats (Law 6).
++-- Quiet Mode does not drive this file. Grant-driven kinds are gone.
++-- Promote / rite copy builders and those KINDS are gone.
++-- Engine: system / debug via Push; sanction / verdict / cowardice via Proclaim.
++-- Clerical copy only. Never generate oratory. Never SendChatMessage.
+ local Toasts = {}
+ COB.Toasts = Toasts
+ 
+@@ -28,10 +28,24 @@ local KINDS = {
+   debug   = { priority = 10, hold = 2.0, interrupt = false },
+ }
+ 
++local THEATER_KINDS = {
++  sanction = true,
++  verdict = true,
++  cowardice = true,
++}
++
++local THEATER_HOLD = 5
++local DIM_ALPHA = 0.45
++local PANEL_FALLBACK_W = 420
++local GOLD = { 0.85, 0.72, 0.28, 1 }
++local OXBLOOD = { 0.45, 0.08, 0.10, 1 }
++local IRON = { 0.28, 0.24, 0.18, 1 }
++
+ local pending = {}
+ local recentKeys = {}
+ local gen = 0
+ local arrivalSeq = 0
++local theaterGen = 0
+ 
+ local function now()
+   if type(GetTime) == "function" then
+@@ -410,6 +424,234 @@ local function interruptShowing(self)
+   end
+ end
+ 
++--------------------------------------------------------------------------------
++-- Theatrical overlay (sanction / verdict / cowardice)
++--------------------------------------------------------------------------------
++
++local function theaterAllowed()
++  local runtime = COB.Runtime
++  if type(runtime) ~= "table" or type(runtime.Snapshot) ~= "function" then
++    return false
++  end
++  local snap = runtime:Snapshot()
++  local state = type(snap) == "table" and snap.state or nil
++  if state == nil or state == "QUIET" then
++    return false
++  end
++  return true
++end
++
++local function clericalCopy(kind, fields)
++  if type(fields) ~= "table" then fields = {} end
++
++  if kind == "sanction" then
++    local a, b = fields.fighterA, fields.fighterB
++    if type(a) ~= "string" or a == "" or type(b) ~= "string" or b == "" then
++      return nil
++    end
++    local lines = { "A Beef Gora is Sanctioned", a, "VS", b }
++    if type(fields.stipulation) == "string" and fields.stipulation ~= "" then
++      lines[#lines + 1] = fields.stipulation
++    end
++    return table.concat(lines, "\n")
++  end
++
++  if kind == "cowardice" then
++    local name = fields.name
++    if type(name) ~= "string" or name == "" then return nil end
++    return "Cowardice recorded: " .. name .. ". So ruled by the Beef Pope."
++  end
++
++  if kind == "verdict" then
++    local ruling = fields.ruling
++    if ruling == "victor" then
++      local name = fields.name
++      if type(name) ~= "string" or name == "" then return nil end
++      return "Victor declared: " .. name .. "."
++    end
++    if ruling == "void" then
++      return "Void."
++    end
++    if ruling == "free" then
++      local text = fields.text
++      if type(text) == "string" and text ~= "" then return text end
++      return "Free ruling."
++    end
++  end
++
++  return nil
++end
++
++local function tintFor(kind, fields)
++  if kind == "cowardice" then return OXBLOOD end
++  if kind == "verdict" and fields.ruling == "victor" then return GOLD end
++  return IRON
++end
++
++local function panelWidth()
++  local parentW
++  if UIParent and UIParent.GetWidth then
++    parentW = UIParent:GetWidth()
++  end
++  if type(parentW) == "number" and parentW > 0 then
++    return math.floor(parentW / 3)
++  end
++  return PANEL_FALLBACK_W
++end
++
++local function playTheaterCue(kind)
++  local sound = COB.Sound
++  if type(sound) ~= "table" or type(sound.Play) ~= "function" then return end
++  pcall(function()
++    sound:Play(kind)
++  end)
++end
++
++local function hideTheater(self)
++  theaterGen = theaterGen + 1
++  local t = self.theater
++  if t and t.root then t.root:Hide() end
++end
++
++local function tryTheaterBackdrop(frame)
++  if frame.SetBackdrop then
++    frame:SetBackdrop({
++      bgFile = "Interface\\QuestFrame\\QuestBG",
++      edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
++      tile = false,
++      edgeSize = 16,
++      insets = { left = 4, right = 4, top = 4, bottom = 4 },
++    })
++    if frame.SetBackdropColor then
++      frame:SetBackdropColor(1, 1, 1, 1)
++    end
++    if frame.SetBackdropBorderColor then
++      frame:SetBackdropBorderColor(0.65, 0.55, 0.35, 1)
++    end
++    return true
++  end
++  return false
++end
++
++function Toasts:InitTheater()
++  if self.theater and self.theater.root then return self.theater end
++  if type(CreateFrame) ~= "function" then return nil end
++
++  local root = CreateFrame("Frame", "ChurchOfBeefProclaim", UIParent)
++  root:SetFrameStrata("FULLSCREEN_DIALOG")
++  if root.EnableMouse then root:EnableMouse(false) end
++  if root.SetAllPoints then
++    root:SetAllPoints(UIParent)
++  else
++    root:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 0, 0)
++    root:SetPoint("BOTTOMRIGHT", UIParent, "BOTTOMRIGHT", 0, 0)
++  end
++  root:Hide()
++
++  local dim = root:CreateTexture(nil, "BACKGROUND")
++  dim:SetAllPoints(root)
++  if dim.SetColorTexture then
++    dim:SetColorTexture(0, 0, 0, DIM_ALPHA)
++  else
++    dim:SetTexture("Interface\\Buttons\\WHITE8X8")
++    if dim.SetVertexColor then dim:SetVertexColor(0, 0, 0, DIM_ALPHA) end
++  end
++
++  local panel = CreateFrame("Frame", "ChurchOfBeefProclaimPanel", root, "BackdropTemplate")
++  if not panel then
++    panel = CreateFrame("Frame", "ChurchOfBeefProclaimPanel", root)
++  end
++  if panel.EnableMouse then panel:EnableMouse(false) end
++  if not tryTheaterBackdrop(panel) then
++    local parchment = panel:CreateTexture(nil, "BACKGROUND")
++    parchment:SetAllPoints(panel)
++    parchment:SetTexture("Interface\\QuestFrame\\QuestBG")
++  end
++
++  local tint = panel:CreateTexture(nil, "OVERLAY")
++  tint:SetTexture("Interface\\Buttons\\WHITE8X8")
++  tint:SetPoint("BOTTOMLEFT", panel, "BOTTOMLEFT", 8, 8)
++  tint:SetPoint("BOTTOMRIGHT", panel, "BOTTOMRIGHT", -8, 8)
++  tint:SetHeight(6)
++
++  local copy = panel:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
++  copy:SetPoint("TOPLEFT", panel, "TOPLEFT", 16, -16)
++  copy:SetPoint("BOTTOMRIGHT", panel, "BOTTOMRIGHT", -16, 20)
++  copy:SetJustifyH("CENTER")
++  copy:SetJustifyV("MIDDLE")
++  if copy.SetWordWrap then copy:SetWordWrap(true) end
++
++  self.theater = {
++    root = root,
++    dim = dim,
++    panel = panel,
++    tint = tint,
++    copy = copy,
++    dimAlpha = DIM_ALPHA,
++  }
++  return self.theater
++end
++
++--- Event Mode proclamation / verdict / cowardice. Clerical copy only.
++--- fields: { fighterA, fighterB, name, ruling, text, stipulation }
++--- @return ok boolean, reason string|nil
++function Toasts:Proclaim(kind, fields)
++  if type(kind) ~= "string" or not THEATER_KINDS[kind] then
++    return false, "invalid"
++  end
++  if not theaterAllowed() then
++    return false, "quiet"
++  end
++
++  fields = type(fields) == "table" and fields or {}
++  local text = clericalCopy(kind, fields)
++  if type(text) ~= "string" or text == "" then
++    return false, "invalid"
++  end
++
++  local theater = self:InitTheater()
++  if not theater then return false, "invalid" end
++
++  local w = panelWidth()
++  local lines = 1
++  for _ in text:gmatch("\n") do lines = lines + 1 end
++  theater.panel:SetWidth(w)
++  theater.panel:SetHeight(math.max(140, 48 + lines * 24))
++  if theater.panel.ClearAllPoints then theater.panel:ClearAllPoints() end
++  theater.panel:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
++
++  theater.copy:SetText(text)
++  theater.dimAlpha = DIM_ALPHA
++  if theater.dim.SetColorTexture then
++    theater.dim:SetColorTexture(0, 0, 0, DIM_ALPHA)
++  elseif theater.dim.SetVertexColor then
++    theater.dim:SetVertexColor(0, 0, 0, DIM_ALPHA)
++  end
++
++  local color = tintFor(kind, fields)
++  if theater.tint and theater.tint.SetVertexColor then
++    theater.tint:SetVertexColor(color[1], color[2], color[3], color[4] or 1)
++  end
++
++  theater.root:Show()
++  theater.panel:Show()
++
++  if DEFAULT_CHAT_FRAME and DEFAULT_CHAT_FRAME.AddMessage then
++    DEFAULT_CHAT_FRAME:AddMessage(text)
++  end
++
++  playTheaterCue(kind)
++
++  theaterGen = theaterGen + 1
++  local myGen = theaterGen
++  after(THEATER_HOLD, function()
++    if theaterGen ~= myGen then return end
++    if theater.root then theater.root:Hide() end
++  end)
++
++  return true
++end
++
+ --------------------------------------------------------------------------------
+ -- Public API
+ --------------------------------------------------------------------------------
+@@ -521,12 +763,18 @@ end
+ --- Convenience entry. Builds UI-owned copy; never touches Core.
+ --- Forms:
+ ---   Celebrate(text)                         → system
+----   Celebrate(kind, fieldsTable)            → system / debug only
+---- fields: { detail?, text?, dedupeKey?, hold?, priority? }
++---   Celebrate(kind, fieldsTable)            → system / debug, or Proclaim
++--- fields: { detail?, text?, dedupeKey?, hold?, priority?,
++---           fighterA?, fighterB?, name?, ruling?, stipulation? }
++--- Theater kinds (sanction / verdict / cowardice) go to Proclaim.
+ --- Unknown / excised kinds (promote, rite, grant family) do not mint copy.
+ function Toasts:Celebrate(kind, fields)
+   -- Plain string → system toast (back-compat for early call sites).
++  -- Theater kind names are not copy; they must go through Proclaim.
+   if type(kind) == "string" and fields == nil then
++    if THEATER_KINDS[kind] then
++      return self:Proclaim(kind, {})
++    end
+     if not KINDS[kind] then
+       return self:Push({ kind = "system", text = kind })
+     end
+@@ -534,6 +782,9 @@ function Toasts:Celebrate(kind, fields)
+   end
+ 
+   fields = type(fields) == "table" and fields or {}
++  if type(kind) == "string" and THEATER_KINDS[kind] then
++    return self:Proclaim(kind, fields)
++  end
+   if type(kind) ~= "string" or not KINDS[kind] then kind = "system" end
+ 
+   local text = fields.text
+@@ -558,6 +809,7 @@ end
+ 
+ function Toasts:HideAll()
+   bumpGen()
++  hideTheater(self)
+   clearPending()
+   stopMotion(self.frame)
+   self.showing = nil
+diff --git a/tests/test_ui.lua b/tests/test_ui.lua
+index cc330d7..2515c24 100644
+--- a/tests/test_ui.lua
++++ b/tests/test_ui.lua
+@@ -1,11 +1,32 @@
+ -- Quiet shell: frame creation, drag/resize/coalesce, saved position, minimap
+--- toggle, system/debug toasts. No tab registry. No Standing / Ladder / Officer
+--- IA. No promote / rite toast kinds.
++-- toggle, system/debug toasts. Event Mode Proclaim (sanction / verdict /
++-- cowardice). No tab registry. No Standing / Ladder / Officer IA.
++-- No promote / rite toast kinds. Isolation stays under standalone.
++local standalone = (type(assert_eq) ~= "function")
++local passed = 0
++local failed = 0
++
++if standalone then
++  package.path = package.path .. ";./tests/?.lua"
++  function assert_eq(a, b, msg)
++    if a ~= b then
++      failed = failed + 1
++      print("FAIL: " .. (msg or "") .. " expected " .. tostring(b) .. " got " .. tostring(a))
++    else
++      passed = passed + 1
++    end
++  end
++  function assert_true(v, msg)
++    assert_eq(not not v, true, msg)
++  end
++end
++
+ local stub = require("wow_ui_stub")
+ local restore = stub.install()
+ 
+ ChurchOfBeef = ChurchOfBeef or {}
+ ChurchOfBeef._IN_TEST = true
++dofile("addon/ChurchOfBeef/Core/Common.lua")
+ dofile("addon/ChurchOfBeef/Data/Ranks.lua")
+ dofile("addon/ChurchOfBeef/Core/Officer.lua")
+ dofile("addon/ChurchOfBeef/Core/Roster.lua")
+@@ -26,6 +47,24 @@ if COB.Roster and COB.Roster.ResetForTests then COB.Roster:ResetForTests() end
+ 
+ loadUi()
+ 
++--------------------------------------------------------------------------------
++-- Isolated surface: this suite does not load Console / HUD / Records / Gora.
++-- Runtime and Sound are dofiled later for the Quiet / cue pins.
++--------------------------------------------------------------------------------
++if standalone then
++  assert_eq(COB.Console, nil, "isolated suite does not load Console")
++  assert_eq(COB.Hud, nil, "isolated suite does not load Hud")
++  assert_eq(COB.RecordsBook, nil, "isolated suite does not load Records Book")
++  assert_eq(COB.Gora, nil, "isolated suite does not load Gora")
++  assert_eq(COB.Knighting, nil, "isolated suite does not load Knighting")
++  assert_eq(COB.Runtime, nil, "Runtime is dofiled later for the Quiet pin")
++  assert_eq(COB.Sound, nil, "Sound is dofiled later for cue pins")
++  assert_eq(COB.Codec, nil, "isolated suite does not load Codec")
++  assert_eq(COB.Sender, nil, "isolated suite does not load Sender")
++  assert_eq(COB.Archive, nil, "isolated suite does not load Archive")
++  assert_eq(COB.Recognition, nil, "isolated suite does not load Recognition")
++end
++
+ --------------------------------------------------------------------------------
+ -- Tab registry and ClassColorCode are gone
+ --------------------------------------------------------------------------------
+@@ -338,4 +377,207 @@ COB.UI:RefreshLadder()
+ assert_eq(COB.UI:IsShown(), true, "RefreshLadder does not close the shell")
+ assert_eq(COB.UI.frame.FooterText:GetText(), "", "coalesced paint never restores Eternal Grazing")
+ 
++--------------------------------------------------------------------------------
++-- V-B: sanction proclamation + verdict seals. Push/Proclaim only.
++-- Runtime + Sound are loaded here (not wired from Console / Gora).
++--------------------------------------------------------------------------------
++dofile("addon/ChurchOfBeef/Core/Runtime.lua")
++dofile("addon/ChurchOfBeef/UI/Sound.lua")
++
++local savedPlaySound = PlaySound
++local savedPlaySoundFile = PlaySoundFile
++local savedChatFrame = DEFAULT_CHAT_FRAME
++
++local played = {}
++PlaySound = function(name)
++  played[#played + 1] = name
++end
++PlaySoundFile = function()
++  error("PlaySoundFile is not a V-B cue path")
++end
++
++local chatLines = {}
++DEFAULT_CHAT_FRAME = {
++  AddMessage = function(_, message)
++    chatLines[#chatLines + 1] = message
++  end,
++}
++
++local function theaterReset()
++  assert_eq(COB.Runtime:ResetForTests(), true, "Runtime ResetForTests runs under _IN_TEST")
++  assert_eq(COB.Toasts:ResetForTests(), true, "Toasts ResetForTests runs under _IN_TEST")
++  played = {}
++  chatLines = {}
++  stub.chat = {}
++end
++
++local function theaterCopy()
++  local theater = COB.Toasts.theater
++  if not theater or not theater.copy then return nil end
++  return theater.copy:GetText()
++end
++
++local function findButton(widget)
++  if not widget then return nil end
++  if widget._type == "Button" then return widget end
++  for i = 1, #(widget._children or {}) do
++    local hit = findButton(widget._children[i])
++    if hit then return hit end
++  end
++  return nil
++end
++
++assert_eq(type(COB.Toasts.Proclaim), "function", "Proclaim is the theatrical entry")
++
++theaterReset()
++assert_eq(COB.Runtime:Snapshot().state, "QUIET", "fresh runtime is QUIET")
++local quietOk, quietReason = COB.Toasts:Proclaim("sanction", {
++  fighterA = "Juicyj", fighterB = "Meat Is Murder",
++})
++assert_eq(quietOk, false, "Quiet Runtime refuses sanction")
++assert_true(type(quietReason) == "string", "Quiet refuse returns a reason")
++assert_true(
++  COB.Toasts.theater == nil or COB.Toasts.theater.root:IsShown() == false,
++  "Quiet does not show the theater frame"
++)
++
++local savedRuntime = COB.Runtime
++COB.Runtime = nil
++local missingOk = COB.Toasts:Proclaim("cowardice", { name = "Thickcut" })
++assert_eq(missingOk, false, "missing Runtime refuses cowardice")
++assert_true(
++  COB.Toasts.theater == nil or COB.Toasts.theater.root:IsShown() == false,
++  "missing Runtime does not show theater"
++)
++COB.Runtime = savedRuntime
++
++theaterReset()
++assert_true(COB.Runtime:StartEvent() ~= nil, "StartEvent reaches ASSEMBLY")
++UIParent:SetWidth(1200)
++UIParent:SetHeight(800)
++assert_eq(COB.Toasts:Proclaim("sanction", {
++  fighterA = "Juicyj",
++  fighterB = "Meat Is Murder",
++  stipulation = "Come as you are",
++}), true, "Event Mode sanction is accepted")
++assert_true(COB.Toasts.theater ~= nil, "sanction mints a theater overlay")
++assert_eq(COB.Toasts.theater.root:IsShown(), true, "sanction shows the overlay")
++local sanctionCopy = theaterCopy()
++assert_true(type(sanctionCopy) == "string", "sanction paints clerical copy")
++assert_true(sanctionCopy:find("A Beef Gora is Sanctioned", 1, true) ~= nil,
++  "sanction headline is clerical")
++assert_true(sanctionCopy:find("Juicyj", 1, true) ~= nil, "sanction paints fighter A")
++assert_true(sanctionCopy:find("Meat Is Murder", 1, true) ~= nil, "sanction paints fighter B")
++assert_true(sanctionCopy:find("Come as you are", 1, true) ~= nil,
++  "sanction prints the Pope-authored stipulation as-is")
++assert_eq(sanctionCopy:find("Their third meeting", 1, true), nil,
++  "sanction does not generate head-to-head oratory")
++assert_true(COB.Toasts.theater.dimAlpha ~= nil, "dim alpha is recorded")
++assert_true(COB.Toasts.theater.dimAlpha <= 0.5, "background dim is ≤ 50%")
++assert_true(COB.Toasts.theater.dimAlpha > 0, "background dim is present")
++local panelW = COB.Toasts.theater.panel:GetWidth()
++assert_true(type(panelW) == "number", "panel has a width")
++assert_true(panelW <= 400, "panel occupies at most the center third")
++assert_true(panelW < 1200, "panel is not full-screen")
++local panelH = COB.Toasts.theater.panel:GetHeight()
++assert_true(type(panelH) == "number" and panelH < 800, "panel is not full-screen tall")
++assert_eq(findButton(COB.Toasts.theater.root), nil, "sanction has no close button")
++assert_eq(COB.Toasts.theater.root:GetScript("OnUpdate"), nil, "theater has no permanent OnUpdate")
++assert_eq(played[#played], "sanction", "sanction plays the sanction cue")
++assert_eq(#stub.chat, 0, "Proclaim never SendChatMessage")
++if #chatLines > 0 then
++  assert_eq(chatLines[1], sanctionCopy, "optional chat repeats the same clerical line")
++end
++
++theaterReset()
++assert_true(COB.Runtime:StartEvent() ~= nil, "StartEvent for cowardice")
++assert_eq(COB.Toasts:Proclaim("cowardice", { name = "Thickcut" }), true,
++  "Event Mode cowardice is accepted")
++assert_eq(theaterCopy(), "Cowardice recorded: Thickcut. So ruled by the Beef Pope.",
++  "cowardice copy is the clerical sentence")
++assert_eq(played[#played], "cowardice", "cowardice plays the cowardice cue")
++assert_eq(findButton(COB.Toasts.theater.root), nil, "cowardice has no close button")
++assert_eq(#stub.chat, 0, "cowardice never SendChatMessage")
++
++theaterReset()
++assert_true(COB.Runtime:StartEvent() ~= nil, "StartEvent for victor")
++assert_eq(COB.Toasts:Proclaim("verdict", { ruling = "victor", name = "Thickcut" }), true,
++  "Event Mode victor is accepted")
++assert_eq(theaterCopy(), "Victor declared: Thickcut.", "victor copy is clerical")
++assert_eq(played[#played], "verdict", "victor plays the verdict cue")
++
++theaterReset()
++assert_true(COB.Runtime:StartEvent() ~= nil, "StartEvent for void")
++assert_eq(COB.Toasts:Proclaim("verdict", { ruling = "void" }), true,
++  "Event Mode void is accepted")
++assert_eq(theaterCopy(), "Void.", "void copy is clerical")
++
++theaterReset()
++assert_true(COB.Runtime:StartEvent() ~= nil, "StartEvent for free text")
++assert_eq(COB.Toasts:Proclaim("verdict", {
++  ruling = "free", text = "The bout is set aside.",
++}), true, "Event Mode free ruling with Pope text is accepted")
++assert_eq(theaterCopy(), "The bout is set aside.", "free uses Pope text when provided")
++
++theaterReset()
++assert_true(COB.Runtime:StartEvent() ~= nil, "StartEvent for free default")
++assert_eq(COB.Toasts:Proclaim("verdict", { ruling = "free" }), true,
++  "Event Mode free ruling without text is accepted")
++assert_eq(theaterCopy(), "Free ruling.", "free falls back to the clerical default")
++
++theaterReset()
++assert_true(COB.Runtime:StartEvent() ~= nil, "StartEvent for unknown kind")
++local unknownOk, unknownReason = COB.Toasts:Proclaim("sermon", { name = "Thickcut" })
++assert_eq(unknownOk, false, "unknown kinds do not mint copy")
++assert_eq(unknownReason, "invalid", "unknown kind is invalid")
++assert_true(
++  COB.Toasts.theater == nil or COB.Toasts.theater.root:IsShown() == false,
++  "unknown kind does not show theater"
++)
++
++theaterReset()
++assert_true(COB.Runtime:StartEvent() ~= nil, "StartEvent for missing Sound")
++local savedSound = COB.Sound
++COB.Sound = nil
++played = {}
++assert_eq(COB.Toasts:Proclaim("sanction", {
++  fighterA = "Juicyj", fighterB = "Meat Is Murder",
++}), true, "theater still shows when Sound is absent")
++assert_eq(COB.Toasts.theater.root:IsShown(), true, "missing Sound still shows the overlay")
++assert_eq(#played, 0, "missing Sound does not invent a PlaySound")
++COB.Sound = savedSound
++
++theaterReset()
++assert_true(COB.Runtime:StartEvent() ~= nil, "StartEvent for timed hide")
++assert_eq(COB.Toasts:Proclaim("verdict", { ruling = "void" }), true, "void beat is timed")
++assert_eq(COB.Toasts.theater.root:IsShown(), true, "void is visible before the timer")
++stub.flushTimers()
++assert_eq(COB.Toasts.theater.root:IsShown(), false, "C_Timer.After hides the beat")
++
++local toastSrcFile = io.open("addon/ChurchOfBeef/UI/Toasts.lua", "r")
++assert_true(toastSrcFile ~= nil, "Toasts.lua is readable")
++local toastSrc = toastSrcFile:read("*a")
++toastSrcFile:close()
++assert_eq(toastSrc:find("SendChatMessage(", 1, true), nil, "source never SendChatMessage")
++assert_eq(toastSrc:find("COB.Console", 1, true), nil, "source does not wire Console")
++assert_eq(toastSrc:find("COB.Gora", 1, true), nil, "source does not wire Gora")
++assert_eq(toastSrc:find("Their third meeting", 1, true), nil, "source does not generate H2H oratory")
++assert_eq(toastSrc:find("Let it be known", 1, true), nil, "source does not generate sermons")
++
++theaterReset()
++assert_eq(COB.Toasts:Push({ kind = "system", text = "system still lives" }), true,
++  "system Push stays green after theater")
++assert_eq(COB.Toasts:ShowingKind(), "system", "system kind still queues")
++assert_eq(COB.Toasts.frame.text:GetText(), "system still lives", "system toast text is unchanged")
++COB.Toasts:ResetForTests()
++
++PlaySound = savedPlaySound
++PlaySoundFile = savedPlaySoundFile
++DEFAULT_CHAT_FRAME = savedChatFrame
++
+ restore()
++
++if standalone then
++  print(string.format("Tests finished: %d passed, %d failed", passed, failed))
++  if failed > 0 then os.exit(1) end
++end

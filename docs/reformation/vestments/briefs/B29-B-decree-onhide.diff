@@ -1,0 +1,199 @@
+# B29-B — Decree OnHide blanks leftover paint when the line is gone (implementation diff)
+
+Lane-only unified diff of the exclusive implementation files vs the pre-lane working tree.
+
+--- a/addon/ChurchOfBeef/UI/Decree.lua
++++ b/addon/ChurchOfBeef/UI/Decree.lua
+@@ -151,6 +151,21 @@
+   end
+ end
+ 
++-- ESC Hide via UISpecialFrames bypasses DecreeBanner:Hide. Wire OnHide
++-- once; never replace an existing script. Wipe leftover paint when
++-- getDecree is nil. Do not Show.
++local function wireDecreeOnHide(frame)
++  if not frame then return end
++  if type(frame.SetScript) ~= "function" then return end
++  local existing = type(frame.GetScript) == "function" and frame:GetScript("OnHide")
++  if existing then return end
++  frame:SetScript("OnHide", function()
++    if not getDecree() then
++      wipePaint(frame)
++    end
++  end)
++end
++
+ local function buildFrame()
+   local frame = CreateFrame("Frame", FRAME_NAME, UIParent)
+   frame:SetFrameStrata("DIALOG")
+@@ -262,6 +277,7 @@
+ 
+   restorePoint(frame)
+   rememberSpecial(FRAME_NAME)
++  wireDecreeOnHide(frame)
+   return frame
+ end
+ 
+@@ -272,6 +288,7 @@
+   end
+   if type(CreateFrame) ~= "function" then return nil end
+   DecreeBanner.frame = buildFrame()
++  wireDecreeOnHide(DecreeBanner.frame)
+   return DecreeBanner.frame
+ end
+ 
+--- a/tests/test_decree_ui.lua
++++ b/tests/test_decree_ui.lua
+@@ -576,6 +576,152 @@
+     Banner:Hide()
+   end
+   runB28B()
++
++  -- B29-B: leftover Goldshire must blank on widget frame:Hide after Clear
++  -- (ESC via UISpecialFrames), not DecreeBanner:Hide / Refresh.
++  -- Refresh / Hide wipe / empty Show stay. Isolation wrap stays.
++  local function runB29B()
++    assert_true(src:find("local function wireDecreeOnHide", 1, true) ~= nil,
++      "source extracts wireDecreeOnHide")
++    local wireDecree = src:match("local function wireDecreeOnHide%(frame%)(.-)\nlocal function buildFrame")
++    assert_true(type(wireDecree) == "string" and wireDecree ~= "",
++      "wireDecreeOnHide body is readable")
++    if type(wireDecree) ~= "string" then wireDecree = "" end
++    assert_true(wireDecree:find("GetScript", 1, true) ~= nil,
++      "wireDecreeOnHide checks GetScript")
++    assert_true(wireDecree:find("SetScript", 1, true) ~= nil,
++      "wireDecreeOnHide holds SetScript")
++    assert_true(wireDecree:find("OnHide", 1, true) ~= nil,
++      "wireDecreeOnHide wires OnHide")
++    assert_true(wireDecree:find("if existing then return", 1, true) ~= nil,
++      "wireDecreeOnHide does not replace an existing OnHide")
++    assert_true(wireDecree:find("getDecree()", 1, true) ~= nil,
++      "wireDecreeOnHide checks getDecree")
++    assert_true(
++      wireDecree:find("wipePaint(frame)", 1, true) ~= nil
++        or wireDecree:find('LineText:SetText("")', 1, true) ~= nil,
++      "wireDecreeOnHide wipePaints when Get is nil")
++    assert_eq(wireDecree:find(":Show()", 1, true), nil,
++      "OnHide does not Show")
++    assert_eq(wireDecree:find("PlaySound", 1, true), nil,
++      "wireDecreeOnHide does not PlaySound")
++    assert_eq(wireDecree:find("CreateFrame", 1, true), nil,
++      "wireDecreeOnHide does not rebuild")
++    assert_eq(wireDecree:find("Clear Decree", 1, true), nil,
++      "wireDecreeOnHide has no Clear Decree chrome")
++    local buildBody = src:match("local function buildFrame%(%)(.-)\nlocal function ensureFrame")
++    assert_true(type(buildBody) == "string" and buildBody ~= "",
++      "buildFrame body is readable")
++    if type(buildBody) ~= "string" then buildBody = "" end
++    assert_true(buildBody:find("wireDecreeOnHide", 1, true) ~= nil,
++      "buildFrame calls wireDecreeOnHide")
++    assert_eq(buildBody:find('SetScript("OnHide"', 1, true), nil,
++      "buildFrame does not SetScript OnHide inline")
++    local createEnsure = src:match(
++      'if type%(CreateFrame%) ~= "function" then return nil end%s*\n(.-)return DecreeBanner%.frame'
++    )
++    assert_true(type(createEnsure) == "string" and createEnsure ~= "",
++      "ensureFrame create body is readable")
++    if type(createEnsure) ~= "string" then createEnsure = "" end
++    assert_true(createEnsure:find("buildFrame()", 1, true) ~= nil,
++      "ensureFrame create still builds")
++    assert_true(createEnsure:find("wireDecreeOnHide", 1, true) ~= nil,
++      "ensureFrame create calls wireDecreeOnHide")
++    assert_eq(createEnsure:find('SetScript("OnHide"', 1, true), nil,
++      "ensureFrame create does not SetScript OnHide inline")
++    assert_eq(hideBody:find("SetScript", 1, true), nil,
++      "Hide does not SetScript")
++    assert_eq(refreshBody:find("SetScript", 1, true), nil,
++      "Refresh does not SetScript")
++    assert_eq(hideBody:find("wireDecreeOnHide", 1, true), nil,
++      "Hide does not call wireDecreeOnHide")
++    assert_eq(refreshBody:find("wireDecreeOnHide", 1, true), nil,
++      "Refresh does not call wireDecreeOnHide")
++    assert_true(src:find("Fonts\\\\MORPHEUS.ttf", 1, true) ~= nil,
++      "LINE_FONT stays FrameXML lowercase Morpheus after OnHide")
++    assert_eq(src:find("Clear Decree", 1, true), nil,
++      "source still has no Clear Decree chrome")
++
++    Decree:Set({
++      line = "Goldshire Inn — Sunday, 7:00 PM",
++      flavor = "Bring a friend.",
++    })
++    assert_eq(Banner:Show(), true, "B29-B Show paints Goldshire")
++    assert_eq(Banner:IsShown(), true, "B29-B Show opens the banner")
++    assert_eq(Banner.frame.LineText:GetText(), "Goldshire Inn — Sunday, 7:00 PM",
++      "B29-B leftover starts as Goldshire")
++    assert_eq(Banner.frame.FlavorText:GetText(), "Bring a friend.",
++      "B29-B leftover flavor starts set")
++    local onHide = Banner.frame:GetScript("OnHide")
++    assert_true(onHide ~= nil, "create-path wires OnHide")
++    assert_eq(Banner:Init(), Banner.frame, "Init returns the existing frame")
++    assert_eq(Banner.frame:GetScript("OnHide"), onHide,
++      "Init does not replace OnHide")
++    Decree:Clear()
++    assert_eq(Decree:Get(), nil, "B29-B Clear removes the Decree")
++    local cuesHide = sounds
++    local widget = Banner.frame
++    widget:Hide()
++    assert_eq(Banner:IsShown(), false, "widget Hide after Clear is hidden")
++    assert_eq(widget:IsShown(), false, "widget Hide hides the frame")
++    assert_eq(widget.LineText:GetText(), "",
++      "widget Hide after Clear blanks leftover LineText")
++    assert_eq(widget.FlavorText:GetText(), "",
++      "widget Hide after Clear blanks leftover FlavorText")
++    assert_eq(widget.FlavorText:IsShown(), false,
++      "widget Hide after Clear hides leftover flavor")
++    assert_eq(sounds, cuesHide, "widget Hide after Clear plays no sound")
++    assert_eq(Banner.frame:GetScript("OnHide"), onHide,
++      "widget Hide does not replace OnHide")
++
++    Decree:Set({
++      line = "Goldshire Inn — Sunday, 7:00 PM",
++      flavor = "Bring a friend.",
++    })
++    assert_eq(Banner:Show(), true, "Hide wipe stay Show paints")
++    Decree:Clear()
++    local cuesBannerHide = sounds
++    assert_eq(Banner:Hide(), true, "Hide wipe still blanks after OnHide")
++    assert_eq(Banner:IsShown(), false, "Hide wipe stay is hidden")
++    assert_eq(Banner.frame.LineText:GetText(), "",
++      "Hide wipe stay blanks leftover LineText")
++    assert_eq(Banner.frame.FlavorText:GetText(), "",
++      "Hide wipe stay blanks leftover FlavorText")
++    assert_eq(sounds, cuesBannerHide, "Hide wipe stay plays no sound")
++
++    Decree:Set({
++      line = "Goldshire Inn — Sunday, 7:00 PM",
++      flavor = "Bring a friend.",
++    })
++    assert_eq(Banner:Show(), true, "Refresh wipe stay Show paints")
++    Decree:Clear()
++    local cuesRefresh = sounds
++    assert_eq(Banner:Refresh(), false, "Refresh wipe still blanks after OnHide")
++    assert_eq(Banner:IsShown(), false, "Refresh wipe stay is hidden")
++    assert_eq(Banner.frame.LineText:GetText(), "",
++      "Refresh wipe stay blanks leftover LineText")
++    assert_eq(Banner.frame.FlavorText:GetText(), "",
++      "Refresh wipe stay blanks leftover FlavorText")
++    assert_eq(sounds, cuesRefresh, "Refresh wipe stay plays no sound")
++
++    Decree:Set({
++      line = "Goldshire Inn — Sunday, 7:00 PM",
++      flavor = "Bring a friend.",
++    })
++    assert_eq(Banner:Show(), true, "empty Show wipe stay paints")
++    Decree:Clear()
++    local cuesEmpty = sounds
++    assert_eq(Banner:Show(), false, "empty Show wipe still blanks after OnHide")
++    assert_eq(Banner:IsShown(), false, "empty Show wipe stay is hidden")
++    assert_eq(Banner.frame.LineText:GetText(), "",
++      "empty Show wipe stay blanks leftover LineText")
++    assert_eq(Banner.frame.FlavorText:GetText(), "",
++      "empty Show wipe stay blanks leftover FlavorText")
++    assert_eq(sounds, cuesEmpty, "empty Show wipe stay plays no sound")
++    Decree:Clear()
++    Banner:Hide()
++  end
++  runB29B()
+ end
+ runB25B()
+ 

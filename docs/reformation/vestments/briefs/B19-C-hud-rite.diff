@@ -1,0 +1,134 @@
+diff --git a/addon/ChurchOfBeef/UI/Hud.lua b/addon/ChurchOfBeef/UI/Hud.lua
+--- a/addon/ChurchOfBeef/UI/Hud.lua
++++ b/addon/ChurchOfBeef/UI/Hud.lua
+@@ -7,8 +7,9 @@
+ -- subjects.fighters with two ids only while RITE and riteType Gora
+ -- (B17-D). Remember it as lastPair. Persist lastPair
+ -- when both Gora and Runtime fighters are empty and the event is still live
+--- (B9-E). Hide on QUIET / EndEvent / no last pair. A new live pair replaces
++-- (B9-E), except lastPair does not paint during a non-Gora RITE (B19-C).
++-- Hide on QUIET / EndEvent / no last pair. A new live pair replaces
+ -- the remembered pair. clickPlate pick pair never uses lastPair (B11-B):
+ -- Pope (IsRegisteredPope local) → GetSanctioned() only; congregation →
+ -- Runtime subjects.fighters only while RITE and riteType Gora (B16-C).
+@@ -297,6 +298,12 @@
+     return live
+   end
+   if lastPair then
++    if COB.Runtime and COB.Runtime.Snapshot then
++      local snap = COB.Runtime:Snapshot()
++      if type(snap) == "table" and snap.state == "RITE" and snap.riteType ~= "Gora" then
++        return nil
++      end
++    end
+     return lastPair
+   end
+   return nil
+ end
+
+diff --git a/tests/test_hud.lua b/tests/test_hud.lua
+--- a/tests/test_hud.lua
++++ b/tests/test_hud.lua
+@@ -4,7 +4,8 @@
+ -- + B8-D mute defense integer + B9-E persist through the verdict
+ -- + B10-B congregation pair from Runtime subjects.fighters
+ -- + B11-B leftover plate clicks never use lastPair
+ -- + B16-C congregation picks only while RITE and riteType Gora
+--- + B17-D livePair runtime arm only while RITE and riteType Gora). Isolated:
++-- + B17-D livePair runtime arm only while RITE and riteType Gora
++-- + B19-C lastPair does not paint during a non-Gora RITE). Isolated:
+ -- wow_ui_stub + Common + Ranks + Runtime + Store + Gora + Hud. Event Mode
+ -- only. No live health, favor economy, sound, or toasts. Standalone wrap.
+ -- Congregation never Sanctions; the star pair is subjects.fighters.
+@@ -12,8 +13,9 @@
+ -- Congregation favor is broadcast-only. Pope stub fills from
+ -- Gora:GetFavorSplit; after the pair clears, the last split is frozen.
+ -- Plate picks: live GetSanctioned (isolated / Pope) or Runtime fighters
+ -- only while RITE and riteType Gora (B16-C). Display livePair runtime
+--- arm is the same Gora-RITE gate (B17-D). Never lastPair. Dress is
++-- arm is the same Gora-RITE gate (B17-D). lastPair does not paint
++-- during a non-Gora RITE (B19-C). Never lastPair clicks. Dress is
+ -- stock iron/parchment only — no faction crests, no custom Media. Thin
+ -- QuestBG fields sit behind
+ -- name+title. Defense count is Store:CountDefenses as a mute integer;
+@@ -223,6 +225,8 @@
+   assert_true(goraRiteGates >= 2,
+     "livePair and pickPair both gate runtimePair to Gora RITE")
+ end
++assert_true(src:find('riteType ~= "Gora"', 1, true) ~= nil,
++  "displayPair refuses lastPair during a non-Gora RITE")
+ assert_eq(src:find("Gora:Sanction", 1, true), nil, "HUD does not call Gora:Sanction")
+ assert_true(src:find("defenseA", 1, true) ~= nil, "source names defenseA")
+ assert_true(src:find("defenseB", 1, true) ~= nil, "source names defenseB")
+@@ -1221,6 +1225,67 @@
+ assert_eq(sounds, 0, "B17-D hide played no sound")
+ assert_eq(healthReads, 0, "B17-D hide never scraped health")
++
++--------------------------------------------------------------------------------
++-- B19-C: lastPair does not paint through a later non-Gora RITE.
++-- OpenRite Gora, Refresh (remember lastPair), CloseRite / Continue,
++-- OpenRite Knighting with a candidate (no Sanction) → shown == false.
++-- Gora CONSEQUENCE and ASSEMBLY Continue persist stay. Existing
++-- Sanction-during-Knighting pin stays shown. Isolation wrap stays.
++-- health nil.
++--------------------------------------------------------------------------------
++local function runB19C()
++  reset()
++  Runtime:StartEvent()
++  local goraA, goraB = twoChars()
++  assert_eq(Gora:GetSanctioned(), nil, "B19-C Gora OpenRite has no Sanction")
++  assert_true(
++    Runtime:OpenRite("Gora", { fighters = { goraA.id, goraB.id } }) ~= nil,
++    "OpenRite Gora names two fighters"
++  )
++  local hud = Hud:Init()
++  local painted = Hud:Refresh()
++  assert_eq(Hud:IsShown(), true, "Gora RITE Refresh remembers lastPair")
++  assert_eq(painted.shown, true, "Gora RITE view is shown")
++  assert_eq(painted.fighterA.name, "Chuckroast", "Gora RITE paints fighter A")
++  assert_eq(painted.fighterB.name, "Tendermage", "Gora RITE paints fighter B")
++  assert_eq(painted.health, nil, "Gora RITE remember has no health")
++  assert_eq(Gora:GetSanctioned(), nil, "remembering lastPair is not a Sanction")
++
++  assert_true(Runtime:CloseRite() ~= nil, "CloseRite reaches Gora CONSEQUENCE")
++  assert_eq(Runtime:Snapshot().state, "CONSEQUENCE", "runtime is Gora CONSEQUENCE")
++  painted = Hud:Refresh()
++  assert_eq(Hud:IsShown(), true, "lastPair still paints during Gora CONSEQUENCE")
++  assert_eq(painted.shown, true, "Gora CONSEQUENCE persist is shown")
++  assert_eq(painted.fighterA.name, "Chuckroast", "Gora CONSEQUENCE still paints A")
++  assert_eq(painted.fighterB.name, "Tendermage", "Gora CONSEQUENCE still paints B")
++  assert_eq(painted.health, nil, "Gora CONSEQUENCE persist has no health")
++
++  assert_true(Runtime:Continue() ~= nil, "Continue returns to ASSEMBLY")
++  assert_eq(Runtime:Snapshot().state, "ASSEMBLY", "runtime is ASSEMBLY after Gora")
++  assert_eq(Runtime:Snapshot().riteType, nil, "Continue clears riteType")
++  painted = Hud:Refresh()
++  assert_eq(Hud:IsShown(), true, "lastPair still paints on ASSEMBLY after Continue")
++  assert_eq(painted.fighterA.name, "Chuckroast", "Continue persist still paints A")
++  assert_eq(painted.fighterB.name, "Tendermage", "Continue persist still paints B")
++  assert_eq(painted.health, nil, "Continue persist has no health")
++
++  assert_eq(Gora:GetSanctioned(), nil, "Knighting path still has no Sanction")
++  assert_true(
++    Runtime:OpenRite("Knighting", { candidate = goraA.id }) ~= nil,
++    "OpenRite Knighting with a candidate"
++  )
++  assert_eq(Runtime:Snapshot().state, "RITE", "later rite is RITE")
++  assert_eq(Runtime:Snapshot().riteType, "Knighting", "later riteType is Knighting")
++  assert_eq(Gora:GetSanctioned(), nil, "OpenRite Knighting is not a Sanction")
++  painted = Hud:Refresh()
++  assert_eq(painted.shown, false, "lastPair does not paint through Knighting")
++  assert_eq(Hud:IsShown(), false, "Knighting after Gora hides leftover lastPair")
++  assert_eq(painted.fighterA, nil, "do not paint leftover Gora fighter A")
++  assert_eq(painted.fighterB, nil, "do not paint leftover Gora fighter B")
++  assert_eq(painted.health, nil, "Knighting leftover lastPair hide has no health")
++  assert_eq(painted.favor, nil, "Knighting leftover lastPair hide has no favor")
++  assert_eq(hud.nameA:GetText(), "", "leftover Gora name A is not painted")
++  assert_eq(hud.nameB:GetText(), "", "leftover Gora name B is not painted")
++  assert_eq(sounds, 0, "B19-C hide played no sound")
++  assert_eq(healthReads, 0, "B19-C hide never scraped health")
++end
++runB19C()
+ 
+ --------------------------------------------------------------------------------
+ -- V-D height budget: ≤ 12% of UIParent when the parent height is known.

@@ -1,0 +1,255 @@
+diff --git a/addon/ChurchOfBeef/Core/Gora.lua b/addon/ChurchOfBeef/Core/Gora.lua
+--- a/addon/ChurchOfBeef/Core/Gora.lua
++++ b/addon/ChurchOfBeef/Core/Gora.lua
+@@ -19,9 +19,19 @@
+ local favorPicks = {}
+ local favorEventId = nil
+ 
++-- Cleared-bout snapshot for CONSEQUENCE / HUD persist. Memory only. Never SV.
++-- GetSanctioned stays nil after a ruling; last pair is the just-cleared bout.
++local lastSanctioned = nil
++local lastFavorSplit = { a = 0, b = 0 }
++
+ local function wipeFavor()
+   favorPicks = {}
+   favorEventId = nil
++end
++
++local function wipeLast()
++  lastSanctioned = nil
++  lastFavorSplit = { a = 0, b = 0 }
+ end
+ 
+ -- A challenge nobody ever records is social noise, not state. Expiring and
+@@ -124,6 +134,7 @@
+     self.sanctioned = nil
+     self.proposal = nil
+     wipeFavor()
++    wipeLast()
+     return
+   end
+   local drop = nil
+@@ -311,6 +322,7 @@
+   if self.sanctioned and not samePair(self.sanctioned, fighterA, fighterB) then
+     return nil, "a Gora is already sanctioned"
+   end
++  wipeLast()
+   self.sanctioned = {
+     fighterA = fighterA,
+     fighterB = fighterB,
+@@ -324,6 +336,15 @@
+ function Gora:GetSanctioned()
+   self:_Expire()
+   return copySanctioned(self.sanctioned)
++end
++
++function Gora:GetLastSanctioned()
++  self:_Expire()
++  if not lastSanctioned then return nil end
++  return {
++    fighterA = lastSanctioned.fighterA,
++    fighterB = lastSanctioned.fighterB,
++  }
+ end
+ 
+ function Gora:Propose(proposal)
+@@ -366,7 +387,25 @@
+   return true
+ end
+ 
++local function favorSplitFor(pair)
++  local counts = { a = 0, b = 0 }
++  if not pair then return counts end
++  for _, pickId in pairs(favorPicks) do
++    if pickId == pair.fighterA then
++      counts.a = counts.a + 1
++    elseif pickId == pair.fighterB then
++      counts.b = counts.b + 1
++    end
++  end
++  return counts
++end
++
+ local function clearLive(self)
++  local pair = self.sanctioned
++  if pair then
++    lastSanctioned = { fighterA = pair.fighterA, fighterB = pair.fighterB }
++    lastFavorSplit = favorSplitFor(pair)
++  end
+   self.sanctioned = nil
+   self.proposal = nil
+ end
+@@ -454,19 +493,14 @@
+ 
+ function Gora:GetFavorSplit()
+   self:_Expire()
+-  local counts = { a = 0, b = 0 }
+-  local pair = self.sanctioned
+-  if not pair then return counts end
+-  for _, pickId in pairs(favorPicks) do
+-    if pickId == pair.fighterA then
+-      counts.a = counts.a + 1
+-    elseif pickId == pair.fighterB then
+-      counts.b = counts.b + 1
+-    end
+-  end
+-  return counts
++  return favorSplitFor(self.sanctioned)
+ end
+ 
++function Gora:GetLastFavorSplit()
++  self:_Expire()
++  return { a = lastFavorSplit.a, b = lastFavorSplit.b }
++end
++
+ -- Test-only, matching the rest of Core: never clear live state in game.
+ function Gora:ResetForTests()
+   if not COB._IN_TEST then return false end
+@@ -475,5 +509,6 @@
+   self.sanctioned = nil
+   self.proposal = nil
+   wipeFavor()
++  wipeLast()
+   return true
+ end
+diff --git a/tests/test_gora.lua b/tests/test_gora.lua
+--- a/tests/test_gora.lua
++++ b/tests/test_gora.lua
+@@ -109,6 +109,8 @@
+ assert_eq(type(Gora.RecordFavor), "function", "RecordFavor is a verb")
+ assert_eq(type(Gora.GetFavor), "function", "GetFavor reads standing picks")
+ assert_eq(type(Gora.GetFavorSplit), "function", "GetFavorSplit reads the live split")
++assert_eq(type(Gora.GetLastSanctioned), "function", "GetLastSanctioned reads the last cleared pair")
++assert_eq(type(Gora.GetLastFavorSplit), "function", "GetLastFavorSplit reads the last cleared split")
+ assert_eq(type(Gora.Recommend), "function", "Recommend is optional context")
+ assert_eq(type(Gora.Challenge), "function", "leftover Challenge remains")
+ assert_eq(type(Gora.GetPending), "function", "leftover GetPending remains")
+@@ -401,6 +403,10 @@
+ assert_eq(Ranks.ById[3].title, "Beef Knight", "the fighter remains a Beef Knight")
+ assert_eq(Gora:GetSanctioned(), nil, "the live pair clears after the ruling")
+ assert_eq(Gora:GetProposal(), nil, "the proposal clears after the Pope rules")
++assert_eq(Gora:GetLastSanctioned().fighterA, a.id, "GetLastSanctioned names fighter A after DeclareVictor")
++assert_eq(Gora:GetLastSanctioned().fighterB, b.id, "GetLastSanctioned names fighter B after DeclareVictor")
++assert_eq(Gora:GetLastFavorSplit().a, 0, "DeclareVictor with no picks snapshots an empty last split")
++assert_eq(Gora:GetLastFavorSplit().b, 0, "DeclareVictor with no picks snapshots empty last split b")
+ assert_eq(Store:GetCharacter(a.id).gora.results[1].famousUpset, false, "Famous Upsets are not computed")
+ assert_eq(#Store:GetCeremonyLog(), 1, "DeclareVictor appends one ceremony row")
+ assert_eq(Store:GetCeremonyLog()[1].type, "victor", "DeclareVictor appends a victor ceremony row")
+@@ -685,12 +691,104 @@
+ Gora:Sanction(a.id, b.id)
+ Runtime:EndEvent()
+ assert_eq(Gora:GetSanctioned(), nil, "EndEvent expires the live pair")
++assert_eq(Gora:GetLastSanctioned(), nil, "EndEvent without a ruling does not invent a last pair")
+ local late, lateErr = Gora:DeclareVictor(a.id)
+ assert_eq(late, nil, "a ruling after EndEvent is refused")
+ assert_true(type(lateErr) == "string", "late DeclareVictor returns an error string")
+ assert_eq(Store:GetCharacter(a.id).gora.wins, 0, "EndEvent does not auto-declare")
+ assert_eq(#Store:GetCharacter(a.id).gora.results, 0, "EndEvent does not auto-void")
++
++--------------------------------------------------------------------------------
++-- Last pair / last favor: snapshot on clearLive; nil on new Sanction / QUIET.
++--------------------------------------------------------------------------------
++local function runLastPair()
++  local fa, fb = livePair()
++  assert_eq(Gora:GetLastSanctioned(), nil, "missing last pair is nil")
++  assert_eq(Gora:GetLastFavorSplit().a, 0, "missing last split is zero")
++  assert_eq(Gora:GetLastFavorSplit().b, 0, "missing last split b is zero")
++  assert_eq(Gora:GetFavorSplit().a, 0, "GetFavorSplit stays 0 without a live pair")
++  assert_eq(Gora:GetFavorSplit().b, 0, "GetFavorSplit stays 0/0 without a live pair")
++
++  Gora:Sanction(fa.id, fb.id, "come as you are")
++  assert_eq(Gora:GetLastSanctioned(), nil, "a live pair is not the last pair")
++  assert_eq(Gora:GetSanctioned().fighterA, fa.id, "GetSanctioned still reads the live pair")
++  Gora:RecordFavor(fa.id, fa.id)
++  Gora:RecordFavor(fb.id, fa.id)
++  local preSplit = Gora:GetFavorSplit()
++  assert_eq(preSplit.a, 2, "pre-ruling split a is two")
++  assert_eq(preSplit.b, 0, "pre-ruling split b is zero")
++
++  local lastVerdict = Gora:DeclareVictor(fa.id)
++  assert_true(lastVerdict ~= nil, "DeclareVictor still records for the last-pair snapshot")
++  assert_eq(Gora:GetSanctioned(), nil, "GetSanctioned stays nil after the ruling")
++  assert_eq(Gora:GetLastSanctioned().fighterA, fa.id, "GetLastSanctioned names fighter A")
++  assert_eq(Gora:GetLastSanctioned().fighterB, fb.id, "GetLastSanctioned names fighter B")
++  assert_eq(Gora:GetLastSanctioned().stipulation, nil, "last pair is ids only")
++  assert_eq(Gora:GetLastFavorSplit().a, preSplit.a, "GetLastFavorSplit equals the pre-ruling split")
++  assert_eq(Gora:GetLastFavorSplit().b, preSplit.b, "GetLastFavorSplit b equals the pre-ruling split")
++  assert_eq(Gora:GetFavorSplit().a, 0, "GetFavorSplit stays 0/0 after the ruling")
++  assert_eq(Gora:GetFavorSplit().b, 0, "GetFavorSplit b stays 0 after the ruling")
++  assert_eq(Store:GetCharacter(fa.id).gora.results[1].famousUpset, false,
++    "Famous Upsets are not computed on the last-pair path")
++
++  local lastCopy = Gora:GetLastSanctioned()
++  lastCopy.fighterA = 0
++  lastCopy.fighterB = 0
++  assert_eq(Gora:GetLastSanctioned().fighterA, fa.id, "mutating a last-pair copy does not change the snapshot")
++  local lastSplitCopy = Gora:GetLastFavorSplit()
++  lastSplitCopy.a = 99
++  lastSplitCopy.b = 99
++  assert_eq(Gora:GetLastFavorSplit().a, 2, "mutating a last-split copy does not change the snapshot")
++  assert_eq(Gora:GetLastFavorSplit().b, 0, "mutating a last-split copy does not change the other half")
++
++  local nextPair = Gora:Sanction(fa.id, fb.id)
++  assert_true(nextPair ~= nil, "a new Sanction is accepted after the ruling")
++  assert_eq(Gora:GetLastSanctioned(), nil, "new Sanction nils the last pair")
++  assert_eq(Gora:GetLastFavorSplit().a, 0, "new Sanction nils the last split")
++  assert_eq(Gora:GetLastFavorSplit().b, 0, "new Sanction nils the last split b")
++  assert_eq(Gora:GetSanctioned().fighterA, fa.id, "the new live pair is GetSanctioned")
+ 
++  Gora:RecordFavor(fa.id, fb.id)
++  Gora:CowardiceRecorded(fa.id)
++  assert_eq(Gora:GetSanctioned(), nil, "CowardiceRecorded clears the live pair")
++  assert_eq(Gora:GetLastSanctioned().fighterA, fa.id, "CowardiceRecorded snapshots fighter A")
++  assert_eq(Gora:GetLastSanctioned().fighterB, fb.id, "CowardiceRecorded snapshots fighter B")
++  assert_eq(Gora:GetLastFavorSplit().a, 0, "CowardiceRecorded snapshots the then-current split a")
++  assert_eq(Gora:GetLastFavorSplit().b, 1, "CowardiceRecorded snapshots the then-current split")
++
++  Gora:Sanction(fa.id, fb.id)
++  assert_eq(Gora:GetLastSanctioned(), nil, "Sanction after cowardice nils last")
++  Gora:Void()
++  assert_eq(Gora:GetLastSanctioned().fighterA, fa.id, "Void snapshots the pair")
++  assert_eq(Gora:GetLastFavorSplit().a, 0, "Void with no picks snapshots 0/0")
++  assert_eq(Gora:GetLastFavorSplit().b, 0, "Void with no picks snapshots empty last split b")
++
++  Gora:Sanction(fa.id, fb.id)
++  Gora:RecordFavor(fb.id, fa.id)
++  Gora:FreeRuling("rematch")
++  assert_eq(Gora:GetLastSanctioned().fighterB, fb.id, "FreeRuling snapshots the pair")
++  assert_eq(Gora:GetLastFavorSplit().a, 1, "FreeRuling snapshots the then-current split")
++  assert_eq(Gora:GetLastFavorSplit().b, 0, "FreeRuling snapshots empty last split b")
++
++  Runtime:EndEvent()
++  assert_eq(Gora:GetLastSanctioned(), nil, "EndEvent / QUIET expire nils last")
++  assert_eq(Gora:GetLastFavorSplit().a, 0, "EndEvent / QUIET expire nils last split")
++  assert_eq(Gora:GetLastFavorSplit().b, 0, "EndEvent / QUIET expire nils last split b")
++
++  fa, fb = livePair()
++  Gora:Sanction(fa.id, fb.id)
++  Gora:RecordFavor(fa.id, fa.id)
++  Gora:DeclareVictor(fb.id)
++  assert_eq(Gora:GetLastSanctioned().fighterA, fa.id, "last pair keeps sanctioned A/B order")
++  assert_eq(Gora:GetLastSanctioned().fighterB, fb.id, "last pair keeps sanctioned B when B wins")
++  assert_eq(Gora:GetLastFavorSplit().a, 1, "last split survives until ResetForTests")
++  Gora:ResetForTests()
++  assert_eq(Gora:GetLastSanctioned(), nil, "ResetForTests wipes last pair")
++  assert_eq(Gora:GetLastFavorSplit().a, 0, "ResetForTests wipes last split")
++  assert_eq(Gora:GetLastFavorSplit().b, 0, "ResetForTests wipes last split b")
++end
++runLastPair()
++
+ --------------------------------------------------------------------------------
+ -- Leftover Challenge pair-key notes still work and stay off the product loop.
+ --------------------------------------------------------------------------------
+@@ -728,8 +826,12 @@
+ Gora:RecordFavor(f1.id, f1.id)
+ Gora:GetFavor()
+ Gora:GetFavorSplit()
++Gora:GetLastSanctioned()
++Gora:GetLastFavorSplit()
+ Gora:Propose({ ruling = "void" })
+ Gora:Void()
++Gora:GetLastSanctioned()
++Gora:GetLastFavorSplit()
+ assert_eq(framed, 0, "Gora verbs never CreateFrame")
+ assert_eq(ChurchOfBeefDB.sentinel, 1, "Gora verbs do not write ChurchOfBeefDB")
+ assert_eq(chats, 0, "Gora verbs never SendChatMessage")

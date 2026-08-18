@@ -1,0 +1,29 @@
+# B20-C — Fighter card name uses FrameXML Morpheus casing (implementation diff)
+
+Lane-only unified diff of the exclusive implementation files vs the pre-lane working tree.
+
+--- a/addon/ChurchOfBeef/UI/FighterCard.lua
++++ b/addon/ChurchOfBeef/UI/FighterCard.lua
+@@ -23,7 +23,7 @@
+ local WHITE8X8 = "Interface\\Buttons\\WHITE8X8"
+ local PARCHMENT_TEXTURE = "Interface\\QuestFrame\\QuestBG"
+ local SEAL_TEXTURE = "Interface\\Buttons\\UI-EmptySlot-White"
+-local NAME_FONT = "Fonts\\MORPHEUS.TTF"
++local NAME_FONT = "Fonts\\MORPHEUS.ttf"
+
+--- a/tests/test_fighter_card.lua
++++ b/tests/test_fighter_card.lua
+@@ -202,8 +202,13 @@
+ assert_eq(src:find(".tga", 1, true), nil, "source does not load custom tga")
+ assert_eq(src:find(".blp", 1, true), nil, "source does not load custom blp")
+ assert_true(src:find("MORPHEUS", 1, true) ~= nil, "names try stock Morpheus")
+-assert_eq(src:gsub("Fonts\\\\MORPHEUS%.TTF", ""):find(".ttf", 1, true), nil,
++assert_true(src:find("Fonts\\\\MORPHEUS.ttf", 1, true) ~= nil,
++  "NAME_FONT uses FrameXML lowercase Morpheus")
++assert_eq(src:find("MORPHEUS.TTF", 1, true), nil, "name path is not uppercase TTF")
++assert_eq(src:find("MORPHEUS_CYR", 1, true), nil, "source does not use GlueFonts MORPHEUS_CYR")
++assert_true(src:find("SetFontObject", 1, true) ~= nil, "applyNameFont still falls back to GameFont")
++assert_eq(src:gsub("Fonts\\\\MORPHEUS%.ttf", ""):find(".ttf", 1, true), nil,
+   "source does not load custom fonts")
+ assert_eq(src:find("Media\\", 1, true), nil, "source does not require custom Media")
+ assert_eq(src:find("Toasts", 1, true), nil, "source does not drive Toasts")

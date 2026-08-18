@@ -1,0 +1,517 @@
+diff --git a/addon/ChurchOfBeef/UI/Console.lua b/addon/ChurchOfBeef/UI/Console.lua
+index 981dff0..dc914ce 100644
+--- a/addon/ChurchOfBeef/UI/Console.lua
++++ b/addon/ChurchOfBeef/UI/Console.lua
+@@ -7,10 +7,11 @@ local COB = ChurchOfBeef
+ -- Ritual verbs call signed Core only when Sender:IsRegisteredPope(local)
+ -- is true. That predicate is fail-closed until the registered-Pope list (#8).
+ -- Toggle / Show / Hide only. No slash. No GuildPromote. No Notebook persist.
+--- No favor / INPUT. Post Decree is a Quiet desk verb on this Event tool
+--- (Law 6: Decree is Quiet; Sound is not played). No Decree wire kind.
+--- Layout: two-column stock desk, large targets, scrollable Presence / Gora
+--- lists, click-to-select. Not parchment. Not collapsible tabs (desks stay
++-- Favor pane is Pope-desk readout (not congregation theater). Congregation
++-- display is a per-event memory toggle. Post Decree writes Core (Decree:Set);
++-- BeefNet broadcast is bootstrap glue. Law 6: Decree is Quiet; Sound is not
++-- played. Layout: two-column stock desk, large targets, scrollable Presence /
++-- Gora lists, click-to-select. Not parchment. Not collapsible tabs (desks stay
+ -- glanceable without window switching).
+ local Console = {
+   MODE = "event",
+@@ -19,10 +20,13 @@ COB.Console = Console
+ 
+ local FRAME_NAME = "ChurchOfBeefConsoleFrame"
+ local REFUSE = "not the registered pope"
+-local DEFAULT_WIDTH, DEFAULT_HEIGHT = 780, 580
++local DEFAULT_WIDTH, DEFAULT_HEIGHT = 780, 600
+ local BTN_W, BTN_H, BTN_GAP = 172, 28, 8
+ local COL_W, COL_GAP = 370, 12
+ local ROW_H = 20
++local DESK_H = 300
++local congregationFavorVisible = true
++local lastSeenEventId
+ local DECREE_HEADER = "A GATHERING HAS BEEN DECREED"
+ local ANCHORS = {
+   TOPLEFT = true, TOP = true, TOPRIGHT = true,
+@@ -144,6 +148,30 @@ local function stockEdit(parent, width)
+   return box
+ end
+ 
++local function stockCheck(parent, label)
++  local btn
++  local ok, created = pcall(CreateFrame, "CheckButton", nil, parent, "UICheckButtonTemplate")
++  if ok and created then
++    btn = created
++  else
++    btn = CreateFrame("CheckButton", nil, parent)
++  end
++  btn:SetWidth(26)
++  btn:SetHeight(26)
++  btn:SetChecked(true)
++  btn:SetScript("OnClick", function(self)
++    if not isRegisteredPope() then
++      self:SetChecked(congregationFavorVisible)
++      return
++    end
++    Console:SetCongregationFavorVisible(self:GetChecked() == true)
++  end)
++  local fs = parent:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
++  fs:SetText(label)
++  fs:SetJustifyH("LEFT")
++  return btn, fs
++end
++
+ local function panel(parent)
+   local box = CreateFrame("Frame", nil, parent)
+   local bg = box:CreateTexture(nil, "BACKGROUND")
+@@ -337,7 +365,7 @@ local function buildFrame()
+   local left = panel(content)
+   left:SetPoint("TOPLEFT", content, "TOPLEFT", 0, -y)
+   left:SetWidth(COL_W)
+-  left:SetHeight(248)
++  left:SetHeight(DESK_H)
+   local presenceHead = header(left, "Presence")
+   presenceHead:SetPoint("TOPLEFT", left, "TOPLEFT", 10, -8)
+   local presenceScroll, presenceChild, presenceList = scrollList(
+@@ -358,35 +386,53 @@ local function buildFrame()
+   local right = panel(content)
+   right:SetPoint("TOPLEFT", content, "TOPLEFT", COL_W + COL_GAP, -y)
+   right:SetWidth(COL_W)
+-  right:SetHeight(248)
++  right:SetHeight(DESK_H)
+   local goraHead = header(right, "Gora")
+   goraHead:SetPoint("TOPLEFT", right, "TOPLEFT", 10, -8)
++  local favorHead = header(right, "FAVOR")
++  favorHead:SetPoint("TOPLEFT", right, "TOPLEFT", 10, -26)
++  frame.FavorLabel = favorHead
++  frame.FavorSplit = right:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
++  frame.FavorSplit:SetPoint("LEFT", favorHead, "RIGHT", 12, 0)
++  frame.FavorSplit:SetJustifyH("LEFT")
++  frame.FavorSplit:SetText("0 / 0")
++  frame.FavorCount = right:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
++  frame.FavorCount:SetPoint("LEFT", frame.FavorSplit, "RIGHT", 12, 0)
++  frame.FavorCount:SetJustifyH("LEFT")
++  frame.FavorCount:SetText("0")
++  local congBtn, congLabel = stockCheck(right, "Congregation sees favor")
++  congBtn:SetPoint("TOPLEFT", right, "TOPLEFT", 8, -46)
++  congLabel:SetPoint("LEFT", congBtn, "RIGHT", 4, 0)
++  frame.CongregationFavor = congBtn
++  frame.CongregationFavorLabel = congLabel
+   local petitionScroll, petitionChild, petitionList = scrollList(
+-    right, FRAME_NAME .. "PetitionScroll", COL_W - 28, 92)
+-  petitionScroll:SetPoint("TOPLEFT", right, "TOPLEFT", 8, -26)
++    right, FRAME_NAME .. "PetitionScroll", COL_W - 28, 70)
++  petitionScroll:SetPoint("TOPLEFT", right, "TOPLEFT", 8, -70)
+   frame.PetitionsList = petitionList
+   frame.PetitionChild = petitionChild
+   frame.PetitionRows = {}
+   local sanctionBtn = ritual("SANCTION BEEF GORA", function() Console:Sanction() end)
+   sanctionBtn:SetParent(right)
+-  sanctionBtn:SetPoint("TOPLEFT", right, "TOPLEFT", 8, -124)
++  sanctionBtn:SetPoint("TOPLEFT", right, "TOPLEFT", 8, -146)
+   local dismissBtn = ritual("Dismiss", function() Console:Dismiss() end)
+   dismissBtn:SetParent(right)
+-  dismissBtn:SetPoint("TOPLEFT", right, "TOPLEFT", 8 + BTN_W + BTN_GAP, -124)
++  dismissBtn:SetPoint("TOPLEFT", right, "TOPLEFT", 8 + BTN_W + BTN_GAP, -146)
+   local victorBtn = ritual("DECLARE VICTOR", function() Console:DeclareVictor() end)
+   victorBtn:SetParent(right)
+-  victorBtn:SetPoint("TOPLEFT", right, "TOPLEFT", 8, -124 - BTN_H - BTN_GAP)
++  victorBtn:SetPoint("TOPLEFT", right, "TOPLEFT", 8, -146 - BTN_H - BTN_GAP)
+   local cowardBtn = ritual("COWARDICE RECORDED", function() Console:CowardiceRecorded() end)
+   cowardBtn:SetParent(right)
+-  cowardBtn:SetPoint("TOPLEFT", right, "TOPLEFT", 8 + BTN_W + BTN_GAP, -124 - BTN_H - BTN_GAP)
++  cowardBtn:SetPoint("TOPLEFT", right, "TOPLEFT", 8 + BTN_W + BTN_GAP, -146 - BTN_H - BTN_GAP)
+   local voidBtn = ritual("VOID", function() Console:Void() end)
+   voidBtn:SetParent(right)
+-  voidBtn:SetPoint("TOPLEFT", right, "TOPLEFT", 8, -124 - 2 * (BTN_H + BTN_GAP))
++  voidBtn:SetPoint("TOPLEFT", right, "TOPLEFT", 8, -146 - 2 * (BTN_H + BTN_GAP))
+   local freeBtn = ritual("FREE RULING", function() Console:FreeRuling() end)
+   freeBtn:SetParent(right)
+-  freeBtn:SetPoint("TOPLEFT", right, "TOPLEFT", 8 + BTN_W + BTN_GAP, -124 - 2 * (BTN_H + BTN_GAP))
++  freeBtn:SetPoint("TOPLEFT", right, "TOPLEFT", 8 + BTN_W + BTN_GAP, -146 - 2 * (BTN_H + BTN_GAP))
++  frame.FreeRulingText = stockEdit(right, COL_W - 16)
++  frame.FreeRulingText:SetPoint("TOPLEFT", right, "TOPLEFT", 8, -146 - 3 * (BTN_H + BTN_GAP))
+ 
+-  y = y + 260
++  y = y + DESK_H + 12
+   local decreeHead = header(content, DECREE_HEADER)
+   decreeHead:SetPoint("TOPLEFT", content, "TOPLEFT", 0, -y)
+   frame.DecreeHeader = decreeHead
+@@ -540,6 +586,42 @@ local function applyGate(frame)
+       buttons[i]:Disable()
+     end
+   end
++  if frame.CongregationFavor then
++    if ok then
++      frame.CongregationFavor:Enable()
++    else
++      frame.CongregationFavor:Disable()
++    end
++  end
++end
++
++local function currentEventId()
++  if not COB.Runtime or not COB.Runtime.Snapshot then return nil end
++  local snap = COB.Runtime:Snapshot()
++  if type(snap) ~= "table" then return nil end
++  return snap.eventId
++end
++
++local function syncCongregationToggle()
++  local eventId = currentEventId()
++  if eventId ~= lastSeenEventId then
++    lastSeenEventId = eventId
++    congregationFavorVisible = true
++  end
++end
++
++local function paintFavor(frame)
++  if not frame then return end
++  local split = Console:GetFavorSplit()
++  if frame.FavorSplit then
++    frame.FavorSplit:SetText(tostring(split.a) .. " / " .. tostring(split.b))
++  end
++  if frame.FavorCount then
++    frame.FavorCount:SetText(tostring(Console:GetFavorCount()))
++  end
++  if frame.CongregationFavor then
++    frame.CongregationFavor:SetChecked(congregationFavorVisible)
++  end
+ end
+ 
+ --------------------------------------------------------------------------------
+@@ -555,11 +637,13 @@ end
+ 
+ function Console:Refresh()
+   if not self.frame then return end
++  syncCongregationToggle()
+   local presence = self:GetPresence()
+   paintRuntime(self.frame)
+   paintPresence(self.frame, presence)
+   paintPetitions(self.frame, self:GetPetitions())
+   paintSelection(self.frame, presence)
++  paintFavor(self.frame)
+   applyGate(self.frame)
+ end
+ 
+@@ -591,7 +675,14 @@ function Console:ResetForTests()
+   self.selectedCharacterId = nil
+   self.selectedFighterA = nil
+   self.selectedFighterB = nil
+-  if self.frame then self:Hide() end
++  congregationFavorVisible = true
++  lastSeenEventId = currentEventId()
++  if self.frame then
++    if self.frame.CongregationFavor then
++      self.frame.CongregationFavor:SetChecked(true)
++    end
++    self:Hide()
++  end
+   return true
+ end
+ 
+@@ -679,6 +770,48 @@ function Console:SelectFighters(fighterA, fighterB)
+   return true
+ end
+ 
++function Console:GetFavorSplit()
++  local split
++  if COB.Gora and type(COB.Gora.GetFavorSplit) == "function" then
++    split = COB.Gora:GetFavorSplit()
++  end
++  if type(split) ~= "table" then
++    return { a = 0, b = 0 }
++  end
++  local a, b = split.a, split.b
++  if type(a) ~= "number" then a = 0 end
++  if type(b) ~= "number" then b = 0 end
++  return { a = a, b = b }
++end
++
++function Console:GetFavorCount()
++  if not COB.Gora or type(COB.Gora.GetFavor) ~= "function" then
++    return 0
++  end
++  local map = COB.Gora:GetFavor()
++  if type(map) ~= "table" then return 0 end
++  local n = 0
++  for _ in pairs(map) do
++    n = n + 1
++  end
++  return n
++end
++
++function Console:GetCongregationFavorVisible()
++  return congregationFavorVisible == true
++end
++
++function Console:SetCongregationFavorVisible(flag)
++  if type(flag) ~= "boolean" then
++    return nil, "flag must be a boolean"
++  end
++  congregationFavorVisible = flag
++  if self.frame and self.frame.CongregationFavor then
++    self.frame.CongregationFavor:SetChecked(flag)
++  end
++  return true
++end
++
+ --------------------------------------------------------------------------------
+ -- Ritual verbs — fail closed unless the local sender is a registered Pope
+ --------------------------------------------------------------------------------
+@@ -707,6 +840,7 @@ local function showDecreeBanner()
+   pcall(banner.Show, banner)
+ end
+ 
++-- Integrator (bootstrap) broadcasts on Core writes. Do not call Net here.
+ local function after(self, result, err, cue, wantHud)
+   if result ~= nil then
+     self:Refresh()
+@@ -852,6 +986,12 @@ function Console:FreeRuling(text)
+   if not COB.Gora or not COB.Gora.FreeRuling then
+     return nil, "gora is not available"
+   end
++  if text == nil then
++    local box = self.frame and self.frame.FreeRulingText
++    if box and box.GetText then
++      text = box:GetText()
++    end
++  end
+   local result, err = COB.Gora:FreeRuling(text)
+   return after(self, result, err, "verdict", true)
+ end
+@@ -870,6 +1010,7 @@ function Console:PostDecree(fields)
+   if not COB.Decree or not COB.Decree.Set then
+     return nil, "decree is not available"
+   end
++  -- Quiet desk verb: Core Set only. Integrator sends the wire.
+   local result, err = COB.Decree:Set(decreeFields(self, fields))
+   if result ~= nil then
+     self:Refresh()
+diff --git a/tests/test_console.lua b/tests/test_console.lua
+index e04ae7c..2f73ba7 100644
+--- a/tests/test_console.lua
++++ b/tests/test_console.lua
+@@ -1,9 +1,11 @@
+--- Director Console stock desks (Phase 4 Lane E + Phase 6 Lane I). Isolated:
+--- wow_ui_stub + Common + Ranks + Runtime + Store + Gora + Knighting + Sender +
+--- Decree + Console. Toggle / Show / Hide only. Ritual verbs call signed Core
+--- only when Sender:IsRegisteredPope(local) is true — always false today; this
+--- suite does not stub a Pope list. Sound / Hud / Decree UI are stubs when
+--- needed. No TOC / bootstrap / run.lua / MainFrame / slash.
++-- Director Console stock desks (Phase 4 Lane E + Phase 6 Lane I + Wire W-E).
++-- Isolated: wow_ui_stub + Common + Ranks + Runtime + Store + Gora + Knighting +
++-- Sender + Decree + Console. Toggle / Show / Hide only. Ritual verbs call
++-- signed Core only when Sender:IsRegisteredPope(local) is true — always false
++-- today; this suite does not stub a Pope list. Favor pane and congregation
++-- toggle are Pope-desk chrome (memory only). Post Decree is Decree:Set; this
++-- file does not call Net. Sound / Hud / Decree UI are stubs when needed.
++-- No TOC / bootstrap / run.lua / MainFrame / slash.
+ ChurchOfBeef = ChurchOfBeef or {}
+ ChurchOfBeef._IN_TEST = true
+ 
+@@ -178,6 +180,10 @@ assert_eq(type(Console.Void), "function", "VOID is a console verb")
+ assert_eq(type(Console.FreeRuling), "function", "free ruling is a console verb")
+ assert_eq(type(Console.FlagMoment), "function", "MARK THIS MOMENT is a console verb")
+ assert_eq(type(Console.PostDecree), "function", "Post Decree is a console verb")
++assert_eq(type(Console.GetFavorSplit), "function", "GetFavorSplit is a console readout")
++assert_eq(type(Console.GetFavorCount), "function", "GetFavorCount is a standing-pick count")
++assert_eq(type(Console.GetCongregationFavorVisible), "function", "congregation favor toggle is readable")
++assert_eq(type(Console.SetCongregationFavorVisible), "function", "congregation favor toggle is settable")
+ 
+ assert_eq(Console.Grant, nil, "no Grant")
+ assert_eq(Console.Narrate, nil, "software does not narrate")
+@@ -216,7 +222,7 @@ assert_eq(Console:Init(), frame, "Init is idempotent")
+ assert_eq(frame._movable, true, "frame is movable")
+ assert_eq(frame._clamped, true, "frame is clamped to screen")
+ assert_eq(frame:GetParent(), UIParent, "insecure frame under UIParent")
+-assert_eq(countType(frame, "EditBox"), 2, "Decree line and flavor only")
++assert_eq(countType(frame, "EditBox"), 3, "Decree line, flavor, and FREE RULING text")
+ assert_true(frame.DecreeLine ~= nil, "Decree line is a stock EditBox")
+ assert_eq(frame.DecreeLine._type, "EditBox", "line box is an EditBox")
+ assert_eq(frame.DecreeLine._template, "InputBoxTemplate", "line box is InputBoxTemplate")
+@@ -224,10 +230,20 @@ assert_eq(frame.DecreeLine._autoFocus, false, "line box does not steal focus")
+ assert_true(frame.DecreeFlavor ~= nil, "Decree flavor is a stock EditBox")
+ assert_eq(frame.DecreeFlavor._template, "InputBoxTemplate", "flavor box is InputBoxTemplate")
+ assert_eq(frame.DecreeFlavor._autoFocus, false, "flavor box does not steal focus")
++assert_true(frame.FreeRulingText ~= nil, "FREE RULING text is a stock EditBox")
++assert_eq(frame.FreeRulingText._type, "EditBox", "FREE RULING box is an EditBox")
++assert_eq(frame.FreeRulingText._template, "InputBoxTemplate", "FREE RULING box is InputBoxTemplate")
++assert_eq(frame.FreeRulingText._autoFocus, false, "FREE RULING box does not steal focus")
++assert_true(frame.CongregationFavor ~= nil, "congregation favor is a stock CheckButton")
++assert_eq(frame.CongregationFavor._type, "CheckButton", "congregation toggle is a CheckButton")
++assert_eq(frame.CongregationFavor._template, "UICheckButtonTemplate", "congregation toggle uses UICheckButtonTemplate")
++assert_eq(frame.CongregationFavor:GetChecked(), true, "congregation toggle starts checked")
+ 
+ assert_true(findFont(frame, "Presence") ~= nil, "Presence desk header")
+ assert_true(findFont(frame, "Knighting") ~= nil, "Knighting desk header")
+ assert_true(findFont(frame, "Gora") ~= nil, "Gora desk header")
++assert_true(findFont(frame, "FAVOR") ~= nil, "FAVOR pane is clerical")
++assert_true(findFont(frame, "Congregation sees favor") ~= nil, "congregation toggle label")
+ assert_true(findButton(frame, "Start Event") ~= nil, "Start Event is one click")
+ assert_true(findButton(frame, "Open Knighting") ~= nil, "Open Knighting is one click")
+ assert_true(findButton(frame, "Open Gora") ~= nil, "Open Gora is one click")
+@@ -253,7 +269,6 @@ assert_true(frame:GetHeight() >= 540, "console fits the two desks without a tall
+ local startBtn = findButton(frame, "Start Event")
+ assert_true(startBtn:GetHeight() >= 28, "sacred verbs are large targets")
+ assert_true(startBtn:GetWidth() >= 160, "sacred verbs are wide enough")
+-assert_eq(findButton(frame, "Favor"), nil, "no favor chrome")
+ assert_eq(findButton(frame, "RSVP"), nil, "no RSVP chrome")
+ assert_eq(findButton(frame, "Calendar"), nil, "no calendar chrome")
+ assert_eq(findFont(frame, "Eternal Grazing."), nil, "UI never tells jokes")
+@@ -689,6 +704,155 @@ COB.Hud = savedHud
+ COB.DecreeBanner = savedBanner
+ Sender.IsRegisteredPope = savedPred
+ 
++--------------------------------------------------------------------------------
++-- W-E: favor pane, congregation toggle, Post Decree stays Core, FREE RULING text
++--------------------------------------------------------------------------------
++reset()
++Console:Init()
++assert_eq(Console:GetCongregationFavorVisible(), true, "congregation favor defaults on")
++assert_eq(Console:GetFavorSplit().a, 0, "favor split a is zero with no pair")
++assert_eq(Console:GetFavorSplit().b, 0, "favor split b is zero with no pair")
++assert_eq(Console:GetFavorCount(), 0, "favor count is zero with no picks")
++
++local zeroCopy = Console:GetFavorSplit()
++zeroCopy.a = 9
++assert_eq(Console:GetFavorSplit().a, 0, "mutating a zero split does not invent a tally")
++
++assert_eq(Console:SetCongregationFavorVisible(false), true, "setter accepts false")
++assert_eq(Console:GetCongregationFavorVisible(), false, "setter stores false")
++assert_eq(Console:SetCongregationFavorVisible(true), true, "setter accepts true")
++assert_eq(Console:GetCongregationFavorVisible(), true, "setter stores true")
++local badFlag, badFlagErr = Console:SetCongregationFavorVisible("yes")
++assert_eq(badFlag, nil, "non-boolean toggle is refused")
++assert_true(type(badFlagErr) == "string", "non-boolean toggle returns an error string")
++assert_eq(Console:GetCongregationFavorVisible(), true, "refused toggle leaves the flag")
++Console:SetCongregationFavorVisible(false)
++badFlag, badFlagErr = Console:SetCongregationFavorVisible(1)
++assert_eq(badFlag, nil, "numeric toggle is refused")
++assert_eq(Console:GetCongregationFavorVisible(), false, "refused numeric toggle leaves false")
++assert_eq(Console:ResetForTests(), true, "ResetForTests still returns true")
++assert_eq(Console:GetCongregationFavorVisible(), true, "ResetForTests returns congregation favor to on")
++
++reset()
++Console:Init()
++a = Store:CreateCharacter({ name = "Chuckroast", class = "Warrior", level = 70 })
++b = Store:CreateCharacter({ name = "Tendermage", class = "Mage", level = 68 })
++local fan = Store:CreateCharacter({ name = "Fanone", class = "Priest", level = 70 })
++assert_true(Runtime:StartEvent() ~= nil, "favor pane needs a live event")
++Gora:Petition(a.id)
++Gora:Petition(b.id)
++assert_true(Gora:Sanction(a.id, b.id) ~= nil, "favor pane needs a sanctioned pair")
++Gora:RecordFavor(fan.id, a.id)
++Gora:RecordFavor(a.id, a.id)
++Gora:RecordFavor(b.id, b.id)
++local goraSplit = Gora:GetFavorSplit()
++local deskSplit = Console:GetFavorSplit()
++assert_eq(deskSplit.a, goraSplit.a, "GetFavorSplit a matches Gora")
++assert_eq(deskSplit.b, goraSplit.b, "GetFavorSplit b matches Gora")
++assert_eq(deskSplit.a, 2, "two standing picks on a")
++assert_eq(deskSplit.b, 1, "one standing pick on b")
++assert_eq(Console:GetFavorCount(), 3, "GetFavorCount is the standing map size")
++deskSplit.a = 99
++assert_eq(Gora:GetFavorSplit().a, 2, "mutating the Console split does not change Gora")
++assert_eq(Console:GetFavorSplit().a, 2, "GetFavorSplit returns a fresh copy")
++Console:Refresh()
++assert_true(frame.FavorSplit ~= nil, "Refresh paints a favor split readout")
++assert_eq(frame.FavorSplit:GetText(), "2 / 1", "Refresh paints the split counts")
++assert_true(frame.FavorCount ~= nil, "Refresh paints a standing-pick count")
++assert_eq(frame.FavorCount:GetText(), "3", "Refresh paints the pick count")
++
++savedPred = Sender.IsRegisteredPope
++Sender.IsRegisteredPope = function() return true end
++
++reset()
++Console:Init()
++assert_true(Console:StartEvent() ~= nil, "StartEvent opens the first gathering")
++Console:SetCongregationFavorVisible(false)
++assert_eq(Console:GetCongregationFavorVisible(), false, "Pope hid congregation favor")
++assert_true(Console:EndEvent() ~= nil, "EndEvent returns to QUIET")
++Console:Refresh()
++assert_eq(Console:GetCongregationFavorVisible(), false,
++  "same event id after EndEvent does not restore the toggle")
++assert_true(Console:StartEvent() ~= nil, "StartEvent opens the next gathering")
++Console:Refresh()
++assert_eq(Console:GetCongregationFavorVisible(), true,
++  "a new event restores congregation favor to on")
++
++local savedNet = COB.Net
++local sendDecree = 0
++local sendState = 0
++COB.Net = {
++  SendDecree = function()
++    sendDecree = sendDecree + 1
++  end,
++  SendState = function()
++    sendState = sendState + 1
++  end,
++}
++local postedCore = Console:PostDecree({
++  line = "Goldshire Inn — Sunday, 7:00 PM",
++  flavor = "bring a fork",
++})
++assert_true(postedCore ~= nil, "PostDecree still Sets Core")
++assert_eq(Decree:Get().line, "Goldshire Inn — Sunday, 7:00 PM", "PostDecree wrote Decree")
++assert_eq(sendDecree, 0, "PostDecree does not call Net:SendDecree")
++assert_eq(sendState, 0, "PostDecree does not call Net:SendState")
++COB.Net = savedNet
++
++reset()
++Console:Init()
++a = Store:CreateCharacter({ name = "Chuckroast", class = "Warrior", level = 70 })
++b = Store:CreateCharacter({ name = "Tendermage", class = "Mage", level = 68 })
++assert_true(Console:StartEvent() ~= nil, "FREE RULING needs a live event")
++Gora:Petition(a.id)
++Gora:Petition(b.id)
++assert_true(Console:Sanction(a.id, b.id) ~= nil, "FREE RULING needs a sanctioned pair")
++frame.FreeRulingText:SetText("so ruled")
++local boxed = Console:FreeRuling()
++assert_true(boxed ~= nil, "FREE RULING with box text reaches Gora")
++assert_eq(boxed.ruling, "free", "box FREE RULING is free")
++assert_eq(boxed.won, nil, "box FREE RULING has no winner")
++assert_eq(boxed.text, "so ruled", "box text is forwarded")
++assert_eq(Store:GetCharacter(a.id).gora.results[1].text, "so ruled",
++  "Store row keeps the box text")
++assert_eq(Store:GetCharacter(a.id).gora.results[1].won, nil,
++  "Store row has no won flag")
++assert_eq(Store:GetCharacter(a.id).gora.wins, 0, "box FREE RULING writes no win")
++assert_eq(Store:GetCharacter(a.id).gora.losses, 0, "box FREE RULING writes no loss")
++
++Gora:Petition(a.id)
++Gora:Petition(b.id)
++Console:Sanction(a.id, b.id)
++frame.FreeRulingText:SetText("box leftover")
++local explicit = Console:FreeRuling("so ruled")
++assert_eq(explicit.text, "so ruled", "an explicit FreeRuling argument wins over the box")
++
++Gora:Petition(a.id)
++Gora:Petition(b.id)
++Console:Sanction(a.id, b.id)
++frame.FreeRulingText:SetText("")
++local emptyBox = Console:FreeRuling()
++assert_true(emptyBox ~= nil, "empty-box FREE RULING still reaches Gora")
++assert_eq(emptyBox.ruling, "free", "empty-box FREE RULING is free")
++assert_eq(emptyBox.won, nil, "empty-box FREE RULING has no winner")
++assert_eq(emptyBox.text, nil, "empty-box FREE RULING stores no text")
++assert_eq(Store:GetCharacter(a.id).gora.results[3].won, nil,
++  "empty-box Store row has no won flag")
++assert_eq(Store:GetCharacter(a.id).gora.wins, 0, "empty-box FREE RULING writes no win")
++
++Console:Refresh()
++frame.CongregationFavor:Disable()
++Sender.IsRegisteredPope = function() return false end
++Console:Refresh()
++assert_eq(frame.CongregationFavor:IsEnabled(), false, "applyGate disables the toggle")
++Console:SetCongregationFavorVisible(true)
++frame.CongregationFavor:SetChecked(false)
++stub.fire(frame.CongregationFavor, "OnClick")
++assert_eq(Console:GetCongregationFavorVisible(), true, "non-Pope click does not hide favor")
++
++Sender.IsRegisteredPope = savedPred
++assert_eq(COB.Popes, nil, "still no Pope list after the favor desk")
++
+ --------------------------------------------------------------------------------
+ -- No queue store, no auto-advance, no guild write, no theater in this file
+ --------------------------------------------------------------------------------

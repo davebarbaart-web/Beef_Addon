@@ -1,0 +1,124 @@
+# B32-A — Non-Gora hide forgets lastPair (implementation diff)
+
+Lane-only unified diff of the exclusive implementation files vs the pre-lane working tree.
+
+--- a/addon/ChurchOfBeef/UI/Hud.lua
++++ b/addon/ChurchOfBeef/UI/Hud.lua
+@@ -8,8 +8,9 @@
+ -- (B17-D). Remember it as lastPair. Persist lastPair
+ -- when both Gora and Runtime fighters are empty and the event is still live
+ -- (B9-E), except lastPair does not paint during a non-Gora RITE (B19-C)
+--- or a non-Gora CONSEQUENCE (B21-B).
++-- or a non-Gora CONSEQUENCE (B21-B); a refuse forgets lastPair so
++-- Knighting Continue stays hidden (B32-A).
+ -- Hide on QUIET / EndEvent / no last pair. A new live pair replaces
+ -- the remembered pair. clickPlate pick pair never uses lastPair (B11-B):
+ -- Pope (IsRegisteredPope local) → GetSanctioned() only; congregation →
+@@ -296,6 +297,11 @@
+ local function rememberPair(pair)
+   lastPair = { fighterA = pair.fighterA, fighterB = pair.fighterB }
+ end
+ 
++local function forgetPersist()
++  lastPair = nil
++  lastPopeFavor = nil
++end
++
+ local function displayPair()
+   local live = livePair()
+   if live then
+@@ -308,18 +314,13 @@
+       if type(snap) == "table"
+           and (snap.state == "RITE" or snap.state == "CONSEQUENCE")
+           and snap.riteType ~= "Gora" then
++        forgetPersist()
+         return nil
+       end
+     end
+     return lastPair
+   end
+   return nil
+ end
+ 
+-local function forgetPersist()
+-  lastPair = nil
+-  lastPopeFavor = nil
+-end
+-
+ local function tintBar(bar, color)
+   if not bar then return end
+   local ink = MUTED
+--- a/tests/test_hud.lua
++++ b/tests/test_hud.lua
+@@ -6,6 +6,7 @@
+ -- + B16-C congregation picks only while RITE and riteType Gora
+ -- + B17-D livePair runtime arm only while RITE and riteType Gora
+ -- + B19-C lastPair does not paint during a non-Gora RITE
+ -- + B21-B lastPair does not paint during a non-Gora CONSEQUENCE
++-- + B32-A non-Gora refuse forgets lastPair
+ -- + B22-B fighter names try Fonts\\MORPHEUS.ttf
+ -- + B25-D Refresh/paintShown re-applies applyNameFont). Isolated:
+ -- wow_ui_stub + Common + Ranks + Runtime + Store + Gora + Hud. Event Mode
+@@ -16,7 +17,9 @@
+ -- Plate picks: live GetSanctioned (isolated / Pope) or Runtime fighters
+ -- only while RITE and riteType Gora (B16-C). Display livePair runtime
+ -- arm is the same Gora-RITE gate (B17-D). lastPair does not paint
+ -- during a non-Gora RITE (B19-C) or a non-Gora CONSEQUENCE (B21-B).
+--- Never lastPair clicks. Dress is
++-- A non-Gora refuse forgets lastPair so Knighting Continue stays
++-- hidden (B32-A). Never lastPair clicks. Dress is
+ -- stock iron/parchment only — no faction crests, no custom Media. Thin
+ -- QuestBG fields sit behind
+@@ -258,6 +261,18 @@
+ assert_true(src:find('riteType ~= "Gora"', 1, true) ~= nil,
+   "displayPair refuses lastPair during a non-Gora RITE or CONSEQUENCE")
+ assert_true(src:find('state == "RITE" or snap.state == "CONSEQUENCE"', 1, true) ~= nil,
+   "displayPair lastPair refuse covers RITE and CONSEQUENCE")
++do
++  local displayAt = src:find("function displayPair", 1, true)
++  assert_true(displayAt ~= nil, "displayPair exists")
++  local displayEnd = src:find("\nlocal function ", displayAt + 1, true)
++  if not displayEnd then
++    displayEnd = src:find("\nfunction ", displayAt + 1, true)
++  end
++  assert_true(displayEnd ~= nil, "displayPair body has a following function")
++  local displayBody = src:sub(displayAt, displayEnd - 1)
++  assert_true(displayBody:find("forgetPersist", 1, true) ~= nil,
++    "displayPair forgets lastPair when refusing a non-Gora leftover")
++end
+ assert_eq(src:find("Gora:Sanction", 1, true), nil, "HUD does not call Gora:Sanction")
+ assert_true(src:find("defenseA", 1, true) ~= nil, "source names defenseA")
+ assert_true(src:find("defenseB", 1, true) ~= nil, "source names defenseB")
+@@ -1268,6 +1283,7 @@
+ -- OpenRite Gora, Refresh (remember lastPair), CloseRite / Continue,
+ -- OpenRite Knighting with a candidate (no Sanction) → shown == false.
+ -- B21-B (nested): CloseRite → CONSEQUENCE / Knighting → shown == false.
++-- B32-A (nested): Continue + Refresh → shown == false, names "".
+ -- Gora CONSEQUENCE and ASSEMBLY Continue persist stay. Existing
+ -- Sanction-during-Knighting pin stays shown. Isolation wrap stays.
+ -- health nil.
+@@ -1346,6 +1362,25 @@
+     assert_eq(healthReads, 0, "B21-B hide never scraped health")
+   end
+   runB21B()
++
++  local function runB32A()
++    assert_true(Runtime:Continue() ~= nil, "Continue after Knighting CONSEQUENCE")
++    assert_eq(Runtime:Snapshot().state, "ASSEMBLY", "runtime is ASSEMBLY after Knighting Continue")
++    assert_eq(Runtime:Snapshot().riteType, nil, "Knighting Continue clears riteType")
++    assert_eq(Gora:GetSanctioned(), nil, "Knighting Continue still has no Sanction")
++    painted = Hud:Refresh()
++    assert_eq(painted.shown, false, "forgotten lastPair does not return after Knighting Continue")
++    assert_eq(Hud:IsShown(), false, "Knighting Continue stays hidden")
++    assert_eq(painted.fighterA, nil, "do not paint leftover Gora fighter A after Knighting Continue")
++    assert_eq(painted.fighterB, nil, "do not paint leftover Gora fighter B after Knighting Continue")
++    assert_eq(painted.health, nil, "Knighting Continue leftover hide has no health")
++    assert_eq(painted.favor, nil, "Knighting Continue leftover hide has no favor")
++    assert_eq(hud.nameA:GetText(), "", "leftover Gora name A stays unpainted after Continue")
++    assert_eq(hud.nameB:GetText(), "", "leftover Gora name B stays unpainted after Continue")
++    assert_eq(sounds, 0, "B32-A hide played no sound")
++    assert_eq(healthReads, 0, "B32-A hide never scraped health")
++  end
++  runB32A()
+ end
+ runB19C()

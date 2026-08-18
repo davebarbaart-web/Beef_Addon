@@ -1,0 +1,144 @@
+diff --git a/addon/ChurchOfBeef/UI/Console.lua b/addon/ChurchOfBeef/UI/Console.lua
+--- a/addon/ChurchOfBeef/UI/Console.lua
++++ b/addon/ChurchOfBeef/UI/Console.lua
+@@ -39,9 +39,11 @@
+ -- EnableMouseWheel + OnMouseWheel steps 36px; missing scroll APIs no-op.
+ -- No permanent OnUpdate. Open Gora subjects use the selected pair when both
+ -- ids are set, else Gora:GetSanctioned() then Gora:GetLastSanctioned().
+--- Scrollable Presence / Gora / Confession / Line / CeremonyLog lists,
+--- click-to-select. Not parchment. Not collapsible tabs (desks stay
+--- glanceable without window switching).
++-- Open Knighting subjects use selectedHumanId, else the head of
++-- Knighting:GetLine() when that humanId is an id. Scrollable Presence /
++-- Gora / Confession / Line / CeremonyLog lists, click-to-select. Not
++-- parchment. Not collapsible tabs (desks stay glanceable without window
++-- switching).
+ local Console = {
+   MODE = "event",
+ }
+@@ -1325,8 +1327,24 @@
+     return nil, "runtime is not available"
+   end
+   local subjects = nil
+-  if kind == "Knighting" and isId(self.selectedHumanId) then
+-    subjects = { candidate = self.selectedHumanId }
++  if kind == "Knighting" then
++    local candidate = self.selectedHumanId
++    if not isId(candidate) then
++      local Knighting = COB.Knighting
++      local line
++      if Knighting and type(Knighting.GetLine) == "function" then
++        line = Knighting:GetLine()
++      end
++      if type(line) == "table" then
++        local head = line[1]
++        if type(head) == "table" and isId(head.humanId) then
++          candidate = head.humanId
++        end
++      end
++    end
++    if isId(candidate) then
++      subjects = { candidate = candidate }
++    end
+   elseif kind == "Gora" then
+     local a, b = self.selectedFighterA, self.selectedFighterB
+     if not (isId(a) and isId(b)) then
+diff --git a/tests/test_console.lua b/tests/test_console.lua
+--- a/tests/test_console.lua
++++ b/tests/test_console.lua
+@@ -5,7 +5,8 @@
+ -- export/import / CanonizeMoment / FlagFamousUpset + B8-E multiline
+ -- ArchiveBox / stock ARCHIVE and CANONIZE labels + B9-C stock
+ -- CeremonyLog desk + B10-D stock desk-body ScrollFrame, outer height 780
+--- + B11-C desk mouse wheel and Open Gora subject fallback).
++-- + B11-C desk mouse wheel and Open Gora subject fallback + B12-B Open
++-- Knighting line-head subject fallback).
+ -- Isolated: wow_ui_stub + Common + Ranks + Runtime + Store + Gora + Knighting
+ -- + Sender + Decree + Console. Confession is stubbed when painted; this file
+ -- does not load Confession.lua. Knighting GetLine/Enqueue/Skip are stubbed
+@@ -2501,7 +2502,85 @@
+ assert_eq(COB.Popes, nil, "still no Pope list after B11-C")
+ end
+ runB11C()
++
++--------------------------------------------------------------------------------
++-- B12-B: Open Knighting falls back to Knighting:GetLine() head.
++-- Nested inside runB8E so the main chunk stays under Lua 5.1's 200-local cap.
++--------------------------------------------------------------------------------
++local function runB12B()
++reset()
++Console:Init()
++assert_eq(Console.SaveNote, nil, "SaveNote stays nil")
++assert_eq(Console.GetNotes, nil, "no notes table")
++assert_eq(Console.CopyCeremonySummary, nil, "no post-show ceremony summary")
++assert_eq(Console.CeremonySummary, nil, "no ceremony summary")
++assert_eq(findButton(frame, "SUMMON THE FAITHFUL"), nil, "no SUMMON chrome")
++assert_eq(findButton(frame, "COPY SUMMARY"), nil, "no ceremony-summary chrome")
++assert_eq(findButton(frame, "WHISPER ALL"), nil, "no WHISPER ALL chrome")
++assert_eq(findButton(frame, "RSVP"), nil, "no RSVP chrome")
++
++local srcOpen = io.open("addon/ChurchOfBeef/UI/Console.lua", "r")
++assert_true(srcOpen ~= nil, "Console.lua is readable for B12-B")
++local srcOpenBody = srcOpen:read("*a")
++srcOpen:close()
++assert_eq(srcOpenBody:find("SUMMON THE FAITHFUL", 1, true), nil, "source must not contain SUMMON")
++assert_eq(srcOpenBody:find("CopyCeremonySummary", 1, true), nil, "source must not copy a ceremony summary")
++assert_eq(srcOpenBody:find("function Console:SaveNote", 1, true), nil, "source must not define SaveNote")
++assert_eq(srcOpenBody:find("Parchment", 1, true), nil, "console stays stock, not parchment")
++assert_eq(srcOpenBody:find("PanelTabButtonTemplate", 1, true), nil, "desks are not collapsed into tabs")
++
++local savedPred = Sender.IsRegisteredPope
++Sender.IsRegisteredPope = function() return true end
++
++reset()
++Console:Init()
++local lineHead = seedHuman("LineHead", 1)
++assert_eq(Console.selectedHumanId, nil, "no selected human")
++assert_true(Console:StartEvent() ~= nil, "StartEvent for line-head fallback")
++assert_true(Console:Enqueue(lineHead.id) ~= nil, "Enqueue reaches Knighting")
++assert_eq(Console.selectedHumanId, nil, "Enqueue does not SelectHuman")
++assert_eq(Knighting:GetLine()[1].humanId, lineHead.id, "line head is the enqueued human")
++local openedLine = Console:OpenRite("Knighting")
++assert_true(openedLine ~= nil, "OpenRite Knighting reaches Runtime from the line head")
++assert_eq(openedLine.state, "RITE", "OpenRite opens a typed rite")
++assert_eq(openedLine.riteType, "Knighting", "rite type is Knighting")
++assert_true(openedLine.subjects ~= nil, "Runtime subjects exist")
++assert_eq(openedLine.subjects.candidate, lineHead.id,
++  "Runtime candidate is the line head when nothing is selected")
++assert_eq(Runtime:Snapshot().subjects.candidate, lineHead.id,
++  "Snapshot candidate is the line head")
++
++reset()
++Console:Init()
++local headHuman = seedHuman("HeadBeef", 1)
++local pickHuman = seedHuman("PickBeef", 1)
++assert_true(Console:StartEvent() ~= nil, "StartEvent for selected-wins")
++assert_true(Console:Enqueue(headHuman.id) ~= nil, "Enqueue the line head")
++assert_eq(Knighting:GetLine()[1].humanId, headHuman.id, "line head stays HeadBeef")
++assert_eq(Console.selectedHumanId, nil, "selected-wins starts with no selection")
++Console:SelectHuman(pickHuman.id)
++assert_eq(Console.selectedHumanId, pickHuman.id, "selected human is PickBeef")
++local openedSel = Console:OpenRite("Knighting")
++assert_true(openedSel ~= nil, "OpenRite Knighting reaches Runtime from the selected human")
++assert_eq(openedSel.subjects and openedSel.subjects.candidate, pickHuman.id,
++  "selected human wins over a different line head")
++assert_eq(openedSel.subjects and openedSel.subjects.candidate == headHuman.id, false,
++  "line head does not win when a human is selected")
++
++Sender.IsRegisteredPope = savedPred
++assert_eq(Sender:IsRegisteredPope(COB.Group.PlayerName()), false,
++  "B12-B wrapping the predicate does not stub the list true")
++
++assert_eq(Console.SaveNote, nil, "SaveNote stays nil after B12-B")
++if standalone then
++  assert_eq(COB.Archive, nil, "isolation still does not load Archive")
++  assert_eq(COB.UI, nil, "isolation still does not load the Quiet shell")
++  assert_eq(COB.Toasts, nil, "isolation still does not load Toasts")
+ end
++assert_eq(COB.Popes, nil, "still no Pope list after B12-B")
++end
++runB12B()
++end
+ runB8E()
+ 
+ --------------------------------------------------------------------------------

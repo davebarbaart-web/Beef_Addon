@@ -1,0 +1,503 @@
+diff --git a/addon/ChurchOfBeef/Core/Confession.lua b/addon/ChurchOfBeef/Core/Confession.lua
+new file mode 100644
+index 0000000..6ebb3cc
+--- /dev/null
++++ b/addon/ChurchOfBeef/Core/Confession.lua
+@@ -0,0 +1,136 @@
++ChurchOfBeef = ChurchOfBeef or {}
++local COB = ChurchOfBeef
++
++-- Memory-only private confession inbox (Bible §9, §13.4).
++-- Event-scoped like Gora petitions: wipe when Runtime is QUIET or has no live
++-- event id; survive OpenRite / CONSEQUENCE / Continue. Latest line replaces.
++-- Software organizes the queue. It does not write the Pope's response.
++local Confession = {}
++COB.Confession = Confession
++
++local inbox = {}
++local nextSeq = 1
++
++local function isId(n)
++  return type(n) == "number" and n == math.floor(n) and n >= 1
++end
++
++local function liveEventId()
++  if not COB.Runtime or not COB.Runtime.Snapshot then return nil end
++  local snap = COB.Runtime:Snapshot()
++  if type(snap) ~= "table" or snap.state == "QUIET" then return nil end
++  if not isId(snap.eventId) then return nil end
++  return snap.eventId
++end
++
++local function knownCharacter(id)
++  if not isId(id) then return false end
++  if COB.Store and COB.Store.GetCharacter then
++    return COB.Store:GetCharacter(id) ~= nil
++  end
++  return true
++end
++
++local function parseText(text)
++  if text == nil then return nil end
++  if type(text) ~= "string" then return nil, "invalid text" end
++  if text:find("\n", 1, true) then return nil, "invalid text" end
++  if COB.Names and COB.Names.Trim then return COB.Names.Trim(text) end
++  text = text:gsub("^%s+", ""):gsub("%s+$", "")
++  if text == "" then return nil end
++  return text
++end
++
++local function copyRow(entry)
++  return {
++    characterId = entry.characterId,
++    text = entry.text,
++    called = entry.called == true,
++  }
++end
++
++function Confession:_Expire()
++  local eventId = liveEventId()
++  if not eventId then
++    inbox = {}
++    return
++  end
++  local drop = nil
++  for id, entry in pairs(inbox) do
++    if entry.eventId ~= eventId then
++      drop = drop or {}
++      drop[#drop + 1] = id
++    end
++  end
++  if drop then
++    for i = 1, #drop do inbox[drop[i]] = nil end
++  end
++end
++
++function Confession:Receive(characterId, text)
++  self:_Expire()
++  local eventId = liveEventId()
++  if not eventId then return nil, "no event" end
++  if not isId(characterId) then return nil, "invalid character id" end
++  if not knownCharacter(characterId) then return nil, "unknown character" end
++  local line, textErr = parseText(text)
++  if textErr then return nil, textErr end
++
++  local existing = inbox[characterId]
++  if existing then
++    existing.text = line
++    existing.eventId = eventId
++    return copyRow(existing)
++  end
++
++  local entry = {
++    characterId = characterId,
++    eventId = eventId,
++    seq = nextSeq,
++    text = line,
++    called = false,
++  }
++  nextSeq = nextSeq + 1
++  inbox[characterId] = entry
++  return copyRow(entry)
++end
++
++function Confession:GetQueue()
++  self:_Expire()
++  local rows = {}
++  for _, entry in pairs(inbox) do
++    rows[#rows + 1] = entry
++  end
++  table.sort(rows, function(a, b)
++    if a.seq ~= b.seq then return a.seq < b.seq end
++    return a.characterId < b.characterId
++  end)
++  local out = {}
++  for i = 1, #rows do
++    out[i] = copyRow(rows[i])
++  end
++  return out
++end
++
++function Confession:CallForward(characterId)
++  self:_Expire()
++  if not isId(characterId) then return false end
++  local entry = inbox[characterId]
++  if not entry then return false end
++  entry.called = true
++  return true
++end
++
++function Confession:Dismiss(characterId)
++  self:_Expire()
++  if not isId(characterId) or not inbox[characterId] then return false end
++  inbox[characterId] = nil
++  return true
++end
++
++function Confession:ResetForTests()
++  if not COB._IN_TEST then return false end
++  inbox = {}
++  nextSeq = 1
++  return true
++end
+diff --git a/tests/test_confession.lua b/tests/test_confession.lua
+new file mode 100644
+index 0000000..f092202
+--- /dev/null
++++ b/tests/test_confession.lua
+@@ -0,0 +1,355 @@
++-- Private confession inbox (Batch 4 Lane C). Isolated: wow_stub + Common + Store + Runtime + Confession.
++-- Memory-only, event-scoped. No TOC / bootstrap / run.lua / Store / Gora / BeefNet / UI.
++-- No SavedVariables, frames, Toasts, Sound, Net, penance, or fan-out.
++ChurchOfBeef = ChurchOfBeef or {}
++ChurchOfBeef._IN_TEST = true
++
++local standalone = (type(assert_eq) ~= "function")
++local passed = 0
++local failed = 0
++
++if standalone then
++  function assert_eq(a, b, msg)
++    if a ~= b then
++      failed = failed + 1
++      print("FAIL: " .. (msg or "") .. " expected " .. tostring(b) .. " got " .. tostring(a))
++    else
++      passed = passed + 1
++    end
++  end
++  function assert_true(v, msg)
++    assert_eq(not not v, true, msg)
++  end
++end
++
++dofile("tests/wow_stub.lua")
++dofile("addon/ChurchOfBeef/Core/Common.lua")
++dofile("addon/ChurchOfBeef/Core/Store.lua")
++dofile("addon/ChurchOfBeef/Core/Runtime.lua")
++dofile("addon/ChurchOfBeef/Core/Confession.lua")
++
++local COB = ChurchOfBeef
++local Confession = COB.Confession
++local Store = COB.Store
++local Runtime = COB.Runtime
++
++local chats = 0
++local addons = 0
++local frames = 0
++local proclaims = 0
++local sounds = 0
++
++SendChatMessage = function()
++  chats = chats + 1
++end
++SendAddonMessage = function()
++  addons = addons + 1
++end
++CreateFrame = function()
++  frames = frames + 1
++end
++
++local function reset()
++  assert_eq(Store:ResetForTests(), true, "Store ResetForTests runs under _IN_TEST")
++  assert_eq(Runtime:ResetForTests(), true, "Runtime ResetForTests runs under _IN_TEST")
++  assert_eq(Confession:ResetForTests(), true, "Confession ResetForTests runs under _IN_TEST")
++  chats = 0
++  addons = 0
++  frames = 0
++  proclaims = 0
++  sounds = 0
++end
++
++local function twoChars(fieldsA, fieldsB)
++  local a = Store:CreateCharacter(fieldsA or { name = "Chuckroast", class = "Warrior", level = 70 })
++  local b = Store:CreateCharacter(fieldsB or { name = "Tendermage", class = "Mage", level = 68 })
++  return a, b
++end
++
++--------------------------------------------------------------------------------
++-- Isolated surface. Other modules stay nil only when this file is the process.
++--------------------------------------------------------------------------------
++assert_true(Confession ~= nil, "Confession is loaded")
++assert_true(Store ~= nil, "Store is loaded")
++assert_true(Runtime ~= nil, "Runtime is loaded")
++assert_true(COB.Names ~= nil, "Common name law is loaded")
++
++if standalone then
++  assert_eq(COB.Net, nil, "isolated suite does not load BeefNet")
++  assert_eq(COB.UI, nil, "isolated suite does not load UI")
++  assert_eq(COB.DB, nil, "isolated suite does not load DB")
++  assert_eq(COB.Officer, nil, "isolated suite does not load Officer")
++  assert_eq(COB.Archive, nil, "isolated suite does not load Archive")
++  assert_eq(COB.Recognition, nil, "isolated suite does not load Recognition")
++  assert_eq(COB.Popes, nil, "isolated suite does not load a Pope list")
++  assert_eq(COB.Sender, nil, "isolated suite does not load Sender")
++  assert_eq(COB.Codec, nil, "isolated suite does not load Codec")
++  assert_eq(COB.Snapshot, nil, "isolated suite does not load Snapshot")
++  assert_eq(COB.Gora, nil, "isolated suite does not load Gora")
++  assert_eq(COB.Knighting, nil, "isolated suite does not load Knighting")
++  assert_eq(COB.Toasts, nil, "isolated suite does not load Toasts")
++  assert_eq(COB.Sound, nil, "isolated suite does not load Sound")
++  assert_eq(COB.Console, nil, "isolated suite does not load Console")
++  assert_eq(COB.Hud, nil, "isolated suite does not load Hud")
++  assert_eq(COB.Decree, nil, "isolated suite does not load Decree")
++  assert_eq(COB.Roster, nil, "isolated suite does not load Roster")
++  assert_eq(COB.Ranks, nil, "isolated suite does not load Ranks")
++end
++
++assert_eq(type(Confession.Receive), "function", "Receive is a verb")
++assert_eq(type(Confession.GetQueue), "function", "GetQueue reads the inbox")
++assert_eq(type(Confession.CallForward), "function", "CallForward is a mark")
++assert_eq(type(Confession.Dismiss), "function", "Dismiss is a verb")
++assert_eq(type(Confession.ResetForTests), "function", "ResetForTests is a verb")
++
++assert_eq(Confession.Penance, nil, "no penance")
++assert_eq(Confession.Grant, nil, "no Grant")
++assert_eq(Confession.Proclaim, nil, "no Proclaim")
++assert_eq(Confession.FanOut, nil, "no fan-out")
++assert_eq(Confession.Broadcast, nil, "no broadcast")
++assert_eq(Confession.Save, nil, "no persist")
++assert_eq(Confession.OpenRite, nil, "OpenRite is not a Confession verb")
++
++--------------------------------------------------------------------------------
++-- ResetForTests is inert outside the harness
++--------------------------------------------------------------------------------
++reset()
++Runtime:StartEvent()
++local keepA = Store:CreateCharacter({ name = "Keepbeef", class = "Warrior", level = 70 })
++Confession:Receive(keepA.id, "hold this")
++ChurchOfBeef._IN_TEST = false
++assert_eq(Confession:ResetForTests(), false, "ResetForTests refuses to run outside tests")
++assert_eq(#Confession:GetQueue(), 1, "out-of-harness reset does not wipe the inbox")
++ChurchOfBeef._IN_TEST = true
++reset()
++
++--------------------------------------------------------------------------------
++-- Quiet Receive refuses. StartEvent → Receive → GetQueue one row.
++--------------------------------------------------------------------------------
++reset()
++local quietRow, quietErr = Confession:Receive(1, "I ate the last steak")
++assert_eq(quietRow, nil, "Receive from QUIET is refused")
++assert_eq(quietErr, "no event", "QUIET Receive names the missing event")
++assert_eq(#Confession:GetQueue(), 0, "QUIET GetQueue is empty")
++
++Runtime:StartEvent()
++local chuck, tender = twoChars()
++local row, rowErr = Confession:Receive(chuck.id, "I ate the last steak")
++assert_true(row ~= nil, "Receive during an event is accepted")
++assert_eq(rowErr, nil, "successful Receive has no error")
++assert_eq(row.characterId, chuck.id, "inbox row is a character id")
++assert_eq(row.text, "I ate the last steak", "inbox stores the confession line")
++assert_eq(row.called, false, "a new row is not yet called")
++assert_eq(row.name, nil, "the inbox is not keyed by a name string")
++
++local queue = Confession:GetQueue()
++assert_eq(#queue, 1, "GetQueue has one row after Receive")
++assert_eq(queue[1].characterId, chuck.id, "the queued row is that character")
++assert_eq(queue[1].text, "I ate the last steak", "the queued text is the line")
++
++--------------------------------------------------------------------------------
++-- Latest text replaces per character. Oldest-first. Copies.
++--------------------------------------------------------------------------------
++local second, secondErr = Confession:Receive(tender.id, "I skipped the fountain")
++assert_true(second ~= nil, "a second character queues a second row")
++assert_eq(secondErr, nil, "second Receive has no error")
++assert_eq(#Confession:GetQueue(), 2, "two characters are two rows")
++
++local again, againErr = Confession:Receive(chuck.id, "I ate two steaks")
++assert_true(again ~= nil, "latest text replaces")
++assert_eq(againErr, nil, "replace Receive has no error")
++assert_eq(again.text, "I ate two steaks", "the replacement line is stored")
++assert_eq(#Confession:GetQueue(), 2, "replace does not add a row")
++
++local ordered = Confession:GetQueue()
++assert_eq(ordered[1].characterId, chuck.id, "oldest-first keeps the first arrival")
++assert_eq(ordered[1].text, "I ate two steaks", "the first arrival shows the latest line")
++assert_eq(ordered[2].characterId, tender.id, "the later arrival stays second")
++
++local copyQ = Confession:GetQueue()[1]
++copyQ.text = "hacked"
++copyQ.called = true
++copyQ.characterId = 0
++assert_eq(Confession:GetQueue()[1].characterId, chuck.id, "mutating a queue copy does not change the inbox")
++assert_eq(Confession:GetQueue()[1].text, "I ate two steaks", "mutating a queue copy does not rewrite the line")
++assert_eq(Confession:GetQueue()[1].called, false, "mutating a queue copy does not mark called")
++
++--------------------------------------------------------------------------------
++-- Optional / empty text stores no text. Newline and non-string refuse.
++--------------------------------------------------------------------------------
++local blank, blankErr = Confession:Receive(chuck.id, "   ")
++assert_true(blank ~= nil, "whitespace-only text is accepted")
++assert_eq(blankErr, nil, "whitespace-only text has no error")
++assert_eq(blank.text, nil, "whitespace-only stores no text")
++assert_eq(Confession:GetQueue()[1].text, nil, "the inbox row has no text after whitespace")
++
++local none, noneErr = Confession:Receive(chuck.id)
++assert_true(none ~= nil, "omitted text is accepted")
++assert_eq(noneErr, nil, "omitted text has no error")
++assert_eq(none.text, nil, "omitted text stores no text")
++
++local nl, nlErr = Confession:Receive(chuck.id, "line one\nline two")
++assert_eq(nl, nil, "embedded newline is refused")
++assert_eq(nlErr, "invalid text", "newline refuse names invalid text")
++assert_eq(Confession:GetQueue()[1].text, nil, "refused newline does not rewrite the inbox")
++
++local onlyNl, onlyNlErr = Confession:Receive(tender.id, "\n")
++assert_eq(onlyNl, nil, "a lone newline is refused")
++assert_eq(onlyNlErr, "invalid text", "a lone newline names invalid text")
++assert_eq(Confession:GetQueue()[2].text, "I skipped the fountain", "refused newline leaves the earlier line")
++
++local num, numErr = Confession:Receive(chuck.id, 12)
++assert_eq(num, nil, "non-string text is refused")
++assert_eq(numErr, "invalid text", "non-string text names invalid text")
++
++local nameRow, nameErr = Confession:Receive("Chuckroast", "I ate the last steak")
++assert_eq(nameRow, nil, "Receive refuses a name string")
++assert_eq(nameErr, "invalid character id", "name-string Receive names the id")
++
++local zeroRow, zeroErr = Confession:Receive(0, "I ate the last steak")
++assert_eq(zeroRow, nil, "Receive refuses zero")
++assert_eq(zeroErr, "invalid character id", "zero is not a character id")
++
++local stray = Store:CreateHuman()
++while Store:GetCharacter(stray.id) do
++  stray = Store:CreateHuman()
++end
++local humanRow, humanErr = Confession:Receive(stray.id, "I ate the last steak")
++assert_eq(humanRow, nil, "Receive refuses an id that is not a character")
++assert_eq(humanErr, "unknown character", "non-character Receive names the unknown")
++
++--------------------------------------------------------------------------------
++-- Dismiss removes. CallForward marks without announcing.
++--------------------------------------------------------------------------------
++assert_eq(Confession:Dismiss(chuck.id), true, "Dismiss removes that character")
++assert_eq(#Confession:GetQueue(), 1, "Dismiss leaves the other row")
++assert_eq(Confession:GetQueue()[1].characterId, tender.id, "the remaining row is the later arrival")
++assert_eq(Confession:Dismiss(chuck.id), false, "Dismiss of an absent row is a no-op")
++
++local back, backErr = Confession:Receive(chuck.id, "I returned")
++assert_true(back ~= nil, "Receive after Dismiss returns to the inbox")
++assert_eq(backErr, nil, "re-Receive has no error")
++assert_eq(#Confession:GetQueue(), 2, "re-Receive is a new row")
++assert_eq(Confession:GetQueue()[1].characterId, tender.id, "the surviving row stays oldest")
++assert_eq(Confession:GetQueue()[2].characterId, chuck.id, "re-Receive is newest")
++
++local savedToasts = COB.Toasts
++local savedSound = COB.Sound
++COB.Toasts = {
++  Proclaim = function()
++    proclaims = proclaims + 1
++  end,
++}
++COB.Sound = {
++  Play = function()
++    sounds = sounds + 1
++  end,
++}
++assert_eq(Confession:CallForward(tender.id), true, "CallForward marks a queued character")
++assert_eq(Confession:GetQueue()[1].called, true, "CallForward sets called")
++assert_eq(Confession:GetQueue()[1].characterId, tender.id, "CallForward does not reorder")
++assert_eq(Confession:GetQueue()[2].called, false, "CallForward is per character")
++assert_eq(Confession:CallForward(tender.id), true, "CallForward of an already-called row stays true")
++assert_eq(Confession:CallForward(999), false, "CallForward of an absent id is a no-op")
++assert_eq(chats, 0, "CallForward does not SendChatMessage")
++assert_eq(addons, 0, "CallForward does not SendAddonMessage")
++assert_eq(proclaims, 0, "CallForward does not Proclaim")
++assert_eq(sounds, 0, "CallForward does not Play")
++COB.Toasts = savedToasts
++COB.Sound = savedSound
++
++--------------------------------------------------------------------------------
++-- OpenRite / CONSEQUENCE / Continue keep. QUIET / EndEvent / missing eventId wipe.
++--------------------------------------------------------------------------------
++reset()
++Runtime:StartEvent()
++local p1, p2 = twoChars()
++Confession:Receive(p1.id, "first")
++Confession:Receive(p2.id, "second")
++assert_eq(#Confession:GetQueue(), 2, "confessions live for the current event")
++
++Runtime:OpenRite("Confession")
++assert_eq(#Confession:GetQueue(), 2, "OpenRite does not wipe the inbox")
++Runtime:CloseRite()
++assert_eq(Runtime:Snapshot().state, "CONSEQUENCE", "CloseRite is CONSEQUENCE")
++assert_eq(#Confession:GetQueue(), 2, "CONSEQUENCE keeps the current-event inbox")
++Runtime:Continue()
++assert_eq(Runtime:Snapshot().state, "ASSEMBLY", "Continue stays in the same event")
++assert_eq(#Confession:GetQueue(), 2, "Continue does not wipe the inbox")
++
++Runtime:EndEvent()
++assert_eq(Runtime:Snapshot().state, "QUIET", "EndEvent returns to QUIET")
++assert_eq(#Confession:GetQueue(), 0, "EndEvent wipes the inbox")
++assert_eq(Confession:Dismiss(p1.id), false, "wiped rows are gone")
++assert_eq(Confession:CallForward(p1.id), false, "CallForward after wipe is a no-op")
++
++local late, lateErr = Confession:Receive(p1.id, "too late")
++assert_eq(late, nil, "Receive after EndEvent is refused")
++assert_eq(lateErr, "no event", "post-EndEvent Receive names the missing event")
++
++Runtime:StartEvent()
++assert_eq(#Confession:GetQueue(), 0, "a new event starts with an empty inbox")
++assert_true(Confession:Receive(p1.id, "fresh") ~= nil, "a new event accepts a fresh confession")
++assert_eq(#Confession:GetQueue(), 1, "the new confession is the current event")
++
++local snapFn = Runtime.Snapshot
++Runtime.Snapshot = function()
++  return { state = "ASSEMBLY" }
++end
++assert_eq(#Confession:GetQueue(), 0, "missing eventId wipes the inbox")
++local miss, missErr = Confession:Receive(p1.id, "no id")
++assert_eq(miss, nil, "Receive without eventId is refused")
++assert_eq(missErr, "no event", "missing eventId Receive names the missing event")
++Runtime.Snapshot = snapFn
++
++--------------------------------------------------------------------------------
++-- Unknown-to-Store ids may queue when Store is missing (desktop).
++--------------------------------------------------------------------------------
++reset()
++Runtime:StartEvent()
++local savedStore = COB.Store
++COB.Store = nil
++local desk, deskErr = Confession:Receive(99, "desktop line")
++assert_true(desk ~= nil, "missing Store still queues a desktop id")
++assert_eq(deskErr, nil, "missing-Store Receive has no error")
++assert_eq(desk.characterId, 99, "desktop row keeps the given id")
++assert_eq(desk.text, "desktop line", "desktop row keeps the line")
++assert_eq(#Confession:GetQueue(), 1, "desktop inbox has one row")
++COB.Store = savedStore
++
++--------------------------------------------------------------------------------
++-- Getters / verbs do not CreateFrame or write ChurchOfBeefDB.
++--------------------------------------------------------------------------------
++reset()
++ChurchOfBeefDB = { sentinel = 1 }
++Runtime:StartEvent()
++local f1, f2 = twoChars()
++Confession:Receive(f1.id, "I ate the last steak")
++Confession:Receive(f2.id)
++Confession:GetQueue()
++Confession:CallForward(f1.id)
++Confession:Dismiss(f2.id)
++assert_eq(frames, 0, "Confession verbs never CreateFrame")
++assert_eq(ChurchOfBeefDB.sentinel, 1, "Confession verbs do not write ChurchOfBeefDB")
++assert_eq(chats, 0, "Confession verbs never SendChatMessage")
++assert_eq(addons, 0, "Confession verbs never SendAddonMessage")
++
++local srcFile = io.open("addon/ChurchOfBeef/Core/Confession.lua", "r")
++assert_true(srcFile ~= nil, "Confession source is readable")
++local src = srcFile:read("*a")
++srcFile:close()
++assert_eq(src:find("CreateFrame", 1, true), nil, "source does not CreateFrame")
++assert_eq(src:find("SendChatMessage", 1, true), nil, "source does not send chat")
++assert_eq(src:find("SendAddonMessage", 1, true), nil, "source does not send addon messages")
++assert_eq(src:find("ChurchOfBeefDB", 1, true), nil, "source does not touch SavedVariables")
++assert_eq(src:find("PlaySound", 1, true), nil, "source does not play sound")
++assert_eq(src:find("COB.Toasts", 1, true), nil, "source does not drive Toasts")
++assert_eq(src:find("COB.Sound", 1, true), nil, "source does not drive Sound")
++assert_eq(src:find("COB.Net", 1, true), nil, "source does not call Net")
++assert_eq(src:find("Penance", 1, true), nil, "source does not invent penance")
++assert_eq(src:find("Grant(", 1, true), nil, "source does not Grant")
++
++if standalone then
++  print(string.format("Tests finished: %d passed, %d failed", passed, failed))
++  if failed > 0 then os.exit(1) end
++end

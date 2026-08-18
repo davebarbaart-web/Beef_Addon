@@ -1,0 +1,544 @@
+diff --git a/addon/ChurchOfBeef/UI/Hud.lua b/addon/ChurchOfBeef/UI/Hud.lua
+index ad8930e..6d8e2e0 100644
+--- a/addon/ChurchOfBeef/UI/Hud.lua
++++ b/addon/ChurchOfBeef/UI/Hud.lua
+@@ -3,16 +3,17 @@ local COB = ChurchOfBeef
+ 
+ -- Event Mode Fight HUD (Bible §10.7, §19.2). Compact spectator card.
+ -- Show only when Runtime is not QUIET and Gora:GetSanctioned() is a live pair.
+--- Defined fallback: everything except live health. No split bar this lane
+--- (INPUT channel unspecified). No sound. No toasts. Cards stay mute.
++-- Defined fallback: everything except live health. Favor split is Pope-local
++-- from Gora, or congregation broadcast only. No sound. No toasts. Cards stay mute.
+ local Hud = {
+   MODE = "Event",
+ }
+ COB.Hud = Hud
+ 
+ local FRAME_NAME = "ChurchOfBeefHud"
+-local WIDTH, HEIGHT = 420, 80
++local WIDTH, HEIGHT = 420, 100
+ local TOP_INSET = -24
++local STOCK_BAR = "Interface\\TargetingFrame\\UI-StatusBar"
+ 
+ local ANCHORS = {
+   TOPLEFT = true, TOP = true, TOPRIGHT = true,
+@@ -26,6 +27,9 @@ local MUTED = { r = 0.55, g = 0.50, b = 0.42 }
+ 
+ local frame = nil
+ local lastView = nil
++local broadcastFavor = nil
++local favorTarget = nil
++local localCharacterId = nil
+ 
+ local function deepcopy(value)
+   if type(value) ~= "table" then return value end
+@@ -122,6 +126,110 @@ local function livePair()
+   return pair
+ end
+ 
++local function localSender()
++  if COB.Group and COB.Group.PlayerName then
++    return COB.Group.PlayerName()
++  end
++  if type(UnitName) == "function" then
++    return UnitName("player")
++  end
++  return nil
++end
++
++local function isLocalPope()
++  local Sender = COB.Sender
++  if not Sender or type(Sender.IsRegisteredPope) ~= "function" then
++    return false
++  end
++  return Sender:IsRegisteredPope(localSender()) == true
++end
++
++local function favorPercents(a, b)
++  if a + b == 0 then
++    return 0, 0
++  end
++  local pctA = math.floor(100 * a / (a + b))
++  return pctA, 100 - pctA
++end
++
++local function favorView(split)
++  if type(split) ~= "table" then return nil end
++  local a, b = split.a, split.b
++  if type(a) ~= "number" or type(b) ~= "number" then return nil end
++  local pctA, pctB = favorPercents(a, b)
++  return { a = a, b = b, pctA = pctA, pctB = pctB }
++end
++
++local function resolveFavor()
++  if isLocalPope() then
++    if not livePair() then return nil end
++    if not (COB.Gora and COB.Gora.GetFavorSplit) then return nil end
++    return favorView(COB.Gora:GetFavorSplit())
++  end
++  return favorView(broadcastFavor)
++end
++
++local function tintBar(bar, color)
++  if not bar then return end
++  local ink = MUTED
++  if type(color) == "table"
++      and type(color.r) == "number"
++      and type(color.g) == "number"
++      and type(color.b) == "number" then
++    ink = color
++  end
++  if bar.SetStatusBarColor then
++    bar:SetStatusBarColor(ink.r, ink.g, ink.b)
++  end
++  bar._cobColor = { r = ink.r, g = ink.g, b = ink.b }
++end
++
++local function hideFavorWidgets()
++  if not frame then return end
++  if frame.favorLabel and frame.favorLabel.Hide then frame.favorLabel:Hide() end
++  if frame.barA and frame.barA.Hide then frame.barA:Hide() end
++  if frame.barB and frame.barB.Hide then frame.barB:Hide() end
++  if frame.pctA then
++    frame.pctA:SetText("")
++    if frame.pctA.Hide then frame.pctA:Hide() end
++  end
++  if frame.pctB then
++    frame.pctB:SetText("")
++    if frame.pctB.Hide then frame.pctB:Hide() end
++  end
++end
++
++local function paintFavor(favor, fighterA, fighterB)
++  if not frame then return end
++  if not favor then
++    hideFavorWidgets()
++    return
++  end
++  frame.favorLabel:SetText("FAVOR")
++  if frame.favorLabel.Show then frame.favorLabel:Show() end
++  frame.pctA:SetText(tostring(favor.pctA) .. "%")
++  frame.pctB:SetText(tostring(favor.pctB) .. "%")
++  if frame.pctA.Show then frame.pctA:Show() end
++  if frame.pctB.Show then frame.pctB:Show() end
++  if frame.barA.SetMinMaxValues then frame.barA:SetMinMaxValues(0, 100) end
++  if frame.barB.SetMinMaxValues then frame.barB:SetMinMaxValues(0, 100) end
++  if frame.barA.SetValue then frame.barA:SetValue(favor.pctA) end
++  if frame.barB.SetValue then frame.barB:SetValue(favor.pctB) end
++  tintBar(frame.barA, fighterA and fighterA.nameColor)
++  tintBar(frame.barB, fighterB and fighterB.nameColor)
++  if frame.barA.Show then frame.barA:Show() end
++  if frame.barB.Show then frame.barB:Show() end
++end
++
++local function clickPlate(side)
++  if type(favorTarget) ~= "string" or favorTarget == "" then return end
++  if type(localCharacterId) ~= "number" then return end
++  local pair = livePair()
++  if not pair then return end
++  local pickId = (side == "A") and pair.fighterA or pair.fighterB
++  Hud:PickFavor(pickId, favorTarget, localCharacterId)
++end
++
+ local function headToHeadFor(character, opponentId)
+   if type(character) ~= "table" or type(character.gora) ~= "table" then return nil end
+   local list = character.gora.headToHeads
+@@ -204,6 +312,7 @@ local function paintHidden()
+   frame.recordA:SetText("")
+   frame.recordB:SetText("")
+   if frame.headToHead.Hide then frame.headToHead:Hide() end
++  hideFavorWidgets()
+   frame:Hide()
+   return lastView
+ end
+@@ -227,6 +336,9 @@ local function paintShown(pair)
+     if frame.headToHead.Hide then frame.headToHead:Hide() end
+   end
+ 
++  local favor = resolveFavor()
++  paintFavor(favor, fighterA, fighterB)
++
+   lastView = {
+     shown = true,
+     mode = "Event",
+@@ -234,7 +346,7 @@ local function paintShown(pair)
+     fighterB = fighterB,
+     headToHead = h2h,
+     health = nil,
+-    favor = nil,
++    favor = favor,
+   }
+   frame:Show()
+   return lastView
+@@ -282,6 +394,25 @@ local function build()
+   widget.recordB = makeLabel(widget, nil, "GameFontNormal", "RIGHT")
+   widget.vs = makeLabel(widget, nil, "GameFontNormal", "CENTER")
+   widget.headToHead = makeLabel(widget, nil, "GameFontNormal", "CENTER")
++  widget.favorLabel = makeLabel(widget, nil, "GameFontHighlightSmall", "CENTER")
++  widget.pctA = makeLabel(widget, nil, "GameFontNormal", "LEFT")
++  widget.pctB = makeLabel(widget, nil, "GameFontNormal", "RIGHT")
++
++  widget.barA = CreateFrame("StatusBar", nil, widget)
++  widget.barB = CreateFrame("StatusBar", nil, widget)
++  if widget.barA.SetStatusBarTexture then widget.barA:SetStatusBarTexture(STOCK_BAR) end
++  if widget.barB.SetStatusBarTexture then widget.barB:SetStatusBarTexture(STOCK_BAR) end
++  if widget.barA.SetMinMaxValues then widget.barA:SetMinMaxValues(0, 100) end
++  if widget.barB.SetMinMaxValues then widget.barB:SetMinMaxValues(0, 100) end
++  widget.barA:SetSize(110, 8)
++  widget.barB:SetSize(110, 8)
++
++  widget.pickA = CreateFrame("Button", nil, widget)
++  widget.pickB = CreateFrame("Button", nil, widget)
++  widget.pickA:SetSize(190, 36)
++  widget.pickB:SetSize(190, 36)
++  if widget.pickA.EnableMouse then widget.pickA:EnableMouse(true) end
++  if widget.pickB.EnableMouse then widget.pickB:EnableMouse(true) end
+ 
+   widget.nameA:SetPoint("TOPLEFT", widget, "TOPLEFT", 12, -8)
+   widget.nameB:SetPoint("TOPRIGHT", widget, "TOPRIGHT", -12, -8)
+@@ -295,9 +426,30 @@ local function build()
+   widget.levelB:SetPoint("TOPRIGHT", widget.titleB, "BOTTOMRIGHT", 0, -2)
+   widget.recordA:SetPoint("LEFT", widget.levelA, "RIGHT", 8, 0)
+   widget.recordB:SetPoint("RIGHT", widget.levelB, "LEFT", -8, 0)
+-  widget.headToHead:SetPoint("BOTTOM", widget, "BOTTOM", 0, 8)
++  widget.headToHead:SetPoint("BOTTOM", widget, "BOTTOM", 0, 22)
+   widget.headToHead:Hide()
+ 
++  widget.favorLabel:SetPoint("BOTTOM", widget, "BOTTOM", 0, 8)
++  widget.favorLabel:SetText("FAVOR")
++  widget.pctA:SetPoint("BOTTOMLEFT", widget, "BOTTOMLEFT", 12, 8)
++  widget.pctB:SetPoint("BOTTOMRIGHT", widget, "BOTTOMRIGHT", -12, 8)
++  widget.barA:SetPoint("LEFT", widget.pctA, "RIGHT", 6, 0)
++  widget.barB:SetPoint("RIGHT", widget.pctB, "LEFT", -6, 0)
++  widget.favorLabel:Hide()
++  widget.pctA:Hide()
++  widget.pctB:Hide()
++  widget.barA:Hide()
++  widget.barB:Hide()
++
++  widget.pickA:SetPoint("TOPLEFT", widget, "TOPLEFT", 8, -6)
++  widget.pickB:SetPoint("TOPRIGHT", widget, "TOPRIGHT", -8, -6)
++  widget.pickA:SetScript("OnClick", function()
++    clickPlate("A")
++  end)
++  widget.pickB:SetScript("OnClick", function()
++    clickPlate("B")
++  end)
++
+   widget:SetScript("OnDragStart", function(self)
+     if self.StartMoving then self:StartMoving() end
+   end)
+@@ -341,8 +493,53 @@ function Hud:Refresh()
+   return self:GetView()
+ end
+ 
++function Hud:SetBroadcastFavor(favor)
++  if type(favor) ~= "table" then
++    broadcastFavor = nil
++    return
++  end
++  local a, b = favor.a, favor.b
++  if type(a) ~= "number" or type(b) ~= "number" then
++    broadcastFavor = nil
++    return
++  end
++  broadcastFavor = { a = a, b = b }
++end
++
++function Hud:SetFavorTarget(target)
++  if type(target) == "string" and target ~= "" then
++    favorTarget = target
++  else
++    favorTarget = nil
++  end
++end
++
++function Hud:SetLocalCharacterId(characterId)
++  if type(characterId) == "number" then
++    localCharacterId = characterId
++  else
++    localCharacterId = nil
++  end
++end
++
++function Hud:PickFavor(pickId, target, characterId)
++  if type(target) ~= "string" or target == "" then
++    return nil, "no target"
++  end
++  if type(characterId) ~= "number" then
++    return nil, "no character"
++  end
++  if not (COB.Net and COB.Net.SendFavor) then
++    return nil, "no net"
++  end
++  return COB.Net:SendFavor({ characterId = characterId, pick = pickId }, target)
++end
++
+ function Hud:ResetForTests()
+   if not COB._IN_TEST then return false end
++  broadcastFavor = nil
++  favorTarget = nil
++  localCharacterId = nil
+   lastView = hiddenView()
+   if frame then
+     paintHidden()
+diff --git a/tests/test_hud.lua b/tests/test_hud.lua
+index 8143df3..80efe07 100644
+--- a/tests/test_hud.lua
++++ b/tests/test_hud.lua
+@@ -1,5 +1,6 @@
+--- Fight HUD (Phase 4 Lane F). Isolated: wow_ui_stub + Common + Ranks + Runtime + Store + Gora + Hud.
+--- Event Mode only. No live health, favor INPUT, sound, or toasts. Standalone wrap.
++-- Fight HUD (Wire W-F). Isolated: wow_ui_stub + Common + Ranks + Runtime + Store + Gora + Hud.
++-- Event Mode only. No live health, favor economy, sound, or toasts. Standalone wrap.
++-- Congregation favor is broadcast-only. Pope stub fills from Gora:GetFavorSplit.
+ -- Ranks is Data for Church titles (Store rank ids). No TOC / bootstrap / run.lua edits.
+ package.path = package.path .. ";./tests/?.lua"
+ 
+@@ -137,8 +138,12 @@ assert_eq(type(Hud.Refresh), "function", "Refresh paints from Core")
+ assert_eq(type(Hud.IsShown), "function", "IsShown reads visibility")
+ assert_eq(type(Hud.GetView), "function", "GetView returns a copy")
+ assert_eq(type(Hud.ResetForTests), "function", "ResetForTests is a harness hatch")
+-assert_eq(Hud.Favor, nil, "no favor INPUT")
+-assert_eq(Hud.SendFavor, nil, "no favor send")
++assert_eq(type(Hud.SetBroadcastFavor), "function", "SetBroadcastFavor is the congregation fill")
++assert_eq(type(Hud.SetFavorTarget), "function", "SetFavorTarget remembers the whisper dest")
++assert_eq(type(Hud.SetLocalCharacterId), "function", "SetLocalCharacterId remembers the picker")
++assert_eq(type(Hud.PickFavor), "function", "PickFavor is the congregation send")
++assert_eq(Hud.Favor, nil, "no favor economy table")
++assert_eq(Hud.SendFavor, nil, "no public SendFavor alias")
+ assert_eq(Hud.INPUT, nil, "no invented INPUT channel")
+ assert_eq(Hud.GetHealth, nil, "no health getter")
+ assert_eq(Hud.ScrapeHealth, nil, "no health scrape")
+@@ -150,7 +155,7 @@ assert_eq(Hud.Sanction, nil, "HUD does not sanction")
+ assert_eq(Hud.DeclareVictor, nil, "HUD does not record outcomes")
+ 
+ --------------------------------------------------------------------------------
+--- Source contract: no scrape, no StatusBar, no sound, no toast engine
++-- Source contract: no scrape, no sound, no toast engine. StatusBar is stock.
+ --------------------------------------------------------------------------------
+ local srcFile = io.open("addon/ChurchOfBeef/UI/Hud.lua", "r")
+ assert_true(srcFile ~= nil, "Hud.lua is readable")
+@@ -161,7 +166,10 @@ assert_eq(src:find("COMBAT_LOG", 1, true), nil, "source does not read the combat
+ assert_eq(src:find("NamePlate", 1, true), nil, "source does not scrape nameplates")
+ assert_eq(src:find("C_NamePlate", 1, true), nil, "source does not call C_NamePlate")
+ assert_eq(src:find("PlaySound", 1, true), nil, "source does not play sound")
+-assert_eq(src:find("StatusBar", 1, true), nil, "source does not mint a StatusBar")
++assert_true(src:find("StatusBar", 1, true) ~= nil, "source mints a stock StatusBar")
++assert_eq(src:find(".tga", 1, true), nil, "source does not load custom tga")
++assert_eq(src:find(".blp", 1, true), nil, "source does not load custom blp")
++assert_eq(src:find(".ttf", 1, true), nil, "source does not load custom fonts")
+ assert_eq(src:find("Toasts", 1, true), nil, "source does not drive Toasts")
+ assert_eq(src:find("SendChatMessage", 1, true), nil, "source does not send chat")
+ assert_eq(src:find("ShowUIPanel", 1, true), nil, "insecure Show/Hide only")
+@@ -180,7 +188,10 @@ assert_eq(frame:IsShown(), false, "the widget starts hidden")
+ assert_eq(frame._movable, true, "HUD is movable")
+ assert_eq(frame._clamped, true, "HUD is clamped to screen")
+ assert_eq(frame:GetScript("OnUpdate"), nil, "a resting HUD runs nothing per frame")
+-assert_eq(findStatusBar(frame), nil, "Init mints no StatusBar")
++assert_true(findStatusBar(frame) ~= nil, "Init mints a stock favor StatusBar")
++assert_eq(frame.favorLabel:IsShown(), false, "FAVOR label starts hidden")
++assert_eq(frame.barA:IsShown(), false, "favor bar A starts hidden")
++assert_eq(frame.barB:IsShown(), false, "favor bar B starts hidden")
+ 
+ local point, relativeTo, relativePoint, x, y = frame:GetPoint(1)
+ assert_eq(point, "TOP", "default anchor is the top")
+@@ -195,7 +206,7 @@ assert_eq(view0.fighterA, nil, "Quiet view has no fighter A")
+ assert_eq(view0.fighterB, nil, "Quiet view has no fighter B")
+ assert_eq(view0.headToHead, nil, "Quiet view has no head-to-head")
+ assert_eq(view0.health, nil, "view never carries health")
+-assert_eq(view0.favor, nil, "view never carries favor")
++assert_eq(view0.favor, nil, "Quiet view has no favor")
+ 
+ --------------------------------------------------------------------------------
+ -- Quiet and Event-without-a-pair stay hidden
+@@ -235,7 +246,7 @@ assert_eq(view.fighterA.title, nil, "unlinked characters have no invented title"
+ assert_eq(view.fighterB.title, nil, "the other unlinked character has no invented title")
+ assert_eq(view.headToHead, nil, "no head-to-head line without Store history")
+ assert_eq(view.health, nil, "shown view still has no health")
+-assert_eq(view.favor, nil, "shown view still has no favor")
++assert_eq(view.favor, nil, "congregation with no broadcast hides favor")
+ assert_eq(view.defenses, nil, "defense count is not invented")
+ assert_eq(view.odds, nil, "no odds copy")
+ assert_eq(frame.nameA:GetText(), "Chuckroast", "name A is painted")
+@@ -245,7 +256,10 @@ assert_eq(frame.levelB:GetText(), "68", "level B is painted")
+ assert_eq(frame.recordA:GetText(), "0-0", "record A is Store W/L")
+ assert_eq(frame.recordB:GetText(), "0-0", "record B is Store W/L")
+ assert_eq(frame.headToHead:IsShown(), false, "head-to-head widget hides without history")
+-assert_eq(findStatusBar(frame), nil, "shown HUD still has no StatusBar")
++assert_eq(frame.favorLabel:IsShown(), false, "congregation without broadcast hides FAVOR")
++assert_eq(frame.barA:IsShown(), false, "congregation without broadcast hides bar A")
++assert_eq(frame.barB:IsShown(), false, "congregation without broadcast hides bar B")
++assert_true(findStatusBar(frame) ~= nil, "shown HUD still has the stock favor bars")
+ assert_eq(sounds, 0, "showing the HUD plays no sound")
+ assert_eq(healthReads, 0, "showing the HUD does not read live health")
+ assert_eq(#stub.chat, 0, "HUD never SendChatMessage")
+@@ -389,9 +403,11 @@ Gora:Sanction(a.id, b.id)
+ view = Hud:Refresh()
+ view.fighterA.name = "Mutated"
+ view.shown = false
++if view.favor then view.favor.a = 99 end
+ local again = Hud:GetView()
+ assert_eq(again.fighterA.name, "Chuckroast", "mutating GetView does not change the live view")
+ assert_eq(again.shown, true, "mutating GetView does not hide the HUD")
++assert_eq(again.favor, nil, "congregation GetView favor stays a copy (nil here)")
+ assert_eq(Store:GetCharacter(a.id).name, "Chuckroast", "HUD does not write the character")
+ assert_eq(Gora:GetSanctioned().fighterA, a.id, "HUD does not clear the live pair")
+ 
+@@ -454,6 +470,155 @@ assert_eq(Hud:ResetForTests(), false, "ResetForTests refuses to run outside test
+ assert_eq(Hud:IsShown(), true, "out-of-harness reset does not hide the HUD")
+ ChurchOfBeef._IN_TEST = true
+ 
++--------------------------------------------------------------------------------
++-- Pope stub: live split from Gora, including zeros. Bar shown. No Pope name.
++--------------------------------------------------------------------------------
++local function stubLocalPope(isPope)
++  COB.Sender = {
++    IsRegisteredPope = function()
++      return isPope == true
++    end,
++  }
++end
++
++reset()
++Runtime:StartEvent()
++a, b = twoChars()
++Gora:Sanction(a.id, b.id)
++stubLocalPope(true)
++view = Hud:Refresh()
++assert_true(view.favor ~= nil, "Pope sees a live split even at zero")
++assert_eq(view.favor.a, 0, "Pope zero split a")
++assert_eq(view.favor.b, 0, "Pope zero split b")
++assert_eq(view.favor.pctA, 0, "zero total is 0 percent A")
++assert_eq(view.favor.pctB, 0, "zero total is 0 percent B")
++assert_eq(view.health, nil, "Pope view still has no health")
++assert_eq(frame.favorLabel:IsShown(), true, "Pope FAVOR label shows on a live pair")
++assert_eq(frame.favorLabel:GetText(), "FAVOR", "favor label is FAVOR")
++assert_eq(frame.barA:IsShown(), true, "Pope bar A shows")
++assert_eq(frame.barB:IsShown(), true, "Pope bar B shows")
++assert_eq(frame.pctA:GetText(), "0%", "Pope zero paints 0% A")
++assert_eq(frame.pctB:GetText(), "0%", "Pope zero paints 0% B")
++
++local fan1 = Store:CreateCharacter({ name = "FanOne", class = "Priest", level = 70 })
++local fan2 = Store:CreateCharacter({ name = "FanTwo", class = "Priest", level = 70 })
++local fan3 = Store:CreateCharacter({ name = "FanThree", class = "Priest", level = 70 })
++assert_true(Gora:RecordFavor(fan1.id, a.id) ~= nil, "first pick lands")
++assert_true(Gora:RecordFavor(fan2.id, a.id) ~= nil, "second pick lands")
++assert_true(Gora:RecordFavor(fan3.id, b.id) ~= nil, "third pick lands")
++local split = Gora:GetFavorSplit()
++assert_eq(split.a, 2, "Gora split a is 2")
++assert_eq(split.b, 1, "Gora split b is 1")
++view = Hud:Refresh()
++assert_eq(view.favor.a, 2, "Pope view a matches Gora")
++assert_eq(view.favor.b, 1, "Pope view b matches Gora")
++assert_eq(view.favor.pctA, 66, "floor(100*2/3) is 66")
++assert_eq(view.favor.pctB, 34, "remainder percent is 34")
++assert_eq(frame.pctA:GetText(), "66%", "bar paints 66%")
++assert_eq(frame.pctB:GetText(), "34%", "bar paints 34%")
++assert_eq(sameRgb(frame.barA._cobColor, warrior), true, "bar A is fighter-tinted")
++assert_eq(sameRgb(frame.barB._cobColor, mage), true, "bar B is fighter-tinted")
++view.favor.a = 99
++assert_eq(Hud:GetView().favor.a, 2, "mutating GetView favor does not change live favor")
++assert_eq(Gora:GetFavorSplit().a, 2, "mutating GetView favor does not change Gora")
++
++--------------------------------------------------------------------------------
++-- Congregation: broadcast only. Gora picks do not fill. 2/1 → 66/34.
++--------------------------------------------------------------------------------
++COB.Sender = nil
++Hud:SetBroadcastFavor(nil)
++view = Hud:Refresh()
++assert_eq(view.favor, nil, "congregation with nil broadcast hides favor")
++assert_eq(Gora:GetFavorSplit().a, 2, "Gora still has picks")
++assert_eq(frame.favorLabel:IsShown(), false, "toggle-off hides the FAVOR label")
++assert_eq(frame.barA:IsShown(), false, "toggle-off hides bar A")
++assert_eq(frame.barB:IsShown(), false, "toggle-off hides bar B")
++
++Hud:SetBroadcastFavor({ a = 2, b = 1 })
++view = Hud:Refresh()
++assert_true(view.favor ~= nil, "broadcast table shows congregation favor")
++assert_eq(view.favor.a, 2, "broadcast a")
++assert_eq(view.favor.b, 1, "broadcast b")
++assert_eq(view.favor.pctA, 66, "broadcast 2/1 is 66%")
++assert_eq(view.favor.pctB, 34, "broadcast remainder is 34%")
++assert_eq(frame.favorLabel:IsShown(), true, "broadcast shows FAVOR")
++assert_eq(frame.pctA:GetText(), "66%", "broadcast paints 66%")
++assert_eq(frame.pctB:GetText(), "34%", "broadcast paints 34%")
++
++Hud:SetBroadcastFavor({ a = 0, b = 0 })
++view = Hud:Refresh()
++assert_eq(view.favor.a, 0, "broadcast zeros are a real split")
++assert_eq(view.favor.pctA, 0, "broadcast zeros are 0%")
++assert_eq(view.favor.pctB, 0, "broadcast zeros are 0% B")
++assert_eq(frame.favorLabel:IsShown(), true, "broadcast zeros still show the bar")
++
++--------------------------------------------------------------------------------
++-- PickFavor stubs Net. Missing target / character. Plate click is gated.
++--------------------------------------------------------------------------------
++local sent = {}
++COB.Net = {
++  SendFavor = function(_, fields, target)
++    sent[#sent + 1] = { fields = fields, target = target }
++    return true
++  end,
++}
++
++local picker = Store:CreateCharacter({ name = "Picker", class = "Priest", level = 70 })
++local ok, err = Hud:PickFavor(a.id, "Host", picker.id)
++assert_eq(ok, true, "PickFavor sends when target and character are present")
++assert_eq(err, nil, "successful PickFavor has no error")
++assert_eq(#sent, 1, "SendFavor is called once")
++assert_eq(sent[1].target, "Host", "SendFavor uses the given target")
++assert_eq(sent[1].fields.characterId, picker.id, "SendFavor carries characterId")
++assert_eq(sent[1].fields.pick, a.id, "SendFavor carries pick")
++assert_eq(sent[1].fields.pickId, nil, "fields use pick, not pickId")
++
++ok, err = Hud:PickFavor(a.id, nil, picker.id)
++assert_eq(ok, nil, "missing target is refused")
++assert_eq(err, "no target", "missing target names the error")
++ok, err = Hud:PickFavor(a.id, "", picker.id)
++assert_eq(ok, nil, "empty target is refused")
++assert_eq(err, "no target", "empty target is no target")
++assert_eq(#sent, 1, "refused PickFavor does not send")
++
++ok, err = Hud:PickFavor(a.id, "Host", nil)
++assert_eq(ok, nil, "missing character is refused")
++assert_eq(err, "no character", "missing character names the error")
++assert_eq(#sent, 1, "missing character does not send")
++
++sent = {}
++Hud:SetFavorTarget(nil)
++Hud:SetLocalCharacterId(nil)
++assert_eq(stub.fire(frame.pickA, "OnClick"), true, "plate A has an OnClick")
++assert_eq(#sent, 0, "plate click without target and id is a no-op")
++assert_eq(#stub.chat, 0, "no-op click does not chat")
++
++Hud:SetFavorTarget("Host")
++assert_eq(stub.fire(frame.pickB, "OnClick"), true, "plate B click with only target")
++assert_eq(#sent, 0, "plate click without local id is a no-op")
++
++Hud:SetLocalCharacterId(picker.id)
++assert_eq(stub.fire(frame.pickA, "OnClick"), true, "plate A click with both set")
++assert_eq(#sent, 1, "plate click sends favor")
++assert_eq(sent[1].target, "Host", "plate click uses SetFavorTarget")
++assert_eq(sent[1].fields.characterId, picker.id, "plate click uses SetLocalCharacterId")
++assert_eq(sent[1].fields.pick, a.id, "plate A picks fighter A")
++
++sent = {}
++assert_eq(stub.fire(frame.pickB, "OnClick"), true, "plate B click with both set")
++assert_eq(#sent, 1, "plate B sends favor")
++assert_eq(sent[1].fields.pick, b.id, "plate B picks fighter B")
++
++assert_eq(Hud:ResetForTests(), true, "ResetForTests clears favor glue")
++sent = {}
++assert_eq(stub.fire(frame.pickA, "OnClick"), true, "plate still has OnClick after reset")
++assert_eq(#sent, 0, "ResetForTests clears target so click is a no-op")
++view = Hud:Refresh()
++assert_eq(view.favor, nil, "ResetForTests clears broadcast favor")
++
++COB.Net = nil
++COB.Sender = nil
++
+ --------------------------------------------------------------------------------
+ -- Toast trap: Refresh must not call a toast engine if one is present
+ --------------------------------------------------------------------------------

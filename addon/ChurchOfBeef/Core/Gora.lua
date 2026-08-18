@@ -13,6 +13,27 @@ local Gora = {
 }
 COB.Gora = Gora
 
+-- Standing picks only. Latest replaces earlier. Never SV / Store / Archive.
+-- Tagged to the event the picks belong to so leftovers die with that event,
+-- not merely when sanctioned is nil (consequence beat still needs the map).
+local favorPicks = {}
+local favorEventId = nil
+
+-- Cleared-bout snapshot for CONSEQUENCE / HUD persist. Memory only. Never SV.
+-- GetSanctioned stays nil after a ruling; last pair is the just-cleared bout.
+local lastSanctioned = nil
+local lastFavorSplit = { a = 0, b = 0 }
+
+local function wipeFavor()
+  favorPicks = {}
+  favorEventId = nil
+end
+
+local function wipeLast()
+  lastSanctioned = nil
+  lastFavorSplit = { a = 0, b = 0 }
+end
+
 -- A challenge nobody ever records is social noise, not state. Expiring and
 -- capping the table keeps a night of trash talk from growing without bound.
 local CHALLENGE_TTL = 1800
@@ -112,6 +133,8 @@ function Gora:_Expire()
     self.petitions = {}
     self.sanctioned = nil
     self.proposal = nil
+    wipeFavor()
+    wipeLast()
     return
   end
   local drop = nil
@@ -127,6 +150,12 @@ function Gora:_Expire()
   if self.sanctioned and self.sanctioned.eventId ~= eventId then
     self.sanctioned = nil
     self.proposal = nil
+  end
+  if favorEventId ~= eventId then
+    wipeFavor()
+  end
+  if lastSanctioned and lastSanctioned.eventId ~= eventId then
+    wipeLast()
   end
 end
 
@@ -296,18 +325,29 @@ function Gora:Sanction(fighterA, fighterB, stipulation)
   if self.sanctioned and not samePair(self.sanctioned, fighterA, fighterB) then
     return nil, "a Gora is already sanctioned"
   end
+  wipeLast()
   self.sanctioned = {
     fighterA = fighterA,
     fighterB = fighterB,
     stipulation = line,
     eventId = eventId,
   }
+  wipeFavor()
   return copySanctioned(self.sanctioned)
 end
 
 function Gora:GetSanctioned()
   self:_Expire()
   return copySanctioned(self.sanctioned)
+end
+
+function Gora:GetLastSanctioned()
+  self:_Expire()
+  if not lastSanctioned then return nil end
+  return {
+    fighterA = lastSanctioned.fighterA,
+    fighterB = lastSanctioned.fighterB,
+  }
 end
 
 function Gora:Propose(proposal)
@@ -329,15 +369,19 @@ function Gora:GetProposal()
   return self.proposal
 end
 
-local function writeBoth(idA, idB, ruling, wonA, wonB)
+local function writeBoth(idA, idB, ruling, wonA, wonB, text)
   if not COB.Store or not COB.Store.RecordGoraResult then
     return nil, "no store"
   end
   local fieldsA = { opponentId = idB, ruling = ruling }
   local fieldsB = { opponentId = idA, ruling = ruling }
-  if ruling ~= "void" then
+  if ruling ~= "void" and ruling ~= "free" then
     fieldsA.won = wonA
     fieldsB.won = wonB
+  end
+  if text ~= nil then
+    fieldsA.text = text
+    fieldsB.text = text
   end
   local ra, ea = COB.Store:RecordGoraResult(idA, fieldsA)
   if not ra then return nil, ea end
@@ -346,7 +390,29 @@ local function writeBoth(idA, idB, ruling, wonA, wonB)
   return true
 end
 
+local function favorSplitFor(pair)
+  local counts = { a = 0, b = 0 }
+  if not pair then return counts end
+  for _, pickId in pairs(favorPicks) do
+    if pickId == pair.fighterA then
+      counts.a = counts.a + 1
+    elseif pickId == pair.fighterB then
+      counts.b = counts.b + 1
+    end
+  end
+  return counts
+end
+
 local function clearLive(self)
+  local pair = self.sanctioned
+  if pair then
+    lastSanctioned = {
+      fighterA = pair.fighterA,
+      fighterB = pair.fighterB,
+      eventId = pair.eventId,
+    }
+    lastFavorSplit = favorSplitFor(pair)
+  end
   self.sanctioned = nil
   self.proposal = nil
 end
@@ -358,6 +424,9 @@ function Gora:DeclareVictor(winnerId)
   if not loserId then return nil, "winner is not a fighter" end
   local ok, err = writeBoth(winnerId, loserId, "victor", true, false)
   if not ok then return nil, err end
+  if COB.Store.AppendCeremony then
+    COB.Store:AppendCeremony("victor", { winnerId, loserId }, resolveTime())
+  end
   clearLive(self)
   return { ruling = "victor", winnerId = winnerId }
 end
@@ -369,6 +438,9 @@ function Gora:CowardiceRecorded(fleerId)
   if not otherId then return nil, "fleer is not a fighter" end
   local ok, err = writeBoth(fleerId, otherId, "cowardice", false, true)
   if not ok then return nil, err end
+  if COB.Store.AppendCeremony then
+    COB.Store:AppendCeremony("cowardice", { fleerId, otherId }, resolveTime())
+  end
   clearLive(self)
   return { ruling = "cowardice", fleerId = fleerId }
 end
@@ -379,6 +451,9 @@ function Gora:Void()
   local a, b = self.sanctioned.fighterA, self.sanctioned.fighterB
   local ok, err = writeBoth(a, b, "void")
   if not ok then return nil, err end
+  if COB.Store.AppendCeremony then
+    COB.Store:AppendCeremony("void", { a, b }, resolveTime())
+  end
   clearLive(self)
   return { ruling = "void" }
 end
@@ -392,10 +467,45 @@ function Gora:FreeRuling(text)
     line = trimLine(text)
   end
   local a, b = self.sanctioned.fighterA, self.sanctioned.fighterB
-  local ok, err = writeBoth(a, b, "free", false, false)
+  local ok, err = writeBoth(a, b, "free", nil, nil, line)
   if not ok then return nil, err end
+  if COB.Store.AppendCeremony then
+    COB.Store:AppendCeremony("free", { a, b }, resolveTime(), line)
+  end
   clearLive(self)
   return { ruling = "free", text = line }
+end
+
+function Gora:RecordFavor(characterId, pickId)
+  self:_Expire()
+  if not self.sanctioned then return nil, "no sanctioned gora" end
+  if not isId(characterId) then return nil, "invalid character id" end
+  if not isId(pickId) then return nil, "pick must be a character id" end
+  if pickId ~= self.sanctioned.fighterA and pickId ~= self.sanctioned.fighterB then
+    return nil, "pick must be a sanctioned fighter"
+  end
+  favorPicks[characterId] = pickId
+  favorEventId = self.sanctioned.eventId
+  return true
+end
+
+function Gora:GetFavor()
+  self:_Expire()
+  local out = {}
+  for memberId, pickId in pairs(favorPicks) do
+    out[memberId] = pickId
+  end
+  return out
+end
+
+function Gora:GetFavorSplit()
+  self:_Expire()
+  return favorSplitFor(self.sanctioned)
+end
+
+function Gora:GetLastFavorSplit()
+  self:_Expire()
+  return { a = lastFavorSplit.a, b = lastFavorSplit.b }
 end
 
 -- Test-only, matching the rest of Core: never clear live state in game.
@@ -405,5 +515,7 @@ function Gora:ResetForTests()
   self.petitions = {}
   self.sanctioned = nil
   self.proposal = nil
+  wipeFavor()
+  wipeLast()
   return true
 end

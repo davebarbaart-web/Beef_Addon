@@ -1,0 +1,89 @@
+# B40-D — already-hidden Quiet-shell Hide still persists shown = false (implementation diff)
+
+Lane-only unified diff of the exclusive implementation files vs the pre-lane working tree.
+
+--- a/addon/ChurchOfBeef/UI/MainFrame.lua
++++ b/addon/ChurchOfBeef/UI/MainFrame.lua
+@@ -605,6 +605,8 @@
+   rememberSpecial(FRAME_NAME)
+   self:_StopSizing()
+   self.frame:Hide()
++  local ui = uiDb()
++  if ui then ui.shown = false end
+ end
+ 
+ function UI:IsShown()
+--- a/tests/test_ui.lua
++++ b/tests/test_ui.lua
+@@ -10,8 +10,9 @@
+ -- B29-D Proclaim re-applies applyHeadlineFont,
+ -- B31-C Quiet-shell Show remounts a missing OnHide,
+ -- B35-D Quiet-shell Hide remounts a missing OnHide,
+--- and B39-C HideAll remounts toast + proclaim ESC names
++-- B39-C HideAll remounts toast + proclaim ESC names,
++-- and B40-D already-hidden Hide still persists shown = false
+ -- live in runB12D() (Lua 5.1 200-local cap).
+ -- No tab registry. No Standing / Ladder / Officer IA. No promote / rite toast
+ -- kinds. Isolation stays under standalone.
+@@ -1414,6 +1415,60 @@
+   assert_eq(countSpecial("ChurchOfBeefFrame"), 1,
+     "third Hide does not duplicate ChurchOfBeefFrame")
+   UISpecialFrames = savedSpecial
++
++  -- B40-D: already-hidden Hide still writes shown = false via uiDb
++  -- (same slot as OnHide) even when OnHide does not fire again.
++  -- Keep remount. Do not replace an existing OnHide. Do not rebuild.
++  -- No OnShow re-wire. Inputs stay off UISpecialFrames.
++  -- No PlaySound / IG_CHARACTER_INFO_*.
++  assert_true(hideBody:find("uiDb()", 1, true) ~= nil,
++    "Hide writes shown via uiDb")
++  assert_true(hideBody:find("shown = false", 1, true) ~= nil,
++    "Hide persists shown = false on the body")
++  assert_true(hideWireAt ~= nil and hideBody:find("uiDb()", 1, true) ~= nil
++      and hideBody:find("uiDb()", 1, true) > hideWireAt,
++    "Hide writes shown after remount")
++  assert_true(hideRememberAt ~= nil and hideBody:find("uiDb()", 1, true) ~= nil
++      and hideBody:find("uiDb()", 1, true) > hideRememberAt,
++    "Hide writes shown after rememberSpecial")
++  assert_eq(hideBody:find("OnShow", 1, true), nil,
++    "already-hidden persist does not re-wire OnShow")
++  assert_eq(hideBody:find("SetScript", 1, true), nil,
++    "already-hidden persist does not SetScript inline")
++  assert_eq(hideBody:find("buildFrame", 1, true), nil,
++    "already-hidden persist does not rebuild")
++  assert_eq(hideBody:find("PlaySound", 1, true), nil,
++    "already-hidden persist does not PlaySound")
++  assert_eq(hideBody:find("IG_CHARACTER_INFO", 1, true), nil,
++    "already-hidden persist has no IG_CHARACTER_INFO")
++
++  assert_true(COB.UI.frame ~= nil, "Quiet shell still exists for already-hidden persist")
++  assert_eq(COB.UI.frame:IsShown(), false, "shell is already hidden")
++  hideOnShow = COB.UI.frame:GetScript("OnShow")
++  existingHideShell = COB.UI.frame
++  COB.UI.frame:SetScript("OnHide", nil)
++  assert_eq(COB.UI.frame:GetScript("OnHide"), nil,
++    "OnHide niled while already hidden")
++  ChurchOfBeefDB.ui.shown = true
++  cuesHideRestore = #played
++  COB.UI:Hide()
++  restoredHideOnHide = COB.UI.frame:GetScript("OnHide")
++  assert_true(restoredHideOnHide ~= nil,
++    "already-hidden Hide remounts missing OnHide")
++  assert_eq(ChurchOfBeefDB.ui.shown, false,
++    "already-hidden Hide persists shown = false")
++  assert_eq(COB.UI.frame, existingHideShell, "already-hidden Hide does not rebuild")
++  assert_eq(COB.UI.frame:GetScript("OnShow"), hideOnShow,
++    "already-hidden Hide does not re-wire OnShow")
++  assert_eq(#played, cuesHideRestore, "already-hidden Hide plays no sound")
++  assert_eq(countSpecial("ChurchOfBeefInputs"), 0,
++    "already-hidden Hide leaves Inputs off UISpecialFrames")
++  COB.UI:Hide()
++  assert_eq(COB.UI.frame:GetScript("OnHide"), restoredHideOnHide,
++    "second already-hidden Hide does not replace OnHide")
++  assert_eq(COB.UI.frame, existingHideShell,
++    "second already-hidden Hide does not rebuild")
++  assert_eq(ChurchOfBeefDB.ui.shown, false,
++    "second already-hidden Hide keeps shown = false")
+ 
+   if standalone then
+     assert_eq(COB.Console, nil, "isolation still does not load Console")

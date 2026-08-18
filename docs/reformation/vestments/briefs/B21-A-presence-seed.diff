@@ -1,0 +1,262 @@
+diff --git a/tests/test_console.lua b/tests/test_console.lua
+--- a/tests/test_console.lua
++++ b/tests/test_console.lua
+@@ -10,7 +10,8 @@
+ -- ClearFocus + B14-D UISpecialFrames rememberSpecial dedupe + B18-B named
+ -- petition paints "  names  " and click SelectFighters + B19-A
+ -- presentCharacterIds fail-opens until Roster is complete + B20-A
+--- Confession rows click-select and mute called token).
++-- Confession rows click-select and mute called token + B21-A
++-- GetPresence fail-opens Store names until Roster is complete).
+ -- Isolated: wow_ui_stub + Common + Ranks + Runtime + Store + Gora + Knighting
+ -- + Sender + Decree + Console. Confession is stubbed when painted; this file
+ -- does not load Confession.lua. Knighting GetLine/Enqueue/Skip are stubbed
+@@ -2931,8 +2932,12 @@
+ assert_eq(openPets[1] and openPets[1].characterId, localChar.id, "fail-open keeps the local petition")
+ assert_eq(openPets[2] and openPets[2].characterId, otherChar.id, "second Store character petition still appears")
+ local presenceOpen = Console:GetPresence()
+-assert_eq(#presenceOpen, 1, "GetPresence is not fail-open when Roster is incomplete")
+-assert_eq(presenceOpen[1].name, "Beefina", "GetPresence still lists members only")
++assert_eq(#presenceOpen, 2, "GetPresence fail-opens when Roster is incomplete")
++assert_eq(presenceOpen[1] and presenceOpen[1].name, "Beefina", "seed member stays on Presence")
++assert_eq(presenceOpen[1] and presenceOpen[1].here, true, "seed member is here")
++assert_eq(presenceOpen[2] and presenceOpen[2].name, "Chuckroast", "Store-only character is listed")
++assert_eq(presenceOpen[2] and presenceOpen[2].here, false, "Store-only is not invented as here")
++assert_eq(presenceOpen[2] and presenceOpen[2].characterId, otherChar.id, "Chuckroast carries characterId")
+ 
+ COB.Roster = {
+   ready = true,
+@@ -3159,7 +3164,168 @@
+ assert_eq(COB.Popes, nil, "still no Pope list after B20-A")
+ end
+ runB20A()
++
++--------------------------------------------------------------------------------
++-- B21-A: GetPresence fail-opens Store snapshot characters while Roster is
++-- ready but not complete. Appended Store-only rows use here = false.
++-- Complete keeps the member walk. Missing / not-ready stays {}.
++-- Nested inside runB8E so the main chunk stays under Lua 5.1's 200-local cap.
++--------------------------------------------------------------------------------
++local function runB21A()
++reset()
++Console:Init()
++assert_eq(Console.SaveNote, nil, "SaveNote stays nil")
++assert_eq(Console.GetNotes, nil, "no notes table")
++assert_eq(Console.CopyCeremonySummary, nil, "no post-show ceremony summary")
++assert_eq(Console.CeremonySummary, nil, "no ceremony summary")
++assert_eq(findButton(frame, "SUMMON THE FAITHFUL"), nil, "no SUMMON chrome")
++assert_eq(findButton(frame, "COPY SUMMARY"), nil, "no ceremony-summary chrome")
++assert_eq(findButton(frame, "WHISPER ALL"), nil, "no WHISPER ALL chrome")
++assert_eq(findButton(frame, "RSVP"), nil, "no RSVP chrome")
++
++local dismissCount = 0
++walk(frame, function(child)
++  if child._type == "Button" and child.GetText and child:GetText() == "Dismiss" then
++    dismissCount = dismissCount + 1
++  end
++end)
++assert_eq(dismissCount, 1, "no second Dismiss plate")
++assert_true(findButton(frame, "Dismiss") ~= nil, "Gora Dismiss stays")
++
++local human, localChar = seedLinked("Beefina", "Steve", 1)
++local otherHuman, otherChar = seedLinked("Chuckroast", "Chuck", 3)
++assert_eq(human.id ~= nil, true, "local human fixture exists")
++assert_eq(otherHuman.id ~= nil, true, "Store human fixture exists")
++
++COB.Roster = nil
++assert_eq(#Console:GetPresence(), 0, "missing Roster keeps empty Presence")
++
++COB.Roster = {
++  ready = false,
++  members = {
++    beefina = { name = "Beefina", guildRankIndex = 6 },
++  },
++}
++assert_eq(#Console:GetPresence(), 0, "not-ready Roster keeps empty Presence")
++
++COB.Roster = { ready = true, members = "nope" }
++assert_eq(#Console:GetPresence(), 0, "non-table members keep empty Presence")
++
++COB.Roster = {
++  ready = true,
++  complete = true,
++  members = {
++    beefina = { name = "Beefina", guildRankIndex = 6 },
++  },
++}
++local presenceComplete = Console:GetPresence()
++assert_eq(#presenceComplete, 1, "complete roster still lists members only")
++assert_eq(presenceComplete[1].name, "Beefina", "complete Presence stays the seed member")
++assert_eq(presenceComplete[1].here, true, "complete member is here")
++assert_eq(presenceComplete[1].characterId, localChar.id, "complete member keeps characterId")
++
++COB.Roster = {
++  ready = true,
++  complete = false,
++  members = {
++    beefina = { name = "Beefina", guildRankIndex = 6 },
++  },
++  IsComplete = function() return true end,
++}
++local presenceMethod = Console:GetPresence()
++assert_eq(#presenceMethod, 1, "IsComplete true keeps the member walk")
++assert_eq(presenceMethod[1].name, "Beefina", "IsComplete true does not append Store-only")
++
++COB.Roster = {
++  ready = true,
++  complete = false,
++  members = {
++    beefina = { name = "Beefina", guildRankIndex = 6 },
++  },
++}
++local presenceOpen = Console:GetPresence()
++assert_eq(#presenceOpen, 2, "incomplete seed lists member and Store-only")
++assert_eq(presenceOpen[1] and presenceOpen[1].name, "Beefina", "seed member stays first after sort")
++assert_eq(presenceOpen[1] and presenceOpen[1].here, true, "seed member is here")
++assert_eq(presenceOpen[1] and presenceOpen[1].characterId, localChar.id, "seed member keeps characterId")
++assert_eq(presenceOpen[1] and presenceOpen[1].rankId, 1, "seed member copies Store human rank")
++assert_eq(presenceOpen[2] and presenceOpen[2].name, "Chuckroast", "Store-only character is appended")
++assert_eq(presenceOpen[2] and presenceOpen[2].here, false, "Store-only is not invented as here")
++assert_eq(presenceOpen[2] and presenceOpen[2].characterId, otherChar.id, "Chuckroast carries characterId")
++assert_eq(presenceOpen[2] and presenceOpen[2].humanId, otherHuman.id, "Store-only copies Store human id")
++assert_eq(presenceOpen[2] and presenceOpen[2].rankId, 3, "Store-only copies Store human rank")
++assert_eq(presenceOpen[2] and presenceOpen[2].rankTitle, "Beef Knight", "Store-only copies Store rank title")
++assert_eq(presenceOpen[2] and presenceOpen[2].needsKnighting, false, "a Knight does not need Knighting")
++assert_eq(presenceOpen[2] and presenceOpen[2].guildRankIndex, nil, "Store-only has no invented guild rank")
++
++COB.Roster = {
++  ready = true,
++  members = {
++    beefina = { name = "Beefina", guildRankIndex = 6 },
++  },
++}
++local presenceSeed = Console:GetPresence()
++assert_eq(#presenceSeed, 2, "ready without complete fail-opens Presence")
++assert_eq(presenceSeed[2] and presenceSeed[2].name, "Chuckroast", "seed snapshot still lists the Store-only name")
++assert_eq(presenceSeed[2] and presenceSeed[2].here, false, "seed Store-only stays not here")
++assert_eq(presenceSeed[2] and presenceSeed[2].characterId, otherChar.id, "seed Store-only keeps characterId")
++
++assert_eq(Console.selectedCharacterId, nil, "no selected character before the Presence click")
++Console:Refresh()
++local storeBtn
++local painted = rawget(frame, "PresenceRows")
++if type(painted) == "table" then
++  for i = 1, #painted do
++    local btn = painted[i]
++    local row = btn and btn._row
++    if row and row.characterId == otherChar.id then
++      storeBtn = btn
++      break
++    end
++  end
+ end
++assert_true(storeBtn ~= nil, "fail-open Store row is clickable")
++stub.fire(storeBtn, "OnClick")
++assert_eq(Console.selectedCharacterId, otherChar.id, "clicking a fail-open Store row selects that characterId")
++assert_eq(Console.selectedHumanId, otherHuman.id, "clicking a fail-open Store row selects the Store human")
++
++local srcPresence = io.open("addon/ChurchOfBeef/UI/Console.lua", "r")
++assert_true(srcPresence ~= nil, "Console.lua is readable for B21-A")
++local srcPresenceBody = srcPresence:read("*a")
++srcPresence:close()
++assert_true(srcPresenceBody:find("here = false", 1, true) ~= nil,
++  "Store-only rows set here false")
++assert_true(srcPresenceBody:find('type(Roster.IsComplete) == "function"', 1, true) ~= nil,
++  "complete detection prefers IsComplete")
++assert_true(srcPresenceBody:find("Roster:IsComplete() == true", 1, true) ~= nil,
++  "IsComplete true is the complete gate")
++assert_true(srcPresenceBody:find("Roster.complete == true", 1, true) ~= nil,
++  "harness stubs can set complete without the method")
++assert_true(srcPresenceBody:find('body = "No one on the roster yet."', 1, true) ~= nil,
++  "empty Presence copy stays")
++assert_true(srcPresenceBody:find('left .. "  names  " .. right', 1, true) ~= nil,
++  "Recommend names token stays parked")
++assert_eq(srcPresenceBody:find("UnitIsDead", 1, true), nil, "source must not scrape UnitIsDead")
++assert_eq(srcPresenceBody:find("DEMANDED", 1, true), nil, "source must not invent DEMANDED")
++assert_eq(srcPresenceBody:find("function Console:SaveNote", 1, true), nil,
++  "source must not define SaveNote")
++assert_eq(srcPresenceBody:find("SUMMON THE FAITHFUL", 1, true), nil,
++  "source must not contain SUMMON")
++assert_eq(srcPresenceBody:find("Parchment", 1, true), nil, "console stays stock, not parchment")
++assert_eq(srcPresenceBody:find("PanelTabButtonTemplate", 1, true), nil,
++  "desks are not collapsed into tabs")
++
++assert_eq(Console.SaveNote, nil, "SaveNote stays nil after B21-A")
++if standalone then
++  assert_eq(COB.Archive, nil, "isolation still does not load Archive")
++  assert_eq(COB.UI, nil, "isolation still does not load the Quiet shell")
++  assert_eq(COB.Toasts, nil, "isolation still does not load Toasts")
++  assert_eq(COB.Confession, nil, "isolation still does not load Confession")
++end
++assert_eq(COB.Popes, nil, "still no Pope list after B21-A")
++end
++runB21A()
++end
+ runB8E()
+ 
+ --------------------------------------------------------------------------------
+diff --git a/addon/ChurchOfBeef/UI/Console.lua b/addon/ChurchOfBeef/UI/Console.lua
+--- a/addon/ChurchOfBeef/UI/Console.lua
++++ b/addon/ChurchOfBeef/UI/Console.lua
+@@ -46,7 +46,8 @@
+ -- ids are set, else Gora:GetSanctioned() then Gora:GetLastSanctioned().
+ -- Open Knighting subjects use selectedHumanId, else the head of
+ -- Knighting:GetLine() when that humanId is an id. Scrollable Presence /
+--- Gora / Confession / Line / CeremonyLog lists, click-to-select. Not
++-- Gora / Confession / Line / CeremonyLog lists, click-to-select. Presence
++-- fail-opens Store names (here = false) until Roster is complete. Not
+ -- parchment. Not collapsible tabs (desks stay glanceable without window
+ -- switching).
+ local Console = {
+@@ -1173,6 +1174,51 @@
+         humanId = human and human.id or nil,
+         characterId = ch and ch.id or nil,
+       }
++    end
++  end
++
++  local complete = false
++  if type(Roster.IsComplete) == "function" then
++    complete = Roster:IsComplete() == true
++  else
++    complete = Roster.complete == true
++  end
++  if complete ~= true then
++    local seen = {}
++    for i = 1, #rows do
++      local key = nameKey(rows[i].name)
++      if key then seen[key] = true end
++    end
++    for i = 1, #chars do
++      local ch = chars[i]
++      local key = type(ch) == "table" and nameKey(ch.name) or nil
++      if key and not seen[key] then
++        local human = isId(ch.humanId) and humanById[ch.humanId] or nil
++        if not human then
++          for j = 1, #humans do
++            if namesSame(humans[j].name, ch.name) then
++              human = humans[j]
++              break
++            end
++          end
++        end
++        local rankId = human and human.rankId or nil
++        local needs = false
++        if human then
++          needs = rankId == nil or rankId == 1 or rankId == 2
++        end
++        rows[#rows + 1] = {
++          name = ch.name,
++          here = false,
++          guildRankIndex = nil,
++          rankId = rankId,
++          rankTitle = rankTitle(rankId),
++          needsKnighting = needs,
++          humanId = human and human.id or nil,
++          characterId = ch.id,
++        }
++        seen[key] = true
++      end
+     end
+   end
+ 

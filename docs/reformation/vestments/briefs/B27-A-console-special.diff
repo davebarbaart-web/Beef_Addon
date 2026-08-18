@@ -1,0 +1,153 @@
+# B27-A — Console Init early-return remounts ESC (implementation diff)
+
+Lane-only unified diff of the exclusive implementation files vs the pre-lane working tree.
+
+--- a/addon/ChurchOfBeef/UI/Console.lua
++++ b/addon/ChurchOfBeef/UI/Console.lua
+@@ -45,8 +45,9 @@
+ -- stockEdit type-guards OnEscapePressed to ClearFocus; the box does not Hide
+ -- the desk. Missing SetScript / ClearFocus no-op. Named desk is on
+--- UISpecialFrames via rememberSpecial (dedupe). No panel whoosh on show /
+--- hide / ESC. Do not register scroll children.
++-- UISpecialFrames via rememberSpecial (dedupe). Init remounts
++-- rememberSpecial when the frame already exists. No panel whoosh on
++-- show / hide / ESC. Do not register scroll children.
+ -- No permanent OnUpdate. Open Gora subjects use the selected pair when both
+ -- ids are set, else Gora:GetSanctioned() then Gora:GetLastSanctioned().
+ -- Open Knighting subjects use selectedHumanId, else the head of
+@@ -1068,8 +1069,11 @@
+ --------------------------------------------------------------------------------
+ 
+ function Console:Init()
+-  if self.frame then return self.frame end
++  if self.frame then
++    rememberSpecial(FRAME_NAME)
++    return self.frame
++  end
+   if type(CreateFrame) ~= "function" then return nil end
+   self.frame = buildFrame()
+   return self.frame
+ end
+--- a/tests/test_console.lua
++++ b/tests/test_console.lua
+@@ -16,7 +16,8 @@
+ -- playCue no-ops when Toasts.Proclaim exists + B24-A
+ -- lastRecommendation clears on successful StartEvent / EndEvent + B25-A
+ -- selected pair does not inherit the Recommend names token + B26-A
+--- selected pair dies with successful StartEvent / EndEvent).
++-- selected pair dies with successful StartEvent / EndEvent + B27-A
++-- Init early-return remounts UISpecialFrames rememberSpecial).
+ -- Isolated: wow_ui_stub + Common + Ranks + Runtime + Store + Gora + Knighting
+ -- + Sender + Decree + Console. Confession is stubbed when painted; this file
+ -- does not load Confession.lua. Knighting GetLine/Enqueue/Skip are stubbed
+@@ -3961,6 +3962,110 @@
+ end
+ assert_eq(COB.Popes, nil, "still no Pope list after B26-A")
+ end
+ runB26A()
++
++--------------------------------------------------------------------------------
++-- B27-A: Init early-return remounts ChurchOfBeefConsoleFrame after a
++-- wiped UISpecialFrames. Do not rebuild. B14-D uniqueness / B26-A pins
++-- stay. SaveNote nil. Isolation wrap stays.
++--------------------------------------------------------------------------------
++local function runB27A()
++reset()
++Console:Init()
++assert_eq(Console.SaveNote, nil, "SaveNote stays nil")
++assert_eq(Console.GetNotes, nil, "no notes table")
++assert_eq(Console.CopyCeremonySummary, nil, "no post-show ceremony summary")
++assert_eq(Console.CeremonySummary, nil, "no ceremony summary")
++assert_eq(findButton(frame, "SUMMON THE FAITHFUL"), nil, "no SUMMON chrome")
++assert_eq(findButton(frame, "COPY SUMMARY"), nil, "no ceremony-summary chrome")
++assert_eq(findButton(frame, "WHISPER ALL"), nil, "no WHISPER ALL chrome")
++assert_eq(findButton(frame, "RSVP"), nil, "no RSVP chrome")
++
++local function countSpecial(name)
++  local n = 0
++  if type(UISpecialFrames) ~= "table" then return 0 end
++  for i = 1, #UISpecialFrames do
++    if UISpecialFrames[i] == name then n = n + 1 end
++  end
++  return n
++end
++
++assert_eq(countSpecial("ChurchOfBeefConsoleFrame"), 1,
++  "B14-D uniqueness: ChurchOfBeefConsoleFrame once before wipe")
++
++local srcEsc = io.open("addon/ChurchOfBeef/UI/Console.lua", "r")
++assert_true(srcEsc ~= nil, "Console.lua is readable for B27-A")
++local srcEscBody = srcEsc:read("*a")
++srcEsc:close()
++local earlyInit = srcEscBody:match("function Console:Init%(%)%s*\n%s*if self%.frame then(.-)return self%.frame")
++assert_true(type(earlyInit) == "string" and earlyInit ~= "",
++  "Init early-return body is readable")
++assert_true(earlyInit:find("rememberSpecial(FRAME_NAME)", 1, true) ~= nil,
++  "early-return rememberSpecial FRAME_NAME")
++assert_eq(earlyInit:find("buildFrame", 1, true), nil,
++  "early-return does not rebuild")
++assert_eq(earlyInit:find("PlaySound", 1, true), nil,
++  "early-return does not PlaySound")
++assert_eq(earlyInit:find("CreateFrame", 1, true), nil,
++  "early-return does not CreateFrame")
++assert_true(srcEscBody:find("local function rememberSpecial", 1, true) ~= nil,
++  "rememberSpecial helper stays")
++assert_true(srcEscBody:find("rememberSpecial(FRAME_NAME)", 1, true) ~= nil,
++  "buildFrame still rememberSpecial FRAME_NAME")
++assert_true(srcEscBody:find("local result, err = COB.Runtime:StartEvent()\n  if result ~= nil then\n    lastRecommendation = nil\n    self.selectedFighterA = nil\n    self.selectedFighterB = nil\n  end\n  return after(self, result, err)", 1, true) ~= nil,
++  "B26-A successful StartEvent still nils the selected pair")
++assert_true(srcEscBody:find("local result, err = COB.Runtime:EndEvent()\n  if result ~= nil then\n    lastRecommendation = nil\n    self.selectedFighterA = nil\n    self.selectedFighterB = nil\n  end\n  return after(self, result, err, nil, true)", 1, true) ~= nil,
++  "B26-A successful EndEvent still nils the selected pair")
++assert_eq(srcEscBody:find("IG_CHARACTER_INFO", 1, true), nil,
++  "source does not PlaySound IG_CHARACTER_INFO_*")
++assert_eq(srcEscBody:find("PlaySound", 1, true), nil, "source must not PlaySound")
++assert_eq(srcEscBody:find("function Console:SaveNote", 1, true), nil,
++  "source must not define SaveNote")
++assert_eq(srcEscBody:find("SUMMON THE FAITHFUL", 1, true), nil,
++  "source must not contain SUMMON")
++assert_eq(srcEscBody:find("Parchment", 1, true), nil, "console stays stock, not parchment")
++assert_eq(srcEscBody:find("PanelTabButtonTemplate", 1, true), nil,
++  "desks are not collapsed into tabs")
++
++local existing = Console.frame
++assert_true(existing ~= nil, "B27-A Init creates the desk")
++assert_eq(existing:GetName(), "ChurchOfBeefConsoleFrame",
++  "B27-A desk name stays ChurchOfBeefConsoleFrame")
++local savedSpecial = UISpecialFrames
++UISpecialFrames = {}
++assert_eq(countSpecial("ChurchOfBeefConsoleFrame"), 0,
++  "wipe clears ChurchOfBeefConsoleFrame")
++local createCalls = 0
++local savedCreateFrame = CreateFrame
++CreateFrame = function(...)
++  createCalls = createCalls + 1
++  return savedCreateFrame(...)
++end
++local same = Console:Init()
++CreateFrame = savedCreateFrame
++assert_eq(same, existing, "second Init returns the existing frame")
++assert_eq(Console.frame, existing, "early-return does not rebuild")
++assert_eq(same:GetName(), "ChurchOfBeefConsoleFrame",
++  "second Init keeps the named frame")
++assert_eq(countSpecial("ChurchOfBeefConsoleFrame"), 1,
++  "wiped UISpecialFrames + second Init lists ChurchOfBeefConsoleFrame once")
++assert_eq(createCalls, 0, "second Init does not CreateFrame")
++Console:Init()
++assert_eq(countSpecial("ChurchOfBeefConsoleFrame"), 1,
++  "third Init after wipe does not duplicate ChurchOfBeefConsoleFrame")
++assert_eq(Console.frame, existing, "third Init still does not rebuild")
++assert_eq(Console:Init(), existing, "third Init still same frame")
++UISpecialFrames = savedSpecial
++
++assert_eq(Console.SaveNote, nil, "SaveNote stays nil after B27-A")
++if standalone then
++  assert_eq(COB.Archive, nil, "isolation still does not load Archive")
++  assert_eq(COB.UI, nil, "isolation still does not load the Quiet shell")
++  assert_eq(COB.Toasts, nil, "isolation still does not load Toasts")
++  assert_eq(COB.Confession, nil, "isolation still does not load Confession")
++end
++assert_eq(COB.Popes, nil, "still no Pope list after B27-A")
++end
++runB27A()
+ end
+ runB8E()

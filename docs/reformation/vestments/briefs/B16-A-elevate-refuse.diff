@@ -1,0 +1,72 @@
+diff --git a/addon/ChurchOfBeef/Core/Knighting.lua b/addon/ChurchOfBeef/Core/Knighting.lua
+--- a/addon/ChurchOfBeef/Core/Knighting.lua
++++ b/addon/ChurchOfBeef/Core/Knighting.lua
+@@ -171,6 +171,9 @@
+   if not Store then return nil, storeErr end
+   local human, err = knownHuman(Store, humanId)
+   if not human then return nil, err end
++  if type(human.rankId) == "number" and human.rankId > LORD_ID then
++    return nil, "already elevated"
++  end
+   local row, setErr = Store:SetRank(humanId, LORD_ID, now)
+   if not row then return nil, setErr end
+   if Store.AppendCeremony then
+
+diff --git a/tests/test_knighting.lua b/tests/test_knighting.lua
+--- a/tests/test_knighting.lua
++++ b/tests/test_knighting.lua
+@@ -281,6 +281,13 @@
+ assert_eq(Store:GetCeremonyLog()[2].at, 2501, "re-elevate uses the second now")
+ assert_eq(Store:GetCeremonyLog()[2].text, nil, "re-elevate has no text")
+ 
++local cookedLord = Store:CreateHuman({ name = "CookedLord" }, 2502)
++Store:SetRank(cookedLord.id, 2, 2503)
++local cookedElev = Knighting:ElevateToLord(cookedLord.id, 2504)
++assert_eq(cookedElev.rankId, 4, "ElevateToLord still writes Lord from Cooked Beef")
++assert_eq(Store:GetHuman(cookedLord.id).rankId, 4, "Cooked Beef elevation is Beef Lord")
++assert_eq(Store:GetHuman(cookedLord.id).elevationAt, 2504, "Cooked elevationAt is the elevation verb")
++
+ --------------------------------------------------------------------------------
+ -- ElevateToLord refuses unknown humans. Does not compute fairness or pairing.
+ --------------------------------------------------------------------------------
+@@ -561,6 +568,39 @@
+ assert_eq(#Knighting:GetLine(), 0, "refused elevated knightings do not change the line")
+ assert_eq(promoteCalls, 0, "refused elevated knightings do not GuildPromote")
+ 
++local butcherElev, butcherElevErr = Knighting:ElevateToLord(butcherHuman.id, 3008)
++assert_eq(butcherElev, nil, "ElevateToLord refuses a Beef Butcher")
++assert_eq(butcherElevErr, "already elevated", "Butcher elevation names already elevated")
++assert_eq(Store:GetHuman(butcherHuman.id).rankId, 5, "refused elevation does not demote a Butcher")
++assert_eq(Store:GetHuman(butcherHuman.id).elevationAt, nil, "Butcher elevate refuse does not write elevationAt")
++
++local councilElev, councilElevErr = Knighting:ElevateToLord(councilHuman.id, 3009)
++assert_eq(councilElev, nil, "ElevateToLord refuses Beef Council")
++assert_eq(councilElevErr, "already elevated", "Council elevation names already elevated")
++assert_eq(Store:GetHuman(councilHuman.id).rankId, 6, "refused elevation does not demote Council")
++assert_eq(Store:GetHuman(councilHuman.id).elevationAt, nil, "Council elevate refuse does not write elevationAt")
++assert_eq(#Store:GetCeremonyLog(), 0, "refused Butcher and Council elevations do not append")
++assert_eq(#Knighting:GetLine(), 0, "refused Butcher and Council elevations do not change the line")
++assert_eq(promoteCalls, 0, "refused Butcher and Council elevations do not GuildPromote")
++
++do
++  local linedButcher = Store:CreateHuman({ name = "LinedButcher" }, 3010)
++  Knighting:Enqueue(linedButcher.id)
++  Store:SetRank(linedButcher.id, 5, 3011)
++  assert_eq(#Knighting:GetLine(), 1, "a Store-written Butcher can still sit on the line")
++  assert_eq(lineHas(linedButcher.id), true, "GetLine still lists that Store-written Butcher")
++  local row, err = Knighting:ElevateToLord(linedButcher.id, 3012)
++  assert_eq(row, nil, "ElevateToLord refuses a Butcher still on the line")
++  assert_eq(err, "already elevated", "on-line Butcher elevation names already elevated")
++  assert_eq(#Knighting:GetLine(), 1, "refused elevation leaves the line unchanged")
++  assert_eq(lineHas(linedButcher.id), true, "refused elevation does not dequeue a Butcher")
++  assert_eq(Store:GetHuman(linedButcher.id).rankId, 5, "on-line elevate refuse does not demote")
++  assert_eq(Store:GetHuman(linedButcher.id).elevationAt, nil, "on-line elevate refuse does not change elevationAt")
++  assert_eq(#Store:GetCeremonyLog(), 0, "on-line elevate refuse does not append")
++  assert_eq(promoteCalls, 0, "on-line elevate refuse does not GuildPromote")
++  Knighting:Skip(linedButcher.id)
++  assert_eq(#Knighting:GetLine(), 0, "cleanup Skip empties the leftover Butcher row")
++end
++
+ local waiting = Knighting:Enqueue(steve.id)
+ assert_true(waiting ~= nil, "an unenrolled human may still enter the line")
+ assert_eq(#Knighting:GetLine(), 1, "the line has the unenrolled human")

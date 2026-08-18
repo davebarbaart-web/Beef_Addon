@@ -1,0 +1,175 @@
+# B28-D — Fighter card Init restores a missing OnHide (implementation diff)
+
+Lane-only unified diff of the exclusive implementation files vs the pre-lane working tree.
+
+--- a/addon/ChurchOfBeef/UI/FighterCard.lua
++++ b/addon/ChurchOfBeef/UI/FighterCard.lua
+@@ -7,8 +7,9 @@
+ -- Congregation pair may arrive as Runtime subjects.fighters when Gora has
+ -- no live pair. Hide on QUIET / Hide() / EndEvent. ESC Hide()s the named
+ -- frame via UISpecialFrames (deduped). OnHide syncs lastView.shown
+--- without forgetting lastPair. lastPair remains until QUIET.
++-- without forgetting lastPair. Init remounts a missing OnHide; never
++-- replaces an existing script. lastPair remains until QUIET.
+ -- A new Sanction replaces the remembered pair. Stock QuestBG + WHITE8X8.
+ -- Left-third, two facing plates. Names try stock Morpheus. Honorifics
+ -- are Pope text from Store human. Empty honorifics hide. Defenses are a
+@@ -444,6 +445,21 @@
+   if plate.honorific.Hide then plate.honorific:Hide() end
+   return plate
+ end
++
++-- ESC Hide via UISpecialFrames bypasses FighterCard:Hide. Restore a
++-- missing OnHide; never replace an existing script. Sync lastView
++-- without forgetting lastPair.
++local function wireCardOnHide(widget)
++  if not widget then return end
++  if type(widget.SetScript) ~= "function" then return end
++  local existing = type(widget.GetScript) == "function" and widget:GetScript("OnHide")
++  if existing then return end
++  widget:SetScript("OnHide", function()
++    lastView = hiddenView()
++    if hiding then return end
++    paintHidden()
++  end)
++end
+ 
+ local function build()
+   local parent = UIParent
+@@ -527,21 +543,18 @@
+   widget.stipulation:SetPoint("BOTTOM", widget, "BOTTOM", 0, 12)
+   widget.stipulation:Hide()
+ 
+   widget:Hide()
+-  if widget.SetScript then
+-    widget:SetScript("OnHide", function()
+-      lastView = hiddenView()
+-      if hiding then return end
+-      paintHidden()
+-    end)
+-  end
++  wireCardOnHide(widget)
+   return widget
+ end
+ 
+ function FighterCard:Init()
+   if not frame then
+     frame = build()
+   end
++  wireCardOnHide(frame)
+   rememberSpecial(FRAME_NAME)
+   self:Refresh()
+   return frame
+ end
+ 
+--- a/tests/test_fighter_card.lua
++++ b/tests/test_fighter_card.lua
+@@ -2,8 +2,10 @@
+ -- Isolated: wow_ui_stub + Common + Ranks + Store + Runtime + Gora +
+ -- FighterCard. Event Mode only. No live health, no sound, no generated
+ -- flavor. Standalone wrap. No TOC / bootstrap / run.lua.
++-- B28-D Init remount of a missing OnHide lives in runB28D()
++-- (Lua 5.1 200-local nest).
+ package.path = package.path .. ";./tests/?.lua"
+ 
+ local stub = require("wow_ui_stub")
+ local restore = stub.install()
+@@ -830,6 +832,95 @@
+ copy.shown = true
+ copy.health = { a = 1 }
+ assert_eq(FighterCard:GetView().shown, false, "GetView is still a copy after a rebuild")
+ assert_eq(FighterCard:GetView().health, nil, "rebuilt view still has no health")
+ 
++--------------------------------------------------------------------------------
++-- B28-D: Init restores a missing OnHide. Third Init keeps identity.
++-- Nested to keep new locals off the main chunk. Isolation wrap stays.
++--------------------------------------------------------------------------------
++local function runB28D()
++  assert_true(src:find("local function wireCardOnHide", 1, true) ~= nil,
++    "source extracts wireCardOnHide")
++  local initBody = src:match("function FighterCard:Init%(%)(.-)\nfunction FighterCard:GetView")
++  assert_true(type(initBody) == "string" and initBody ~= "",
++    "FighterCard:Init body is readable")
++  if type(initBody) ~= "string" then initBody = "" end
++  assert_true(initBody:find("wireCardOnHide", 1, true) ~= nil,
++    "Init remounts OnHide via wireCardOnHide")
++  assert_eq(initBody:find("SetScript", 1, true), nil,
++    "Init does not SetScript inline")
++  assert_true(initBody:find("rememberSpecial", 1, true) ~= nil,
++    "Init still rememberSpecial")
++  assert_eq(initBody:find("PlaySound", 1, true), nil,
++    "Init does not PlaySound")
++  local wireCard = src:match("local function wireCardOnHide%(widget%)(.-)\nlocal function build")
++  assert_true(type(wireCard) == "string" and wireCard ~= "",
++    "wireCardOnHide body is readable")
++  if type(wireCard) ~= "string" then wireCard = "" end
++  assert_true(wireCard:find("GetScript", 1, true) ~= nil,
++    "wireCardOnHide checks GetScript")
++  assert_true(wireCard:find("SetScript", 1, true) ~= nil,
++    "wireCardOnHide holds SetScript")
++  assert_true(wireCard:find("OnHide", 1, true) ~= nil,
++    "wireCardOnHide wires OnHide")
++  assert_true(wireCard:find("lastView", 1, true) ~= nil,
++    "wireCardOnHide syncs lastView")
++  assert_true(wireCard:find("paintHidden", 1, true) ~= nil,
++    "wireCardOnHide calls paintHidden")
++  assert_true(wireCard:find("hiding", 1, true) ~= nil,
++    "wireCardOnHide guards hiding")
++  assert_eq(wireCard:find("forgetPersist", 1, true), nil,
++    "wireCardOnHide does not forget lastPair")
++  assert_eq(wireCard:find("PlaySound", 1, true), nil,
++    "wireCardOnHide does not PlaySound")
++  assert_eq(wireCard:find("CreateFrame", 1, true), nil,
++    "wireCardOnHide does not rebuild")
++  local buildBody = src:match("local function build%(%)(.-)\nfunction FighterCard:Init")
++  assert_true(type(buildBody) == "string" and buildBody ~= "",
++    "build body is readable")
++  if type(buildBody) ~= "string" then buildBody = "" end
++  assert_true(buildBody:find("wireCardOnHide", 1, true) ~= nil,
++    "create-path uses wireCardOnHide")
++  assert_eq(buildBody:find('SetScript("OnHide"', 1, true), nil,
++    "create-path does not SetScript OnHide inline")
++
++  sanctionPair()
++  assert_eq(FighterCard:Show(), true, "B28-D remount needs a live card")
++  local widget = FighterCard:Init()
++  assert_true(widget:GetScript("OnHide") ~= nil, "live card has OnHide")
++  local savedCreate = CreateFrame
++  local createCalls = 0
++  CreateFrame = function(...)
++    createCalls = createCalls + 1
++    return savedCreate(...)
++  end
++  widget:SetScript("OnHide", nil)
++  assert_eq(widget:GetScript("OnHide"), nil, "OnHide niled before second Init")
++  assert_eq(FighterCard:Init(), widget, "niled OnHide Init returns the existing frame")
++  local restored = widget:GetScript("OnHide")
++  assert_true(restored ~= nil, "second Init restores missing OnHide")
++  assert_eq(createCalls, 0, "second Init does not rebuild")
++  assert_eq(countSpecial("ChurchOfBeefFighterCard"), 1,
++    "restore Init does not duplicate")
++  assert_eq(FighterCard:Init(), widget, "third Init returns the existing frame")
++  assert_eq(widget:GetScript("OnHide"), restored, "third Init does not replace OnHide")
++  assert_eq(createCalls, 0, "third Init does not rebuild")
++  CreateFrame = savedCreate
++
++  assert_eq(stub.fire(widget, "OnHide"), true, "restored OnHide fires")
++  assert_eq(FighterCard:GetView().shown, false,
++    "restored OnHide sets lastView.shown false")
++  assert_true(Gora:GetSanctioned() ~= nil,
++    "restored OnHide does not clear the live pair")
++  local persist = FighterCard:Refresh()
++  assert_eq(persist.shown, true, "Refresh after restored OnHide still paints")
++  assert_eq(persist.fighterA.name, "Chuckroast",
++    "restored OnHide did not forget lastPair")
++  assert_eq(persist.fighterB.name, "Tendermage",
++    "restored OnHide did not forget the other fighter")
++  assert_eq(persist.health, nil, "restored persist still has no health")
++  assert_eq(sounds, 0, "restore Init plays no sound")
++  assert_eq(healthReads, 0, "restore Init does not scrape health")
++end
++runB28D()
++
+ restore()
+ 
+ if standalone then

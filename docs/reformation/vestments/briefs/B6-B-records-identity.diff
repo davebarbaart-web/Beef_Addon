@@ -1,0 +1,207 @@
+--- a/addon/ChurchOfBeef/UI/RecordsBook.lua
++++ b/addon/ChurchOfBeef/UI/RecordsBook.lua
+@@ -423,8 +423,62 @@
+     lines[#lines + 1] = line
+   end
+   return table.concat(lines, "\n")
++end
++
++local function localPlayerKey()
++  if type(UnitName) ~= "function" then return nil end
++  if not (COB.Names and COB.Names.Key) then return nil end
++  return COB.Names.Key(UnitName("player"))
++end
++
++-- Local human honorifics only. No character match or no human bind → empty.
++local function localHonorifics()
++  local key = localPlayerKey()
++  if not key then return {} end
++  if not (COB.Store and COB.Store.Snapshot) then return {} end
++  local snap = COB.Store:Snapshot()
++  local list = snap and snap.characters
++  if type(list) ~= "table" then return {} end
++  local humanId
++  for i = 1, #list do
++    local ch = list[i]
++    if type(ch) == "table" and COB.Names.Key(ch.name) == key then
++      humanId = ch.humanId
++      break
++    end
++  end
++  if type(humanId) ~= "number" then return {} end
++  local human = COB.Store.GetHuman and COB.Store:GetHuman(humanId)
++  local raw = human and human.honorifics
++  if type(raw) ~= "table" then return {} end
++  local titles = {}
++  for i = 1, #raw do
++    if type(raw[i]) == "string" and raw[i] ~= "" then
++      titles[#titles + 1] = raw[i]
++    end
++  end
++  return titles
+ end
+ 
++local function momentLocations()
++  if not (COB.Store and COB.Store.GetMarkedMoments) then return {} end
++  local moments = COB.Store:GetMarkedMoments()
++  if type(moments) ~= "table" then return {} end
++  local locs = {}
++  for i = 1, #moments do
++    local loc = moments[i] and moments[i].location
++    if type(loc) == "string" and loc ~= "" then
++      locs[#locs + 1] = loc
++    end
++  end
++  return locs
++end
++
++local function identityText(rows)
++  if type(rows) ~= "table" or #rows == 0 then return "" end
++  return table.concat(rows, "\n")
++end
++
+ local function paint()
+   local frame = RecordsBook.frame
+   if not frame then return end
+@@ -439,6 +493,12 @@
+   if frame.Body and frame.Body.SetText then
+     frame.Body:SetText(bodyText(page))
+   end
++  if frame.Honorifics and frame.Honorifics.SetText then
++    frame.Honorifics:SetText(identityText(localHonorifics()))
++  end
++  if frame.Moments and frame.Moments.SetText then
++    frame.Moments:SetText(identityText(momentLocations()))
++  end
+ end
+ 
+ local function turn(delta)
+@@ -586,7 +646,32 @@
+   if body.SetJustifyH then body:SetJustifyH("LEFT") end
+   body:SetText("")
+   frame.Body = body
++
++  -- Right leaf is identity, not a tenth superlative page (§12.1 / §14.2 / §15).
++  local honorifics = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
++  honorifics:SetPoint("TOP", frame, "TOP", 0, -98)
++  honorifics:SetPoint("LEFT", frame, "CENTER", 20, 0)
++  honorifics:SetPoint("RIGHT", frame, "RIGHT", -28, 0)
++  applyFont(honorifics, "GameFontNormalLarge")
++  if honorifics.SetTextColor then honorifics:SetTextColor(0.18, 0.12, 0.08, 1) end
++  if honorifics.SetJustifyH then honorifics:SetJustifyH("LEFT") end
++  if honorifics.SetJustifyV then honorifics:SetJustifyV("TOP") end
++  if honorifics.SetWordWrap then honorifics:SetWordWrap(true) end
++  honorifics:SetText("")
++  frame.Honorifics = honorifics
+ 
++  local moments = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
++  moments:SetPoint("TOP", honorifics, "BOTTOM", 0, -16)
++  moments:SetPoint("LEFT", frame, "CENTER", 20, 0)
++  moments:SetPoint("RIGHT", frame, "RIGHT", -28, 0)
++  applyFont(moments, "GameFontNormal")
++  if moments.SetTextColor then moments:SetTextColor(0.18, 0.12, 0.08, 1) end
++  if moments.SetJustifyH then moments:SetJustifyH("LEFT") end
++  if moments.SetJustifyV then moments:SetJustifyV("TOP") end
++  if moments.SetWordWrap then moments:SetWordWrap(true) end
++  moments:SetText("")
++  frame.Moments = moments
++
+   local titleBar = CreateFrame("Frame", nil, frame)
+   titleBar:SetPoint("TOPLEFT", frame, "TOPLEFT", 8, -4)
+   titleBar:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -36, -4)
+--- a/tests/test_records.lua
++++ b/tests/test_records.lua
+@@ -169,9 +169,14 @@
+ srcFile:close()
+ assert_eq(src:find("Media\\", 1, true), nil, "no required Media path")
+ assert_eq(src:find("ordained", 1, true), nil, "source does not generate 'ordained' prose")
++assert_eq(src:find("folk hero", 1, true), nil, "source does not generate 'folk hero' prose")
+ assert_eq(src:find("This is not hatred", 1, true), nil, "source does not generate that sermon")
++assert_eq(src:find("on this day", 1, true), nil, "source does not narrate marked moments")
++assert_eq(src:find("unrecognized", 1, true), nil, "source does not invent a missing-bind label")
+ assert_eq(src:find("PlaySound", 1, true), nil, "source does not play sound")
+ assert_eq(src:find("SLASH_", 1, true), nil, "source does not register a slash")
++assert_eq(src:find("AddHonorific", 1, true), nil, "the book does not grant honorifics")
++assert_eq(src:find("FlagMoment", 1, true), nil, "the book does not mark moments")
+ assert_true(src:find("QuestBG", 1, true) ~= nil or src:find("Stationery", 1, true) ~= nil,
+   "parchment uses stock QuestBG or stationery")
+ assert_true(src:find("MORPHEUS", 1, true) ~= nil or src:find("FRIZQT", 1, true) ~= nil,
+@@ -195,6 +200,9 @@
+ assert_eq(sounds, 0, "Init plays no sound")
+ assert_true(frame.Iron ~= nil, "dark-iron field exists")
+ assert_true(frame.Parchment ~= nil, "parchment leaf exists")
++assert_true(frame.RightLeaf ~= nil, "right leaf exists")
++assert_true(frame.Honorifics ~= nil, "right-leaf honorifics FontString exists")
++assert_true(frame.Moments ~= nil, "right-leaf moments FontString exists")
+ assert_true(frame.GoldEdge ~= nil, "muted-gold edge exists")
+ assert_true(frame.TitleText ~= nil, "title FontString exists")
+ assert_eq(frame.TitleText:GetText(), "The Records Book", "chrome title is the Bible name")
+@@ -265,6 +273,8 @@
+ Book:Show()
+ assert_eq(frame.PageTitle:GetText(), "Most Sanctioned Victories", "first leaf is Most Sanctioned Victories")
+ assert_eq(frame.Body:GetText(), "", "empty leaf has no invented copy")
++assert_eq(frame.Honorifics:GetText(), "", "empty store paints no honorifics")
++assert_eq(frame.Moments:GetText(), "", "empty store paints no moments")
+ assert_eq(sounds, 0, "painting an empty book is silent")
+ 
+ --------------------------------------------------------------------------------
+@@ -608,6 +618,59 @@
+ assert_eq(sounds, 0, "ribbons play no sound")
+ 
+ --------------------------------------------------------------------------------
++-- Right leaf: local-player honorifics + marked moment locations. Not a tenth page.
++--------------------------------------------------------------------------------
++reset()
++assert_eq(#Book:GetPages(), #BIBLE_TITLES, "PAGE_TITLES stay the nine Bible titles")
++for i = 1, #BIBLE_TITLES do
++  assert_eq(Book:GetPages()[i].title, BIBLE_TITLES[i], "identity paint does not rename page " .. i)
++end
++assert_eq(UnitName("player"), "Beefina", "stub local player is Beefina")
++Store:FlagMoment("Shattrath", 10000)
++Book:Show()
++assert_true(frame.RightLeaf ~= nil, "right leaf still exists after paint")
++assert_eq(frame.Honorifics:GetText(), "", "missing bind leaves honorifics blank")
++assert_true((frame.Moments:GetText() or ""):find("Shattrath", 1, true) ~= nil,
++  "unbound local player still paints marked-moment locations")
++assert_eq((frame.Body:GetText() or ""):find("Shattrath", 1, true), nil,
++  "moment locations are not painted on the superlative leaf")
++assert_eq(#Book:GetPages(), 9, "FlagMoment does not add a tenth page")
++
++reset()
++local localHuman = Store:CreateHuman({ name = "Local" }, 11000)
++local localChar = Store:CreateCharacter({ name = "Beefina" })
++Store:LinkCharacter(localChar.id, localHuman.id, 11001)
++Store:AddHonorific(localHuman.id, "Duke of the Fountain")
++Store:AddHonorific(localHuman.id, "Defender of the Faith")
++Store:FlagMoment("Goldshire Inn", 11002)
++Book:Show()
++assert_eq(#Book:GetPages(), 9, "seeded identity is not a tenth PAGE_TITLE")
++assert_eq(frame.PageTitle:GetText(), "Most Sanctioned Victories", "left leaf stays on superlatives")
++local honors = frame.Honorifics:GetText() or ""
++local marked = frame.Moments:GetText() or ""
++local identity = honors .. "\n" .. marked
++assert_true(honors:find("Duke of the Fountain", 1, true) ~= nil, "right leaf paints the granted honorific")
++assert_true(honors:find("Defender of the Faith", 1, true) ~= nil, "right leaf lists honorifics as given")
++assert_true(marked:find("Goldshire Inn", 1, true) ~= nil, "right leaf paints the marked location")
++assert_eq(identity:find("ordained", 1, true), nil, "identity paint does not invent ordained prose")
++assert_eq(identity:find("folk hero", 1, true), nil, "identity paint does not invent folk hero prose")
++assert_eq(honors:find("II", 1, true), nil, "honorific text is titles, not a roman count")
++assert_eq((frame.Body:GetText() or ""):find("Duke of the Fountain", 1, true), nil,
++  "honorifics stay off the superlative leaf")
++assert_eq((frame.Body:GetText() or ""):find("Goldshire Inn", 1, true), nil,
++  "moment locations stay off the superlative leaf")
++
++reset()
++local unbound = Store:CreateCharacter({ name = "Beefina" })
++local otherH = Store:CreateHuman({ name = "Other" }, 12000)
++Store:AddHonorific(otherH.id, "Martyr of Goldshire")
++assert_eq(unbound.humanId, nil, "local character is unbound")
++Book:Show()
++assert_eq(frame.Honorifics:GetText(), "", "unlinked local character paints no honorifics")
++assert_eq((frame.Honorifics:GetText() or ""):find("Martyr of Goldshire", 1, true), nil,
++  "another human's honorific is not borrowed")
++
++--------------------------------------------------------------------------------
+ -- ResetForTests is inert outside the harness.
+ --------------------------------------------------------------------------------
+ reset()

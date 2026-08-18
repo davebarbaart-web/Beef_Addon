@@ -1,0 +1,74 @@
+# B39-C — HideAll remounts toast and proclaim ESC names (implementation diff)
+
+Lane-only unified diff of the exclusive implementation files vs the pre-lane working tree.
+
+--- a/addon/ChurchOfBeef/UI/Toasts.lua
++++ b/addon/ChurchOfBeef/UI/Toasts.lua
+@@ -937,6 +937,8 @@
+     if self.frame.SetAlpha then self.frame:SetAlpha(1) end
+     self.frame:Hide()
+   end
++  rememberSpecial("ChurchOfBeefToast")
++  rememberSpecial(PROCLAIM_NAME)
+ end
+ 
+ function Toasts:ResetForTests()
+
+--- a/tests/test_ui.lua
++++ b/tests/test_ui.lua
+@@ -9,7 +9,8 @@
+ -- B27-C Quiet-shell Init restores a missing OnHide,
+ -- B29-D Proclaim re-applies applyHeadlineFont,
+ -- B31-C Quiet-shell Show remounts a missing OnHide,
+--- and B35-D Quiet-shell Hide remounts a missing OnHide
++-- B35-D Quiet-shell Hide remounts a missing OnHide,
++-- and B39-C HideAll remounts toast + proclaim ESC names
+ -- live in runB12D() (Lua 5.1 200-local cap).
+ -- No tab registry. No Standing / Ladder / Officer IA. No promote / rite toast
+ -- kinds. Isolation stays under standalone.
+@@ -825,6 +826,45 @@
+   assert_eq(countSpecial("ChurchOfBeefProclaim"), 1,
+     "HideAll keeps ChurchOfBeefProclaim on UISpecialFrames once")
+   assert_eq(findButton(COB.Toasts.theater.root), nil, "HideAll path adds no close button")
++
++  -- B39-C: HideAll remounts ChurchOfBeefToast and ChurchOfBeefProclaim
++  -- after a wiped UISpecialFrames. B18-C still plays no sound and still
++  -- tears theater once. Do not add a close button. Do not PlaySound.
++  -- Isolation wrap stays. No new main-chunk locals.
++  assert_true(hideAllBody:find('rememberSpecial("ChurchOfBeefToast")', 1, true) ~= nil,
++    "HideAll remounts ChurchOfBeefToast")
++  assert_true(
++    hideAllBody:find("rememberSpecial(PROCLAIM_NAME)", 1, true) ~= nil
++      or hideAllBody:find('rememberSpecial("ChurchOfBeefProclaim")', 1, true) ~= nil,
++    "HideAll remounts ChurchOfBeefProclaim")
++  assert_eq(hideAllBody:find("PlaySound", 1, true), nil,
++    "HideAll remount does not PlaySound")
++  assert_eq(hideAllBody:find("CreateFrame", 1, true), nil,
++    "HideAll remount does not rebuild")
++  local savedSpecialHideAll = UISpecialFrames
++  UISpecialFrames = {}
++  assert_eq(countSpecial("ChurchOfBeefToast"), 0,
++    "wipe clears ChurchOfBeefToast before HideAll remount")
++  assert_eq(countSpecial("ChurchOfBeefProclaim"), 0,
++    "wipe clears ChurchOfBeefProclaim before HideAll remount")
++  local cuesHideAllRemount = #played
++  COB.Toasts:HideAll()
++  assert_eq(countSpecial("ChurchOfBeefToast"), 1,
++    "wiped UISpecialFrames + HideAll lists ChurchOfBeefToast once")
++  assert_eq(countSpecial("ChurchOfBeefProclaim"), 1,
++    "wiped UISpecialFrames + HideAll lists ChurchOfBeefProclaim once")
++  assert_eq(#played, cuesHideAllRemount, "HideAll remount plays no sound")
++  assert_eq(COB.Toasts.theater.root:IsShown(), false,
++    "HideAll remount still tears theater once")
++  assert_eq(findButton(COB.Toasts.theater.root), nil,
++    "HideAll remount adds no close button")
++  COB.Toasts:HideAll()
++  assert_eq(countSpecial("ChurchOfBeefToast"), 1,
++    "second HideAll does not duplicate ChurchOfBeefToast")
++  assert_eq(countSpecial("ChurchOfBeefProclaim"), 1,
++    "second HideAll does not duplicate ChurchOfBeefProclaim")
++  assert_eq(#played, cuesHideAllRemount, "second HideAll plays no sound")
++  UISpecialFrames = savedSpecialHideAll
+ 
+   -- B15-C: Quiet shell UISpecialFrames rememberSpecial dedupe. Nested here
+   -- so the main chunk stays under Lua 5.1's 200-local cap. No new main-chunk

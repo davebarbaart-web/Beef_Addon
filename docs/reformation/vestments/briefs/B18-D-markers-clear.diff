@@ -1,0 +1,47 @@
+diff --git a/tests/test_markers.lua b/tests/test_markers.lua
+--- a/tests/test_markers.lua
++++ b/tests/test_markers.lua
+@@ -537,7 +537,43 @@
+ ok, err = Markers:MarkFighters("Beefina", "Chuckroast")
+ assert_eq(ok, false, "unlisted Pope player MarkFighters is false")
+ assert_eq(err, "not a registered pope", "unlisted Pope player MarkFighters names the error")
++
++--------------------------------------------------------------------------------
++-- B18-D: grouped + Pope + Event Clear("Beefina") spies "player", 0.
++-- Quiet / ungrouped Clear still refuse. B16-D Mark player pins stay.
++--------------------------------------------------------------------------------
++reset()
++Runtime:StartEvent()
++popeFlag = true
++armRaid("Chuckroast")
++ok, err = Markers:Clear("Beefina")
++assert_eq(ok, true, "Event Pope grouped Clear on player is true")
++assert_eq(err, nil, "successful player Clear has no error")
++assert_eq(#raidTargets, 1, "player Clear spies SetRaidTarget once")
++assert_eq(raidTargets[1].unit, "player", "Clear uses the player UnitToken")
++assert_eq(raidTargets[1].index, 0, "Clear sets index 0")
++assert_eq(raidTargets[1].unit ~= "raid1", true, "player Clear does not use the raid1 pin")
++view = Markers:GetView()
++assert_eq(view.ok, true, "player Clear view records success")
++assert_eq(view.verb, "Clear", "player Clear view records the verb")
++assert_eq(view.name, "Beefina", "player Clear view records the local name")
++assert_eq(view.unit, "player", "player Clear view records the player token")
++assert_eq(view.index, 0, "player Clear view records index 0")
+ 
++reset()
++Runtime:StartEvent()
++popeFlag = true
++ok, err = Markers:Clear("Beefina")
++assert_eq(ok, false, "ungrouped player Clear is false")
++assert_eq(err, "not in a group", "ungrouped player Clear still refuses")
++assert_eq(#raidTargets, 0, "ungrouped player Clear does not SetRaidTarget")
++
++reset()
++ok, err = Markers:Clear("Beefina")
++assert_eq(ok, false, "Quiet player Clear is false")
++assert_eq(err, "quiet", "Quiet player Clear names quiet")
++assert_eq(#raidTargets, 0, "Quiet player Clear does not SetRaidTarget")
++
+ --------------------------------------------------------------------------------
+ -- Missing API fail-closed. No throw.
+ --------------------------------------------------------------------------------

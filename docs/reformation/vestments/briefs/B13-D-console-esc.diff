@@ -1,0 +1,126 @@
+diff --git a/addon/ChurchOfBeef/UI/Console.lua b/addon/ChurchOfBeef/UI/Console.lua
+--- a/addon/ChurchOfBeef/UI/Console.lua
++++ b/addon/ChurchOfBeef/UI/Console.lua
+@@ -37,6 +37,8 @@
+ -- Layout: two-column stock desk, large targets. Outer frame height 780 with
+ -- a stock ScrollFrame around the desk body (child stays tall). Type-guarded
+ -- EnableMouseWheel + OnMouseWheel steps 36px; missing scroll APIs no-op.
++-- stockEdit type-guards OnEscapePressed to ClearFocus; the box does not Hide
++-- the desk. Missing SetScript / ClearFocus no-op.
+ -- No permanent OnUpdate. Open Gora subjects use the selected pair when both
+ -- ids are set, else Gora:GetSanctioned() then Gora:GetLastSanctioned().
+ -- Open Knighting subjects use selectedHumanId, else the head of
+@@ -189,6 +191,13 @@
+   box:SetWidth(width or 520)
+   box:SetHeight(22)
+   box:SetAutoFocus(false)
++  if type(box.SetScript) == "function" then
++    box:SetScript("OnEscapePressed", function(self)
++      if type(self.ClearFocus) == "function" then
++        self:ClearFocus()
++      end
++    end)
++  end
+   return box
+ end
+ 
+
+diff --git a/tests/test_console.lua b/tests/test_console.lua
+--- a/tests/test_console.lua
++++ b/tests/test_console.lua
+@@ -6,7 +6,8 @@
+ -- ArchiveBox / stock ARCHIVE and CANONIZE labels + B9-C stock
+ -- CeremonyLog desk + B10-D stock desk-body ScrollFrame, outer height 780
+ -- + B11-C desk mouse wheel and Open Gora subject fallback + B12-B Open
+--- Knighting line-head subject fallback).
++-- Knighting line-head subject fallback + B13-D stockEdit OnEscapePressed
++-- ClearFocus).
+ -- Isolated: wow_ui_stub + Common + Ranks + Runtime + Store + Gora + Knighting
+ -- + Sender + Decree + Console. Confession is stubbed when painted; this file
+ -- does not load Confession.lua. Knighting GetLine/Enqueue/Skip are stubbed
+@@ -2580,6 +2581,85 @@
+ assert_eq(COB.Popes, nil, "still no Pope list after B12-B")
+ end
+ runB12B()
++
++--------------------------------------------------------------------------------
++-- B13-D: stockEdit OnEscapePressed ClearFocus. Box does not Hide the desk.
++-- Nested inside runB8E so the main chunk stays under Lua 5.1's 200-local cap.
++--------------------------------------------------------------------------------
++local function runB13D()
++reset()
++Console:Init()
++assert_eq(Console.SaveNote, nil, "SaveNote stays nil")
++assert_eq(Console.GetNotes, nil, "no notes table")
++assert_eq(Console.CopyCeremonySummary, nil, "no post-show ceremony summary")
++assert_eq(Console.CeremonySummary, nil, "no ceremony summary")
++assert_eq(findButton(frame, "SUMMON THE FAITHFUL"), nil, "no SUMMON chrome")
++assert_eq(findButton(frame, "COPY SUMMARY"), nil, "no ceremony-summary chrome")
++assert_eq(findButton(frame, "WHISPER ALL"), nil, "no WHISPER ALL chrome")
++assert_eq(findButton(frame, "RSVP"), nil, "no RSVP chrome")
++assert_eq(countType(frame, "EditBox"), 7, "B13-D adds no extra EditBox")
++
++assert_true(frame.ArchiveBox ~= nil, "ArchiveBox exists")
++assert_true(frame.DecreeLine ~= nil, "DecreeLine exists")
++assert_eq(type(frame.ArchiveBox.GetScript), "function", "ArchiveBox GetScript exists")
++assert_eq(type(frame.DecreeLine.GetScript), "function", "DecreeLine GetScript exists")
++assert_true(frame.ArchiveBox:GetScript("OnEscapePressed") ~= nil, "ArchiveBox has OnEscapePressed")
++assert_true(frame.DecreeLine:GetScript("OnEscapePressed") ~= nil, "DecreeLine has OnEscapePressed")
++assert_true(frame.Stipulation:GetScript("OnEscapePressed") ~= nil, "Stipulation inherits OnEscapePressed")
++assert_true(frame.FreeRulingText:GetScript("OnEscapePressed") ~= nil, "FreeRuling inherits OnEscapePressed")
++assert_true(frame.DecreeFlavor:GetScript("OnEscapePressed") ~= nil, "DecreeFlavor inherits OnEscapePressed")
++assert_true(frame.HonorificText:GetScript("OnEscapePressed") ~= nil, "Honorific inherits OnEscapePressed")
++assert_true(frame.CanonizeText:GetScript("OnEscapePressed") ~= nil, "Canonize inherits OnEscapePressed")
++
++Console:Show()
++assert_eq(Console:IsShown(), true, "console is shown before ESC")
++frame.ArchiveBox:SetFocus()
++assert_eq(frame.ArchiveBox:HasFocus(), true, "ArchiveBox can take focus")
++local fired, fireErr = pcall(function()
++  stub.fire(frame.ArchiveBox, "OnEscapePressed")
++end)
++assert_eq(fired, true, "OnEscapePressed fire does not error")
++assert_eq(fireErr, nil, "OnEscapePressed fire has no error text")
++assert_eq(frame.ArchiveBox:HasFocus(), false, "OnEscapePressed ClearFocuses ArchiveBox")
++assert_eq(Console:IsShown(), true, "ESC on the box does not Hide the console")
++
++frame.DecreeLine:SetFocus()
++assert_eq(frame.DecreeLine:HasFocus(), true, "DecreeLine can take focus")
++local firedDecree, fireDecreeErr = pcall(function()
++  stub.fire(frame.DecreeLine, "OnEscapePressed")
++end)
++assert_eq(firedDecree, true, "DecreeLine OnEscapePressed fire does not error")
++assert_eq(fireDecreeErr, nil, "DecreeLine OnEscapePressed fire has no error text")
++assert_eq(frame.DecreeLine:HasFocus(), false, "OnEscapePressed ClearFocuses DecreeLine")
++assert_eq(Console:IsShown(), true, "DecreeLine ESC does not Hide the console")
++
++local srcEsc = io.open("addon/ChurchOfBeef/UI/Console.lua", "r")
++assert_true(srcEsc ~= nil, "Console.lua is readable for B13-D")
++local srcEscBody = srcEsc:read("*a")
++srcEsc:close()
++assert_true(srcEscBody:find("OnEscapePressed", 1, true) ~= nil, "source contains OnEscapePressed")
++assert_true(srcEscBody:find("ClearFocus", 1, true) ~= nil, "source contains ClearFocus")
++assert_true(srcEscBody:find('SetScript("OnEscapePressed"', 1, true) ~= nil,
++  "source wires OnEscapePressed")
++assert_true(srcEscBody:find('type(box.SetScript) == "function"', 1, true) ~= nil,
++  "SetScript is type-guarded")
++assert_true(srcEscBody:find("local function stockEdit", 1, true) ~= nil, "stockEdit still exists")
++assert_eq(srcEscBody:find("PlaySound", 1, true), nil, "source must not PlaySound")
++assert_eq(srcEscBody:find("SUMMON THE FAITHFUL", 1, true), nil, "source must not contain SUMMON")
++assert_eq(srcEscBody:find("CopyCeremonySummary", 1, true), nil, "source must not copy a ceremony summary")
++assert_eq(srcEscBody:find("function Console:SaveNote", 1, true), nil, "source must not define SaveNote")
++assert_eq(srcEscBody:find("Parchment", 1, true), nil, "console stays stock, not parchment")
++assert_eq(srcEscBody:find("PanelTabButtonTemplate", 1, true), nil, "desks are not collapsed into tabs")
++
++assert_eq(Console.SaveNote, nil, "SaveNote stays nil after B13-D")
++if standalone then
++  assert_eq(COB.Archive, nil, "isolation still does not load Archive")
++  assert_eq(COB.UI, nil, "isolation still does not load the Quiet shell")
++  assert_eq(COB.Toasts, nil, "isolation still does not load Toasts")
++end
++assert_eq(COB.Popes, nil, "still no Pope list after B13-D")
++end
++runB13D()
+ end
+ runB8E()
+ 

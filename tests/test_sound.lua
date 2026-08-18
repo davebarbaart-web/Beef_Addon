@@ -1,4 +1,4 @@
--- Event Mode sound cues (Phase 5 Lane C). Isolated: Common + Runtime + Sound.
+-- Event Mode sound cues (Phase 5 Lane C / B3-C SoundKit). Isolated: Common + Runtime + Sound.
 -- Quiet Mode is silent. MVP names only. No TOC / bootstrap / run.lua /
 -- Runtime / Console / HUD / Gora / Knighting / Minimap / Toasts / MainFrame / Net.
 ChurchOfBeef = ChurchOfBeef or {}
@@ -23,11 +23,35 @@ if standalone then
 end
 
 local played = {}
+local cSoundPlayed = {}
 local filePlays = 0
 local kitPlays = 0
 local frames = 0
 local chatSends = 0
 local addonSends = 0
+
+-- classic_anniversary TBC SoundKitConstants.lua ids for the five FrameXML keys.
+if type(SOUNDKIT) ~= "table" then
+  SOUNDKIT = {
+    IG_QUEST_LOG_OPEN = 844,
+    IG_QUEST_LIST_COMPLETE = 878,
+    TALENT_SCREEN_OPEN = 6144,
+    IG_SPELLBOOK_OPEN = 829,
+    IG_QUEST_LOG_ABANDON_QUEST = 846,
+  }
+end
+
+local CUE_KIT = {
+  sanction = "IG_QUEST_LOG_OPEN",
+  verdict = "IG_QUEST_LIST_COMPLETE",
+  elevation = "TALENT_SCREEN_OPEN",
+  knighting = "IG_SPELLBOOK_OPEN",
+  cowardice = "IG_QUEST_LOG_ABANDON_QUEST",
+}
+
+local function kitFor(name)
+  return SOUNDKIT[CUE_KIT[name]]
+end
 
 PlaySound = function(name)
   played[#played + 1] = name
@@ -65,6 +89,7 @@ local function reset()
   assert_eq(Runtime:ResetForTests(), true, "Runtime ResetForTests runs under _IN_TEST")
   assert_eq(Sound:ResetForTests(), true, "Sound ResetForTests runs under _IN_TEST")
   played = {}
+  cSoundPlayed = {}
   filePlays = 0
   kitPlays = 0
   frames = 0
@@ -137,7 +162,7 @@ assert_eq(#played, 0, "QUIET never calls PlaySound")
 assert_eq(filePlays, 0, "QUIET never calls PlaySoundFile")
 
 --------------------------------------------------------------------------------
--- Allow-list plays in ASSEMBLY. Unknown names play nothing.
+-- Allow-list plays in ASSEMBLY. PlaySound receives the resolved kit number.
 --------------------------------------------------------------------------------
 reset()
 assert_true(Runtime:StartEvent() ~= nil, "StartEvent reaches ASSEMBLY")
@@ -148,7 +173,9 @@ for i = 1, #ALLOWED do
   local ok, err = Sound:Play(name)
   assert_eq(ok, name, "ASSEMBLY records " .. name)
   assert_eq(err, nil, "ASSEMBLY " .. name .. " has no error")
-  assert_eq(lastPlayed(), name, "PlaySound received " .. name)
+  assert_eq(type(lastPlayed()), "number", "PlaySound received a number for " .. name)
+  assert_eq(lastPlayed(), kitFor(name), "PlaySound received kit for " .. name)
+  assert_eq(lastPlayed() == name, false, "PlaySound did not receive the cue string " .. name)
 end
 assert_eq(#played, #ALLOWED, "each allow-list cue called PlaySound once")
 assert_eq(filePlays, 0, "allow-list does not call PlaySoundFile")
@@ -181,20 +208,21 @@ Runtime:StartEvent()
 assert_true(Runtime:OpenRite("Gora", { fighters = { 1, 2 } }) ~= nil, "OpenRite reaches RITE")
 assert_eq(Runtime:Snapshot().state, "RITE", "runtime is RITE")
 assert_eq(Sound:Play("verdict"), "verdict", "RITE records verdict")
-assert_eq(lastPlayed(), "verdict", "RITE called PlaySound")
+assert_eq(lastPlayed(), kitFor("verdict"), "RITE called PlaySound with kit")
 
 assert_true(Runtime:CloseRite() ~= nil, "CloseRite reaches CONSEQUENCE")
 assert_eq(Runtime:Snapshot().state, "CONSEQUENCE", "runtime is CONSEQUENCE")
 assert_eq(Sound:Play("cowardice"), "cowardice", "CONSEQUENCE records cowardice")
-assert_eq(lastPlayed(), "cowardice", "CONSEQUENCE called PlaySound")
+assert_eq(lastPlayed(), kitFor("cowardice"), "CONSEQUENCE called PlaySound with kit")
 
 assert_true(Runtime:MarkPopeLost() ~= nil, "awaitingPope is Event Mode degraded")
 assert_eq(Sound:Play("elevation"), "elevation", "awaitingPope still records elevation")
-assert_eq(lastPlayed(), "elevation", "awaitingPope is not a mute state")
+assert_eq(lastPlayed(), kitFor("elevation"), "awaitingPope is not a mute state")
 Runtime:ClearPopeLost()
 
 assert_true(Runtime:Continue() ~= nil, "Continue returns to ASSEMBLY")
 assert_eq(Sound:Play("knighting"), "knighting", "ASSEMBLY after Continue records knighting")
+assert_eq(lastPlayed(), kitFor("knighting"), "Continue ASSEMBLY called PlaySound with kit")
 
 assert_true(Runtime:EndEvent() ~= nil, "EndEvent returns to QUIET")
 assert_eq(Runtime:Snapshot().state, "QUIET", "runtime is QUIET")
@@ -227,12 +255,32 @@ assert_eq(Sound:Play("sanction"), "sanction", "missing PlaySound still records t
 assert_eq(#played, 0, "missing PlaySound calls nothing")
 assert_eq(filePlays, 0, "missing PlaySound does not fall back to a file")
 
+C_Sound = {
+  PlaySound = function(kit)
+    cSoundPlayed[#cSoundPlayed + 1] = kit
+  end,
+}
+assert_eq(Sound:Play("sanction"), "sanction", "C_Sound fallback still records the cue")
+assert_eq(#played, 0, "C_Sound fallback does not call PlaySound")
+assert_eq(#cSoundPlayed, 1, "C_Sound.PlaySound fires when PlaySound is missing")
+assert_eq(cSoundPlayed[1], kitFor("sanction"), "C_Sound.PlaySound received the kit")
+C_Sound = nil
+
 PlaySound = function()
   error("missing kit")
 end
 local rescued = Sound:Play("verdict")
 assert_eq(rescued, "verdict", "a PlaySound error does not fail Play")
 PlaySound = savedPlay
+
+local savedKits = SOUNDKIT
+SOUNDKIT = nil
+assert_eq(Sound:Play("sanction"), "sanction", "missing SOUNDKIT still records the cue")
+assert_eq(#played, 0, "missing SOUNDKIT skips PlaySound")
+SOUNDKIT = { IG_QUEST_LOG_OPEN = "not-a-number" }
+assert_eq(Sound:Play("sanction"), "sanction", "non-number kit still records the cue")
+assert_eq(#played, 0, "non-number kit skips PlaySound")
+SOUNDKIT = savedKits
 
 --------------------------------------------------------------------------------
 -- Source contract: no addon media, no extra APIs, no sixth state, no callers.
@@ -245,7 +293,7 @@ assert_eq(src:find(".ogg", 1, true), nil, "source ships no .ogg")
 assert_eq(src:find(".mp3", 1, true), nil, "source ships no .mp3")
 assert_eq(src:find("PlaySoundFile", 1, true), nil, "source does not call PlaySoundFile")
 assert_eq(src:find("PlaySoundKitID", 1, true), nil, "source does not call PlaySoundKitID")
-assert_eq(src:find("SOUNDKIT", 1, true), nil, "source does not invent SOUNDKIT ids")
+assert_true(src:find("_G.SOUNDKIT", 1, true) ~= nil, "source resolves kits via _G.SOUNDKIT")
 assert_eq(src:find("RAID_WARNING", 1, true), nil, "source does not use RAID_WARNING")
 assert_eq(src:find("READY_CHECK", 1, true), nil, "source does not use READY_CHECK")
 assert_eq(src:find("CreateFrame", 1, true), nil, "source does not CreateFrame")
@@ -258,6 +306,11 @@ assert_eq(src:find("COB.Console", 1, true), nil, "source does not wire Console")
 assert_eq(src:find("COB.Gora", 1, true), nil, "source does not wire Gora")
 assert_eq(src:find("COB.Knighting", 1, true), nil, "source does not wire Knighting")
 assert_eq(src:find("COB.Hud", 1, true), nil, "source does not wire HUD")
+assert_eq(src:find("= 844", 1, true), nil, "source does not hardcode IG_QUEST_LOG_OPEN id")
+assert_eq(src:find("= 878", 1, true), nil, "source does not hardcode IG_QUEST_LIST_COMPLETE id")
+assert_eq(src:find("= 6144", 1, true), nil, "source does not hardcode TALENT_SCREEN_OPEN id")
+assert_eq(src:find("= 829", 1, true), nil, "source does not hardcode IG_SPELLBOOK_OPEN id")
+assert_eq(src:find("= 846", 1, true), nil, "source does not hardcode IG_QUEST_LOG_ABANDON_QUEST id")
 
 assert_eq(frames, 0, "the suite minted no frames")
 assert_eq(chatSends, 0, "the suite sent no chat")
@@ -271,6 +324,7 @@ assert_eq(kitPlays, 0, "the suite never called PlaySoundKitID")
 reset()
 Runtime:StartEvent()
 assert_eq(Sound:Play("sanction"), "sanction", "a cue plays before the out-of-harness reset")
+assert_eq(lastPlayed(), kitFor("sanction"), "out-of-harness setup used the kit")
 ChurchOfBeef._IN_TEST = false
 assert_eq(Sound:ResetForTests(), false, "ResetForTests refuses to run outside tests")
 ChurchOfBeef._IN_TEST = true

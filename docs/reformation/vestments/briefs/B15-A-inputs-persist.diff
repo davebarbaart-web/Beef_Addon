@@ -1,0 +1,271 @@
+diff --git a/addon/ChurchOfBeef/UI/Inputs.lua b/addon/ChurchOfBeef/UI/Inputs.lua
+--- a/addon/ChurchOfBeef/UI/Inputs.lua
++++ b/addon/ChurchOfBeef/UI/Inputs.lua
+@@ -9,6 +9,9 @@
+ -- Confess box type-guards SetMultiLine(true) and OnEscapePressed to ClearFocus;
+ -- the box does not Hide the panel. Missing SetScript / ClearFocus / SetMultiLine
+ -- no-op. Hide stays Runtime Quiet, not box ESC.
++-- Root drag persist writes ChurchOfBeefDB.ui.inputs as a flat point table.
++-- Missing ChurchOfBeefDB restores the default; save no-ops. ResetForTests
++-- does not wipe SavedVariables.
+ local Inputs = {
+   MODE = "Event",
+ }
+@@ -17,6 +20,15 @@
+ local FRAME_NAME = "ChurchOfBeefInputs"
+ local WIDTH, HEIGHT = 328, 72
+ local BTN_W, BTN_H = 96, 22
++local DEFAULT_POINT = "BOTTOM"
++local DEFAULT_X, DEFAULT_Y = 0, 80
++
++local ANCHORS = {
++  TOPLEFT = true, TOP = true, TOPRIGHT = true,
++  LEFT = true, CENTER = true, RIGHT = true,
++  BOTTOMLEFT = true, BOTTOM = true, BOTTOMRIGHT = true,
++}
++
+ local inputTarget = nil
+ local localCharacterId = nil
+ local lastView = nil
+@@ -69,13 +81,44 @@
+   return btn
+ end
+ 
++local function uiDb()
++  if type(ChurchOfBeefDB) ~= "table" then return nil end
++  if type(ChurchOfBeefDB.ui) ~= "table" then ChurchOfBeefDB.ui = {} end
++  return ChurchOfBeefDB.ui
++end
++
++local function savePoint(widget)
++  local db = uiDb()
++  if not db then return end
++  local point, _, relativePoint, x, y = widget:GetPoint(1)
++  if type(point) ~= "string" or type(x) ~= "number" or type(y) ~= "number" then return end
++  db.inputs = { point = point, relativePoint = relativePoint or point, x = x, y = y }
++end
++
++local function restorePoint(widget)
++  local db = uiDb()
++  local p = db and db.inputs
++  widget:ClearAllPoints()
++  local relative = type(p) == "table" and (p.relativePoint or p.point) or nil
++  if type(p) == "table" and ANCHORS[p.point] and ANCHORS[relative]
++      and type(p.x) == "number" and type(p.y) == "number" then
++    widget:SetPoint(p.point, UIParent, relative, p.x, p.y)
++  else
++    widget:SetPoint(DEFAULT_POINT, UIParent, DEFAULT_POINT, DEFAULT_X, DEFAULT_Y)
++  end
++end
++
+ local function build()
+   local widget = CreateFrame("Frame", FRAME_NAME, UIParent)
+   widget:SetWidth(WIDTH)
+   widget:SetHeight(HEIGHT)
+-  widget:SetPoint("BOTTOM", UIParent, "BOTTOM", 0, 80)
+   widget:SetClampedToScreen(true)
+   widget:EnableMouse(true)
++  widget:SetMovable(true)
++  if widget.RegisterForDrag then
++    widget:RegisterForDrag("LeftButton")
++  end
++  restorePoint(widget)
+ 
+   local bg = widget:CreateTexture(nil, "BACKGROUND")
+   bg:SetAllPoints(widget)
+@@ -118,6 +161,14 @@
+   end)
+   confess:SetPoint("BOTTOMRIGHT", widget, "BOTTOMRIGHT", -12, 10)
+ 
++  widget:SetScript("OnDragStart", function(self)
++    if self.StartMoving then self:StartMoving() end
++  end)
++  widget:SetScript("OnDragStop", function(self)
++    if self.StopMovingOrSizing then self:StopMovingOrSizing() end
++    savePoint(self)
++  end)
++
+   widget:Hide()
+   return widget
+ end
+
+diff --git a/tests/test_inputs.lua b/tests/test_inputs.lua
+--- a/tests/test_inputs.lua
++++ b/tests/test_inputs.lua
+@@ -1,9 +1,10 @@
+--- Event congregation Petition / Confess / Catchup (B4-G, B5-E, B14-B). Isolated:
++-- Event congregation Petition / Confess / Catchup (B4-G, B5-E, B14-B, B15-A). Isolated:
+ -- wow_ui_stub + Common + Runtime + Inputs. Stub COB.Net.SendPetition /
+ -- SendConfession / RequestSnapshot. Event Mode only. No Pope-name lookup.
+ -- No Gora:Petition. No Proclaim. No sound. No SendChatMessage. Isolation
+ -- wrap. No TOC / bootstrap / run.lua. Confess box: OnEscapePressed ClearFocus
+--- only; type-guarded SetMultiLine(true). Not on UISpecialFrames.
++-- only; type-guarded SetMultiLine(true). Not on UISpecialFrames. Root drag
++-- persist writes ChurchOfBeefDB.ui.inputs. ResetForTests does not wipe SV.
+ package.path = package.path .. ";./tests/?.lua"
+ 
+ local stub = require("wow_ui_stub")
+@@ -572,7 +573,163 @@
+ frame = Inputs:Init()
+ assert_true(frame ~= nil, "Init after CreateFrame returns builds the frame")
+ assert_eq(frame:IsShown(), false, "rebuilt Init in Quiet stays hidden")
++
++--------------------------------------------------------------------------------
++-- B15-A: root OnDragStop persists ChurchOfBeefDB.ui.inputs. Invalid saved point
++-- falls back. Quiet Init with a saved point still hides. ResetForTests must
++-- not wipe SV. Missing DB: default restore; save no-ops. Nested so the main
++-- chunk stays under Lua 5.1's 200-local cap.
++--------------------------------------------------------------------------------
++local function runB15A()
++ChurchOfBeefDB = { ui = {} }
++reset()
++local frame = Inputs:Init()
++assert_true(Runtime:StartEvent() ~= nil, "B15-A StartEvent reaches ASSEMBLY")
++assert_eq(Inputs:Show(), true, "Event Show is true before drag")
++assert_eq(frame:IsShown(), true, "Event Show paints the widget before drag")
++assert_eq(frame:GetWidth(), 328, "persist WIDTH stays 328")
++assert_eq(frame:GetHeight(), 72, "persist HEIGHT stays 72")
++assert_eq(frame._movable, true, "root is SetMovable(true)")
++assert_true(frame:GetScript("OnDragStart") ~= nil, "drag start is on the root")
++assert_true(frame:GetScript("OnDragStop") ~= nil, "drag stop is on the root")
++
++stub.fire(frame, "OnDragStart")
++assert_eq(frame._moving, true, "drag starts a move")
++frame:ClearAllPoints()
++frame:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 24, 90)
++stub.fire(frame, "OnDragStop")
++assert_eq(frame._moving, false, "drop stops the move")
++assert_eq(frame:GetScript("OnUpdate"), nil, "drop leaves no animator")
++local saved = ChurchOfBeefDB.ui and ChurchOfBeefDB.ui.inputs
++assert_true(type(saved) == "table", "moved position is saved")
++assert_eq(saved and saved.point, "TOPLEFT", "saved anchor point")
++assert_eq(saved and saved.relativePoint, "TOPLEFT", "saved relative point")
++assert_eq(saved and saved.x, 24, "saved x")
++assert_eq(saved and saved.y, 90, "saved y")
++assert_eq(saved and saved.relativeTo, nil, "no frame reference lands in SavedVariables")
++
++dofile("addon/ChurchOfBeef/UI/Inputs.lua")
++Inputs = COB.Inputs
++local reloaded = Inputs:Init()
++local rp, rto, rrp, rx, ry = reloaded:GetPoint(1)
++assert_eq(rp, "TOPLEFT", "saved top-left anchor restores")
++assert_eq(rto, UIParent, "restore still parents to UIParent")
++assert_eq(rrp, "TOPLEFT", "saved relative top-left restores")
++assert_eq(rx, 24, "saved x restores")
++assert_eq(ry, 90, "saved y restores")
++assert_eq(reloaded:GetParent(), UIParent, "dofile Init restores parented UIParent")
++frame = reloaded
+ 
++ChurchOfBeefDB.ui.inputs = { point = "MIDDLE-OF-NOWHERE", relativePoint = "CENTER", x = 1, y = 2 }
++dofile("addon/ChurchOfBeef/UI/Inputs.lua")
++Inputs = COB.Inputs
++local safe = Inputs:Init()
++assert_eq(select(1, safe:GetPoint(1)), "BOTTOM", "invalid saved anchor falls back to BOTTOM")
++assert_eq(select(2, safe:GetPoint(1)), UIParent, "invalid saved point still parents to UIParent")
++assert_eq(select(3, safe:GetPoint(1)), "BOTTOM", "invalid saved relative falls back to BOTTOM")
++assert_eq(select(4, safe:GetPoint(1)), 0, "invalid saved x falls back to 0")
++assert_eq(select(5, safe:GetPoint(1)), 80, "invalid saved y falls back to 80")
++frame = safe
++
++ChurchOfBeefDB.ui.inputs = { point = "TOPLEFT", relativePoint = "TOPLEFT", x = 24, y = 90 }
++reset()
++assert_true(type(ChurchOfBeefDB.ui.inputs) == "table", "ResetForTests does not wipe SV")
++assert_eq(ChurchOfBeefDB.ui.inputs.point, "TOPLEFT", "ResetForTests leaves the saved point")
++assert_eq(ChurchOfBeefDB.ui.inputs.x, 24, "ResetForTests leaves saved x")
++assert_eq(ChurchOfBeefDB.ui.inputs.y, 90, "ResetForTests leaves saved y")
++frame = Inputs:Init()
++assert_eq(frame:IsShown(), false, "Quiet Init with a saved point still hides")
++assert_eq(Inputs:GetView().shown, false, "Quiet view stays hidden with a saved point")
++assert_eq(select(1, frame:GetPoint(1)), "TOPLEFT", "Quiet Init still restores the saved point")
++assert_eq(select(2, frame:GetPoint(1)), UIParent, "Quiet restore still parents to UIParent")
++assert_eq(select(4, frame:GetPoint(1)), 24, "Quiet Init restores saved x")
++assert_eq(select(5, frame:GetPoint(1)), 90, "Quiet Init restores saved y")
++
++assert_true(Runtime:StartEvent() ~= nil, "B15-A Event after Quiet persist")
++assert_eq(Inputs:Show(), true, "Event Show after persist restore")
++assert_eq(frame:IsShown(), true, "Event paints after persist restore")
++local box = editBox()
++assert_true(box ~= nil, "confess box still exists after persist")
++assert_true(box:GetScript("OnEscapePressed") ~= nil, "OnEscapePressed stays after persist")
++box:SetFocus()
++assert_eq(box:HasFocus(), true, "editBox can take focus after persist")
++local fired, fireErr = pcall(function()
++  stub.fire(box, "OnEscapePressed")
++end)
++assert_eq(fired, true, "OnEscapePressed fire does not error after persist")
++assert_eq(fireErr, nil, "OnEscapePressed fire has no error text after persist")
++assert_eq(box:HasFocus(), false, "ESC ClearFocus still does not Hide")
++assert_eq(frame:IsShown(), true, "frame stays shown after ESC ClearFocus")
++assert_eq(Inputs:GetView().shown, true, "GetView().shown stays true after ESC")
++
++local listed = false
++for i = 1, #UISpecialFrames do
++  if UISpecialFrames[i] == "ChurchOfBeefInputs" then listed = true end
++end
++assert_eq(listed, false, "Inputs is still not registered on UISpecialFrames")
++
++Inputs:SetInputTarget("Host")
++Inputs:SetLocalCharacterId(7)
++box:SetText("after persist")
++local ok, err = Inputs:Confess()
++assert_eq(ok, true, "Confess GetText still works after persist")
++assert_eq(err, nil, "Confess after persist has no error")
++assert_eq(#sentConfessions, 1, "Confess after persist sends")
++assert_eq(sentConfessions[1].fields.text, "after persist", "existing Confess pin still holds")
++
++local persistSrcFile = io.open("addon/ChurchOfBeef/UI/Inputs.lua", "r")
++assert_true(persistSrcFile ~= nil, "Inputs.lua is readable after persist pins")
++local persistSrc = persistSrcFile:read("*a")
++persistSrcFile:close()
++assert_true(persistSrc:find("ANCHORS", 1, true) ~= nil, "source whitelists ANCHORS")
++assert_true(persistSrc:find("savePoint", 1, true) ~= nil, "source has savePoint")
++assert_true(persistSrc:find("restorePoint", 1, true) ~= nil, "source has restorePoint")
++assert_true(persistSrc:find("db.inputs", 1, true) ~= nil, "source keys ChurchOfBeefDB.ui.inputs")
++assert_true(persistSrc:find("SetMovable(true)", 1, true) ~= nil, "source SetMovable(true)")
++assert_true(persistSrc:find('RegisterForDrag("LeftButton")', 1, true) ~= nil,
++  "source RegisterForDrag LeftButton")
++assert_eq(persistSrc:find("relativeTo", 1, true), nil, "source never stores relativeTo")
++assert_eq(persistSrc:find("UISpecialFrames", 1, true), nil, "persist source does not use UISpecialFrames")
++assert_true(persistSrc:find("OnEscapePressed", 1, true) ~= nil, "persist source keeps OnEscapePressed")
++assert_true(persistSrc:find("ClearFocus", 1, true) ~= nil, "persist source keeps ClearFocus")
++assert_true(persistSrc:find("SetMultiLine(true)", 1, true) ~= nil, "persist source keeps SetMultiLine(true)")
++assert_eq(persistSrc:find("SUMMON", 1, true), nil, "persist source has no SUMMON")
++assert_eq(persistSrc:find("PlaySound", 1, true), nil, "persist source still has no PlaySound")
++assert_eq(persistSrc:find("OnUpdate", 1, true), nil, "persist source still has no OnUpdate")
++assert_eq(persistSrc:find("Media\\", 1, true), nil, "persist source still has no custom Media")
++assert_eq(persistSrc:find(".tga", 1, true), nil, "persist source still has no custom tga")
++assert_eq(persistSrc:find(".blp", 1, true), nil, "persist source still has no custom blp")
++assert_eq(persistSrc:find(".ttf", 1, true), nil, "persist source still has no custom fonts")
++assert_eq(persistSrc:find("Popes", 1, true), nil, "persist source has no Popes lookup")
++assert_eq(persistSrc:find("IsRegisteredPope", 1, true), nil, "persist source has no IsRegisteredPope")
++
++if standalone then
++  assert_eq(COB.Console, nil, "still no Console after B15-A")
++  assert_eq(COB.Popes, nil, "still no Pope list after B15-A")
++  assert_eq(COB.Sender, nil, "still no Sender after B15-A")
++  assert_eq(COB.Sound, nil, "still no Sound after B15-A")
++  assert_eq(COB.Hud, nil, "still no Hud after B15-A")
++  assert_eq(type(SLASH_CHURCHOFBEEF1), "nil", "B15-A still does not register a slash")
++end
++
++ChurchOfBeefDB = nil
++dofile("addon/ChurchOfBeef/UI/Inputs.lua")
++Inputs = COB.Inputs
++frame = Inputs:Init()
++assert_eq(select(1, frame:GetPoint(1)), "BOTTOM", "missing ChurchOfBeefDB restores BOTTOM")
++assert_eq(select(2, frame:GetPoint(1)), UIParent, "missing ChurchOfBeefDB still parents to UIParent")
++assert_eq(select(4, frame:GetPoint(1)), 0, "missing ChurchOfBeefDB restores x 0")
++assert_eq(select(5, frame:GetPoint(1)), 80, "missing ChurchOfBeefDB restores y 80")
++assert_true(frame:GetScript("OnDragStop") ~= nil, "missing-DB root still has OnDragStop")
++stub.fire(frame, "OnDragStart")
++frame:ClearAllPoints()
++frame:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 99, 99)
++stub.fire(frame, "OnDragStop")
++assert_eq(ChurchOfBeefDB, nil, "save no-ops when ChurchOfBeefDB is missing")
++assert_eq(sounds, 0, "persist path plays no sound")
++end
++runB15A()
++
+ assert_eq(sounds, 0, "the suite played no sound")
+ assert_eq(#stub.chat, 0, "the suite never SendChatMessage")
+ assert_eq(#stub.addonMessages, 0, "the suite never SendAddonMessage")

@@ -1,0 +1,105 @@
+diff --git a/addon/ChurchOfBeef/UI/RecordsBook.lua b/addon/ChurchOfBeef/UI/RecordsBook.lua
+--- a/addon/ChurchOfBeef/UI/RecordsBook.lua
++++ b/addon/ChurchOfBeef/UI/RecordsBook.lua
+@@ -557,5 +557,27 @@
+   pageIndex = nextIndex
+   paint()
+ end
+ 
++-- Wheel up Previous, wheel down Next. Shared by the outer frame and chrome
++-- that sits on top of it (TitleBar, Close, ribbons, Previous, Next).
++local function onMouseWheel(_, delta)
++  if type(delta) ~= "number" then return end
++  if delta > 0 then
++    turn(-1)
++  elseif delta < 0 then
++    turn(1)
++  end
++end
++
++local function wireChildWheel(child)
++  if not child then return end
++  if type(child.EnableMouseWheel) == "function" then
++    child:EnableMouseWheel(true)
++  end
++  if type(child.SetScript) == "function" then
++    child:SetScript("OnMouseWheel", onMouseWheel)
++  end
++end
++
+ local function jumpToTitle(title)
+@@ -623,14 +645,7 @@
+   end
+   if type(frame.SetScript) == "function" then
+-    frame:SetScript("OnMouseWheel", function(_, delta)
+-      if type(delta) ~= "number" then return end
+-      if delta > 0 then
+-        turn(-1)
+-      elseif delta < 0 then
+-        turn(1)
+-      end
+-    end)
++    frame:SetScript("OnMouseWheel", onMouseWheel)
+   end
+   frame:SetWidth(720)
+   frame:SetHeight(tomeHeight())
+@@ -790,6 +805,14 @@
+   labelButton(nextBtn, "Next")
+   nextBtn:SetScript("OnClick", function() turn(1) end)
+   frame.NextButton = nextBtn
++
++  wireChildWheel(frame.TitleBar)
++  wireChildWheel(frame.CloseButton)
++  wireChildWheel(frame.VictoriesRibbon)
++  wireChildWheel(frame.RivalriesRibbon)
++  wireChildWheel(frame.MartyrsRibbon)
++  wireChildWheel(frame.PrevButton)
++  wireChildWheel(frame.NextButton)
+ 
+   restorePoint(frame)
+   rememberSpecial(FRAME_NAME)
+
+diff --git a/tests/test_records.lua b/tests/test_records.lua
+--- a/tests/test_records.lua
++++ b/tests/test_records.lua
+@@ -618,6 +618,40 @@
+ assert_eq(sounds, 0, "wheel turns play no sound")
+ assert_eq(frame:GetScript("OnUpdate"), nil, "wheel turns install no OnUpdate")
+ assert_eq(#Book:GetPages(), 9, "wheel is not a tenth page")
++
++--------------------------------------------------------------------------------
++-- Chrome on top of the tome also turns leaves. Same handler as the outer frame.
++--------------------------------------------------------------------------------
++reset()
++assert_eq(#Book:GetPages(), #BIBLE_TITLES, "PAGE_TITLES stay the nine Bible titles")
++Book:Show()
++assert_true(frame:GetScript("OnMouseWheel") ~= nil, "outer frame still has OnMouseWheel")
++assert_true(frame.TitleBar ~= nil, "TitleBar exists")
++assert_true(frame.TitleBar:GetScript("OnMouseWheel") ~= nil, "TitleBar has OnMouseWheel")
++assert_true(frame.CloseButton ~= nil, "CloseButton exists")
++assert_true(frame.CloseButton:GetScript("OnMouseWheel") ~= nil, "CloseButton has OnMouseWheel")
++assert_true(frame.VictoriesRibbon ~= nil, "VictoriesRibbon exists")
++assert_true(frame.VictoriesRibbon:GetScript("OnMouseWheel") ~= nil, "VictoriesRibbon has OnMouseWheel")
++assert_true(frame.RivalriesRibbon ~= nil, "RivalriesRibbon exists")
++assert_true(frame.RivalriesRibbon:GetScript("OnMouseWheel") ~= nil, "RivalriesRibbon has OnMouseWheel")
++assert_true(frame.MartyrsRibbon ~= nil, "MartyrsRibbon exists")
++assert_true(frame.MartyrsRibbon:GetScript("OnMouseWheel") ~= nil, "MartyrsRibbon has OnMouseWheel")
++assert_true(frame.PrevButton ~= nil, "PrevButton exists")
++assert_true(frame.PrevButton:GetScript("OnMouseWheel") ~= nil, "PrevButton has OnMouseWheel")
++assert_true(frame.NextButton ~= nil, "NextButton exists")
++assert_true(frame.NextButton:GetScript("OnMouseWheel") ~= nil, "NextButton has OnMouseWheel")
++assert_eq(frame.PageTitle:GetText(), "Most Sanctioned Victories", "open book starts on the first leaf")
++assert_eq(frame.Body:GetText(), "", "empty leaf has no invented copy")
++assert_true(stub.fire(frame.TitleBar, "OnMouseWheel", -1), "TitleBar wheel down is wired")
++assert_eq(frame.PageTitle:GetText(), "Longest Streak", "TitleBar wheel down turns Next")
++assert_eq(frame.Body:GetText(), "", "empty leaf body stays empty after TitleBar Next")
++assert_true(stub.fire(frame.PrevButton, "OnMouseWheel", 1), "PrevButton wheel up is wired")
++assert_eq(frame.PageTitle:GetText(), "Most Sanctioned Victories", "PrevButton wheel up turns Previous")
++assert_eq(frame.Body:GetText(), "", "empty leaf body stays empty after PrevButton Previous")
++assert_eq(sounds, 0, "chrome wheel turns play no sound")
++assert_eq(frame:GetScript("OnUpdate"), nil, "chrome wheel installs no OnUpdate")
++assert_eq(#Book:GetPages(), 9, "chrome wheel is not a tenth page")
+ 
+ --------------------------------------------------------------------------------
+ -- Painted counts are roman. GetPages measures stay arabic.
+ --------------------------------------------------------------------------------

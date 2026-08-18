@@ -1,0 +1,151 @@
+diff --git a/addon/ChurchOfBeef/UI/ConsoleDock.lua b/addon/ChurchOfBeef/UI/ConsoleDock.lua
+--- a/addon/ChurchOfBeef/UI/ConsoleDock.lua
++++ b/addon/ChurchOfBeef/UI/ConsoleDock.lua
+@@ -5,7 +5,9 @@
+ -- DIRECTOR CONSOLE. Shown only while Runtime is not QUIET and the
+ -- local player is the registered Pope. Stock SANCTION calls
+ -- Console:Sanction when present. Expand calls Console:Show.
+--- No Quiet chrome. No whisper fan-out. No cue. No congregation bar.
++-- ESC Hide()s ChurchOfBeefConsoleDock via UISpecialFrames (deduped).
++-- Hide is not EndEvent. No Quiet chrome. No whisper fan-out. No cue.
++-- No congregation bar.
+ local ConsoleDock = {
+   MODE = "Event",
+ }
+@@ -151,6 +153,14 @@
+   return btn
+ end
+ 
++local function rememberSpecial(name)
++  if type(UISpecialFrames) ~= "table" then return end
++  for i = 1, #UISpecialFrames do
++    if UISpecialFrames[i] == name then return end
++  end
++  UISpecialFrames[#UISpecialFrames + 1] = name
++end
++
+ local function build()
+   if type(CreateFrame) ~= "function" then return nil end
+   local widget = CreateFrame("Frame", FRAME_NAME, UIParent, "BasicFrameTemplate")
+@@ -196,6 +206,7 @@
+   expand:SetPoint("LEFT", sanction, "RIGHT", 8, 0)
+   widget.Expand = expand
+ 
++  rememberSpecial(FRAME_NAME)
+   return widget
+ end
+ 
+
+diff --git a/tests/test_console_dock.lua b/tests/test_console_dock.lua
+--- a/tests/test_console_dock.lua
++++ b/tests/test_console_dock.lua
+@@ -1,6 +1,7 @@
+ -- Event-only Director Console dock (Bible §18.1, §19.1). Isolated:
+ -- wow_ui_stub + Common + Runtime + ConsoleDock. Stub Sender.IsRegisteredPope
+ -- and Console.Sanction / Show. Quiet hides. StartEvent + Pope shows, title pin.
++-- B22-D: ChurchOfBeefConsoleDock on UISpecialFrames (rememberSpecial).
+ -- No TOC / bootstrap / run.lua / Console.lua / Hud / Toasts. Isolation wrap.
+ ChurchOfBeef = ChurchOfBeef or {}
+ ChurchOfBeef._IN_TEST = true
+@@ -140,6 +141,15 @@
+   return labels
+ end
+ 
++local function countSpecial(name)
++  local n = 0
++  if type(UISpecialFrames) ~= "table" then return 0 end
++  for i = 1, #UISpecialFrames do
++    if UISpecialFrames[i] == name then n = n + 1 end
++  end
++  return n
++end
++
+ --------------------------------------------------------------------------------
+ -- Isolated surface. Other modules stay nil only when this file is the process.
+ --------------------------------------------------------------------------------
+@@ -204,6 +214,16 @@
+ assert_eq(src:find("WhisperAll", 1, true), nil, "source has no WhisperAll")
+ assert_eq(src:find("SendChatMessage", 1, true), nil, "source does not send chat")
+ assert_eq(src:find("PlaySound", 1, true), nil, "source does not play sound")
++assert_true(src:find("local function rememberSpecial", 1, true) ~= nil,
++  "source has rememberSpecial")
++assert_true(src:find("UISpecialFrames[i] == name", 1, true) ~= nil,
++  "rememberSpecial scans UISpecialFrames")
++assert_true(src:find("rememberSpecial(FRAME_NAME)", 1, true) ~= nil,
++  "build remembers FRAME_NAME")
++assert_eq(src:find("table.insert(UISpecialFrames", 1, true), nil,
++  "source does not bare-insert UISpecialFrames")
++assert_eq(src:find("IG_CHARACTER_INFO", 1, true), nil,
++  "source does not play IG_CHARACTER_INFO on hide")
+ assert_eq(src:find("Toasts", 1, true), nil, "source does not drive Toasts")
+ assert_eq(src:find("StatusBar", 1, true), nil, "source does not mint a StatusBar")
+ assert_eq(src:find("FAVOR", 1, true), nil, "source has no favor chrome")
+@@ -226,10 +246,17 @@
+ local frame = ConsoleDock:Init()
+ assert_true(frame ~= nil, "Init creates the dock frame")
+ assert_eq(frame:GetName(), "ChurchOfBeefConsoleDock", "dock has its own global name")
++assert_eq(countSpecial("ChurchOfBeefConsoleDock"), 1, "Init registers the dock once")
+ assert_eq(frame._template, "BasicFrameTemplate", "stock BasicFrameTemplate")
+ assert_true(frame.TitleText ~= nil, "BasicFrame TitleText present")
+ assert_eq(frame.TitleText:GetText(), TITLE, "title is exactly DIRECTOR CONSOLE")
+ assert_eq(ConsoleDock:Init(), frame, "Init is idempotent")
++assert_eq(countSpecial("ChurchOfBeefConsoleDock"), 1, "second Init does not duplicate")
++local savedSpecial = UISpecialFrames
++UISpecialFrames = nil
++assert_eq(ConsoleDock:Init(), frame, "Init survives a missing UISpecialFrames table")
++UISpecialFrames = savedSpecial
++assert_eq(countSpecial("ChurchOfBeefConsoleDock"), 1, "restored table still has one entry")
+ assert_eq(frame._movable, true, "frame is movable")
+ assert_eq(frame._clamped, true, "frame is clamped to screen")
+ assert_eq(frame:GetParent(), UIParent, "insecure frame under UIParent")
+@@ -271,15 +298,35 @@
+ popeFlag = true
+ assert_eq(ConsoleDock:Show(), true, "StartEvent + Pope Show is true")
+ assert_eq(frame:IsShown(), true, "StartEvent + Pope shows the widget")
++assert_eq(frame:GetName(), "ChurchOfBeefConsoleDock", "shown dock name stays ChurchOfBeefConsoleDock")
++assert_eq(countSpecial("ChurchOfBeefConsoleDock"), 1,
++  "StartEvent + Pope lists ChurchOfBeefConsoleDock once")
++assert_eq(ConsoleDock:Init(), frame, "second Init while shown returns the same widget")
++assert_eq(countSpecial("ChurchOfBeefConsoleDock"), 1,
++  "second Init while shown does not duplicate")
+ view = ConsoleDock:GetView()
+ assert_eq(view.shown, true, "StartEvent + Pope GetView.shown is true")
+ assert_eq(view.title, TITLE, "shown title stays DIRECTOR CONSOLE")
+ assert_eq(view.state, "ASSEMBLY", "StartEvent view reports ASSEMBLY")
+ assert_eq(view.pope, true, "shown view records Pope")
+ assert_eq(frame.TitleText:GetText(), TITLE, "painted title is DIRECTOR CONSOLE")
++assert_true(findButton(frame, "SANCTION") ~= nil, "shown SANCTION stays")
++assert_true(findButton(frame, "Expand") ~= nil, "shown Expand stays")
++if frame.CloseButton then
++  assert_eq(frame.CloseButton:IsShown(), false, "shown CloseButton stays hidden")
++end
+ assert_eq(popeNames[1], "Beefina", "Pope check uses UnitName player")
+ assert_eq(sounds, 0, "showing plays no sound")
+ 
++ConsoleDock:Hide()
++assert_eq(frame:IsShown(), false, "Hide still hides the widget")
++assert_eq(ConsoleDock:GetView().shown, false, "Hide paints shown false")
++assert_eq(Runtime:Snapshot().state, "ASSEMBLY", "Hide is not EndEvent")
++assert_eq(countSpecial("ChurchOfBeefConsoleDock"), 1, "Hide does not drop UISpecialFrames")
++assert_eq(sounds, 0, "Hide plays no sound")
++assert_eq(ConsoleDock:Show(), true, "Show after Hide still works while live")
++assert_eq(frame:IsShown(), true, "Show after Hide paints again")
++
+ popeFlag = false
+ view = ConsoleDock:Refresh()
+ assert_eq(view.shown, false, "Pope false Refresh hides")
+@@ -501,9 +548,14 @@
+ assert_eq(src:find("ANCHORS", 1, true) ~= nil, true, "source whitelists ANCHORS")
+ assert_eq(src:find("relativeTo", 1, true), nil, "source never stores relativeTo")
+ assert_eq(src:find("PlaySound", 1, true), nil, "persist source still has no PlaySound")
++assert_eq(src:find("IG_CHARACTER_INFO", 1, true), nil, "persist source still has no IG_CHARACTER_INFO")
++assert_eq(src:find("rememberSpecial(FRAME_NAME)", 1, true) ~= nil, true,
++  "persist source still remembers FRAME_NAME")
+ assert_eq(src:find("OnUpdate", 1, true), nil, "persist source still has no OnUpdate")
+ assert_eq(src:find("Media\\", 1, true), nil, "persist source still has no custom Media")
+ assert_eq(src:find("BasicFrameTemplate", 1, true) ~= nil, true, "dock stays BasicFrameTemplate")
++assert_eq(countSpecial("ChurchOfBeefConsoleDock"), 1,
++  "persist remounts still list ChurchOfBeefConsoleDock once")
+ 
+ ChurchOfBeefDB = nil
+ dofile("addon/ChurchOfBeef/UI/ConsoleDock.lua")

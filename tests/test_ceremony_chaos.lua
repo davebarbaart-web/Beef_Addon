@@ -467,7 +467,7 @@ assert_unchanged(beforeFlood, Runtime:Snapshot(), "flooded INPUT Accepts do not 
 assert_eq(Runtime:Snapshot().state, "ASSEMBLY", "floods do not auto-open a rite")
 
 local petition = Codec:EncodeInput({ kind = "petition", characterId = 1 })
-local favor = Codec:EncodeInput({ kind = "favor", characterId = 2 })
+local favor = Codec:EncodeInput({ kind = "favor", characterId = 2, pick = 1 })
 local confession = Codec:EncodeInput({ kind = "confession", characterId = 3, text = "free text" })
 assert_eq(Codec:Decode(petition).type, "INPUT", "flood petition is INPUT")
 assert_eq(Codec:Decode(favor).type, "INPUT", "flood favor is INPUT")

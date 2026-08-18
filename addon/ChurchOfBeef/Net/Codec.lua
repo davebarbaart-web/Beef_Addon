@@ -2,12 +2,12 @@ ChurchOfBeef = ChurchOfBeef or {}
 local COB = ChurchOfBeef
 
 -- BeefNet v2 codecs (Bible §13.1, §13.4, §20.2–20.3). Encode/decode only.
--- Closed TYPEs: STATE, SNAPSHOT, INPUT. HELLO stays on the transport.
+-- Closed TYPEs: STATE, SNAPSHOT, INPUT, DECREE. HELLO stays on the transport.
 -- No SendAddonMessage. No snapshot schema beyond STATE fields. No whisper,
 -- registered-Pope file, or hold timer.
 local Codec = {
   PROTOCOL = 1,
-  TYPES = { STATE = true, SNAPSHOT = true, INPUT = true },
+  TYPES = { STATE = true, SNAPSHOT = true, INPUT = true, DECREE = true },
   STATES = { QUIET = true, ASSEMBLY = true, RITE = true, CONSEQUENCE = true },
   RITE_TYPES = { Knighting = true, Gora = true, Confession = true, Proclamation = true },
   INPUT_KINDS = { petition = true, favor = true, confession = true },
@@ -32,6 +32,7 @@ local STATE_KEYS = {
   riteType = true,
   subjects = true,
   sequence = true,
+  favor = true,
 }
 
 local SNAPSHOT_REQ_KEYS = {
@@ -49,6 +50,7 @@ local SNAPSHOT_RES_KEYS = {
   riteType = true,
   subjects = true,
   sequence = true,
+  favor = true,
 }
 
 local INPUT_KEYS = {
@@ -57,6 +59,15 @@ local INPUT_KEYS = {
   kind = true,
   characterId = true,
   text = true,
+  pick = true,
+  opponent = true,
+}
+
+local DECREE_KEYS = {
+  type = true,
+  version = true,
+  line = true,
+  flavor = true,
 }
 
 --------------------------------------------------------------------------------
@@ -163,6 +174,37 @@ local function copyFighters(list)
   return out
 end
 
+local function copyFavor(favor)
+  if type(favor) ~= "table" then return nil end
+  return { a = favor.a, b = favor.b }
+end
+
+local function fighterCount(subjects)
+  if type(subjects) ~= "table" or type(subjects.fighters) ~= "table" then return 0 end
+  return #subjects.fighters
+end
+
+local function validateFavor(favor, nFight)
+  if type(favor) ~= "table" then return nil, "invalid favor" end
+  for k, _ in pairs(favor) do
+    if k ~= "a" and k ~= "b" then return nil, "invalid favor" end
+  end
+  if not isSeq(favor.a) or not isSeq(favor.b) then return nil, "invalid favor" end
+  if nFight ~= 2 then return nil, "invalid favor" end
+  return { a = favor.a, b = favor.b }
+end
+
+local function parseFavorField(text)
+  if type(text) ~= "string" or not text:match("^%d+,%d+$") then
+    return nil, "unknown field"
+  end
+  local aStr, bStr = text:match("^(%d+),(%d+)$")
+  local a = parseSeq(aStr)
+  local b = parseSeq(bStr)
+  if a == nil or b == nil then return nil, "invalid favor" end
+  return { a = a, b = b }
+end
+
 --------------------------------------------------------------------------------
 -- STATE body (also SNAPSHOT response — same fields, no extra schema)
 --------------------------------------------------------------------------------
@@ -231,7 +273,7 @@ local function validateStateFields(fields)
   if not isSeq(fields.sequence) then return nil, "invalid sequence" end
   local cand, fight = encodeSubjects(fields.subjects)
   if not cand then return nil, fight end
-  return {
+  local body = {
     eventId = fields.eventId,
     state = state,
     riteType = riteType,
@@ -239,6 +281,12 @@ local function validateStateFields(fields)
     fighters = fight,
     sequence = fields.sequence,
   }
+  if fields.favor ~= nil then
+    local fav, favErr = validateFavor(fields.favor, fighterCount(fields.subjects))
+    if not fav then return nil, favErr end
+    body.favor = fav
+  end
+  return body
 end
 
 local function encodeStateWire(msgType, role, body)
@@ -250,12 +298,15 @@ local function encodeStateWire(msgType, role, body)
   parts[#parts + 1] = body.candidate
   parts[#parts + 1] = body.fighters
   parts[#parts + 1] = fmtId(body.sequence)
+  if body.favor then
+    parts[#parts + 1] = fmtId(body.favor.a) .. "," .. fmtId(body.favor.b)
+  end
   return table.concat(parts, FIELD)
 end
 
 local function decodeStateFields(parts, start)
   local expected = start + 5
-  if #parts > expected then return nil, "unknown field" end
+  if #parts > expected + 1 then return nil, "unknown field" end
   local eventId = parseId(parts[start])
   if not eventId then return nil, "invalid event id" end
   local state = trim(parts[start + 1])
@@ -267,12 +318,20 @@ local function decodeStateFields(parts, start)
   if not subjects then return nil, err end
   local sequence = parseSeq(parts[start + 5])
   if sequence == nil then return nil, "invalid sequence" end
+  local favor = nil
+  if #parts == expected + 1 then
+    local fav, favErr = parseFavorField(parts[expected + 1])
+    if not fav then return nil, favErr end
+    if fighterCount(subjects) ~= 2 then return nil, "invalid favor" end
+    favor = fav
+  end
   return {
     eventId = eventId,
     state = state,
     riteType = riteType,
     subjects = subjects,
     sequence = sequence,
+    favor = favor,
   }
 end
 
@@ -327,11 +386,47 @@ local function encodeTyped(msgType, fields)
         return nil, "text not allowed"
       end
     end
+    if kind ~= "favor" then
+      if fields.pick ~= nil then return nil, "pick not allowed" end
+    else
+      if fields.pick == nil then return nil, "pick required" end
+      if not isId(fields.pick) then return nil, "invalid pick" end
+    end
+    local opponent = nil
+    if fields.opponent ~= nil then
+      if kind ~= "petition" then return nil, "opponent not allowed" end
+      if type(fields.opponent) ~= "string" then return nil, "invalid opponent" end
+      if fields.opponent:find(FIELD, 1, true) or fields.opponent:find("\n", 1, true) then
+        return nil, "invalid opponent"
+      end
+      opponent = trim(fields.opponent)
+    end
     local parts = { tostring(PROTOCOL), "INPUT", kind, fmtId(fields.characterId) }
     if kind == "confession" and type(fields.text) == "string" and fields.text ~= "" then
       parts[#parts + 1] = fields.text
+    elseif kind == "favor" then
+      parts[#parts + 1] = fmtId(fields.pick)
+    elseif kind == "petition" and opponent then
+      parts[#parts + 1] = opponent
     end
     return table.concat(parts, FIELD)
+  end
+
+  if msgType == "DECREE" then
+    if firstUnknown(fields, DECREE_KEYS) then return nil, "unknown field" end
+    local line = trim(fields.line)
+    if not line then return nil, "line is required" end
+    if line:find("\n", 1, true) then return nil, "invalid line" end
+    if fields.flavor ~= nil and type(fields.flavor) ~= "string" then
+      return nil, "invalid flavor"
+    end
+    local flavor = trim(fields.flavor)
+    if flavor and flavor:find("\n", 1, true) then return nil, "invalid flavor" end
+    local wire = table.concat({ tostring(PROTOCOL), "DECREE", line }, FIELD)
+    if flavor then
+      wire = wire .. "\n" .. flavor
+    end
+    return wire
   end
 
   return nil, "unknown message type"
@@ -356,6 +451,10 @@ function Codec:EncodeInput(fields)
   return encodeTyped("INPUT", fields)
 end
 
+function Codec:EncodeDecree(fields)
+  return encodeTyped("DECREE", fields)
+end
+
 --------------------------------------------------------------------------------
 -- Decode
 --------------------------------------------------------------------------------
@@ -374,6 +473,7 @@ local function decodeStateMessage(version, parts)
       fighters = copyFighters(body.subjects.fighters),
     },
     sequence = body.sequence,
+    favor = copyFavor(body.favor),
   }
 end
 
@@ -398,6 +498,33 @@ local function decodeSnapshotMessage(version, parts)
       fighters = copyFighters(body.subjects.fighters),
     },
     sequence = body.sequence,
+    favor = copyFavor(body.favor),
+  }
+end
+
+local function decodeDecreeMessage(version, payload)
+  local first = payload:find(FIELD, 1, true)
+  if not first then return nil, "line is required" end
+  local second = payload:find(FIELD, first + 1, true)
+  local body = ""
+  if second then
+    body = payload:sub(second + 1)
+  end
+  local line, flavor
+  local nl = body:find("\n", 1, true)
+  if nl then
+    line = body:sub(1, nl - 1)
+    flavor = trim(body:sub(nl + 1))
+  else
+    line = body
+  end
+  line = trim(line)
+  if not line then return nil, "line is required" end
+  return {
+    type = "DECREE",
+    version = version,
+    line = line,
+    flavor = flavor,
   }
 end
 
@@ -406,6 +533,37 @@ local function decodeInputMessage(version, parts)
   if not kind or not INPUT_KINDS[kind] then return nil, "invalid kind" end
   local characterId = parseId(parts[4])
   if not characterId then return nil, "invalid character id" end
+  if kind == "favor" then
+    if #parts < 5 then return nil, "pick required" end
+    if #parts > 5 then return nil, "text not allowed" end
+    local pick = parseId(parts[5])
+    if not pick then return nil, "invalid pick" end
+    return {
+      type = "INPUT",
+      version = version,
+      kind = "favor",
+      characterId = characterId,
+      pick = pick,
+    }
+  end
+  if kind == "petition" then
+    if #parts > 5 then return nil, "text not allowed" end
+    local opponent = nil
+    if #parts == 5 then
+      local raw = parts[5]
+      if type(raw) == "string" and raw:find("\n", 1, true) then
+        return nil, "invalid opponent"
+      end
+      opponent = trim(raw)
+    end
+    return {
+      type = "INPUT",
+      version = version,
+      kind = "petition",
+      characterId = characterId,
+      opponent = opponent,
+    }
+  end
   if kind ~= "confession" then
     if #parts > 4 then return nil, "text not allowed" end
     return {
@@ -441,6 +599,7 @@ function Codec:Decode(payload)
   if msgType == "STATE" then return decodeStateMessage(version, parts) end
   if msgType == "SNAPSHOT" then return decodeSnapshotMessage(version, parts) end
   if msgType == "INPUT" then return decodeInputMessage(version, parts) end
+  if msgType == "DECREE" then return decodeDecreeMessage(version, payload) end
   return nil, "unknown message type"
 end
 

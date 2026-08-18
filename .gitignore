@@ -10,6 +10,9 @@
 /elvui-*.json
 /freelance-*.json
 /ux-ia-*.json
+
+# Project-scoped MCP server config — must be shared, not caught by /*.json above.
+!/.mcp.json
 # Research scrape dumps (not product law)
 docs/research/**/.raw/
 docs/research/**/.raw-deepen/

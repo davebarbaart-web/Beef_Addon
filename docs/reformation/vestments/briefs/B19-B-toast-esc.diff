@@ -1,0 +1,127 @@
+# B19-B — Small toast ESC via UISpecialFrames (implementation diff)
+
+Lane-only unified diff of the exclusive implementation files vs the pre-lane working tree.
+
+--- a/addon/ChurchOfBeef/UI/Toasts.lua
++++ b/addon/ChurchOfBeef/UI/Toasts.lua
+@@ -793,6 +793,16 @@
+ 
+   self.frame = frame
+   self.showing = nil
++  -- After the initial Hide so create does not fire OnHide teardown.
++  if type(frame.SetScript) == "function" then
++    local existing = type(frame.GetScript) == "function" and frame:GetScript("OnHide")
++    if not existing then
++      frame:SetScript("OnHide", function()
++        self.showing = nil
++      end)
++    end
++  end
++  rememberSpecial("ChurchOfBeefToast")
+   return frame
+ end
+ 
+
+--- a/tests/test_ui.lua
++++ b/tests/test_ui.lua
+@@ -1,8 +1,8 @@
+ -- Quiet shell: frame creation, drag/resize/coalesce, saved position, minimap
+ -- toggle, system/debug toasts. Event Mode Proclaim (sanction / verdict /
+ -- cowardice / knighting / elevation). B12-D Proclaim ESC, B15-C Quiet-shell
+--- UISpecialFrames, and B18-C HideAll theaterGen live in runB12D()
+--- (Lua 5.1 200-local cap).
++-- UISpecialFrames, B18-C HideAll theaterGen, and B19-B small-toast ESC
++-- live in runB12D() (Lua 5.1 200-local cap).
+ -- No tab registry. No Standing / Ladder / Officer IA. No promote / rite toast
+ -- kinds. Isolation stays under standalone.
+ local standalone = (type(assert_eq) ~= "function")
+@@ -736,8 +736,8 @@
+   srcFile:close()
+   assert_true(src:find("UISpecialFrames", 1, true) ~= nil,
+     "source contains UISpecialFrames")
+-  assert_eq(src:find('rememberSpecial("ChurchOfBeefToast")', 1, true), nil,
+-    "source does not rememberSpecial ChurchOfBeefToast")
++  assert_true(src:find('rememberSpecial("ChurchOfBeefToast")', 1, true) ~= nil,
++    "source rememberSpecial ChurchOfBeefToast")
+   assert_eq(src:find('insert(UISpecialFrames, "ChurchOfBeefToast")', 1, true), nil,
+     "source does not insert ChurchOfBeefToast")
+   assert_eq(src:find("IG_CHARACTER_INFO", 1, true), nil,
+@@ -764,8 +764,8 @@
+     "Proclaim mints the theatrical root")
+   assert_eq(countSpecial("ChurchOfBeefProclaim"), 1,
+     "UISpecialFrames contains ChurchOfBeefProclaim once")
+-  assert_eq(countSpecial("ChurchOfBeefToast"), 0,
+-    "ChurchOfBeefToast is not on UISpecialFrames")
++  assert_eq(countSpecial("ChurchOfBeefToast"), 1,
++    "ChurchOfBeefToast is on UISpecialFrames once")
+   COB.Toasts:InitTheater()
+   assert_eq(countSpecial("ChurchOfBeefProclaim"), 1,
+     "InitTheater does not duplicate ChurchOfBeefProclaim")
+@@ -864,7 +864,67 @@
+     "second shell build does not touch ChurchOfBeefProclaim")
+   assert_eq(UISpecialFrames[1], "ChurchOfBeefFrame",
+     "forced rebuild keeps ChurchOfBeefFrame first")
++
++  -- B19-B: small toast ESC via UISpecialFrames. Nested here (200-local).
++  -- Proclaim special-frame pins stay. No PlaySound. No hideTheater from
++  -- the small-toast OnHide.
++  local initBody = src:match("function Toasts:Init%(%)(.-)\nfunction Toasts:Push")
++  assert_true(type(initBody) == "string" and initBody ~= "",
++    "B19-B Init body is readable")
++  assert_true(initBody:find('rememberSpecial("ChurchOfBeefToast")', 1, true) ~= nil,
++    "Init rememberSpecial ChurchOfBeefToast")
++  assert_true(initBody:find("OnHide", 1, true) ~= nil,
++    "Init wires OnHide on the small frame")
++  assert_eq(initBody:find("hideTheater", 1, true), nil,
++    "small-toast OnHide does not call hideTheater")
++  assert_eq(initBody:find("PlaySound", 1, true), nil,
++    "Init does not PlaySound")
++
++  COB.Toasts:Init()
++  assert_eq(countSpecial("ChurchOfBeefToast"), 1,
++    "after Init, ChurchOfBeefToast is on UISpecialFrames once")
++  COB.Toasts:Init()
++  assert_eq(countSpecial("ChurchOfBeefToast"), 1,
++    "second Init does not duplicate ChurchOfBeefToast")
++  assert_eq(countSpecial("ChurchOfBeefProclaim"), 1,
++    "B12-D Proclaim pin stays after toast register")
++  assert_true(COB.Toasts.frame ~= nil and COB.Toasts.frame:GetScript("OnHide") ~= nil,
++    "small toast has OnHide sync")
+ 
++  theaterReset()
++  assert_eq(COB.Toasts:Push({ kind = "system", text = "esc dismiss" }), true,
++    "Push before ESC Hide")
++  assert_eq(COB.Toasts:ShowingKind(), "system", "showing before ESC Hide")
++  assert_eq(COB.Toasts.frame:IsShown(), true, "small toast shown before ESC Hide")
++  local cuesToast = #played
++  COB.Toasts.frame:Hide()
++  assert_eq(COB.Toasts.frame:IsShown(), false, "ESC Hide()s the small toast")
++  assert_eq(COB.Toasts:ShowingKind(), nil, "ESC Hide clears ShowingKind")
++  assert_eq(#played, cuesToast, "ESC Hide plays no sound")
++  assert_eq(countSpecial("ChurchOfBeefToast"), 1,
++    "ESC Hide does not re-register ChurchOfBeefToast")
++  assert_eq(COB.Toasts:Show("after esc"), true, "Show after ESC Hide still works")
++  assert_eq(COB.Toasts:ShowingKind(), "system", "later Show shows a kind")
++  assert_eq(COB.Toasts.frame:IsShown(), true, "later Show shows the small toast")
++  assert_eq(COB.Toasts.frame.text:GetText(), "after esc", "later Show paints new copy")
++  assert_eq(findButton(COB.Toasts.frame), nil, "ESC path adds no close button")
++
++  theaterReset()
++  assert_true(COB.Runtime:StartEvent() ~= nil, "StartEvent for toast ESC vs theater")
++  assert_eq(COB.Toasts:Proclaim("verdict", { ruling = "void" }), true,
++    "Proclaim while testing small-toast OnHide")
++  assert_eq(COB.Toasts.theater.root:IsShown(), true, "theater shown before small Hide")
++  assert_eq(COB.Toasts:Push({ kind = "system", text = "beside theater" }), true,
++    "small toast during theater")
++  COB.Toasts.frame:Hide()
++  assert_eq(COB.Toasts:ShowingKind(), nil, "small Hide clears ShowingKind beside theater")
++  assert_eq(COB.Toasts.theater.root:IsShown(), true,
++    "small-toast OnHide does not hide theater")
++  assert_eq(countSpecial("ChurchOfBeefProclaim"), 1,
++    "small Hide keeps ChurchOfBeefProclaim once")
++  assert_eq(countSpecial("ChurchOfBeefToast"), 1,
++    "small Hide keeps ChurchOfBeefToast once")
++
+   if standalone then
+     assert_eq(COB.Console, nil, "isolation still does not load Console")
+     assert_eq(COB.Hud, nil, "isolation still does not load Hud")

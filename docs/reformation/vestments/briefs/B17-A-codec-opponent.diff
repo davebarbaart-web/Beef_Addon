@@ -1,0 +1,183 @@
+diff --git a/addon/ChurchOfBeef/Net/Codec.lua b/addon/ChurchOfBeef/Net/Codec.lua
+--- a/addon/ChurchOfBeef/Net/Codec.lua
++++ b/addon/ChurchOfBeef/Net/Codec.lua
+@@ -60,6 +60,7 @@
+   characterId = true,
+   text = true,
+   pick = true,
++  opponent = true,
+ }
+ 
+ local DECREE_KEYS = {
+@@ -391,11 +392,22 @@
+       if fields.pick == nil then return nil, "pick required" end
+       if not isId(fields.pick) then return nil, "invalid pick" end
+     end
++    local opponent = nil
++    if fields.opponent ~= nil then
++      if kind ~= "petition" then return nil, "opponent not allowed" end
++      if type(fields.opponent) ~= "string" then return nil, "invalid opponent" end
++      if fields.opponent:find(FIELD, 1, true) or fields.opponent:find("\n", 1, true) then
++        return nil, "invalid opponent"
++      end
++      opponent = trim(fields.opponent)
++    end
+     local parts = { tostring(PROTOCOL), "INPUT", kind, fmtId(fields.characterId) }
+     if kind == "confession" and type(fields.text) == "string" and fields.text ~= "" then
+       parts[#parts + 1] = fields.text
+     elseif kind == "favor" then
+       parts[#parts + 1] = fmtId(fields.pick)
++    elseif kind == "petition" and opponent then
++      parts[#parts + 1] = opponent
+     end
+     return table.concat(parts, FIELD)
+   end
+@@ -534,6 +546,24 @@
+       pick = pick,
+     }
+   end
++  if kind == "petition" then
++    if #parts > 5 then return nil, "text not allowed" end
++    local opponent = nil
++    if #parts == 5 then
++      local raw = parts[5]
++      if type(raw) == "string" and raw:find("\n", 1, true) then
++        return nil, "invalid opponent"
++      end
++      opponent = trim(raw)
++    end
++    return {
++      type = "INPUT",
++      version = version,
++      kind = "petition",
++      characterId = characterId,
++      opponent = opponent,
++    }
++  end
+   if kind ~= "confession" then
+     if #parts > 4 then return nil, "text not allowed" end
+     return {
+
+diff --git a/tests/test_net_codec.lua b/tests/test_net_codec.lua
+--- a/tests/test_net_codec.lua
++++ b/tests/test_net_codec.lua
+@@ -281,14 +281,16 @@
+ --------------------------------------------------------------------------------
+ -- INPUT: petition | favor | confession. Character id. Confession may carry text.
++-- Petition may carry an optional opponent name. Never theater.
+ --------------------------------------------------------------------------------
+ local petition = Codec:Decode(Codec:EncodeInput({ kind = "petition", characterId = 3 }))
+ assert_eq(petition.type, "INPUT", "petition is INPUT")
+ assert_eq(petition.version, 1, "petition carries a protocol version")
+ assert_eq(petition.kind, "petition", "petition kind")
+ assert_eq(petition.characterId, 3, "petition character id")
+ assert_eq(petition.text, nil, "petition carries no text")
++assert_eq(petition.opponent, nil, "petition without opponent omits the field")
+ assert_eq(petition.state, nil, "petition is not theater")
+ assert_eq(petition.riteType, nil, "petition has no rite type")
+ assert_eq(petition.eventId, nil, "petition has no event id")
+@@ -332,6 +334,83 @@
+ assert_eq(Codec:DecodeInput(Codec:EncodeInput({ kind = "petition", characterId = 1 })).kind,
+   "petition", "DecodeInput accepts INPUT")
+ 
++do
++  local namedWire = Codec:EncodeInput({ kind = "petition", characterId = 3, opponent = "Chuckroast" })
++  assert_eq(namedWire, "1:INPUT:petition:3:Chuckroast", "named petition is five wire parts")
++  local named = namedWire and Codec:Decode(namedWire) or {}
++  assert_eq(named.kind, "petition", "named petition kind")
++  assert_eq(named.characterId, 3, "named petition character id")
++  assert_eq(named.opponent, "Chuckroast", "named petition opponent round-trips")
++  assert_eq(named.text, nil, "named petition still has no text")
++  assert_eq(named.pick, nil, "named petition still has no pick")
++  assert_eq(named.state, nil, "named petition is not theater")
++  assert_eq(Codec:Encode({
++    type = "INPUT",
++    kind = "petition",
++    characterId = 3,
++    opponent = "Chuckroast",
++  }), "1:INPUT:petition:3:Chuckroast", "unified Encode accepts petition opponent")
++  local viaDecodeInput = Codec:DecodeInput("1:INPUT:petition:3:Chuckroast")
++  assert_eq(viaDecodeInput and viaDecodeInput.opponent, "Chuckroast",
++    "DecodeInput accepts petition opponent")
++
++  local srcOpp = { kind = "petition", characterId = 3, opponent = "  Chuckroast  " }
++  assert_eq(Codec:EncodeInput(srcOpp), "1:INPUT:petition:3:Chuckroast", "opponent is trimmed on encode")
++  assert_eq(srcOpp.opponent, "  Chuckroast  ", "encode does not trim onto the caller")
++  assert_eq(srcOpp.type, nil, "encode does not stamp type onto the caller")
++  local paddedWire = Codec:Decode("1:INPUT:petition:3: Chuckroast ")
++  assert_eq(paddedWire and paddedWire.opponent, "Chuckroast", "opponent is trimmed on decode")
++  assert_eq(Codec:EncodeInput({ kind = "petition", characterId = 3, opponent = "" }),
++    "1:INPUT:petition:3", "empty opponent is omitted")
++  assert_eq(Codec:EncodeInput({ kind = "petition", characterId = 3, opponent = "   " }),
++    "1:INPUT:petition:3", "whitespace opponent is omitted")
++  local emptyFifth, emptyFifthErr = Codec:Decode("1:INPUT:petition:3:")
++  assert_eq(emptyFifth ~= nil, true, "empty fifth part still decodes")
++  assert_eq(emptyFifthErr, nil, "empty fifth part has no error")
++  assert_eq(emptyFifth and emptyFifth.opponent, nil, "empty fifth part omits opponent")
++  local whiteFifth, whiteFifthErr = Codec:Decode("1:INPUT:petition:3:   ")
++  assert_eq(whiteFifth ~= nil, true, "whitespace fifth part still decodes")
++  assert_eq(whiteFifthErr, nil, "whitespace fifth part has no error")
++  assert_eq(whiteFifth and whiteFifth.opponent, nil, "whitespace fifth part omits opponent")
++
++  local please = Codec:Decode("1:INPUT:petition:1:please")
++  assert_eq(please ~= nil, true, "fifth petition part is a legal opponent")
++  assert_eq(please and please.kind, "petition", "please-wire kind")
++  assert_eq(please and please.characterId, 1, "please-wire character id")
++  assert_eq(please and please.opponent, "please", "please is a legal opponent name")
++  assert_eq(please and please.text, nil, "please-wire is not confession text")
++
++  refuse(function() return Codec:EncodeInput({
++    kind = "petition",
++    characterId = 3,
++    opponent = "Chuck:roast",
++  }) end, "invalid opponent", "colon in opponent")
++  refuse(function() return Codec:EncodeInput({
++    kind = "petition",
++    characterId = 3,
++    opponent = "Chuck\nroast",
++  }) end, "invalid opponent", "newline in opponent")
++  refuse(function() return Codec:EncodeInput({
++    kind = "petition",
++    characterId = 3,
++    opponent = "Chuckroast\n",
++  }) end, "invalid opponent", "trailing newline in opponent")
++  refuse(function() return Codec:EncodeInput({
++    kind = "petition",
++    characterId = 3,
++    opponent = 7,
++  }) end, "invalid opponent", "opponent is a name not an id")
++  refuse(function() return Codec:EncodeInput({
++    kind = "favor",
++    characterId = 8,
++    pick = 9,
++    opponent = "Chuckroast",
++  }) end, "opponent not allowed", "favor opponent")
++  refuse(function() return Codec:EncodeInput({
++    kind = "confession",
++    characterId = 1,
++    opponent = "Chuckroast",
++  }) end, "opponent not allowed", "confession opponent")
++  refuse(function() return Codec:Decode("1:INPUT:petition:1:please:extra") end,
++    "text not allowed", "petition sixth part")
++end
++
+ --------------------------------------------------------------------------------
+ -- DECREE: line required; optional flavor after the first newline. Colon in line is legal.
+ --------------------------------------------------------------------------------
+@@ -582,7 +661,7 @@
+ refuse(function() return Codec:Decode("1:INPUT:petition:Beefina") end, "invalid character id", "wire name character")
+ 
+ --------------------------------------------------------------------------------
+--- Fail closed: INPUT never encodes theater; petition/favor never carry text
++-- Fail closed: INPUT never encodes theater; petition/favor never encode text
+ --------------------------------------------------------------------------------
+ refuse(function() return Codec:EncodeInput({
+   kind = "petition",
+@@ -594,7 +673,6 @@
+   characterId = 1,
+   text = "red",
+ }) end, "text not allowed", "favor text")
+-refuse(function() return Codec:Decode("1:INPUT:petition:1:please") end, "text not allowed", "wire petition text")
+ refuse(function() return Codec:EncodeInput({ kind = "favor", characterId = 8 }) end, "pick required", "favor without pick")
+ refuse(function() return Codec:Decode("1:INPUT:favor:8") end, "pick required", "wire favor without pick")
+ refuse(function() return Codec:Decode("1:INPUT:favor:1:red") end, "invalid pick", "wire favor non-id pick")

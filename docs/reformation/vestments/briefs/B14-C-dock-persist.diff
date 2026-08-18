@@ -1,0 +1,184 @@
+diff --git a/addon/ChurchOfBeef/UI/ConsoleDock.lua b/addon/ChurchOfBeef/UI/ConsoleDock.lua
+--- a/addon/ChurchOfBeef/UI/ConsoleDock.lua
++++ b/addon/ChurchOfBeef/UI/ConsoleDock.lua
+@@ -15,7 +15,15 @@
+ local TITLE = "DIRECTOR CONSOLE"
+ local WIDTH, HEIGHT = 260, 72
+ local SANCTION_W, EXPAND_W, BTN_H = 140, 80, 28
++local DEFAULT_POINT = "BOTTOMLEFT"
++local DEFAULT_X, DEFAULT_Y = 16, 80
+ 
++local ANCHORS = {
++  TOPLEFT = true, TOP = true, TOPRIGHT = true,
++  LEFT = true, CENTER = true, RIGHT = true,
++  BOTTOMLEFT = true, BOTTOM = true, BOTTOMRIGHT = true,
++}
++
+ local frame = nil
+ local lastView = nil
+ 
+@@ -82,6 +90,33 @@
+   }
+ end
+ 
++local function uiDb()
++  if type(ChurchOfBeefDB) ~= "table" then return nil end
++  if type(ChurchOfBeefDB.ui) ~= "table" then ChurchOfBeefDB.ui = {} end
++  return ChurchOfBeefDB.ui
++end
++
++local function savePoint(widget)
++  local db = uiDb()
++  if not db then return end
++  local point, _, relativePoint, x, y = widget:GetPoint(1)
++  if type(point) ~= "string" or type(x) ~= "number" or type(y) ~= "number" then return end
++  db.consoleDock = { point = point, relativePoint = relativePoint or point, x = x, y = y }
++end
++
++local function restorePoint(widget)
++  local db = uiDb()
++  local p = db and db.consoleDock
++  widget:ClearAllPoints()
++  local relative = type(p) == "table" and (p.relativePoint or p.point) or nil
++  if type(p) == "table" and ANCHORS[p.point] and ANCHORS[relative]
++      and type(p.x) == "number" and type(p.y) == "number" then
++    widget:SetPoint(p.point, UIParent, relative, p.x, p.y)
++  else
++    widget:SetPoint(DEFAULT_POINT, UIParent, DEFAULT_POINT, DEFAULT_X, DEFAULT_Y)
++  end
++end
++
+ local function paint(shown)
+   local visible = shown and true or false
+   lastView = {
+@@ -126,8 +161,7 @@
+   widget:SetClampedToScreen(true)
+   widget:SetWidth(WIDTH)
+   widget:SetHeight(HEIGHT)
+-  widget:ClearAllPoints()
+-  widget:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", 16, 80)
++  restorePoint(widget)
+   widget:Hide()
+ 
+   if widget.TitleText and widget.TitleText.SetText then
+@@ -144,7 +178,10 @@
+   titleBar:EnableMouse(true)
+   titleBar:RegisterForDrag("LeftButton")
+   titleBar:SetScript("OnDragStart", function() widget:StartMoving() end)
+-  titleBar:SetScript("OnDragStop", function() widget:StopMovingOrSizing() end)
++  titleBar:SetScript("OnDragStop", function()
++    widget:StopMovingOrSizing()
++    savePoint(widget)
++  end)
+   widget.TitleBar = titleBar
+ 
+   local sanction = stockButton(widget, "SANCTION", SANCTION_W, function()
+
+diff --git a/tests/test_console_dock.lua b/tests/test_console_dock.lua
+--- a/tests/test_console_dock.lua
++++ b/tests/test_console_dock.lua
+@@ -423,7 +423,104 @@
+ frame = ConsoleDock:Init()
+ assert_true(frame ~= nil, "Init after CreateFrame rebuilds the frame")
+ assert_eq(frame:IsShown(), false, "rebuilt Init in Quiet stays hidden")
++
++--------------------------------------------------------------------------------
++-- Drag persists when ChurchOfBeefDB.ui exists. TitleBar OnDragStop, not root.
++-- Invalid saved point falls back. Quiet Init with a saved point still hides.
++-- ResetForTests must not wipe SavedVariables. Missing DB: default restore;
++-- save no-ops.
++--------------------------------------------------------------------------------
++ChurchOfBeefDB = { ui = {} }
++reset()
++frame = ConsoleDock:Init()
++Runtime:StartEvent()
++popeFlag = true
++assert_eq(ConsoleDock:Show(), true, "StartEvent + Pope Show is true before drag")
++assert_eq(frame:GetScript("OnDragStop"), nil, "drag is on the title bar, not the root")
++local titleBar = frame.TitleBar
++assert_true(titleBar ~= nil, "title bar is the drag handle")
++stub.fire(titleBar, "OnDragStart")
++assert_eq(frame._moving, true, "dragging the title bar moves the dock")
++frame:ClearAllPoints()
++frame:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 24, 90)
++stub.fire(titleBar, "OnDragStop")
++assert_eq(frame._moving, false, "drop stops the move")
++assert_eq(frame:GetScript("OnUpdate"), nil, "drop leaves no animator")
++local saved = ChurchOfBeefDB.ui and ChurchOfBeefDB.ui.consoleDock
++assert_true(type(saved) == "table", "moved position is saved")
++assert_eq(saved and saved.point, "TOPLEFT", "saved anchor point")
++assert_eq(saved and saved.relativePoint, "TOPLEFT", "saved relative point")
++assert_eq(saved and saved.x, 24, "saved x")
++assert_eq(saved and saved.y, 90, "saved y")
++assert_eq(saved and saved.relativeTo, nil, "no frame reference lands in SavedVariables")
+ 
++dofile("addon/ChurchOfBeef/UI/ConsoleDock.lua")
++ConsoleDock = COB.ConsoleDock
++local reloaded = ConsoleDock:Init()
++local rp, rto, rrp, rx, ry = reloaded:GetPoint(1)
++assert_eq(rp, "TOPLEFT", "saved top-left anchor restores")
++assert_eq(rto, UIParent, "restore still parents to UIParent")
++assert_eq(rrp, "TOPLEFT", "saved relative top-left restores")
++assert_eq(rx, 24, "saved x restores")
++assert_eq(ry, 90, "saved y restores")
++frame = reloaded
++
++ChurchOfBeefDB.ui.consoleDock = { point = "MIDDLE-OF-NOWHERE", relativePoint = "CENTER", x = 1, y = 2 }
++dofile("addon/ChurchOfBeef/UI/ConsoleDock.lua")
++ConsoleDock = COB.ConsoleDock
++local safe = ConsoleDock:Init()
++assert_eq(select(1, safe:GetPoint(1)), "BOTTOMLEFT", "invalid saved anchor falls back to BOTTOMLEFT")
++assert_eq(select(2, safe:GetPoint(1)), UIParent, "invalid saved point still parents to UIParent")
++assert_eq(select(4, safe:GetPoint(1)), 16, "invalid saved x falls back to 16")
++assert_eq(select(5, safe:GetPoint(1)), 80, "invalid saved y falls back to 80")
++frame = safe
++
++ChurchOfBeefDB.ui.consoleDock = { point = "TOPLEFT", relativePoint = "TOPLEFT", x = 24, y = 90 }
++reset()
++assert_true(type(ChurchOfBeefDB.ui.consoleDock) == "table", "ResetForTests does not wipe SV")
++assert_eq(ChurchOfBeefDB.ui.consoleDock.point, "TOPLEFT", "ResetForTests leaves the saved point")
++frame = ConsoleDock:Init()
++assert_eq(frame:IsShown(), false, "Quiet Init with a saved point still hides")
++assert_eq(select(1, frame:GetPoint(1)), "TOPLEFT", "Quiet Init still restores the saved point")
++assert_eq(select(2, frame:GetPoint(1)), UIParent, "Quiet restore still parents to UIParent")
++assert_eq(select(4, frame:GetPoint(1)), 24, "Quiet Init restores saved x")
++assert_eq(select(5, frame:GetPoint(1)), 90, "Quiet Init restores saved y")
++assert_eq(frame.TitleText:GetText(), TITLE, "Quiet restored title stays DIRECTOR CONSOLE")
++if frame.CloseButton then
++  assert_eq(frame.CloseButton:IsShown(), false, "Quiet restored CloseButton stays hidden")
++end
++assert_true(findButton(frame, "SANCTION") ~= nil, "Quiet restored SANCTION stays")
++assert_true(findButton(frame, "Expand") ~= nil, "Quiet restored Expand stays")
++assert_eq(sounds, 0, "persist path plays no sound")
++
++srcFile = io.open("addon/ChurchOfBeef/UI/ConsoleDock.lua", "r")
++assert_true(srcFile ~= nil, "ConsoleDock.lua is readable after persist pins")
++src = srcFile:read("*a")
++srcFile:close()
++assert_eq(src:find("consoleDock", 1, true) ~= nil, true, "source keys ChurchOfBeefDB.ui.consoleDock")
++assert_eq(src:find("ANCHORS", 1, true) ~= nil, true, "source whitelists ANCHORS")
++assert_eq(src:find("relativeTo", 1, true), nil, "source never stores relativeTo")
++assert_eq(src:find("PlaySound", 1, true), nil, "persist source still has no PlaySound")
++assert_eq(src:find("OnUpdate", 1, true), nil, "persist source still has no OnUpdate")
++assert_eq(src:find("Media\\", 1, true), nil, "persist source still has no custom Media")
++assert_eq(src:find("BasicFrameTemplate", 1, true) ~= nil, true, "dock stays BasicFrameTemplate")
++
++ChurchOfBeefDB = nil
++dofile("addon/ChurchOfBeef/UI/ConsoleDock.lua")
++ConsoleDock = COB.ConsoleDock
++frame = ConsoleDock:Init()
++assert_eq(select(1, frame:GetPoint(1)), "BOTTOMLEFT", "missing ChurchOfBeefDB restores BOTTOMLEFT")
++assert_eq(select(2, frame:GetPoint(1)), UIParent, "missing ChurchOfBeefDB still parents to UIParent")
++assert_eq(select(4, frame:GetPoint(1)), 16, "missing ChurchOfBeefDB restores x 16")
++assert_eq(select(5, frame:GetPoint(1)), 80, "missing ChurchOfBeefDB restores y 80")
++titleBar = frame.TitleBar
++assert_true(titleBar ~= nil, "missing-DB title bar is still the drag handle")
++stub.fire(titleBar, "OnDragStart")
++frame:ClearAllPoints()
++frame:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 99, 99)
++stub.fire(titleBar, "OnDragStop")
++assert_eq(ChurchOfBeefDB, nil, "save no-ops when ChurchOfBeefDB is missing")
++
+ assert_eq(sounds, 0, "the suite played no sound")
+ 
+ COB.Console = savedConsole

@@ -36,24 +36,8 @@ local FOOTER_BOTTOM = 11
 -- Live drag and GUILD_ROSTER_UPDATE storms: coalesce dirty paints ≤10 Hz.
 local PAINT_COALESCE = 0.1
 
--- One palette for Beef surfaces (class color on names only when a later
--- theatrical surface needs it; no brand hex paint on chrome). MainFrame loads
--- first (TOC order). Toasts read COB.UI.Palette.HeavyEdge.
-UI.Palette = {
-  Gold       = { 1.0, 0.82, 0.0 },
-  IdleTab    = { 0.55, 0.48, 0.32 },
-  Rule       = { 0.45, 0.36, 0.18, 0.75 },
-  TitleStone = { 0.95, 0.88, 0.70 },
-  Seat       = { 0.72, 0.66, 0.52 },
-  SeatWarn   = { 1.0, 0.55, 0.32 },
-  Hint       = { 0.85, 0.55, 0.35 },
-  Muted      = { 0.55, 0.50, 0.42 },
-  Divider    = { 0.55, 0.45, 0.28 },
-  HeavyBG    = { 0.06, 0.05, 0.04, 0.92 },
-  HeavyEdge  = { 0.65, 0.55, 0.35, 1 },
-}
-
-local RULE_COLOR = UI.Palette.Rule
+-- The palette lives in COB.Theme (UI Overhaul wave: tokens on surfaces, never
+-- literals). The old UI.Palette table is gone; nothing read it but the rule below.
 
 local ANCHORS = {
   TOPLEFT = true, TOP = true, TOPRIGHT = true,
@@ -325,8 +309,9 @@ local function addHairline(parent, name, topOffset)
   rule:SetPoint("TOPLEFT", parent, "TOPLEFT", SIDE_INSET, -topOffset)
   rule:SetPoint("TOPRIGHT", parent, "TOPRIGHT", -SIDE_INSET, -topOffset)
   rule:SetTexture("Interface\\Buttons\\WHITE8X8")
-  if rule.SetVertexColor then
-    rule:SetVertexColor(RULE_COLOR[1], RULE_COLOR[2], RULE_COLOR[3], RULE_COLOR[4])
+  if rule.SetVertexColor and COB.Theme and COB.Theme.Color then
+    local r, g, b = COB.Theme:Color("gold")
+    if r then rule:SetVertexColor(r, g, b, 0.75) end
   end
   return rule
 end
@@ -466,12 +451,41 @@ local function buildFrame()
   return frame, content
 end
 
+-- Named Quiet shell on UISpecialFrames (scan then append). Missing table
+-- no-ops. No panel whoosh on ESC / show / hide.
+local function rememberSpecial(name)
+  if type(UISpecialFrames) ~= "table" then return end
+  for i = 1, #UISpecialFrames do
+    if UISpecialFrames[i] == name then return end
+  end
+  UISpecialFrames[#UISpecialFrames + 1] = name
+end
+
+-- ESC Hide via UISpecialFrames bypasses UI:Hide. Restore a missing OnHide;
+-- never replace an existing script. No panel whoosh.
+local function wireShellOnHide(frame)
+  if not frame then return end
+  if type(frame.SetScript) ~= "function" then return end
+  local existing = type(frame.GetScript) == "function" and frame:GetScript("OnHide")
+  if existing then return end
+  frame:SetScript("OnHide", function()
+    -- Escape via UISpecialFrames bypasses UI:Hide — never stay stuck sizing.
+    UI:_StopSizing()
+    local ui = uiDb()
+    if ui then ui.shown = false end
+  end)
+end
+
 --------------------------------------------------------------------------------
 -- Lifecycle
 --------------------------------------------------------------------------------
 
 function UI:Init()
-  if self.frame then return self.frame end
+  if self.frame then
+    rememberSpecial(FRAME_NAME)
+    wireShellOnHide(self.frame)
+    return self.frame
+  end
   if type(CreateFrame) ~= "function" then return nil end
 
   local db = uiDb()
@@ -503,16 +517,9 @@ function UI:Init()
     UI:OnStatusChanged()
     UI:RefreshLadder()
   end)
-  frame:SetScript("OnHide", function()
-    -- Escape via UISpecialFrames bypasses UI:Hide — never stay stuck sizing.
-    UI:_StopSizing()
-    local ui = uiDb()
-    if ui then ui.shown = false end
-  end)
+  wireShellOnHide(frame)
 
-  if type(UISpecialFrames) == "table" then
-    table.insert(UISpecialFrames, FRAME_NAME)
-  end
+  rememberSpecial(FRAME_NAME)
 
   self:OnStatusChanged()
 
@@ -525,6 +532,30 @@ function UI:Init()
   end
   if COB.Hud and COB.Hud.Init then
     COB.Hud:Init()
+  end
+  if COB.Console and COB.Console.Init then
+    pcall(COB.Console.Init, COB.Console)
+  end
+  if COB.Toasts and COB.Toasts.Init then
+    pcall(COB.Toasts.Init, COB.Toasts)
+  end
+  if COB.DecreeBanner and COB.DecreeBanner.Init then
+    pcall(COB.DecreeBanner.Init, COB.DecreeBanner)
+  end
+  if COB.Sound and COB.Sound.Init then
+    pcall(COB.Sound.Init, COB.Sound)
+  end
+  if COB.FighterCard and COB.FighterCard.Init then
+    pcall(COB.FighterCard.Init, COB.FighterCard)
+  end
+  if COB.Inputs and COB.Inputs.Init then
+    pcall(COB.Inputs.Init, COB.Inputs)
+  end
+  if COB.ConsoleDock and COB.ConsoleDock.Init then
+    pcall(COB.ConsoleDock.Init, COB.ConsoleDock)
+  end
+  if COB.Markers and COB.Markers.Init then
+    pcall(COB.Markers.Init, COB.Markers)
   end
 
   if wasShown then
@@ -547,14 +578,20 @@ end
 function UI:Show()
   if not self.frame then self:Init() end
   if not self.frame then return end
+  wireShellOnHide(self.frame)
+  rememberSpecial(FRAME_NAME)
   self.frame:Show()
   self:OnStatusChanged()
 end
 
 function UI:Hide()
   if not self.frame then return end
+  wireShellOnHide(self.frame)
+  rememberSpecial(FRAME_NAME)
   self:_StopSizing()
   self.frame:Hide()
+  local ui = uiDb()
+  if ui then ui.shown = false end
 end
 
 function UI:IsShown()

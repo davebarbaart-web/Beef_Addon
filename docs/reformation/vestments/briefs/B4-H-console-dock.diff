@@ -1,0 +1,672 @@
+diff --git a/addon/ChurchOfBeef/UI/ConsoleDock.lua b/addon/ChurchOfBeef/UI/ConsoleDock.lua
+new file mode 100644
+index 0000000..91e878e
+--- /dev/null
++++ b/addon/ChurchOfBeef/UI/ConsoleDock.lua
+@@ -0,0 +1,224 @@
++ChurchOfBeef = ChurchOfBeef or {}
++local COB = ChurchOfBeef
++
++-- Event-only Pope dock (Bible §18.1 collapsible, §19.1). Titled
++-- DIRECTOR CONSOLE. Shown only while Runtime is not QUIET and the
++-- local player is the registered Pope. Stock SANCTION calls
++-- Console:Sanction when present. Expand calls Console:Show.
++-- No Quiet chrome. No whisper fan-out. No cue. No congregation bar.
++local ConsoleDock = {
++  MODE = "Event",
++}
++COB.ConsoleDock = ConsoleDock
++
++local FRAME_NAME = "ChurchOfBeefConsoleDock"
++local TITLE = "DIRECTOR CONSOLE"
++local WIDTH, HEIGHT = 260, 72
++local SANCTION_W, EXPAND_W, BTN_H = 140, 80, 28
++
++local frame = nil
++local lastView = nil
++
++local function deepcopy(value)
++  if type(value) ~= "table" then return value end
++  local out = {}
++  for k, v in pairs(value) do
++    out[deepcopy(k)] = deepcopy(v)
++  end
++  return out
++end
++
++local function runtimeState()
++  if not COB.Runtime or type(COB.Runtime.Snapshot) ~= "function" then
++    return "QUIET"
++  end
++  local snap = COB.Runtime:Snapshot()
++  if type(snap) ~= "table" or type(snap.state) ~= "string" then
++    return "QUIET"
++  end
++  return snap.state
++end
++
++local function localSender()
++  if COB.Group and type(COB.Group.PlayerName) == "function" then
++    return COB.Group.PlayerName()
++  end
++  if COB.Net and type(COB.Net.PlayerName) == "function" then
++    return COB.Net:PlayerName()
++  end
++  if type(UnitName) == "function" then
++    return UnitName("player")
++  end
++  return nil
++end
++
++local function isLocalPope()
++  local Sender = COB.Sender
++  if not Sender or type(Sender.IsRegisteredPope) ~= "function" then
++    return false
++  end
++  local name = localSender()
++  if type(name) ~= "string" or name == "" then
++    return false
++  end
++  return Sender:IsRegisteredPope(name) == true
++end
++
++local function eventLive()
++  return runtimeState() ~= "QUIET"
++end
++
++local function mayShow()
++  return eventLive() and isLocalPope()
++end
++
++local function hiddenView()
++  return {
++    shown = false,
++    title = TITLE,
++    mode = "Event",
++    state = runtimeState(),
++    pope = isLocalPope(),
++  }
++end
++
++local function paint(shown)
++  local visible = shown and true or false
++  lastView = {
++    shown = visible,
++    title = TITLE,
++    mode = "Event",
++    state = runtimeState(),
++    pope = isLocalPope(),
++  }
++  if not frame then return end
++  if visible then
++    frame:Show()
++  else
++    frame:Hide()
++  end
++end
++
++local function callConsole(method)
++  local Console = COB.Console
++  if not Console or type(Console[method]) ~= "function" then
++    return
++  end
++  Console[method](Console)
++end
++
++local function stockButton(parent, label, width, onClick)
++  local btn = CreateFrame("Button", nil, parent, "UIPanelButtonTemplate")
++  btn:SetWidth(width)
++  btn:SetHeight(BTN_H)
++  btn:SetText(label)
++  btn:SetScript("OnClick", onClick)
++  return btn
++end
++
++local function build()
++  if type(CreateFrame) ~= "function" then return nil end
++  local widget = CreateFrame("Frame", FRAME_NAME, UIParent, "BasicFrameTemplate")
++  widget:SetFrameStrata("MEDIUM")
++  widget:SetToplevel(true)
++  widget:EnableMouse(true)
++  widget:SetMovable(true)
++  widget:SetClampedToScreen(true)
++  widget:SetWidth(WIDTH)
++  widget:SetHeight(HEIGHT)
++  widget:ClearAllPoints()
++  widget:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", 16, 80)
++  widget:Hide()
++
++  if widget.TitleText and widget.TitleText.SetText then
++    widget.TitleText:SetText(TITLE)
++  end
++  if widget.CloseButton and widget.CloseButton.Hide then
++    widget.CloseButton:Hide()
++  end
++
++  local titleBar = CreateFrame("Frame", nil, widget)
++  titleBar:SetHeight(22)
++  titleBar:SetPoint("TOPLEFT", widget, "TOPLEFT", 8, -2)
++  titleBar:SetPoint("TOPRIGHT", widget, "TOPRIGHT", -8, -2)
++  titleBar:EnableMouse(true)
++  titleBar:RegisterForDrag("LeftButton")
++  titleBar:SetScript("OnDragStart", function() widget:StartMoving() end)
++  titleBar:SetScript("OnDragStop", function() widget:StopMovingOrSizing() end)
++  widget.TitleBar = titleBar
++
++  local sanction = stockButton(widget, "SANCTION", SANCTION_W, function()
++    callConsole("Sanction")
++  end)
++  sanction:SetPoint("BOTTOMLEFT", widget, "BOTTOMLEFT", 12, 10)
++  widget.Sanction = sanction
++
++  local expand = stockButton(widget, "Expand", EXPAND_W, function()
++    callConsole("Show")
++  end)
++  expand:SetPoint("LEFT", sanction, "RIGHT", 8, 0)
++  widget.Expand = expand
++
++  return widget
++end
++
++function ConsoleDock:Init()
++  if not frame then
++    frame = build()
++  end
++  if not frame then return nil end
++  self:Refresh()
++  return frame
++end
++
++function ConsoleDock:GetView()
++  if lastView == nil then lastView = hiddenView() end
++  return deepcopy(lastView)
++end
++
++function ConsoleDock:Refresh()
++  if not frame then
++    if type(CreateFrame) == "function" then
++      frame = build()
++    end
++  end
++  if not frame then
++    lastView = hiddenView()
++    lastView.shown = false
++    lastView.pope = isLocalPope()
++    return self:GetView()
++  end
++  paint(mayShow())
++  return self:GetView()
++end
++
++function ConsoleDock:Show()
++  if not frame then
++    self:Init()
++  end
++  if not frame then
++    lastView = hiddenView()
++    return false
++  end
++  if not mayShow() then
++    paint(false)
++    return false
++  end
++  paint(true)
++  return true
++end
++
++function ConsoleDock:Hide()
++  paint(false)
++end
++
++function ConsoleDock:ResetForTests()
++  if not COB._IN_TEST then return false end
++  lastView = hiddenView()
++  lastView.shown = false
++  if frame then
++    frame:Hide()
++    frame = nil
++  end
++  return true
++end
+diff --git a/tests/test_console_dock.lua b/tests/test_console_dock.lua
+new file mode 100644
+index 0000000..a8dbc06
+--- /dev/null
++++ b/tests/test_console_dock.lua
+@@ -0,0 +1,436 @@
++-- Event-only Director Console dock (Bible §18.1, §19.1). Isolated:
++-- wow_ui_stub + Common + Runtime + ConsoleDock. Stub Sender.IsRegisteredPope
++-- and Console.Sanction / Show. Quiet hides. StartEvent + Pope shows, title pin.
++-- No TOC / bootstrap / run.lua / Console.lua / Hud / Toasts. Isolation wrap.
++ChurchOfBeef = ChurchOfBeef or {}
++ChurchOfBeef._IN_TEST = true
++
++local standalone = (type(assert_eq) ~= "function")
++local passed = 0
++local failed = 0
++
++if standalone then
++  package.path = package.path .. ";./tests/?.lua"
++  function assert_eq(a, b, msg)
++    if a ~= b then
++      failed = failed + 1
++      print("FAIL: " .. (msg or "") .. " expected " .. tostring(b) .. " got " .. tostring(a))
++    else
++      passed = passed + 1
++    end
++  end
++  function assert_true(v, msg)
++    assert_eq(not not v, true, msg)
++  end
++end
++
++local stub = require("wow_ui_stub")
++local restore = stub.install()
++
++dofile("addon/ChurchOfBeef/Core/Common.lua")
++dofile("addon/ChurchOfBeef/Core/Runtime.lua")
++dofile("addon/ChurchOfBeef/UI/ConsoleDock.lua")
++
++local COB = ChurchOfBeef
++local ConsoleDock = COB.ConsoleDock
++local Runtime = COB.Runtime
++local TITLE = "DIRECTOR CONSOLE"
++
++local sounds = 0
++PlaySound = function()
++  sounds = sounds + 1
++end
++PlaySoundFile = function()
++  sounds = sounds + 1
++end
++PlaySoundKitID = function()
++  sounds = sounds + 1
++end
++
++local savedConsole = COB.Console
++local savedSender = COB.Sender
++
++local popeFlag = false
++local popeNames = {}
++local sanctionCalls = 0
++local showCalls = 0
++local toastCalls = 0
++
++local function stubConsole()
++  sanctionCalls = 0
++  showCalls = 0
++  COB.Console = {
++    Sanction = function()
++      sanctionCalls = sanctionCalls + 1
++    end,
++    Show = function()
++      showCalls = showCalls + 1
++    end,
++  }
++end
++
++local function stubSender()
++  popeNames = {}
++  COB.Sender = {
++    IsRegisteredPope = function(_, name)
++      popeNames[#popeNames + 1] = name
++      return popeFlag == true
++    end,
++  }
++end
++
++local function reset()
++  popeFlag = false
++  stubSender()
++  stubConsole()
++  sounds = 0
++  toastCalls = 0
++  assert_eq(Runtime:ResetForTests(), true, "Runtime ResetForTests runs under _IN_TEST")
++  assert_eq(ConsoleDock:ResetForTests(), true, "ConsoleDock ResetForTests runs under _IN_TEST")
++end
++
++local function walk(widget, visit)
++  visit(widget)
++  for i = 1, #(widget._children or {}) do
++    walk(widget._children[i], visit)
++  end
++  for i = 1, #(widget._regions or {}) do
++    visit(widget._regions[i])
++  end
++end
++
++local function findButton(root, label)
++  local hit
++  walk(root, function(child)
++    if not hit and child._type == "Button" and child.GetText and child:GetText() == label then
++      hit = child
++    end
++  end)
++  return hit
++end
++
++local function findFont(root, text)
++  local hit
++  walk(root, function(child)
++    if not hit and child._type == "FontString" and child.GetText and child:GetText() == text then
++      hit = child
++    end
++  end)
++  return hit
++end
++
++local function countType(root, frameType)
++  local n = 0
++  walk(root, function(child)
++    if child._type == frameType then n = n + 1 end
++  end)
++  return n
++end
++
++local function labeledButtons(root)
++  local labels = {}
++  walk(root, function(child)
++    if child._type == "Button" and child.GetText then
++      local text = child:GetText()
++      if type(text) == "string" and text ~= "" then
++        labels[#labels + 1] = text
++      end
++    end
++  end)
++  return labels
++end
++
++--------------------------------------------------------------------------------
++-- Isolated surface. Other modules stay nil only when this file is the process.
++--------------------------------------------------------------------------------
++assert_true(ConsoleDock ~= nil, "COB.ConsoleDock exists")
++assert_true(Runtime ~= nil, "isolated suite loads Runtime")
++assert_true(COB.Names ~= nil, "Common name law is loaded")
++assert_eq(ConsoleDock.MODE, "Event", "dock declares Event Mode")
++assert_eq(type(ConsoleDock.Init), "function", "Init builds the surface")
++assert_eq(type(ConsoleDock.Refresh), "function", "Refresh applies the gate")
++assert_eq(type(ConsoleDock.Show), "function", "Show is gated")
++assert_eq(type(ConsoleDock.Hide), "function", "Hide dismisses the dock")
++assert_eq(type(ConsoleDock.GetView), "function", "GetView returns a copy")
++assert_eq(type(ConsoleDock.ResetForTests), "function", "ResetForTests is a harness hatch")
++assert_eq(ConsoleDock.WhisperAll, nil, "no WHISPER ALL")
++assert_eq(ConsoleDock.Sanction, nil, "dock does not reimplement Gora")
++assert_eq(ConsoleDock.StartEvent, nil, "Runtime verbs are not this lane")
++assert_eq(ConsoleDock.PlayCue, nil, "no sound this lane")
++assert_eq(ConsoleDock.Toast, nil, "dock is not a toast")
++assert_eq(ConsoleDock.Narrate, nil, "software does not narrate")
++assert_eq(ConsoleDock.Announce, nil, "software does not announce")
++assert_eq(ConsoleDock.Favor, nil, "no favor bar on the dock")
++assert_eq(ConsoleDock.Grant, nil, "no Grant")
++assert_eq(ConsoleDock.Standing, nil, "no Standing")
++assert_eq(ConsoleDock.INPUT, nil, "no invented INPUT channel")
++assert_eq(ConsoleDock.Toggle, nil, "dock is show/hide, not a /beef toggle")
++
++if standalone then
++  assert_eq(COB.UI, nil, "isolated suite does not load the Quiet shell")
++  assert_eq(COB.DB, nil, "isolated suite does not load DB")
++  assert_eq(COB.Net, nil, "isolated suite does not load BeefNet")
++  assert_eq(COB.Officer, nil, "isolated suite does not load Officer")
++  assert_eq(COB.Archive, nil, "isolated suite does not load Archive")
++  assert_eq(COB.Recognition, nil, "isolated suite does not load Recognition")
++  assert_eq(COB.Roster, nil, "isolated suite does not load Roster")
++  assert_eq(COB.Popes, nil, "isolated suite does not load a Pope list")
++  assert_eq(COB.Hud, nil, "isolated suite does not load Hud")
++  assert_eq(COB.Sound, nil, "isolated suite does not load Sound")
++  assert_eq(COB.DecreeBanner, nil, "isolated suite does not load Decree")
++  assert_eq(COB.RecordsBook, nil, "isolated suite does not load Records Book")
++  assert_eq(COB.Minimap, nil, "isolated suite does not load Minimap")
++  assert_eq(COB.Toasts, nil, "isolated suite does not load Toasts")
++  assert_eq(COB.Codec, nil, "isolated suite does not load Codec")
++  assert_eq(COB.Snapshot, nil, "isolated suite does not load Snapshot")
++  assert_eq(COB.Console, nil, "isolated suite does not load Console")
++  assert_eq(COB.Sender, nil, "isolated suite does not load Sender")
++  assert_eq(COB.Store, nil, "isolated suite does not load Store")
++  assert_eq(COB.Gora, nil, "isolated suite does not load Gora")
++  assert_eq(COB.Knighting, nil, "isolated suite does not load Knighting")
++  assert_eq(COB.FighterCard, nil, "isolated suite does not load FighterCard")
++  assert_eq(COB.Decree, nil, "isolated suite does not load Core Decree")
++  assert_eq(type(SLASH_CHURCHOFBEEF1), "nil", "this file does not register a slash")
++end
++
++--------------------------------------------------------------------------------
++-- Source contract: stock dock. No whisper, sound, toast, favor, custom media.
++--------------------------------------------------------------------------------
++local srcFile = io.open("addon/ChurchOfBeef/UI/ConsoleDock.lua", "r")
++assert_true(srcFile ~= nil, "ConsoleDock.lua is readable")
++local src = srcFile:read("*a")
++srcFile:close()
++assert_eq(src:find("WHISPER ALL", 1, true), nil, "source has no WHISPER ALL")
++assert_eq(src:find("WhisperAll", 1, true), nil, "source has no WhisperAll")
++assert_eq(src:find("SendChatMessage", 1, true), nil, "source does not send chat")
++assert_eq(src:find("PlaySound", 1, true), nil, "source does not play sound")
++assert_eq(src:find("Toasts", 1, true), nil, "source does not drive Toasts")
++assert_eq(src:find("StatusBar", 1, true), nil, "source does not mint a StatusBar")
++assert_eq(src:find("FAVOR", 1, true), nil, "source has no favor chrome")
++assert_eq(src:find("Media\\", 1, true), nil, "source does not require custom Media")
++assert_eq(src:find(".tga", 1, true), nil, "source does not load custom tga")
++assert_eq(src:find(".blp", 1, true), nil, "source does not load custom blp")
++assert_eq(src:find(".ttf", 1, true), nil, "source does not load custom fonts")
++assert_eq(src:find("ShowUIPanel", 1, true), nil, "insecure Show/Hide only")
++assert_eq(src:find("OnUpdate", 1, true), nil, "no permanent OnUpdate")
++assert_eq(src:find("Gora:Sanction", 1, true), nil, "dock does not call Gora")
++assert_eq(src:find("CreateFrame", 1, true) ~= nil, true, "dock builds a frame")
++
++stubSender()
++stubConsole()
++
++--------------------------------------------------------------------------------
++-- Quiet → hidden. Init is stock, titled DIRECTOR CONSOLE, SANCTION + Expand.
++--------------------------------------------------------------------------------
++reset()
++local frame = ConsoleDock:Init()
++assert_true(frame ~= nil, "Init creates the dock frame")
++assert_eq(frame:GetName(), "ChurchOfBeefConsoleDock", "dock has its own global name")
++assert_eq(frame._template, "BasicFrameTemplate", "stock BasicFrameTemplate")
++assert_true(frame.TitleText ~= nil, "BasicFrame TitleText present")
++assert_eq(frame.TitleText:GetText(), TITLE, "title is exactly DIRECTOR CONSOLE")
++assert_eq(ConsoleDock:Init(), frame, "Init is idempotent")
++assert_eq(frame._movable, true, "frame is movable")
++assert_eq(frame._clamped, true, "frame is clamped to screen")
++assert_eq(frame:GetParent(), UIParent, "insecure frame under UIParent")
++local point, relativeTo = frame:GetPoint(1)
++assert_eq(point, "BOTTOMLEFT", "dock sits BOTTOMLEFT so the ring stays visible")
++assert_eq(relativeTo, UIParent, "dock anchors to UIParent")
++assert_eq(frame:IsShown(), false, "Quiet Init stays hidden")
++assert_eq(ConsoleDock:Show(), false, "Quiet Show is false")
++assert_eq(frame:IsShown(), false, "Quiet Show does not paint")
++local view = ConsoleDock:GetView()
++assert_eq(view.shown, false, "Quiet GetView.shown is false")
++assert_eq(view.title, TITLE, "Quiet view still names the dock")
++assert_eq(view.mode, "Event", "view declares Event Mode")
++assert_eq(view.state, "QUIET", "Quiet view reports QUIET")
++assert_eq(view.pope, false, "Quiet view is not Pope-shown")
++assert_eq(countType(frame, "StatusBar"), 0, "no favor bar on the dock")
++assert_eq(countType(frame, "EditBox"), 0, "dock has no EditBox")
++
++local labels = labeledButtons(frame)
++assert_eq(#labels, 2, "exactly two labeled buttons")
++assert_true(findButton(frame, "SANCTION") ~= nil, "SANCTION button exists")
++assert_true(findButton(frame, "Expand") ~= nil, "Expand button exists")
++assert_eq(findButton(frame, "WHISPER ALL"), nil, "no WHISPER ALL button")
++assert_eq(findButton(frame, "SANCTION BEEF GORA"), nil, "dock label is SANCTION")
++assert_eq(findFont(frame, "FAVOR"), nil, "no FAVOR label")
++assert_eq(findButton(frame, "SANCTION")._template, "UIPanelButtonTemplate", "SANCTION is stock")
++assert_eq(findButton(frame, "Expand")._template, "UIPanelButtonTemplate", "Expand is stock")
++if frame.CloseButton then
++  assert_eq(frame.CloseButton:IsShown(), false, "CloseButton is hidden — SANCTION + Expand only")
++end
++assert_eq(sounds, 0, "Quiet Init plays no sound")
++
++--------------------------------------------------------------------------------
++-- StartEvent + Pope true → shown, title pin. Pope false → hidden.
++--------------------------------------------------------------------------------
++reset()
++frame = ConsoleDock:Init()
++Runtime:StartEvent()
++popeFlag = true
++assert_eq(ConsoleDock:Show(), true, "StartEvent + Pope Show is true")
++assert_eq(frame:IsShown(), true, "StartEvent + Pope shows the widget")
++view = ConsoleDock:GetView()
++assert_eq(view.shown, true, "StartEvent + Pope GetView.shown is true")
++assert_eq(view.title, TITLE, "shown title stays DIRECTOR CONSOLE")
++assert_eq(view.state, "ASSEMBLY", "StartEvent view reports ASSEMBLY")
++assert_eq(view.pope, true, "shown view records Pope")
++assert_eq(frame.TitleText:GetText(), TITLE, "painted title is DIRECTOR CONSOLE")
++assert_eq(popeNames[1], "Beefina", "Pope check uses UnitName player")
++assert_eq(sounds, 0, "showing plays no sound")
++
++popeFlag = false
++view = ConsoleDock:Refresh()
++assert_eq(view.shown, false, "Pope false Refresh hides")
++assert_eq(frame:IsShown(), false, "Pope false hides the widget")
++assert_eq(ConsoleDock:Show(), false, "Pope false Show is false")
++
++popeFlag = true
++Runtime:ResetForTests()
++view = ConsoleDock:Refresh()
++assert_eq(view.shown, false, "Quiet Runtime hides even when Pope")
++assert_eq(view.state, "QUIET", "Pope + Quiet is still QUIET")
++
++--------------------------------------------------------------------------------
++-- Live event states stay shown. EndEvent hides.
++--------------------------------------------------------------------------------
++reset()
++frame = ConsoleDock:Init()
++popeFlag = true
++Runtime:StartEvent()
++ConsoleDock:Refresh()
++assert_eq(frame:IsShown(), true, "ASSEMBLY shows")
++Runtime:OpenRite("Gora")
++view = ConsoleDock:Refresh()
++assert_eq(view.shown, true, "RITE still shows")
++assert_eq(view.state, "RITE", "RITE view reports RITE")
++Runtime:CloseRite()
++view = ConsoleDock:Refresh()
++assert_eq(view.shown, true, "CONSEQUENCE still shows")
++assert_eq(view.state, "CONSEQUENCE", "CONSEQUENCE view reports CONSEQUENCE")
++Runtime:EndEvent()
++view = ConsoleDock:Refresh()
++assert_eq(view.shown, false, "EndEvent hides the dock")
++assert_eq(frame:IsShown(), false, "EndEvent hides the widget")
++assert_eq(view.state, "QUIET", "ended view reports QUIET")
++
++--------------------------------------------------------------------------------
++-- SANCTION click spies Console:Sanction. Expand spies Console:Show.
++--------------------------------------------------------------------------------
++reset()
++frame = ConsoleDock:Init()
++popeFlag = true
++Runtime:StartEvent()
++ConsoleDock:Show()
++local sanction = findButton(frame, "SANCTION")
++local expand = findButton(frame, "Expand")
++assert_eq(sanctionCalls, 0, "Show does not sanction")
++assert_eq(showCalls, 0, "Show does not expand the desk")
++stub.fire(sanction, "OnClick")
++assert_eq(sanctionCalls, 1, "SANCTION click spies Console:Sanction")
++assert_eq(showCalls, 0, "SANCTION does not call Console:Show")
++stub.fire(expand, "OnClick")
++assert_eq(showCalls, 1, "Expand click spies Console:Show")
++assert_eq(sanctionCalls, 1, "Expand does not sanction")
++assert_eq(sounds, 0, "clicks play no sound")
++
++COB.Console = nil
++stub.fire(sanction, "OnClick")
++stub.fire(expand, "OnClick")
++assert_eq(sanctionCalls, 1, "missing Console does not invent Sanction")
++assert_eq(showCalls, 1, "missing Console does not invent Show")
++stubConsole()
++
++--------------------------------------------------------------------------------
++-- Fail-closed: missing Sender, missing Runtime, non-true Pope, missing name.
++--------------------------------------------------------------------------------
++reset()
++frame = ConsoleDock:Init()
++popeFlag = true
++Runtime:StartEvent()
++COB.Sender = nil
++view = ConsoleDock:Refresh()
++assert_eq(view.shown, false, "missing Sender hides")
++assert_eq(frame:IsShown(), false, "missing Sender hides the widget")
++stubSender()
++
++local savedRuntime = COB.Runtime
++COB.Runtime = nil
++view = ConsoleDock:Refresh()
++assert_eq(view.shown, false, "missing Runtime hides")
++COB.Runtime = savedRuntime
++popeFlag = true
++view = ConsoleDock:Refresh()
++assert_eq(view.shown, true, "restored Runtime + Pope shows")
++
++COB.Sender.IsRegisteredPope = function() return 1 end
++view = ConsoleDock:Refresh()
++assert_eq(view.shown, false, "non-true Pope is fail-closed")
++
++stubSender()
++popeFlag = true
++local savedUnitName = UnitName
++UnitName = function() return nil end
++COB.Group = nil
++COB.Net = nil
++view = ConsoleDock:Refresh()
++assert_eq(view.shown, false, "missing local player name is fail-closed")
++UnitName = savedUnitName
++
++--------------------------------------------------------------------------------
++-- GetView returns a copy. Toast trap. ResetForTests is harness-gated.
++--------------------------------------------------------------------------------
++reset()
++frame = ConsoleDock:Init()
++popeFlag = true
++Runtime:StartEvent()
++ConsoleDock:Show()
++view = ConsoleDock:GetView()
++view.shown = false
++view.title = "mutated"
++view.state = "QUIET"
++local again = ConsoleDock:GetView()
++assert_eq(again.shown, true, "mutating GetView does not hide the dock")
++assert_eq(again.title, TITLE, "mutating GetView does not rename the dock")
++assert_eq(again.state, "ASSEMBLY", "mutating GetView does not change Runtime")
++
++local savedToasts = COB.Toasts
++COB.Toasts = {
++  Show = function() toastCalls = toastCalls + 1 end,
++  Push = function() toastCalls = toastCalls + 1 end,
++  Celebrate = function() toastCalls = toastCalls + 1 end,
++}
++ConsoleDock:Refresh()
++assert_eq(toastCalls, 0, "dock does not toast")
++COB.Toasts = savedToasts
++
++ChurchOfBeef._IN_TEST = false
++assert_eq(ConsoleDock:ResetForTests(), false, "ResetForTests refuses to run outside tests")
++assert_eq(frame:IsShown(), true, "out-of-harness reset does not hide the dock")
++ChurchOfBeef._IN_TEST = true
++assert_eq(ConsoleDock:ResetForTests(), true, "ResetForTests returns under _IN_TEST")
++assert_eq(frame:IsShown(), false, "harness reset hides the dock")
++
++--------------------------------------------------------------------------------
++-- Missing CreateFrame must not fail load.
++--------------------------------------------------------------------------------
++reset()
++local savedCreate = CreateFrame
++CreateFrame = nil
++assert_eq(ConsoleDock:Init(), nil, "Init without CreateFrame returns nil")
++CreateFrame = savedCreate
++frame = ConsoleDock:Init()
++assert_true(frame ~= nil, "Init after CreateFrame rebuilds the frame")
++assert_eq(frame:IsShown(), false, "rebuilt Init in Quiet stays hidden")
++
++assert_eq(sounds, 0, "the suite played no sound")
++
++COB.Console = savedConsole
++COB.Sender = savedSender
++restore()
++
++if standalone then
++  print(string.format("Tests finished: %d passed, %d failed", passed, failed))
++  if failed > 0 then os.exit(1) end
++end

@@ -1,0 +1,136 @@
+# B26-D — Console dock Init remounts ESC (implementation diff)
+
+Lane-only unified diff of the exclusive implementation files vs the pre-lane working tree.
+
+--- a/addon/ChurchOfBeef/UI/ConsoleDock.lua
++++ b/addon/ChurchOfBeef/UI/ConsoleDock.lua
+@@ -6,6 +6,7 @@
+ -- local player is the registered Pope. Stock SANCTION calls
+ -- Console:Sanction when present. Expand calls Console:Show.
+ -- ESC Hide()s ChurchOfBeefConsoleDock via UISpecialFrames (deduped).
++-- Init remounts rememberSpecial when the frame already exists.
+ -- OnHide (after create-time Hide) remembers Runtime eventId while
+ -- the event is live and sets lastView.shown false. Refresh stays
+ -- hidden while mayShow and that eventId is still current. A new
+@@ -260,6 +261,7 @@
+     frame = build()
+   end
+   if not frame then return nil end
++  rememberSpecial(FRAME_NAME)
+   self:Refresh()
+   return frame
+ end
+--- a/tests/test_console_dock.lua
++++ b/tests/test_console_dock.lua
+@@ -5,7 +5,9 @@
+ -- B23-B: widget Hide / ESC stays dismissed until Show or QUIET.
+ -- B24-B: dismiss is keyed to Runtime eventId. EndEvent without Refresh
+ -- then StartEvent + Refresh shows (new eventId). Same-event Hide + Refresh
+--- still hidden. No TOC / bootstrap / run.lua / Console.lua / Hud / Toasts.
++-- still hidden. B26-D: Init remounts rememberSpecial when the frame
++-- already exists (wipe UISpecialFrames then second Init lists the name
++-- once). No TOC / bootstrap / run.lua / Console.lua / Hud / Toasts.
+ -- Isolation wrap.
+ ChurchOfBeef = ChurchOfBeef or {}
+ ChurchOfBeef._IN_TEST = true
+@@ -498,7 +500,100 @@
+ assert_eq(Runtime:Snapshot().state, "ASSEMBLY", "B24-B same-event Refresh is not EndEvent")
+ assert_eq(sounds, 0, "B24-B same-event Refresh plays no sound")
+ 
++--------------------------------------------------------------------------------
++-- B26-D: Init remounts rememberSpecial when the frame already exists.
++-- Wipe UISpecialFrames to {}; second Init lists ChurchOfBeefConsoleDock
++-- once. Same frame pointer. Do not rebuild. Per-event dismiss stays.
+ --------------------------------------------------------------------------------
++local function runB26D()
++  local remount = src:match("if not frame then return nil end(.-)return frame")
++  assert_true(type(remount) == "string" and remount ~= "",
++    "Init existing-frame remount body is readable")
++  assert_true(remount:find("rememberSpecial(FRAME_NAME)", 1, true) ~= nil,
++    "Init remount rememberSpecial FRAME_NAME")
++  assert_true(remount:find("self:Refresh()", 1, true) ~= nil,
++    "Init remount still Refresh")
++  assert_eq(remount:find("build()", 1, true), nil,
++    "Init remount does not rebuild")
++  assert_eq(remount:find("CreateFrame", 1, true), nil,
++    "Init remount does not CreateFrame")
++  assert_eq(remount:find("PlaySound", 1, true), nil,
++    "Init remount does not PlaySound")
++  assert_true(src:find("local function rememberSpecial", 1, true) ~= nil,
++    "rememberSpecial helper stays")
++  assert_true(src:find("rememberSpecial(FRAME_NAME)", 1, true) ~= nil,
++    "build still rememberSpecial FRAME_NAME")
++  assert_true(src:find("eventId", 1, true) ~= nil,
++    "per-event dismiss still keys eventId")
++  assert_true(src:find("dismissed", 1, true) ~= nil,
++    "per-event dismiss stays")
++  assert_eq(src:find("PlaySound", 1, true), nil,
++    "source still does not play sound")
++  assert_eq(src:find("IG_CHARACTER_INFO", 1, true), nil,
++    "source still has no IG_CHARACTER_INFO")
++  assert_eq(src:find("cooldown", 1, true), nil,
++    "source still has no dismiss-cooldown")
++  assert_eq(src:find("parchment", 1, true), nil,
++    "dock still has no parchment")
++
++  reset()
++  local existing = ConsoleDock:Init()
++  assert_true(existing ~= nil, "B26-D Init creates the dock")
++  assert_eq(existing:GetName(), "ChurchOfBeefConsoleDock",
++    "B26-D dock name stays ChurchOfBeefConsoleDock")
++  assert_eq(countSpecial("ChurchOfBeefConsoleDock"), 1,
++    "B26-D first Init lists ChurchOfBeefConsoleDock once")
++  local savedList = UISpecialFrames
++  UISpecialFrames = {}
++  assert_eq(countSpecial("ChurchOfBeefConsoleDock"), 0,
++    "B26-D wipe clears ChurchOfBeefConsoleDock")
++  local cuesWipe = sounds
++  local createCalls = 0
++  local savedCreateFrame = CreateFrame
++  CreateFrame = function(...)
++    createCalls = createCalls + 1
++    return savedCreateFrame(...)
++  end
++  local same = ConsoleDock:Init()
++  CreateFrame = savedCreateFrame
++  assert_eq(same, existing, "B26-D second Init returns the same frame")
++  assert_eq(same:GetName(), "ChurchOfBeefConsoleDock",
++    "B26-D second Init keeps the named frame")
++  assert_eq(countSpecial("ChurchOfBeefConsoleDock"), 1,
++    "wiped UISpecialFrames + second Init lists ChurchOfBeefConsoleDock once")
++  assert_eq(createCalls, 0, "B26-D second Init does not rebuild")
++  assert_eq(sounds, cuesWipe, "B26-D second Init plays no sound")
++  assert_eq(same:IsShown(), false, "B26-D remount Quiet Init stays hidden")
++  ConsoleDock:Init()
++  assert_eq(countSpecial("ChurchOfBeefConsoleDock"), 1,
++    "B26-D third Init after wipe does not duplicate")
++  assert_eq(ConsoleDock:Init(), existing, "B26-D third Init still same frame")
++
++  popeFlag = true
++  Runtime:StartEvent()
++  assert_eq(ConsoleDock:Show(), true, "B26-D StartEvent + Pope Show is true")
++  assert_eq(existing:IsShown(), true, "B26-D StartEvent + Pope shows")
++  existing:Hide()
++  local stay = ConsoleDock:Refresh()
++  assert_eq(stay.shown, false, "B26-D same-event Hide + Refresh stays hidden")
++  assert_eq(existing:IsShown(), false, "B26-D same-event Refresh does not re-show")
++  assert_eq(countSpecial("ChurchOfBeefConsoleDock"), 1,
++    "B26-D dismiss keeps UISpecialFrames")
++  assert_eq(sounds, cuesWipe, "B26-D dismiss path plays no sound")
++
++  UISpecialFrames = savedList
++
++  if standalone then
++    assert_eq(COB.Hud, nil, "isolation still does not load Hud")
++    assert_eq(COB.Toasts, nil, "isolation still does not load Toasts")
++    assert_eq(COB.DecreeBanner, nil, "isolation still does not load Decree")
++    assert_eq(COB.RecordsBook, nil, "isolation still does not load Records Book")
++    assert_eq(type(SLASH_CHURCHOFBEEF1), "nil", "isolation still does not register a slash")
++  end
++end
++runB26D()
++
++--------------------------------------------------------------------------------
+ -- SANCTION click spies Console:Sanction. Expand spies Console:Show.
+ --------------------------------------------------------------------------------
+ reset()

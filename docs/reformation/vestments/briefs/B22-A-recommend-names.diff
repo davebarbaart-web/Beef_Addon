@@ -1,0 +1,160 @@
+diff --git a/tests/test_console.lua b/tests/test_console.lua
+--- a/tests/test_console.lua
++++ b/tests/test_console.lua
+@@ -11,7 +11,8 @@
+ -- petition paints "  names  " and click SelectFighters + B19-A
+ -- presentCharacterIds fail-opens until Roster is complete + B20-A
+ -- Confession rows click-select and mute called token + B21-A
+--- GetPresence fail-opens Store names until Roster is complete).
++-- GetPresence fail-opens Store names until Roster is complete + B22-A
++-- Recommendation paints named-opponent "  names  ").
+ -- Isolated: wow_ui_stub + Common + Ranks + Runtime + Store + Gora + Knighting
+ -- + Sender + Decree + Console. Confession is stubbed when painted; this file
+ -- does not load Confession.lua. Knighting GetLine/Enqueue/Skip are stubbed
+@@ -3304,7 +3305,7 @@
+ assert_true(srcPresenceBody:find('body = "No one on the roster yet."', 1, true) ~= nil,
+   "empty Presence copy stays")
+ assert_true(srcPresenceBody:find('left .. "  names  " .. right', 1, true) ~= nil,
+-  "Recommend names token stays parked")
++  "petition names token stays")
+ assert_eq(srcPresenceBody:find("UnitIsDead", 1, true), nil, "source must not scrape UnitIsDead")
+ assert_eq(srcPresenceBody:find("DEMANDED", 1, true), nil, "source must not invent DEMANDED")
+ assert_eq(srcPresenceBody:find("function Console:SaveNote", 1, true), nil,
+@@ -3325,7 +3326,111 @@
+ assert_eq(COB.Popes, nil, "still no Pope list after B21-A")
+ end
+ runB21A()
++
++--------------------------------------------------------------------------------
++-- B22-A: Recommendation paints mute "  names  " when Gora:Recommend
++-- returns namedOpponent. nameA vs nameB + mute H2H stay. petitionLine
++-- copy stays. SaveNote nil. No DEMANDED.
++-- Nested inside runB8E so the main chunk stays under Lua 5.1's 200-local cap.
++--------------------------------------------------------------------------------
++local function runB22A()
++reset()
++Console:Init()
++assert_eq(Console.SaveNote, nil, "SaveNote stays nil")
++assert_eq(Console.GetNotes, nil, "no notes table")
++assert_eq(Console.CopyCeremonySummary, nil, "no post-show ceremony summary")
++assert_eq(Console.CeremonySummary, nil, "no ceremony summary")
++assert_eq(findButton(frame, "SUMMON THE FAITHFUL"), nil, "no SUMMON chrome")
++assert_eq(findButton(frame, "COPY SUMMARY"), nil, "no ceremony-summary chrome")
++assert_eq(findButton(frame, "WHISPER ALL"), nil, "no WHISPER ALL chrome")
++assert_eq(findButton(frame, "RSVP"), nil, "no RSVP chrome")
++assert_true(frame.Recommendation ~= nil, "recommendation line exists")
++assert_eq(frame.Recommendation._type, "FontString", "recommendation is a FontString")
++
++local savedPred = Sender.IsRegisteredPope
++Sender.IsRegisteredPope = function() return true end
++
++reset()
++Console:Init()
++local nameA = Store:CreateCharacter({ name = "Chuckroast", class = "Warrior", level = 70 })
++local nameB = Store:CreateCharacter({ name = "Tendermage", class = "Mage", level = 68 })
++assert_eq(Console.selectedFighterA, nil, "no selected fighter A before named Recommend")
++assert_eq(Console.selectedFighterB, nil, "no selected fighter B before named Recommend")
++assert_true(Console:StartEvent() ~= nil, "StartEvent for named Recommend")
++assert_true(Gora:Petition(nameB.id, nameA.id) ~= nil, "named petition lands")
++COB.Roster = {
++  ready = true,
++  members = {
++    chuckroast = { name = "Chuckroast", guildRankIndex = 4 },
++    tendermage = { name = "Tendermage", guildRankIndex = 5 },
++  },
++}
++local recNamed = Console:Recommend()
++assert_true(recNamed ~= nil, "Recommend uses a named opponent")
++assert_eq(recNamed.namedOpponent, true, "Gora:Recommend flags the named pair")
++local namedText = frame.Recommendation:GetText() or ""
++assert_true(namedText:find("  names  ", 1, true) ~= nil,
++  "named Recommend paints the names token")
++assert_true(namedText:find("Chuckroast", 1, true) ~= nil,
++  "named Recommend keeps name A")
++assert_true(namedText:find("Tendermage", 1, true) ~= nil,
++  "named Recommend keeps name B")
++assert_true(namedText:find("vs", 1, true) ~= nil, "named Recommend stays nameA vs nameB")
++assert_eq(namedText:find("DEMANDED", 1, true), nil, "named Recommend has no DEMANDED")
++assert_eq(namedText:find("demanded", 1, true), nil, "named Recommend has no demanded prose")
++assert_eq(namedText:find("odds", 1, true), nil, "named Recommend has no odds prose")
++
++Gora:Dismiss(nameB.id)
++Console:SelectFighters(nil, nil)
++assert_true(Gora:Petition(nameA.id) ~= nil, "unnamed petition A lands")
++assert_true(Gora:Petition(nameB.id) ~= nil, "unnamed petition B lands")
++local recUnnamed = Console:Recommend()
++assert_true(recUnnamed ~= nil, "Recommend uses the unnamed pair")
++assert_eq(recUnnamed.namedOpponent, false, "unnamed pair is not flagged")
++local unnamedText = frame.Recommendation:GetText() or ""
++assert_true(unnamedText:find("Chuckroast", 1, true) ~= nil,
++  "unnamed Recommend keeps name A")
++assert_true(unnamedText:find("Tendermage", 1, true) ~= nil,
++  "unnamed Recommend keeps name B")
++assert_true(unnamedText:find("vs", 1, true) ~= nil, "unnamed Recommend stays nameA vs nameB")
++assert_eq(unnamedText:find("  names  ", 1, true), nil,
++  "unnamed pair Recommend has no names token")
++assert_eq(unnamedText:find("DEMANDED", 1, true), nil, "unnamed Recommend has no DEMANDED")
++
++local srcRec = io.open("addon/ChurchOfBeef/UI/Console.lua", "r")
++assert_true(srcRec ~= nil, "Console.lua is readable for B22-A")
++local srcRecBody = srcRec:read("*a")
++srcRec:close()
++assert_true(srcRecBody:find('left .. "  names  " .. right', 1, true) ~= nil,
++  "petitionLine copy stays")
++assert_true(srcRecBody:find("result.namedOpponent == true", 1, true) ~= nil,
++  "Recommend stores the namedOpponent flag")
++assert_true(srcRecBody:find('label = label .. "  names  "', 1, true) ~= nil,
++  "recommendation line appends the names token")
++assert_eq(srcRecBody:find("DEMANDED", 1, true), nil, "source must not invent DEMANDED")
++assert_eq(srcRecBody:find("function Console:SaveNote", 1, true), nil,
++  "source must not define SaveNote")
++assert_eq(srcRecBody:find("SUMMON THE FAITHFUL", 1, true), nil,
++  "source must not contain SUMMON")
++assert_eq(srcRecBody:find("Parchment", 1, true), nil, "console stays stock, not parchment")
++assert_eq(srcRecBody:find("PanelTabButtonTemplate", 1, true), nil,
++  "desks are not collapsed into tabs")
++
++Sender.IsRegisteredPope = savedPred
++assert_eq(Sender:IsRegisteredPope(COB.Group.PlayerName()), false,
++  "B22-A wrapping the predicate does not stub the list true")
++
++assert_eq(Console.SaveNote, nil, "SaveNote stays nil after B22-A")
++if standalone then
++  assert_eq(COB.Archive, nil, "isolation still does not load Archive")
++  assert_eq(COB.UI, nil, "isolation still does not load the Quiet shell")
++  assert_eq(COB.Toasts, nil, "isolation still does not load Toasts")
++  assert_eq(COB.Confession, nil, "isolation still does not load Confession")
+ end
++assert_eq(COB.Popes, nil, "still no Pope list after B22-A")
++end
++runB22A()
++end
+ runB8E()
+ 
+ --------------------------------------------------------------------------------
+diff --git a/addon/ChurchOfBeef/UI/Console.lua b/addon/ChurchOfBeef/UI/Console.lua
+--- a/addon/ChurchOfBeef/UI/Console.lua
++++ b/addon/ChurchOfBeef/UI/Console.lua
+@@ -1037,6 +1037,9 @@
+   local label = ""
+   if type(rec) == "table" and isId(rec.fighterA) and isId(rec.fighterB) then
+     label = suggestionLabel(rec.fighterA, rec.fighterB)
++    if rec.namedOpponent == true then
++      label = label .. "  names  "
++    end
+   end
+   frame.Recommendation:SetText(label)
+ end
+@@ -1581,7 +1584,11 @@
+   local result, err = COB.Gora:Recommend(a, b)
+   if result ~= nil then
+     self:SelectFighters(a, b)
+-    lastRecommendation = { fighterA = a, fighterB = b }
++    lastRecommendation = {
++      fighterA = a,
++      fighterB = b,
++      namedOpponent = result.namedOpponent == true,
++    }
+   end
+   return after(self, result, err)
+ end

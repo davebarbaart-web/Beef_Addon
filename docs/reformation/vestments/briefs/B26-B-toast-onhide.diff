@@ -1,0 +1,183 @@
+# B26-B — Toast Init restores a missing OnHide (implementation diff)
+
+Lane-only unified diff of the exclusive implementation files vs the pre-lane working tree.
+
+--- a/addon/ChurchOfBeef/UI/Toasts.lua
++++ b/addon/ChurchOfBeef/UI/Toasts.lua
+@@ -750,10 +750,27 @@
+ --------------------------------------------------------------------------------
+ -- Public API
+ --------------------------------------------------------------------------------
++
++local function wireSmallOnHide(self, frame)
++  if not frame then return end
++  if type(frame.SetScript) == "function" then
++    local existing = type(frame.GetScript) == "function" and frame:GetScript("OnHide")
++    if not existing then
++      frame:SetScript("OnHide", function()
++        -- interruptShowing / empty-pump Hide: showing already nil; do not pump.
++        if not self.showing then return end
++        bumpGen()
++        self.showing = nil
++        pump(self)
++      end)
++    end
++  end
++end
+ 
+ function Toasts:Init()
+   if self.frame then
+     rememberSpecial("ChurchOfBeefToast")
++    wireSmallOnHide(self, self.frame)
+     return self.frame
+   end
+   if type(CreateFrame) ~= "function" then return nil end
+@@ -801,18 +818,7 @@
+   self.frame = frame
+   self.showing = nil
+   -- After the initial Hide so create does not fire OnHide teardown.
+-  if type(frame.SetScript) == "function" then
+-    local existing = type(frame.GetScript) == "function" and frame:GetScript("OnHide")
+-    if not existing then
+-      frame:SetScript("OnHide", function()
+-        -- interruptShowing / empty-pump Hide: showing already nil; do not pump.
+-        if not self.showing then return end
+-        bumpGen()
+-        self.showing = nil
+-        pump(self)
+-      end)
+-    end
+-  end
++  wireSmallOnHide(self, frame)
+   rememberSpecial("ChurchOfBeefToast")
+   return frame
+ end
+
+--- a/tests/test_ui.lua
++++ b/tests/test_ui.lua
+@@ -4,7 +4,8 @@
+ -- UISpecialFrames, B18-C HideAll theaterGen, B19-B small-toast ESC,
+ -- B20-D small-toast OnHide pump, B21-C interrupt Hide idle,
+ -- B23-C Init early-return rememberSpecial,
+--- and B24-C Quiet-shell Init early-return rememberSpecial
++-- B24-C Quiet-shell Init early-return rememberSpecial,
++-- and B26-B Init early-return restores a missing OnHide
+ -- live in runB12D() (Lua 5.1 200-local cap).
+ -- No tab registry. No Standing / Ladder / Officer IA. No promote / rite toast
+ -- kinds. Isolation stays under standalone.
+@@ -870,26 +871,37 @@
+ 
+   -- B19-B: small toast ESC via UISpecialFrames. Nested here (200-local).
+   -- Proclaim special-frame pins stay. No PlaySound. No hideTheater from
+-  -- the small-toast OnHide.
++  -- the small-toast OnHide. B26-B: handler lives in wireSmallOnHide;
++  -- Init create + early-return both call it.
+   local initBody = src:match("function Toasts:Init%(%)(.-)\nfunction Toasts:Push")
+   assert_true(type(initBody) == "string" and initBody ~= "",
+     "B19-B Init body is readable")
+   assert_true(initBody:find('rememberSpecial("ChurchOfBeefToast")', 1, true) ~= nil,
+     "Init rememberSpecial ChurchOfBeefToast")
++  assert_true(initBody:find("wireSmallOnHide", 1, true) ~= nil,
++    "Init calls wireSmallOnHide")
+   assert_true(initBody:find("OnHide", 1, true) ~= nil,
+     "Init wires OnHide on the small frame")
+   assert_eq(initBody:find("hideTheater", 1, true), nil,
+     "small-toast OnHide does not call hideTheater")
+   assert_eq(initBody:find("PlaySound", 1, true), nil,
+     "Init does not PlaySound")
+-  assert_true(initBody:find("bumpGen", 1, true) ~= nil,
++  local wireBody = src:match("local function wireSmallOnHide%(self, frame%)(.-)\nfunction Toasts:Init")
++  assert_true(type(wireBody) == "string" and wireBody ~= "",
++    "wireSmallOnHide body is readable")
++  wireBody = type(wireBody) == "string" and wireBody or ""
++  assert_true(wireBody:find("bumpGen", 1, true) ~= nil,
+     "small-toast OnHide bumpGen")
+-  assert_true(initBody:find("pump(self)", 1, true) ~= nil,
++  assert_true(wireBody:find("pump(self)", 1, true) ~= nil,
+     "small-toast OnHide pumps next")
+-  assert_true(initBody:find("if not self.showing then return", 1, true) ~= nil,
+-    "OnHide idle-returns when showing is already nil")
+-  assert_eq(initBody:find("#pending == 0", 1, true), nil,
++  assert_true(wireBody:find("if not self.showing then return", 1, true) ~= nil,
++    "OnHide idle-returns when showing is already nil")
++  assert_eq(wireBody:find("#pending == 0", 1, true), nil,
+     "OnHide idle guard does not require empty pending")
++  assert_eq(wireBody:find("hideTheater", 1, true), nil,
++    "wireSmallOnHide does not hideTheater")
++  assert_eq(wireBody:find("PlaySound", 1, true), nil,
++    "wireSmallOnHide does not PlaySound")
+   assert_true(src:find("interrupt = false", 1, true) ~= nil,
+     "default KINDS stay interrupt = false")
+ 
+@@ -1022,24 +1034,25 @@
+   assert_eq(findButton(COB.Toasts.frame), nil, "interrupt path adds no close button")
+ 
+   -- B23-C: Init early-return re-registers ChurchOfBeefToast after a
+-  -- wiped UISpecialFrames. Do not re-wire OnHide. First-create
+-  -- uniqueness pins stay. Isolation wrap stays.
++  -- wiped UISpecialFrames. Do not replace an existing OnHide. First-create
++  -- uniqueness pins stay. Isolation wrap stays. B26-B restores a missing
++  -- script via wireSmallOnHide.
+   local earlyInit = src:match("function Toasts:Init%(%)%s*\n%s*if self%.frame then(.-)return self%.frame")
+   assert_true(type(earlyInit) == "string" and earlyInit ~= "",
+     "Init early-return body is readable")
+   assert_true(earlyInit:find('rememberSpecial("ChurchOfBeefToast")', 1, true) ~= nil,
+     "early-return rememberSpecial ChurchOfBeefToast")
++  assert_true(earlyInit:find("wireSmallOnHide", 1, true) ~= nil,
++    "early-return wireSmallOnHide")
+   assert_eq(earlyInit:find("SetScript", 1, true), nil,
+-    "early-return does not SetScript")
+-  assert_eq(earlyInit:find("OnHide", 1, true), nil,
+-    "early-return does not re-wire OnHide")
++    "early-return does not SetScript inline")
+   assert_eq(earlyInit:find("hideTheater", 1, true), nil,
+     "early-return does not hideTheater")
+   assert_eq(earlyInit:find("PlaySound", 1, true), nil,
+     "early-return does not PlaySound")
+   assert_true(src:find("interrupt = false", 1, true) ~= nil,
+     "default KINDS stay interrupt = false")
+-  assert_true(initBody:find("if not self.showing then return", 1, true) ~= nil,
++  assert_true(src:find("if not self.showing then return", 1, true) ~= nil,
+     "OnHide idle-return when showing is nil stays")
+ 
+   COB.Toasts:Init()
+@@ -1064,6 +1077,39 @@
+     "third Init after wipe does not duplicate ChurchOfBeefToast")
+   UISpecialFrames = savedSpecial
+ 
++  -- B26-B: nil the OnHide, second Init restores the idle-return handler.
++  -- Third Init with the script already set keeps identity. Do not rebuild.
++  -- Wipe uniqueness / B23-C pins stay. Isolation wrap stays.
++  theaterReset()
++  assert_true(COB.Toasts.frame ~= nil, "ResetForTests keeps the small toast frame")
++  COB.Toasts.frame:SetScript("OnHide", nil)
++  assert_eq(COB.Toasts.frame:GetScript("OnHide"), nil,
++    "OnHide niled before second Init")
++  local cuesRestore = #played
++  local existingToast = COB.Toasts.frame
++  assert_eq(COB.Toasts:Init(), existingToast,
++    "niled OnHide Init returns the existing frame")
++  local restoredOnHide = COB.Toasts.frame:GetScript("OnHide")
++  assert_true(restoredOnHide ~= nil, "second Init restores missing OnHide")
++  assert_eq(#played, cuesRestore, "restore Init plays no sound")
++  assert_eq(countSpecial("ChurchOfBeefToast"), 1,
++    "restore Init does not duplicate ChurchOfBeefToast")
++  assert_eq(findButton(COB.Toasts.frame), nil, "restore remount adds no close button")
++  COB.Toasts:Init()
++  assert_eq(COB.Toasts.frame:GetScript("OnHide"), restoredOnHide,
++    "third Init does not replace OnHide")
++  assert_eq(COB.Toasts.frame, existingToast, "third Init does not rebuild")
++
++  assert_eq(COB.Toasts:Show("restore one"), true, "first toast after restore")
++  assert_eq(COB.Toasts:Show("restore two"), true, "second toast queues after restore")
++  COB.Toasts.frame:Hide()
++  assert_eq(COB.Toasts.frame.text:GetText(), "restore two",
++    "restored OnHide still pumps")
++  assert_eq(COB.Toasts:PendingCount(), 0, "restore pump advances one")
++  COB.Toasts.frame:Hide()
++  assert_eq(COB.Toasts:ShowingKind(), nil, "restored OnHide idle-returns after last")
++  assert_eq(COB.Toasts.frame:IsShown(), false, "last restore Hide()s the small toast")
++
+   -- B24-C: UI:Init early-return re-registers ChurchOfBeefFrame after a
+   -- wiped UISpecialFrames. Do not rebuild. Do not re-wire OnShow /
+   -- OnHide. First-create / rebuild uniqueness pins stay. Isolation

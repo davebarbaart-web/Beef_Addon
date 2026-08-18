@@ -1,0 +1,563 @@
+diff --git a/addon/ChurchOfBeef/UI/Console.lua b/addon/ChurchOfBeef/UI/Console.lua
+--- a/addon/ChurchOfBeef/UI/Console.lua
++++ b/addon/ChurchOfBeef/UI/Console.lua
+@@ -18,12 +18,18 @@
+ -- location is omitted. GRANT HONORIFIC writes Store:AddHonorific (Pope-authored
+ -- plain text; empty and embedded newline refuse). Recognition Begin / Complete /
+ -- Cancel pass confirmer "pope" only — no Council button, no self-service, no
+--- UnitName bind, no auto-Complete on the 30s metadata duration. Post Decree
+--- writes Core (Decree:Set); BeefNet broadcast is bootstrap glue. Law 6: Decree
+--- is Quiet; Sound is not played. Layout: two-column stock desk, large targets,
+--- scrollable Presence / Gora / Confession / Line lists, click-to-select. Not
+--- parchment. Not collapsible tabs (desks stay glanceable without window
+--- switching).
++-- UnitName bind, no auto-Complete on the 30s metadata duration. Archive export
++-- fills ArchiveBox and pcalls CopyToClipboard with that blob only when the Os
++-- API exists. Import Check-then-Import; bad blob refuses and does not wipe.
++-- CanonizeMoment writes Store scripture (latest marked moment / box text when
++-- omitted). FlagFamousUpset writes Store from the proposed bout (victor =
++-- selected character if set, else fighterA) and never computes an upset. No
++-- Sound, Toasts, or SendChatMessage on those three. No post-show ceremony
++-- summary. SaveNote stays nil. Post Decree writes Core (Decree:Set); BeefNet
++-- broadcast is bootstrap glue. Law 6: Decree is Quiet; Sound is not played.
++-- Layout: two-column stock desk, large targets, scrollable Presence / Gora /
++-- Confession / Line lists, click-to-select. Not parchment. Not collapsible
++-- tabs (desks stay glanceable without window switching).
+ local Console = {
+   MODE = "event",
+ }
+@@ -31,7 +37,7 @@
+ 
+ local FRAME_NAME = "ChurchOfBeefConsoleFrame"
+ local REFUSE = "not the registered pope"
+-local DEFAULT_WIDTH, DEFAULT_HEIGHT = 780, 770
++local DEFAULT_WIDTH, DEFAULT_HEIGHT = 780, 880
+ local BTN_W, BTN_H, BTN_GAP = 172, 28, 8
+ local COL_W, COL_GAP = 370, 12
+ local ROW_H = 20
+@@ -587,7 +593,21 @@
+     ritual("Begin Recognition", function() Console:BeginRecognition() end),
+     ritual("Complete Recognition", function() Console:CompleteRecognition() end),
+     ritual("Cancel Recognition", function() Console:CancelRecognition() end),
++  })
++  frame.ArchiveBox = stockEdit(content, 560)
++  frame.ArchiveBox:SetPoint("TOPLEFT", content, "TOPLEFT", 4, -y)
++  local exportBtn = ritual("EXPORT ARCHIVE", function() Console:ExportArchive() end)
++  exportBtn:SetPoint("TOPLEFT", content, "TOPLEFT", 572, -y + 2)
++  y = y + 28
++  y = placeRow(content, y, {
++    ritual("IMPORT ARCHIVE", function() Console:ImportArchive() end),
++    ritual("FLAG UPSET", function() Console:FlagFamousUpset() end),
+   })
++  frame.CanonizeText = stockEdit(content, 560)
++  frame.CanonizeText:SetPoint("TOPLEFT", content, "TOPLEFT", 4, -y)
++  local canonBtn = ritual("CANONIZE", function() Console:CanonizeMoment() end)
++  canonBtn:SetPoint("TOPLEFT", content, "TOPLEFT", 572, -y + 2)
++  y = y + 28
+ 
+   local notebook = header(content, "Notebook")
+   notebook:SetPoint("TOPLEFT", content, "TOPLEFT", 0, -y)
+@@ -1440,3 +1460,108 @@
+   local result, err = Recognition:Cancel()
+   return after(self, result, err)
+ end
++
++local function archiveBlob(self, blob)
++  if blob ~= nil then return blob end
++  local box = self.frame and self.frame.ArchiveBox
++  if box and box.GetText then
++    return box:GetText()
++  end
++  return nil
++end
++
++local function latestMomentId()
++  if not COB.Store or type(COB.Store.GetMarkedMoments) ~= "function" then
++    return nil
++  end
++  local moments = COB.Store:GetMarkedMoments()
++  if type(moments) ~= "table" or #moments < 1 then return nil end
++  local last = moments[#moments]
++  if type(last) ~= "table" then return nil end
++  return last.id
++end
++
++local function canonizeText(self, text)
++  if text ~= nil then return text end
++  local box = self.frame and self.frame.CanonizeText
++  if box and box.GetText then
++    return box:GetText()
++  end
++  return nil
++end
++
++function Console:ExportArchive()
++  if not isRegisteredPope() then return nil, REFUSE end
++  local Archive = COB.Archive
++  if type(Archive) ~= "table" or type(Archive.Export) ~= "function" then
++    return nil, "archive is not available"
++  end
++  local blob, err = Archive:Export()
++  if type(blob) ~= "string" then
++    return nil, err
++  end
++  local box = self.frame and self.frame.ArchiveBox
++  if box and box.SetText then
++    box:SetText(blob)
++  end
++  if type(CopyToClipboard) == "function" then
++    pcall(CopyToClipboard, blob)
++  end
++  self:Refresh()
++  return blob
++end
++
++function Console:ImportArchive(blob)
++  if not isRegisteredPope() then return nil, REFUSE end
++  local Archive = COB.Archive
++  if type(Archive) ~= "table"
++      or type(Archive.Check) ~= "function"
++      or type(Archive.Import) ~= "function" then
++    return nil, "archive is not available"
++  end
++  blob = archiveBlob(self, blob)
++  local checked, checkErr = Archive:Check(blob)
++  if not checked then
++    return nil, checkErr
++  end
++  local result, err = Archive:Import(blob)
++  return after(self, result, err)
++end
++
++function Console:CanonizeMoment(momentId, text)
++  if not isRegisteredPope() then return nil, REFUSE end
++  if not COB.Store or type(COB.Store.CanonizeMoment) ~= "function" then
++    return nil, "store is not available"
++  end
++  if momentId == nil then
++    momentId = latestMomentId()
++  end
++  local result, err = COB.Store:CanonizeMoment(momentId, canonizeText(self, text))
++  return after(self, result, err)
++end
++
++function Console:FlagFamousUpset(characterId, opponentId)
++  if not isRegisteredPope() then return nil, REFUSE end
++  if not COB.Store or type(COB.Store.FlagFamousUpset) ~= "function" then
++    return nil, "store is not available"
++  end
++  local a, b = self.selectedFighterA, self.selectedFighterB
++  if not isId(a) then a = nil end
++  if not isId(b) then b = nil end
++  if characterId == nil then
++    if isId(self.selectedCharacterId) then
++      characterId = self.selectedCharacterId
++    else
++      characterId = a
++    end
++  end
++  if opponentId == nil then
++    if characterId == a and isId(b) then
++      opponentId = b
++    elseif characterId == b and isId(a) then
++      opponentId = a
++    end
++  end
++  local result, err = COB.Store:FlagFamousUpset(characterId, opponentId)
++  return after(self, result, err)
++end
+diff --git a/tests/test_console.lua b/tests/test_console.lua
+--- a/tests/test_console.lua
++++ b/tests/test_console.lua
+@@ -1,7 +1,8 @@
+ -- Director Console stock desks (Phase 4 Lane E + Phase 6 Lane I + Wire W-E +
+ -- Vestments B3-D proposed bout / stipulation + B4-D petition H2H / confession
+ -- inbox / stock Dismiss + B5-C line / Recommend / CallForward / zone mark +
+--- B6-A GRANT HONORIFIC / Recognition Begin-Complete-Cancel).
++-- B6-A GRANT HONORIFIC / Recognition Begin-Complete-Cancel + B7-B Archive
++-- export/import / CanonizeMoment / FlagFamousUpset).
+ -- Isolated: wow_ui_stub + Common + Ranks + Runtime + Store + Gora + Knighting
+ -- + Sender + Decree + Console. Confession is stubbed when painted; this file
+ -- does not load Confession.lua. Knighting GetLine/Enqueue/Skip are stubbed
+@@ -264,6 +265,12 @@
+ assert_eq(type(Console.BeginRecognition), "function", "BeginRecognition is a console verb")
+ assert_eq(type(Console.CompleteRecognition), "function", "CompleteRecognition is a console verb")
+ assert_eq(type(Console.CancelRecognition), "function", "CancelRecognition is a console verb")
++assert_eq(type(Console.ExportArchive), "function", "ExportArchive is a console verb")
++assert_eq(type(Console.ImportArchive), "function", "ImportArchive is a console verb")
++assert_eq(type(Console.CanonizeMoment), "function", "CanonizeMoment is a console verb")
++assert_eq(type(Console.FlagFamousUpset), "function", "FlagFamousUpset is a console verb")
++assert_eq(Console.CopyCeremonySummary, nil, "no post-show ceremony summary")
++assert_eq(Console.CeremonySummary, nil, "no ceremony summary")
+ assert_eq(#Console:GetKnightingLine(), 0, "GetKnightingLine is empty before anyone is lined")
+ assert_eq(Console.WinnerPicker, nil, "no winner picker")
+ assert_eq(Console.PickWinner, nil, "no winner picker")
+@@ -305,7 +312,7 @@
+ assert_eq(frame._movable, true, "frame is movable")
+ assert_eq(frame._clamped, true, "frame is clamped to screen")
+ assert_eq(frame:GetParent(), UIParent, "insecure frame under UIParent")
+-assert_eq(countType(frame, "EditBox"), 5, "Decree line, flavor, FREE RULING, STIPULATION, and honorific")
++assert_eq(countType(frame, "EditBox"), 7, "Decree line, flavor, FREE RULING, STIPULATION, honorific, archive, canonize")
+ assert_true(frame.DecreeLine ~= nil, "Decree line is a stock EditBox")
+ assert_eq(frame.DecreeLine._type, "EditBox", "line box is an EditBox")
+ assert_eq(frame.DecreeLine._template, "InputBoxTemplate", "line box is InputBoxTemplate")
+@@ -1533,7 +1540,7 @@
+ assert_eq(frame.HonorificText._type, "EditBox", "honorific box is an EditBox")
+ assert_eq(frame.HonorificText._template, "InputBoxTemplate", "honorific box is InputBoxTemplate")
+ assert_eq(frame.HonorificText._autoFocus, false, "honorific box does not steal focus")
+-assert_eq(countType(frame, "EditBox"), 5, "honorific is the fifth stock EditBox")
++assert_eq(countType(frame, "EditBox"), 7, "archive and canonize are the sixth and seventh stock EditBoxes")
+ 
+ local function isRitualB6(btn)
+   for i = 1, #(frame.RitualButtons or {}) do
+@@ -1744,6 +1751,350 @@
+ assert_eq(COB.Popes, nil, "still no Pope list after B6-A")
+ 
+ --------------------------------------------------------------------------------
++-- B7-B: Archive export/import, CanonizeMoment, FlagFamousUpset. Stock only.
++-- Nested function keeps this block under Lua 5.1's 200-local main-chunk cap.
++--------------------------------------------------------------------------------
++local function runB7B()
++reset()
++Console:Init()
++assert_eq(Console.SaveNote, nil, "SaveNote stays nil")
++assert_eq(Console.GetNotes, nil, "no notes table")
++assert_eq(Console.CopyCeremonySummary, nil, "no post-show ceremony summary")
++assert_eq(Console.CeremonySummary, nil, "no ceremony summary")
++assert_eq(findButton(frame, "WHISPER ALL"), nil, "no WHISPER ALL chrome")
++assert_eq(findButton(frame, "SUMMON THE FAITHFUL"), nil, "no SUMMON chrome")
++assert_eq(findButton(frame, "COPY SUMMARY"), nil, "no ceremony-summary chrome")
++
++local exportBtn = findButton(frame, "EXPORT ARCHIVE")
++assert_true(exportBtn ~= nil, "EXPORT ARCHIVE is one click")
++assert_eq(exportBtn._template, "UIPanelButtonTemplate", "EXPORT ARCHIVE uses UIPanelButtonTemplate")
++local importBtn = findButton(frame, "IMPORT ARCHIVE")
++assert_true(importBtn ~= nil, "IMPORT ARCHIVE is one click")
++assert_eq(importBtn._template, "UIPanelButtonTemplate", "IMPORT ARCHIVE uses UIPanelButtonTemplate")
++local canonBtn = findButton(frame, "CANONIZE")
++assert_true(canonBtn ~= nil, "CANONIZE is one click")
++assert_eq(canonBtn._template, "UIPanelButtonTemplate", "CANONIZE uses UIPanelButtonTemplate")
++local upsetBtn = findButton(frame, "FLAG UPSET")
++assert_true(upsetBtn ~= nil, "FLAG UPSET is one click")
++assert_eq(upsetBtn._template, "UIPanelButtonTemplate", "FLAG UPSET uses UIPanelButtonTemplate")
++
++assert_true(frame.ArchiveBox ~= nil, "ArchiveBox is a stock EditBox")
++assert_eq(frame.ArchiveBox._type, "EditBox", "ArchiveBox is an EditBox")
++assert_eq(frame.ArchiveBox._template, "InputBoxTemplate", "ArchiveBox is InputBoxTemplate")
++assert_eq(frame.ArchiveBox._autoFocus, false, "ArchiveBox does not steal focus")
++assert_true(frame.CanonizeText ~= nil, "canonize is a stock EditBox")
++assert_eq(frame.CanonizeText._type, "EditBox", "canonize box is an EditBox")
++assert_eq(frame.CanonizeText._template, "InputBoxTemplate", "canonize box is InputBoxTemplate")
++assert_eq(frame.CanonizeText._autoFocus, false, "canonize box does not steal focus")
++assert_eq(countType(frame, "EditBox"), 7, "ArchiveBox and CanonizeText are stock EditBoxes")
++
++local function isRitualB7(btn)
++  for i = 1, #(frame.RitualButtons or {}) do
++    if frame.RitualButtons[i] == btn then return true end
++  end
++  return false
++end
++assert_eq(isRitualB7(exportBtn), true, "EXPORT ARCHIVE is a ritual plate")
++assert_eq(isRitualB7(importBtn), true, "IMPORT ARCHIVE is a ritual plate")
++assert_eq(isRitualB7(canonBtn), true, "CANONIZE is a ritual plate")
++assert_eq(isRitualB7(upsetBtn), true, "FLAG UPSET is a ritual plate")
++assert_eq(isRitualB7(findButton(frame, "KNIGHT THIS BEEF")), true, "KNIGHT THIS BEEF stays ritual")
++assert_eq(isRitualB7(findButton(frame, "Recommend")), false, "Recommend stays furniture")
++
++Console:Refresh()
++assert_eq(exportBtn:IsEnabled(), false, "EXPORT ARCHIVE stays gated")
++assert_eq(importBtn:IsEnabled(), false, "IMPORT ARCHIVE stays gated")
++assert_eq(canonBtn:IsEnabled(), false, "CANONIZE stays gated")
++assert_eq(upsetBtn:IsEnabled(), false, "FLAG UPSET stays gated")
++assert_eq(findButton(frame, "Recommend"):IsEnabled(), true, "Recommend stays furniture")
++
++local srcArchive = io.open("addon/ChurchOfBeef/UI/Console.lua", "r")
++assert_true(srcArchive ~= nil, "Console.lua is readable for B7-B")
++local srcArchiveBody = srcArchive:read("*a")
++srcArchive:close()
++assert_eq(srcArchiveBody:find("WHISPER ALL", 1, true), nil, "source must not contain WHISPER ALL")
++assert_eq(srcArchiveBody:find("SUMMON THE FAITHFUL", 1, true), nil, "source must not contain SUMMON")
++assert_eq(srcArchiveBody:find("Knighted:", 1, true), nil, "source must not contain a ceremony summary")
++assert_eq(srcArchiveBody:find("CopyCeremonySummary", 1, true), nil, "source must not copy a ceremony summary")
++
++local exportCalls = 0
++local importCalls = 0
++local checkCalls = 0
++local lastCheckBlob
++local lastImportBlob
++local lastExportBlob = "COBARCHIVE:test-blob"
++local archiveCheckOk = true
++local archiveCheckErr = "bad archive"
++
++local priorArchive = COB.Archive
++COB.Archive = nil
++
++local okArch, errArch = Console:ExportArchive()
++assert_eq(okArch, nil, "ExportArchive refuses when not the registered Pope")
++assert_eq(errArch, "not the registered pope", "ExportArchive refuse reason")
++okArch, errArch = Console:ImportArchive("x")
++assert_eq(okArch, nil, "ImportArchive refuses when not the registered Pope")
++assert_eq(errArch, "not the registered pope", "ImportArchive refuse reason")
++okArch, errArch = Console:CanonizeMoment(1, "so sealed")
++assert_eq(okArch, nil, "CanonizeMoment refuses when not the registered Pope")
++assert_eq(errArch, "not the registered pope", "CanonizeMoment refuse reason")
++okArch, errArch = Console:FlagFamousUpset(1, 2)
++assert_eq(okArch, nil, "FlagFamousUpset refuses when not the registered Pope")
++assert_eq(errArch, "not the registered pope", "FlagFamousUpset refuse reason")
++
++savedPred = Sender.IsRegisteredPope
++Sender.IsRegisteredPope = function() return true end
++
++okArch, errArch = Console:ExportArchive()
++assert_eq(okArch, nil, "ExportArchive refuses when Archive is missing")
++assert_true(type(errArch) == "string", "missing Archive export returns a refuse string")
++okArch, errArch = Console:ImportArchive("x")
++assert_eq(okArch, nil, "ImportArchive refuses when Archive is missing")
++assert_true(type(errArch) == "string", "missing Archive import returns a refuse string")
++
++frame.ArchiveBox:SetText("keep-me")
++okArch, errArch = Console:ExportArchive()
++assert_eq(okArch, nil, "missing Archive export still refuses")
++assert_eq(frame.ArchiveBox:GetText(), "keep-me", "missing Archive does not wipe the box")
++
++local lastCanonize
++local canonizeCalls = 0
++local savedCanonize = Store.CanonizeMoment
++Store.CanonizeMoment = function(self, momentId, text)
++  canonizeCalls = canonizeCalls + 1
++  lastCanonize = { momentId = momentId, text = text }
++  if type(savedCanonize) == "function" then
++    return savedCanonize(self, momentId, text)
++  end
++  return { id = momentId, scripture = text }
++end
++
++local lastUpset
++local upsetCalls = 0
++local savedUpset = Store.FlagFamousUpset
++Store.FlagFamousUpset = function(self, characterId, opponentId)
++  upsetCalls = upsetCalls + 1
++  lastUpset = { characterId = characterId, opponentId = opponentId }
++  if type(savedUpset) == "function" then
++    return savedUpset(self, characterId, opponentId)
++  end
++  return { characterId = characterId, opponentId = opponentId, famousUpset = true }
++end
++
++local reachMoment = Store:FlagMoment("Shattrath")
++okArch, errArch = Console:CanonizeMoment(reachMoment.id, "so sealed")
++assert_true(okArch ~= nil, "CanonizeMoment reaches Store when Pope")
++assert_eq(canonizeCalls, 1, "CanonizeMoment calls Store:CanonizeMoment")
++assert_eq(lastCanonize.momentId, reachMoment.id, "CanonizeMoment forwards the moment id")
++assert_eq(lastCanonize.text, "so sealed", "CanonizeMoment forwards the text")
++
++a = Store:CreateCharacter({ name = "Chuckroast", class = "Warrior", level = 70 })
++b = Store:CreateCharacter({ name = "Tendermage", class = "Mage", level = 68 })
++Store:RecordGoraResult(a.id, {
++  opponentId = b.id,
++  ruling = "victor",
++  won = true,
++}, 5100)
++okArch, errArch = Console:FlagFamousUpset(a.id, b.id)
++assert_true(okArch ~= nil, "FlagFamousUpset reaches Store when Pope")
++assert_eq(upsetCalls, 1, "FlagFamousUpset calls Store:FlagFamousUpset")
++assert_eq(lastUpset.characterId, a.id, "FlagFamousUpset forwards the victor")
++assert_eq(lastUpset.opponentId, b.id, "FlagFamousUpset forwards the opponent")
++
++COB.Archive = {
++  Export = function()
++    exportCalls = exportCalls + 1
++    return lastExportBlob
++  end,
++  Check = function(_, blob)
++    checkCalls = checkCalls + 1
++    lastCheckBlob = blob
++    if archiveCheckOk then return true end
++    return nil, archiveCheckErr
++  end,
++  Import = function(_, blob)
++    importCalls = importCalls + 1
++    lastImportBlob = blob
++    return { ok = true }
++  end,
++}
++
++local clip = {}
++local savedClip = CopyToClipboard
++CopyToClipboard = function(text)
++  clip[#clip + 1] = text
++  return #tostring(text)
++end
++
++frame.ArchiveBox:SetText("")
++local exported = Console:ExportArchive()
++assert_eq(exported, lastExportBlob, "ExportArchive returns the Archive blob")
++assert_eq(exportCalls, 1, "ExportArchive calls Archive:Export")
++assert_eq(frame.ArchiveBox:GetText(), lastExportBlob, "ExportArchive fills ArchiveBox")
++assert_eq(#clip, 1, "ExportArchive copies the blob when CopyToClipboard exists")
++assert_eq(clip[1], lastExportBlob, "CopyToClipboard receives the blob only")
++
++CopyToClipboard = nil
++lastExportBlob = "COBARCHIVE:no-clip"
++local exportedNoClip = Console:ExportArchive()
++assert_eq(exportedNoClip, "COBARCHIVE:no-clip", "ExportArchive still returns the blob")
++assert_eq(frame.ArchiveBox:GetText(), "COBARCHIVE:no-clip", "missing CopyToClipboard still fills the box")
++assert_eq(#clip, 1, "missing CopyToClipboard does not invent a copy")
++
++CopyToClipboard = function()
++  error("clipboard exploded")
++end
++lastExportBlob = "COBARCHIVE:pcall"
++local exportedPcall = Console:ExportArchive()
++assert_eq(exportedPcall, "COBARCHIVE:pcall", "CopyToClipboard errors do not fail export")
++assert_eq(frame.ArchiveBox:GetText(), "COBARCHIVE:pcall", "pcall failure still fills the box")
++
++CopyToClipboard = function(text)
++  clip[#clip + 1] = text
++  return #tostring(text)
++end
++
++frame.ArchiveBox:SetText("box-blob")
++local imported = Console:ImportArchive()
++assert_true(imported ~= nil, "ImportArchive reaches Archive")
++assert_eq(checkCalls, 1, "ImportArchive calls Check first")
++assert_eq(importCalls, 1, "ImportArchive calls Import after Check")
++assert_eq(lastCheckBlob, "box-blob", "ImportArchive Check reads the box")
++assert_eq(lastImportBlob, "box-blob", "ImportArchive Import reads the box")
++
++local importedArg = Console:ImportArchive("arg-blob")
++assert_true(importedArg ~= nil, "ImportArchive accepts an explicit blob")
++assert_eq(lastCheckBlob, "arg-blob", "explicit blob wins over the box for Check")
++assert_eq(lastImportBlob, "arg-blob", "explicit blob wins over the box for Import")
++assert_eq(checkCalls, 2, "explicit ImportArchive still Checks")
++assert_eq(importCalls, 2, "explicit ImportArchive still Imports")
++
++archiveCheckOk = false
++frame.ArchiveBox:SetText("bad-blob")
++local beforeHumans = #Store:Snapshot().humans
++local badImport, badImportErr = Console:ImportArchive()
++assert_eq(badImport, nil, "bad blob ImportArchive is refused")
++assert_true(type(badImportErr) == "string", "bad blob returns an error string")
++assert_eq(checkCalls, 3, "bad blob still Calls Check")
++assert_eq(importCalls, 2, "bad blob does not call Import")
++assert_eq(frame.ArchiveBox:GetText(), "bad-blob", "bad blob does not wipe the box")
++assert_eq(#Store:Snapshot().humans, beforeHumans, "bad blob does not wipe the store")
++archiveCheckOk = true
++
++local firstMoment = Store:FlagMoment("Goldshire Inn")
++local secondMoment = Store:FlagMoment("Lions Pride")
++assert_true(firstMoment ~= nil, "two marked moments for latest-id pin")
++assert_true(secondMoment ~= nil, "second marked moment exists")
++frame.CanonizeText:SetText("  so sealed from the box  ")
++local boxedCanon = Console:CanonizeMoment()
++assert_true(boxedCanon ~= nil, "CanonizeMoment uses the latest moment and the box")
++assert_eq(lastCanonize.momentId, secondMoment.id, "omitted momentId is the latest marked moment")
++assert_eq(lastCanonize.text, "  so sealed from the box  ", "omitted text is the box text")
++
++frame.CanonizeText:SetText("box leftover")
++local explicitCanon = Console:CanonizeMoment(firstMoment.id, "explicit scripture")
++assert_eq(lastCanonize.momentId, firstMoment.id, "explicit momentId wins over latest")
++assert_eq(lastCanonize.text, "explicit scripture", "explicit text wins over the box")
++
++Console:SelectFighters(a.id, b.id)
++Console:SelectCharacter(nil)
++local upsetDefault = Console:FlagFamousUpset()
++assert_true(upsetDefault ~= nil, "FlagFamousUpset defaults to the proposed bout")
++assert_eq(lastUpset.characterId, a.id, "unset selected character uses fighterA as victor")
++assert_eq(lastUpset.opponentId, b.id, "unset selected character uses fighterB as opponent")
++
++Console:SelectFighters(a.id, b.id)
++Console:SelectCharacter(b.id)
++local upsetSel = Console:FlagFamousUpset()
++assert_eq(lastUpset.characterId, b.id, "selected character is the victor")
++assert_eq(lastUpset.opponentId, a.id, "the other proposed fighter is the opponent")
++
++Console:SelectFighters(b.id, a.id)
++Console:SelectCharacter(a.id)
++local upsetSelA = Console:FlagFamousUpset()
++assert_eq(lastUpset.characterId, a.id, "selected character still wins when it is fighterB")
++assert_eq(lastUpset.opponentId, b.id, "opponent is the other selected fighter")
++
++Console:SelectFighters(a.id, b.id)
++Console:SelectCharacter(b.id)
++local upsetExplicit = Console:FlagFamousUpset(a.id, b.id)
++assert_eq(lastUpset.characterId, a.id, "explicit FlagFamousUpset character wins over selection")
++assert_eq(lastUpset.opponentId, b.id, "explicit FlagFamousUpset opponent wins over selection")
++
++local savedSoundArch = COB.Sound
++local savedToastsArch = COB.Toasts
++local savedChatArch = SendChatMessage
++local soundArch = {}
++local toastArch = 0
++local chatsArch = 0
++local clipBefore = #clip
++COB.Sound = {
++  Play = function(_, name)
++    soundArch[#soundArch + 1] = name
++    return name
++  end,
++}
++COB.Toasts = {
++  Show = function()
++    toastArch = toastArch + 1
++  end,
++}
++SendChatMessage = function()
++  chatsArch = chatsArch + 1
++end
++
++lastExportBlob = "COBARCHIVE:quiet"
++assert_true(Console:ExportArchive() ~= nil, "ExportArchive succeeds with Sound stubbed")
++assert_eq(#soundArch, 0, "ExportArchive does not play Sound")
++assert_eq(toastArch, 0, "ExportArchive does not toast")
++assert_eq(chatsArch, 0, "ExportArchive does not SendChatMessage")
++assert_eq(#clip, clipBefore + 1, "quiet ExportArchive still copies the archive blob only")
++assert_eq(clip[#clip], "COBARCHIVE:quiet", "quiet copy is the archive blob")
++
++assert_true(Console:ImportArchive("quiet-blob") ~= nil, "ImportArchive succeeds with Sound stubbed")
++assert_eq(#soundArch, 0, "ImportArchive does not play Sound")
++assert_eq(toastArch, 0, "ImportArchive does not toast")
++assert_eq(chatsArch, 0, "ImportArchive does not SendChatMessage")
++assert_eq(#clip, clipBefore + 1, "ImportArchive does not CopyToClipboard")
++
++assert_true(Console:CanonizeMoment(secondMoment.id, "quiet scripture") ~= nil,
++  "CanonizeMoment succeeds with Sound stubbed")
++assert_eq(#soundArch, 0, "CanonizeMoment does not play Sound")
++assert_eq(toastArch, 0, "CanonizeMoment does not toast")
++assert_eq(chatsArch, 0, "CanonizeMoment does not SendChatMessage")
++
++assert_true(Console:FlagFamousUpset(a.id, b.id) ~= nil, "FlagFamousUpset succeeds with Sound stubbed")
++assert_eq(#soundArch, 0, "FlagFamousUpset does not play Sound")
++assert_eq(toastArch, 0, "FlagFamousUpset does not toast")
++assert_eq(chatsArch, 0, "FlagFamousUpset does not SendChatMessage")
++
++stub.fire(findButton(frame, "EXPORT ARCHIVE"), "OnClick")
++assert_eq(#soundArch, 0, "the EXPORT ARCHIVE button does not play Sound")
++stub.fire(findButton(frame, "CANONIZE"), "OnClick")
++assert_eq(#soundArch, 0, "the CANONIZE button does not play Sound")
++stub.fire(findButton(frame, "FLAG UPSET"), "OnClick")
++assert_eq(#soundArch, 0, "the FLAG UPSET button does not play Sound")
++stub.fire(findButton(frame, "IMPORT ARCHIVE"), "OnClick")
++assert_eq(#soundArch, 0, "the IMPORT ARCHIVE button does not play Sound")
++assert_eq(chatsArch, 0, "B7-B buttons do not SendChatMessage")
++
++CopyToClipboard = savedClip
++COB.Sound = savedSoundArch
++COB.Toasts = savedToastsArch
++SendChatMessage = savedChatArch
++Store.CanonizeMoment = savedCanonize
++Store.FlagFamousUpset = savedUpset
++COB.Archive = priorArchive
++Sender.IsRegisteredPope = savedPred
++assert_eq(Console.SaveNote, nil, "SaveNote stays nil after B7-B")
++if standalone then
++  assert_eq(COB.Archive, nil, "isolation still does not load Archive")
++end
++assert_eq(COB.Popes, nil, "still no Pope list after B7-B")
++end
++runB7B()
++
++--------------------------------------------------------------------------------
+ -- No queue store, no auto-advance, no guild write, no theater in this file
+ --------------------------------------------------------------------------------
+ reset()

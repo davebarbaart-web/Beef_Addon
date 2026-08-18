@@ -1,0 +1,731 @@
+diff --git a/addon/ChurchOfBeef/Net/Codec.lua b/addon/ChurchOfBeef/Net/Codec.lua
+index 83fb682..c3baac0 100644
+--- a/addon/ChurchOfBeef/Net/Codec.lua
++++ b/addon/ChurchOfBeef/Net/Codec.lua
+@@ -1,20 +1,20 @@
+ ChurchOfBeef = ChurchOfBeef or {}
+ local COB = ChurchOfBeef
+ 
+ -- BeefNet v2 codecs (Bible §13.1, §13.4, §20.2–20.3). Encode/decode only.
+--- Closed TYPEs: STATE, SNAPSHOT, INPUT. HELLO stays on the transport.
++-- Closed TYPEs: STATE, SNAPSHOT, INPUT, DECREE. HELLO stays on the transport.
+ -- No SendAddonMessage. No snapshot schema beyond STATE fields. No whisper,
+ -- registered-Pope file, or hold timer.
+ local Codec = {
+   PROTOCOL = 1,
+-  TYPES = { STATE = true, SNAPSHOT = true, INPUT = true },
++  TYPES = { STATE = true, SNAPSHOT = true, INPUT = true, DECREE = true },
+   STATES = { QUIET = true, ASSEMBLY = true, RITE = true, CONSEQUENCE = true },
+   RITE_TYPES = { Knighting = true, Gora = true, Confession = true, Proclamation = true },
+   INPUT_KINDS = { petition = true, favor = true, confession = true },
+   SNAPSHOT_ROLES = { request = true, response = true },
+ }
+ COB.Codec = Codec
+ 
+ local PROTOCOL = Codec.PROTOCOL
+ local TYPES = Codec.TYPES
+ local STATES = Codec.STATES
+@@ -25,45 +25,55 @@ local SNAPSHOT_ROLES = Codec.SNAPSHOT_ROLES
+ local FIELD = ":"
+ 
+ local STATE_KEYS = {
+   type = true,
+   version = true,
+   eventId = true,
+   state = true,
+   riteType = true,
+   subjects = true,
+   sequence = true,
++  favor = true,
+ }
+ 
+ local SNAPSHOT_REQ_KEYS = {
+   type = true,
+   version = true,
+   role = true,
+ }
+ 
+ local SNAPSHOT_RES_KEYS = {
+   type = true,
+   version = true,
+   role = true,
+   eventId = true,
+   state = true,
+   riteType = true,
+   subjects = true,
+   sequence = true,
++  favor = true,
+ }
+ 
+ local INPUT_KEYS = {
+   type = true,
+   version = true,
+   kind = true,
+   characterId = true,
+   text = true,
++  pick = true,
++}
++
++local DECREE_KEYS = {
++  type = true,
++  version = true,
++  line = true,
++  flavor = true,
+ }
+ 
+ --------------------------------------------------------------------------------
+ -- Helpers
+ --------------------------------------------------------------------------------
+ 
+ local function trim(text)
+   if type(text) ~= "string" then return nil end
+   text = text:gsub("^%s+", ""):gsub("%s+$", "")
+   if text == "" then return nil end
+@@ -156,20 +166,51 @@ local function isIdArray(value)
+   return n == #value
+ end
+ 
+ local function copyFighters(list)
+   local out = {}
+   if type(list) ~= "table" then return out end
+   for i = 1, #list do out[i] = list[i] end
+   return out
+ end
+ 
++local function copyFavor(favor)
++  if type(favor) ~= "table" then return nil end
++  return { a = favor.a, b = favor.b }
++end
++
++local function fighterCount(subjects)
++  if type(subjects) ~= "table" or type(subjects.fighters) ~= "table" then return 0 end
++  return #subjects.fighters
++end
++
++local function validateFavor(favor, nFight)
++  if type(favor) ~= "table" then return nil, "invalid favor" end
++  for k, _ in pairs(favor) do
++    if k ~= "a" and k ~= "b" then return nil, "invalid favor" end
++  end
++  if not isSeq(favor.a) or not isSeq(favor.b) then return nil, "invalid favor" end
++  if nFight ~= 2 then return nil, "invalid favor" end
++  return { a = favor.a, b = favor.b }
++end
++
++local function parseFavorField(text)
++  if type(text) ~= "string" or not text:match("^%d+,%d+$") then
++    return nil, "unknown field"
++  end
++  local aStr, bStr = text:match("^(%d+),(%d+)$")
++  local a = parseSeq(aStr)
++  local b = parseSeq(bStr)
++  if a == nil or b == nil then return nil, "invalid favor" end
++  return { a = a, b = b }
++end
++
+ --------------------------------------------------------------------------------
+ -- STATE body (also SNAPSHOT response — same fields, no extra schema)
+ --------------------------------------------------------------------------------
+ 
+ local function encodeSubjects(subjects)
+   if subjects == nil then return "", "" end
+   if type(subjects) ~= "table" then return nil, "invalid subjects" end
+   for k, _ in pairs(subjects) do
+     if k ~= "candidate" and k ~= "fighters" then
+       return nil, "invalid subjects"
+@@ -224,62 +265,79 @@ local function validateStateFields(fields)
+     end
+     if fields.riteType ~= nil and type(fields.riteType) ~= "string" then
+       return nil, "invalid rite type"
+     end
+     if riteType and not RITE_TYPES[riteType] then return nil, "invalid rite type" end
+   end
+   if state == "RITE" and not riteType then return nil, "rite type required" end
+   if not isSeq(fields.sequence) then return nil, "invalid sequence" end
+   local cand, fight = encodeSubjects(fields.subjects)
+   if not cand then return nil, fight end
+-  return {
++  local body = {
+     eventId = fields.eventId,
+     state = state,
+     riteType = riteType,
+     candidate = cand,
+     fighters = fight,
+     sequence = fields.sequence,
+   }
++  if fields.favor ~= nil then
++    local fav, favErr = validateFavor(fields.favor, fighterCount(fields.subjects))
++    if not fav then return nil, favErr end
++    body.favor = fav
++  end
++  return body
+ end
+ 
+ local function encodeStateWire(msgType, role, body)
+   local parts = { tostring(PROTOCOL), msgType }
+   if role then parts[#parts + 1] = role end
+   parts[#parts + 1] = fmtId(body.eventId)
+   parts[#parts + 1] = body.state
+   parts[#parts + 1] = body.riteType or ""
+   parts[#parts + 1] = body.candidate
+   parts[#parts + 1] = body.fighters
+   parts[#parts + 1] = fmtId(body.sequence)
++  if body.favor then
++    parts[#parts + 1] = fmtId(body.favor.a) .. "," .. fmtId(body.favor.b)
++  end
+   return table.concat(parts, FIELD)
+ end
+ 
+ local function decodeStateFields(parts, start)
+   local expected = start + 5
+-  if #parts > expected then return nil, "unknown field" end
++  if #parts > expected + 1 then return nil, "unknown field" end
+   local eventId = parseId(parts[start])
+   if not eventId then return nil, "invalid event id" end
+   local state = trim(parts[start + 1])
+   if not state or not STATES[state] then return nil, "invalid state" end
+   local riteType = trim(parts[start + 2])
+   if riteType and not RITE_TYPES[riteType] then return nil, "invalid rite type" end
+   if state == "RITE" and not riteType then return nil, "rite type required" end
+   local subjects, err = parseSubjects(parts[start + 3], parts[start + 4])
+   if not subjects then return nil, err end
+   local sequence = parseSeq(parts[start + 5])
+   if sequence == nil then return nil, "invalid sequence" end
++  local favor = nil
++  if #parts == expected + 1 then
++    local fav, favErr = parseFavorField(parts[expected + 1])
++    if not fav then return nil, favErr end
++    if fighterCount(subjects) ~= 2 then return nil, "invalid favor" end
++    favor = fav
++  end
+   return {
+     eventId = eventId,
+     state = state,
+     riteType = riteType,
+     subjects = subjects,
+     sequence = sequence,
++    favor = favor,
+   }
+ end
+ 
+ --------------------------------------------------------------------------------
+ -- Encode
+ --------------------------------------------------------------------------------
+ 
+ local function checkVersion(fields)
+   if fields.version == nil then return true end
+   if finite(fields.version) ~= PROTOCOL then return nil, "protocol mismatch" end
+@@ -320,27 +378,50 @@ local function encodeTyped(msgType, fields)
+   if msgType == "INPUT" then
+     if firstUnknown(fields, INPUT_KEYS) then return nil, "unknown field" end
+     local kind = trim(fields.kind)
+     if not kind or not INPUT_KINDS[kind] then return nil, "invalid kind" end
+     if not isId(fields.characterId) then return nil, "invalid character id" end
+     if fields.text ~= nil then
+       if kind ~= "confession" or type(fields.text) ~= "string" then
+         return nil, "text not allowed"
+       end
+     end
++    if kind ~= "favor" then
++      if fields.pick ~= nil then return nil, "pick not allowed" end
++    else
++      if fields.pick == nil then return nil, "pick required" end
++      if not isId(fields.pick) then return nil, "invalid pick" end
++    end
+     local parts = { tostring(PROTOCOL), "INPUT", kind, fmtId(fields.characterId) }
+     if kind == "confession" and type(fields.text) == "string" and fields.text ~= "" then
+       parts[#parts + 1] = fields.text
++    elseif kind == "favor" then
++      parts[#parts + 1] = fmtId(fields.pick)
+     end
+     return table.concat(parts, FIELD)
+   end
+ 
++  if msgType == "DECREE" then
++    if firstUnknown(fields, DECREE_KEYS) then return nil, "unknown field" end
++    local line = trim(fields.line)
++    if not line then return nil, "line is required" end
++    if fields.flavor ~= nil and type(fields.flavor) ~= "string" then
++      return nil, "invalid flavor"
++    end
++    local flavor = trim(fields.flavor)
++    local wire = table.concat({ tostring(PROTOCOL), "DECREE", line }, FIELD)
++    if flavor then
++      wire = wire .. "\n" .. flavor
++    end
++    return wire
++  end
++
+   return nil, "unknown message type"
+ end
+ 
+ function Codec:Encode(msg)
+   if type(msg) ~= "table" then return nil, "invalid message" end
+   local msgType = trim(msg.type)
+   if not msgType or not TYPES[msgType] then return nil, "unknown message type" end
+   return encodeTyped(msgType, msg)
+ end
+ 
+@@ -349,38 +430,43 @@ function Codec:EncodeState(fields)
+ end
+ 
+ function Codec:EncodeSnapshot(fields)
+   return encodeTyped("SNAPSHOT", fields)
+ end
+ 
+ function Codec:EncodeInput(fields)
+   return encodeTyped("INPUT", fields)
+ end
+ 
++function Codec:EncodeDecree(fields)
++  return encodeTyped("DECREE", fields)
++end
++
+ --------------------------------------------------------------------------------
+ -- Decode
+ --------------------------------------------------------------------------------
+ 
+ local function decodeStateMessage(version, parts)
+   local body, err = decodeStateFields(parts, 3)
+   if not body then return nil, err end
+   return {
+     type = "STATE",
+     version = version,
+     eventId = body.eventId,
+     state = body.state,
+     riteType = body.riteType,
+     subjects = {
+       candidate = body.subjects.candidate,
+       fighters = copyFighters(body.subjects.fighters),
+     },
+     sequence = body.sequence,
++    favor = copyFavor(body.favor),
+   }
+ end
+ 
+ local function decodeSnapshotMessage(version, parts)
+   local role = trim(parts[3])
+   if not role or not SNAPSHOT_ROLES[role] then return nil, "invalid role" end
+   if role == "request" then
+     if #parts > 3 then return nil, "unknown field" end
+     return { type = "SNAPSHOT", version = version, role = "request" }
+   end
+@@ -391,28 +477,68 @@ local function decodeSnapshotMessage(version, parts)
+     version = version,
+     role = "response",
+     eventId = body.eventId,
+     state = body.state,
+     riteType = body.riteType,
+     subjects = {
+       candidate = body.subjects.candidate,
+       fighters = copyFighters(body.subjects.fighters),
+     },
+     sequence = body.sequence,
++    favor = copyFavor(body.favor),
++  }
++end
++
++local function decodeDecreeMessage(version, payload)
++  local first = payload:find(FIELD, 1, true)
++  if not first then return nil, "line is required" end
++  local second = payload:find(FIELD, first + 1, true)
++  local body = ""
++  if second then
++    body = payload:sub(second + 1)
++  end
++  local line, flavor
++  local nl = body:find("\n", 1, true)
++  if nl then
++    line = body:sub(1, nl - 1)
++    flavor = trim(body:sub(nl + 1))
++  else
++    line = body
++  end
++  line = trim(line)
++  if not line then return nil, "line is required" end
++  return {
++    type = "DECREE",
++    version = version,
++    line = line,
++    flavor = flavor,
+   }
+ end
+ 
+ local function decodeInputMessage(version, parts)
+   local kind = trim(parts[3])
+   if not kind or not INPUT_KINDS[kind] then return nil, "invalid kind" end
+   local characterId = parseId(parts[4])
+   if not characterId then return nil, "invalid character id" end
++  if kind == "favor" then
++    if #parts < 5 then return nil, "pick required" end
++    if #parts > 5 then return nil, "text not allowed" end
++    local pick = parseId(parts[5])
++    if not pick then return nil, "invalid pick" end
++    return {
++      type = "INPUT",
++      version = version,
++      kind = "favor",
++      characterId = characterId,
++      pick = pick,
++    }
++  end
+   if kind ~= "confession" then
+     if #parts > 4 then return nil, "text not allowed" end
+     return {
+       type = "INPUT",
+       version = version,
+       kind = kind,
+       characterId = characterId,
+     }
+   end
+   local text = nil
+@@ -434,20 +560,21 @@ function Codec:Decode(payload)
+   local parts = split(payload, FIELD)
+   local version = finite(parts[1])
+   if not version then return nil, "no protocol version" end
+   local msgType = trim(parts[2])
+   if not msgType then return nil, "no message type" end
+   if not TYPES[msgType] then return nil, "unknown message type" end
+ 
+   if msgType == "STATE" then return decodeStateMessage(version, parts) end
+   if msgType == "SNAPSHOT" then return decodeSnapshotMessage(version, parts) end
+   if msgType == "INPUT" then return decodeInputMessage(version, parts) end
++  if msgType == "DECREE" then return decodeDecreeMessage(version, payload) end
+   return nil, "unknown message type"
+ end
+ 
+ function Codec:DecodeState(payload)
+   local msg, err = self:Decode(payload)
+   if not msg then return nil, err end
+   if msg.type ~= "STATE" then return nil, "unknown message type" end
+   return msg
+ end
+ 
+diff --git a/tests/test_net_codec.lua b/tests/test_net_codec.lua
+index d4b57ec..beab079 100644
+--- a/tests/test_net_codec.lua
++++ b/tests/test_net_codec.lua
+@@ -1,13 +1,13 @@
+ -- BeefNet v2 codecs (Phase 3 Lane B). Isolated: Common + Codec.
+ -- Encode/decode only. No SendAddonMessage. No BeefNet / Runtime / Store / UI.
+--- Closed TYPEs: STATE, SNAPSHOT, INPUT. HELLO stays in BeefNet.
++-- Closed TYPEs: STATE, SNAPSHOT, INPUT, DECREE. HELLO stays in BeefNet.
+ ChurchOfBeef = ChurchOfBeef or {}
+ ChurchOfBeef._IN_TEST = true
+ 
+ local standalone = (type(assert_eq) ~= "function")
+ local passed = 0
+ local failed = 0
+ 
+ if standalone then
+   function assert_eq(a, b, msg)
+     if a ~= b then
+@@ -57,20 +57,21 @@ if standalone then
+   assert_eq(COB.Runtime, nil, "isolated suite does not load Runtime")
+   assert_eq(COB.UI, nil, "isolated suite does not load UI")
+ end
+ assert_true(COB.Names ~= nil, "Common name law is loaded")
+ 
+ assert_eq(type(Codec.Encode), "function", "Encode exists")
+ assert_eq(type(Codec.Decode), "function", "Decode exists")
+ assert_eq(type(Codec.EncodeState), "function", "EncodeState exists")
+ assert_eq(type(Codec.EncodeSnapshot), "function", "EncodeSnapshot exists")
+ assert_eq(type(Codec.EncodeInput), "function", "EncodeInput exists")
++assert_eq(type(Codec.EncodeDecree), "function", "EncodeDecree exists")
+ assert_eq(type(Codec.DecodeState), "function", "DecodeState exists")
+ assert_eq(type(Codec.DecodeSnapshot), "function", "DecodeSnapshot exists")
+ assert_eq(type(Codec.DecodeInput), "function", "DecodeInput exists")
+ assert_eq(type(Codec.IsCompatible), "function", "IsCompatible exists")
+ assert_eq(Codec.PROTOCOL, 1, "protocol major stays 1; v2 is the vocabulary")
+ 
+ assert_eq(Codec.Send, nil, "no Send")
+ assert_eq(Codec.SendAddonMessage, nil, "no SendAddonMessage")
+ assert_eq(Codec.Transmit, nil, "no Transmit")
+ assert_eq(Codec.SendHello, nil, "HELLO stays in BeefNet")
+@@ -87,29 +88,30 @@ assert_eq(Codec.SetStanding, nil, "no SetStanding")
+ assert_eq(Codec.AddPoints, nil, "no AddPoints")
+ assert_eq(Codec.CreateFrame, nil, "codec does not CreateFrame")
+ assert_eq(Codec.StartEvent, nil, "Runtime verbs are not this lane")
+ assert_eq(Codec.EncodeSuggestion, nil, "SUGGESTION is not restored")
+ assert_eq(Codec.EncodeSync, nil, "SYNC_* is not restored")
+ assert_eq(Codec.EncodeRankCommit, nil, "RANK_COMMIT is not restored")
+ 
+ assert_eq(Codec.TYPES.STATE, true, "STATE is a closed type")
+ assert_eq(Codec.TYPES.SNAPSHOT, true, "SNAPSHOT is a closed type")
+ assert_eq(Codec.TYPES.INPUT, true, "INPUT is a closed type")
++assert_eq(Codec.TYPES.DECREE, true, "DECREE is a closed type")
+ assert_eq(Codec.TYPES.HELLO, nil, "HELLO is not this module")
+ assert_eq(Codec.TYPES.SUGGESTION, nil, "SUGGESTION is not a type")
+ assert_eq(Codec.TYPES.SYNC_STATE, nil, "SYNC_STATE is not a type")
+ assert_eq(Codec.TYPES.SYNC_REQUEST, nil, "SYNC_REQUEST is not a type")
+ assert_eq(Codec.TYPES.RANK_COMMIT, nil, "RANK_COMMIT is not a type")
+ 
+ local typeCount = 0
+ for _ in pairs(Codec.TYPES) do typeCount = typeCount + 1 end
+-assert_eq(typeCount, 3, "exactly three wire types")
++assert_eq(typeCount, 4, "exactly four wire types")
+ 
+ assert_eq(Codec.STATES.QUIET, true, "QUIET is a named state")
+ assert_eq(Codec.STATES.ASSEMBLY, true, "ASSEMBLY is a named state")
+ assert_eq(Codec.STATES.RITE, true, "RITE is a named state")
+ assert_eq(Codec.STATES.CONSEQUENCE, true, "CONSEQUENCE is a named state")
+ assert_eq(Codec.STATES.AWAITING_POPE, nil, "awaiting the Pope is not a sixth state")
+ 
+ assert_eq(Codec.RITE_TYPES.Knighting, true, "Knighting is a closed rite")
+ assert_eq(Codec.RITE_TYPES.Gora, true, "Gora is a closed rite")
+ assert_eq(Codec.RITE_TYPES.Confession, true, "Confession is a closed rite")
+@@ -142,20 +144,21 @@ assert_eq(quietMsg.version, 1, "every message carries a protocol version")
+ assert_eq(quietMsg.eventId, 1, "event id round-trips")
+ assert_eq(quietMsg.state, "QUIET", "state round-trips")
+ assert_eq(quietMsg.riteType, nil, "QUIET has no rite type")
+ assert_eq(quietMsg.sequence, 0, "sequence 0 is valid")
+ assert_eq(type(quietMsg.subjects), "table", "subjects table is present")
+ assert_eq(quietMsg.subjects.candidate, nil, "no candidate in QUIET")
+ assert_eq(#quietMsg.subjects.fighters, 0, "no fighters in QUIET")
+ assert_eq(quietMsg.kind, nil, "STATE does not carry an input kind")
+ assert_eq(quietMsg.role, nil, "STATE does not carry a snapshot role")
+ assert_eq(quietMsg.text, nil, "STATE does not carry free text")
++assert_eq(quietMsg.favor, nil, "STATE without favor omits the split")
+ assert_eq(quietMsg.points, nil, "STATE does not carry points")
+ assert_eq(quietMsg.standing, nil, "STATE does not carry standing")
+ assert_eq(quietMsg.Grant, nil, "STATE does not carry Grant")
+ 
+ local sameQuiet = Codec:DecodeState(quietWire)
+ assert_eq(sameQuiet.state, "QUIET", "DecodeState accepts a STATE payload")
+ 
+ local assembly = Codec:Decode(Codec:EncodeState({
+   eventId = 2,
+   state = "ASSEMBLY",
+@@ -285,24 +288,31 @@ assert_eq(petition.type, "INPUT", "petition is INPUT")
+ assert_eq(petition.version, 1, "petition carries a protocol version")
+ assert_eq(petition.kind, "petition", "petition kind")
+ assert_eq(petition.characterId, 3, "petition character id")
+ assert_eq(petition.text, nil, "petition carries no text")
+ assert_eq(petition.state, nil, "petition is not theater")
+ assert_eq(petition.riteType, nil, "petition has no rite type")
+ assert_eq(petition.eventId, nil, "petition has no event id")
+ assert_eq(petition.sequence, nil, "petition has no sequence")
+ assert_eq(petition.subjects, nil, "petition has no subjects")
+ assert_eq(petition.side, nil, "favor side is not invented on petition")
+-
+-local favor = Codec:Decode(Codec:EncodeInput({ kind = "favor", characterId = 8 }))
++assert_eq(petition.pick, nil, "petition has no pick")
++assert_eq(Codec:EncodeInput({ kind = "petition", characterId = 3 }), "1:INPUT:petition:3",
++  "petition still has four wire parts")
++
++local favorWire = Codec:EncodeInput({ kind = "favor", characterId = 8, pick = 9 })
++assert_true(favorWire ~= nil, "favor with pick encodes")
++assert_eq(favorWire, "1:INPUT:favor:8:9", "favor wire is kind, picker, pick")
++local favor = favorWire and Codec:Decode(favorWire) or {}
+ assert_eq(favor.kind, "favor", "favor kind")
+-assert_eq(favor.characterId, 8, "favor character id")
++assert_eq(favor.characterId, 8, "favor character id is the member who picked")
++assert_eq(favor.pick, 9, "favor pick is the chosen fighter")
+ assert_eq(favor.text, nil, "favor carries no text")
+ assert_eq(favor.state, nil, "favor is not theater")
+ assert_eq(favor.side, nil, "favor side is not a codec field")
+ 
+ local confession = Codec:Decode(Codec:EncodeInput({
+   kind = "confession",
+   characterId = 12,
+   text = "I ate the last steak",
+ }))
+ assert_eq(confession.kind, "confession", "confession kind")
+@@ -316,20 +326,60 @@ local colonText = Codec:Decode(Codec:EncodeInput({
+   text = "forgive:me:twice",
+ }))
+ assert_eq(colonText.text, "forgive:me:twice", "confession text may contain colons")
+ 
+ local silent = Codec:Decode(Codec:EncodeInput({ kind = "confession", characterId = 1 }))
+ assert_eq(silent.text, nil, "confession text is optional")
+ 
+ assert_eq(Codec:DecodeInput(Codec:EncodeInput({ kind = "petition", characterId = 1 })).kind,
+   "petition", "DecodeInput accepts INPUT")
+ 
++--------------------------------------------------------------------------------
++-- DECREE: line required; optional flavor after the first newline. Colon in line is legal.
++--------------------------------------------------------------------------------
++local lineOnly = Codec:EncodeDecree({ line = "Gather at the Pit" })
++assert_eq(lineOnly, "1:DECREE:Gather at the Pit", "decree line-only wire")
++local lineOnlyMsg = Codec:Decode(lineOnly)
++assert_eq(lineOnlyMsg.type, "DECREE", "decree decodes as DECREE")
++assert_eq(lineOnlyMsg.version, 1, "decree carries a protocol version")
++assert_eq(lineOnlyMsg.line, "Gather at the Pit", "decree line round-trips")
++assert_eq(lineOnlyMsg.flavor, nil, "decree without flavor omits flavor")
++assert_eq(lineOnlyMsg.header, nil, "header copy is not on the wire")
++
++local flavored = Codec:Encode({
++  type = "DECREE",
++  line = "Tonight we gather",
++  flavor = "bring your own steak",
++})
++assert_eq(flavored, "1:DECREE:Tonight we gather\nbring your own steak", "flavor follows a newline")
++local flavoredMsg = Codec:Decode(flavored)
++assert_eq(flavoredMsg.line, "Tonight we gather", "flavored decree line")
++assert_eq(flavoredMsg.flavor, "bring your own steak", "flavored decree flavor")
++
++local colonLine = Codec:EncodeDecree({ line = "7:00 PM at the Pit" })
++assert_eq(colonLine, "1:DECREE:7:00 PM at the Pit", "colon in the line stays in the body")
++assert_eq(Codec:Decode(colonLine).line, "7:00 PM at the Pit", "colon in the line round-trips")
++
++local trimmed = Codec:Decode(Codec:EncodeDecree({ line = "  kneel  ", flavor = "  now  " }))
++assert_eq(trimmed.line, "kneel", "decree line is trimmed")
++assert_eq(trimmed.flavor, "now", "decree flavor is trimmed")
++
++refuse(function() return Codec:EncodeDecree({ line = "" }) end, "line is required", "empty decree line")
++refuse(function() return Codec:EncodeDecree({ line = "   " }) end, "line is required", "whitespace decree line")
++refuse(function() return Codec:EncodeDecree({}) end, "line is required", "missing decree line")
++refuse(function() return Codec:Decode("1:DECREE:") end, "line is required", "wire empty decree line")
++refuse(function() return Codec:Decode("1:DECREE:   ") end, "line is required", "wire whitespace decree line")
++refuse(function() return Codec:EncodeDecree({ line = "x", header = "A GATHERING HAS BEEN DECREED" }) end,
++  "unknown field", "decree header is not a field")
++refuse(function() return Codec:EncodeDecree({ line = "x", flavor = 1 }) end, "invalid flavor", "flavor must be a string")
++refuse(function() return Codec:EncodeDecree({ line = "x", points = 1 }) end, "banned key", "decree points")
++
+ --------------------------------------------------------------------------------
+ -- Copies: decode tables are fresh; encode does not mutate the caller
+ --------------------------------------------------------------------------------
+ local srcFighters = { 4, 5 }
+ local src = {
+   eventId = 9,
+   state = "RITE",
+   riteType = "Gora",
+   sequence = 6,
+   subjects = { fighters = srcFighters },
+@@ -536,21 +586,28 @@ refuse(function() return Codec:EncodeInput({
+   kind = "petition",
+   characterId = 1,
+   text = "please",
+ }) end, "text not allowed", "petition text")
+ refuse(function() return Codec:EncodeInput({
+   kind = "favor",
+   characterId = 1,
+   text = "red",
+ }) end, "text not allowed", "favor text")
+ refuse(function() return Codec:Decode("1:INPUT:petition:1:please") end, "text not allowed", "wire petition text")
+-refuse(function() return Codec:Decode("1:INPUT:favor:1:red") end, "text not allowed", "wire favor text")
++refuse(function() return Codec:EncodeInput({ kind = "favor", characterId = 8 }) end, "pick required", "favor without pick")
++refuse(function() return Codec:Decode("1:INPUT:favor:8") end, "pick required", "wire favor without pick")
++refuse(function() return Codec:Decode("1:INPUT:favor:1:red") end, "invalid pick", "wire favor non-id pick")
++refuse(function() return Codec:Decode("1:INPUT:favor:1:2:red") end, "text not allowed", "wire favor text after pick")
++refuse(function() return Codec:EncodeInput({ kind = "petition", characterId = 1, pick = 2 }) end,
++  "pick not allowed", "petition pick")
++refuse(function() return Codec:EncodeInput({ kind = "confession", characterId = 1, pick = 2 }) end,
++  "pick not allowed", "confession pick")
+ 
+ refuse(function() return Codec:EncodeInput({
+   kind = "petition",
+   characterId = 1,
+   state = "RITE",
+ }) end, "unknown field", "INPUT state is theater")
+ refuse(function() return Codec:EncodeInput({
+   kind = "favor",
+   characterId = 1,
+   riteType = "Gora",
+@@ -607,26 +664,106 @@ refuse(function() return Codec:EncodeState({
+   text = "nope",
+ }) end, "unknown field", "STATE does not carry free text")
+ 
+ refuse(function() return Codec:EncodeSnapshot({ role = "response", state = "ASSEMBLY", sequence = 1 }) end,
+   "invalid event id", "response missing event id")
+ refuse(function() return Codec:Decode("1:SNAPSHOT:response:1:ASSEMBLY::::0:extra") end,
+   "unknown field", "response extra wire field")
+ refuse(function() return Codec:Decode("1:STATE:1:QUIET::::0:extra") end, "unknown field", "STATE extra wire field")
+ refuse(function() return Codec:Decode("1:SNAPSHOT:request:1") end, "unknown field", "request extra wire field")
+ 
++--------------------------------------------------------------------------------
++-- Optional STATE / SNAPSHOT-response favor split (toggle-off = omitted)
++--------------------------------------------------------------------------------
++local goraNoFavor = Codec:Decode(Codec:EncodeState({
++  eventId = 4,
++  state = "RITE",
++  riteType = "Gora",
++  sequence = 3,
++  subjects = { fighters = { 8, 9 } },
++}))
++assert_eq(goraNoFavor.favor, nil, "STATE without favor decodes favor nil")
++assert_eq(Codec:EncodeState({
++  eventId = 4,
++  state = "RITE",
++  riteType = "Gora",
++  sequence = 3,
++  subjects = { fighters = { 8, 9 } },
++}), "1:STATE:4:RITE:Gora::8,9:3", "STATE without favor stays eight fields")
++
++local favorStateWire = Codec:EncodeState({
++  eventId = 4,
++  state = "RITE",
++  riteType = "Gora",
++  sequence = 3,
++  subjects = { fighters = { 8, 9 } },
++  favor = { a = 2, b = 1 },
++})
++assert_eq(favorStateWire, "1:STATE:4:RITE:Gora::8,9:3:2,1", "STATE favor is countA,countB after sequence")
++local favorState = Codec:Decode(favorStateWire)
++assert_eq(favorState.favor.a, 2, "STATE favor a")
++assert_eq(favorState.favor.b, 1, "STATE favor b")
++assert_eq(favorState.subjects.fighters[1], 8, "STATE favor keeps fighter A")
++assert_eq(favorState.subjects.fighters[2], 9, "STATE favor keeps fighter B")
++
++local favorCopyA = Codec:Decode(favorStateWire)
++local favorCopyB = Codec:Decode(favorStateWire)
++favorCopyA.favor.a = 99
++assert_eq(favorCopyB.favor.a, 2, "Decode returns a copy of favor")
++
++local snapFavor = Codec:Decode(Codec:EncodeSnapshot({
++  role = "response",
++  eventId = 4,
++  state = "RITE",
++  riteType = "Gora",
++  sequence = 3,
++  subjects = { fighters = { 8, 9 } },
++  favor = { a = 0, b = 4 },
++}))
++assert_eq(snapFavor.role, "response", "SNAPSHOT response with favor keeps role")
++assert_eq(snapFavor.favor.a, 0, "SNAPSHOT response favor a may be zero")
++assert_eq(snapFavor.favor.b, 4, "SNAPSHOT response favor b")
++
++refuse(function() return Codec:EncodeSnapshot({ role = "request", favor = { a = 1, b = 1 } }) end,
++  "unknown field", "request cannot carry favor")
++refuse(function() return Codec:EncodeState({
++  eventId = 1,
++  state = "QUIET",
++  sequence = 0,
++  favor = { a = 1, b = 0 },
++}) end, "invalid favor", "favor requires two fighters")
++refuse(function() return Codec:EncodeState({
++  eventId = 4,
++  state = "RITE",
++  riteType = "Gora",
++  sequence = 3,
++  subjects = { fighters = { 8, 9 } },
++  favor = { a = -1, b = 0 },
++}) end, "invalid favor", "favor a must be non-negative")
++refuse(function() return Codec:EncodeState({
++  eventId = 4,
++  state = "RITE",
++  riteType = "Gora",
++  sequence = 3,
++  subjects = { fighters = { 8, 9 } },
++  favor = { a = 1.5, b = 0 },
++}) end, "invalid favor", "favor a must be an integer")
++
+ --------------------------------------------------------------------------------
+ -- Codec never sends and never builds frames
+ --------------------------------------------------------------------------------
+ sent = 0
+ Codec:EncodeState({ eventId = 1, state = "QUIET", sequence = 0 })
+ Codec:EncodeSnapshot({ role = "request" })
+ Codec:EncodeInput({ kind = "petition", characterId = 1 })
++Codec:EncodeInput({ kind = "favor", characterId = 1, pick = 2 })
++Codec:EncodeDecree({ line = "Gather" })
+ Codec:Decode("1:STATE:1:QUIET::::0")
+ Codec:Decode("1:SNAPSHOT:request")
+ Codec:Decode("1:INPUT:confession:1:hello")
++Codec:Decode("1:DECREE:Gather")
+ assert_eq(sent, 0, "encode/decode never SendAddonMessage or CreateFrame")
+ 
+ if standalone then
+   print(string.format("Tests finished: %d passed, %d failed", passed, failed))
+   if failed > 0 then os.exit(1) end
+ end

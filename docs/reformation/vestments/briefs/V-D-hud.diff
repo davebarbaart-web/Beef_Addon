@@ -1,0 +1,313 @@
+diff --git a/addon/ChurchOfBeef/UI/Hud.lua b/addon/ChurchOfBeef/UI/Hud.lua
+--- a/addon/ChurchOfBeef/UI/Hud.lua
++++ b/addon/ChurchOfBeef/UI/Hud.lua
+@@ -1,10 +1,12 @@
+ ChurchOfBeef = ChurchOfBeef or {}
+ local COB = ChurchOfBeef
+ 
+--- Event Mode Fight HUD (Bible §10.7, §19.2). Compact spectator card.
++-- Event Mode Fight HUD (Bible §10.7, §19.2 / §19.3). Compact spectator card.
+ -- Show only when Runtime is not QUIET and Gora:GetSanctioned() is a live pair.
+ -- Defined fallback: everything except live health. Favor split is Pope-local
+--- from Gora, or congregation broadcast only. No sound. No toasts. Cards stay mute.
++-- from Gora, or congregation broadcast only. Dress is stock iron/parchment
++-- (QuestBG + WHITE8X8 + tooltip border). Center is a stock ring, not a faction
++-- crest. Mute rails are decorative, not live HP. No sound. No toasts. Cards stay mute.
+ local Hud = {
+   MODE = "Event",
+ }
+@@ -14,6 +16,9 @@
+ local WIDTH, HEIGHT = 420, 100
+ local TOP_INSET = -24
+ local STOCK_BAR = "Interface\\TargetingFrame\\UI-StatusBar"
++local WHITE8X8 = "Interface\\Buttons\\WHITE8X8"
++local PARCHMENT_TEXTURE = "Interface\\QuestFrame\\QuestBG"
++local SEAL_TEXTURE = "Interface\\Buttons\\UI-EmptySlot-White"
+ 
+ local ANCHORS = {
+   TOPLEFT = true, TOP = true, TOPRIGHT = true,
+@@ -21,9 +26,11 @@
+   BOTTOMLEFT = true, BOTTOM = true, BOTTOMRIGHT = true,
+ }
+ 
+--- Theatrical ink. Class tint is applied to names only (Law 10).
++-- Theatrical ink. Class tint is applied to names (Law 10). Favor halves and
++-- mute rails may reuse nameColor; they are not live health.
+ local INK = { r = 0.95, g = 0.88, b = 0.70 }
+ local MUTED = { r = 0.55, g = 0.50, b = 0.42 }
++local SEAL_GOLD = { r = 0.85, g = 0.72, b = 0.28 }
+ 
+ local frame = nil
+ local lastView = nil
+@@ -79,6 +86,67 @@
+   end
+ end
+ 
++local function hudHeight()
++  local parent = UIParent
++  local h = parent and parent.GetHeight and parent:GetHeight()
++  if type(h) == "number" and h > 0 then
++    local budget = math.floor(h * 0.12 + 0.5)
++    if budget < HEIGHT then return budget end
++    return HEIGHT
++  end
++  return HEIGHT
++end
++
++local function applyTexture(tex, path)
++  if not tex or type(path) ~= "string" or not tex.SetTexture then return false end
++  local ok = pcall(tex.SetTexture, tex, path)
++  if ok then
++    tex._cobTexture = path
++    return true
++  end
++  return false
++end
++
++local function fill(tex, r, g, b, a)
++  if not tex then return end
++  if not applyTexture(tex, WHITE8X8) and tex.SetColorTexture then
++    tex:SetColorTexture(r, g, b, a or 1)
++  elseif tex.SetVertexColor then
++    tex:SetVertexColor(r, g, b, a or 1)
++  end
++  tex._cobColor = { r = r, g = g, b = b, a = a or 1 }
++end
++
++local function applyParchment(tex)
++  if not tex then return end
++  if applyTexture(tex, PARCHMENT_TEXTURE) then return end
++  fill(tex, 0.78, 0.70, 0.52, 0.94)
++end
++
++local function tintSeal(tex)
++  if not tex then return end
++  if not applyTexture(tex, SEAL_TEXTURE) then
++    fill(tex, SEAL_GOLD.r, SEAL_GOLD.g, SEAL_GOLD.b, 1)
++    return
++  end
++  if tex.SetVertexColor then
++    tex:SetVertexColor(SEAL_GOLD.r, SEAL_GOLD.g, SEAL_GOLD.b, 1)
++  end
++  tex._cobColor = { r = SEAL_GOLD.r, g = SEAL_GOLD.g, b = SEAL_GOLD.b, a = 1 }
++end
++
++local function tintRail(rail, color)
++  if not rail then return end
++  local ink = MUTED
++  if type(color) == "table"
++      and type(color.r) == "number"
++      and type(color.g) == "number"
++      and type(color.b) == "number" then
++    ink = color
++  end
++  fill(rail, ink.r, ink.g, ink.b, 0.85)
++end
++
+ local function tint(fs, color)
+   if not fs or type(color) ~= "table" then return end
+   local r, g, b = color.r, color.g, color.b
+@@ -298,6 +366,7 @@
+   tint(levelFS, MUTED)
+   tint(titleFS, INK)
+   tint(recordFS, MUTED)
++  tintRail(frame["rail" .. side], fighter.nameColor)
+ end
+ 
+ local function paintHidden()
+@@ -361,7 +430,7 @@
+ local function build()
+   local parent = UIParent
+   local widget = CreateFrame("Frame", FRAME_NAME, parent, "BackdropTemplate")
+-  widget:SetSize(WIDTH, HEIGHT)
++  widget:SetSize(WIDTH, hudHeight())
+   widget:SetMovable(true)
+   widget:SetClampedToScreen(true)
+   if widget.EnableMouse then widget:EnableMouse(true) end
+@@ -369,7 +438,7 @@
+   if widget.SetFrameStrata then widget:SetFrameStrata("HIGH") end
+   if widget.SetBackdrop then
+     widget:SetBackdrop({
+-      bgFile = "Interface\\Buttons\\WHITE8X8",
++      bgFile = WHITE8X8,
+       edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+       tile = true,
+       tileSize = 8,
+@@ -383,7 +452,28 @@
+       widget:SetBackdropBorderColor(0.65, 0.55, 0.35, 1)
+     end
+   end
++
++  widget.iron = widget:CreateTexture(nil, "BACKGROUND")
++  if widget.iron.SetAllPoints then widget.iron:SetAllPoints(widget) end
++  fill(widget.iron, 0.06, 0.05, 0.04, 0.94)
+ 
++  widget.parchment = widget:CreateTexture(nil, "BACKGROUND")
++  if widget.parchment.ClearAllPoints then widget.parchment:ClearAllPoints() end
++  widget.parchment:SetPoint("TOPLEFT", widget, "TOPLEFT", 5, -5)
++  widget.parchment:SetPoint("BOTTOMRIGHT", widget, "BOTTOMRIGHT", -5, 5)
++  applyParchment(widget.parchment)
++
++  widget.goldRule = widget:CreateTexture(nil, "ARTWORK")
++  widget.goldRule:SetPoint("TOPLEFT", widget, "TOPLEFT", 8, -3)
++  widget.goldRule:SetPoint("TOPRIGHT", widget, "TOPRIGHT", -8, -3)
++  if widget.goldRule.SetHeight then widget.goldRule:SetHeight(1) end
++  fill(widget.goldRule, 0.65, 0.55, 0.35, 0.90)
++
++  widget.seal = widget:CreateTexture(nil, "ARTWORK")
++  widget.seal:SetSize(28, 28)
++  widget.seal:SetPoint("TOP", widget, "TOP", 0, -2)
++  tintSeal(widget.seal)
++
+   widget.nameA = makeLabel(widget, nil, "GameFontHighlight", "LEFT")
+   widget.nameB = makeLabel(widget, nil, "GameFontHighlight", "RIGHT")
+   widget.titleA = makeLabel(widget, nil, "GameFontNormal", "LEFT")
+@@ -420,6 +510,15 @@
+   widget.vs:SetText("VS")
+   tint(widget.vs, MUTED)
+ 
++  widget.railA = widget:CreateTexture(nil, "ARTWORK")
++  widget.railB = widget:CreateTexture(nil, "ARTWORK")
++  widget.railA:SetSize(120, 2)
++  widget.railB:SetSize(120, 2)
++  widget.railA:SetPoint("TOPLEFT", widget.nameA, "BOTTOMLEFT", 0, -1)
++  widget.railB:SetPoint("TOPRIGHT", widget.nameB, "BOTTOMRIGHT", 0, -1)
++  tintRail(widget.railA, nil)
++  tintRail(widget.railB, nil)
++
+   widget.titleA:SetPoint("TOPLEFT", widget.nameA, "BOTTOMLEFT", 0, -4)
+   widget.titleB:SetPoint("TOPRIGHT", widget.nameB, "BOTTOMRIGHT", 0, -4)
+   widget.levelA:SetPoint("TOPLEFT", widget.titleA, "BOTTOMLEFT", 0, -2)
+
+diff --git a/tests/test_hud.lua b/tests/test_hud.lua
+--- a/tests/test_hud.lua
++++ b/tests/test_hud.lua
+@@ -1,7 +1,9 @@
+--- Fight HUD (Wire W-F). Isolated: wow_ui_stub + Common + Ranks + Runtime + Store + Gora + Hud.
+--- Event Mode only. No live health, favor economy, sound, or toasts. Standalone wrap.
+--- Congregation favor is broadcast-only. Pope stub fills from Gora:GetFavorSplit.
+--- Ranks is Data for Church titles (Store rank ids). No TOC / bootstrap / run.lua edits.
++-- Fight HUD (Wire W-F favor + Vestments V-D dress). Isolated: wow_ui_stub +
++-- Common + Ranks + Runtime + Store + Gora + Hud. Event Mode only. No live
++-- health, favor economy, sound, or toasts. Standalone wrap. Congregation favor
++-- is broadcast-only. Pope stub fills from Gora:GetFavorSplit. Dress is stock
++-- iron/parchment only — no faction crests, no custom Media. Ranks is Data for
++-- Church titles. No TOC / bootstrap / run.lua edits.
+ package.path = package.path .. ";./tests/?.lua"
+ 
+ local stub = require("wow_ui_stub")
+@@ -101,6 +103,15 @@
+   return nil
+ end
+ 
++local function countStatusBars(widget)
++  local n = 0
++  if widget._type == "StatusBar" then n = n + 1 end
++  for i = 1, #(widget._children or {}) do
++    n = n + countStatusBars(widget._children[i])
++  end
++  return n
++end
++
+ local function sameRgb(color, sample)
+   return color and sample
+     and color.r == sample.r and color.g == sample.g and color.b == sample.b
+@@ -167,12 +178,27 @@
+ assert_eq(src:find("C_NamePlate", 1, true), nil, "source does not call C_NamePlate")
+ assert_eq(src:find("PlaySound", 1, true), nil, "source does not play sound")
+ assert_true(src:find("StatusBar", 1, true) ~= nil, "source mints a stock StatusBar")
++assert_true(src:find("UI-StatusBar", 1, true) ~= nil, "favor halves keep the stock StatusBar texture")
+ assert_eq(src:find(".tga", 1, true), nil, "source does not load custom tga")
+ assert_eq(src:find(".blp", 1, true), nil, "source does not load custom blp")
+ assert_eq(src:find(".ttf", 1, true), nil, "source does not load custom fonts")
++assert_eq(src:find("Media\\", 1, true), nil, "source does not require custom Media")
+ assert_eq(src:find("Toasts", 1, true), nil, "source does not drive Toasts")
+ assert_eq(src:find("SendChatMessage", 1, true), nil, "source does not send chat")
+ assert_eq(src:find("ShowUIPanel", 1, true), nil, "insecure Show/Hide only")
++assert_eq(src:find("Interface\\PvPFrame\\", 1, true), nil, "source does not use PvPFrame crests")
++assert_eq(src:find("PVP-Banner", 1, true), nil, "source does not use a PVP banner")
++assert_eq(src:find("UI-PVP-Horde", 1, true), nil, "source does not use the Horde PVP icon")
++assert_eq(src:find("UI-PVP-Alliance", 1, true), nil, "source does not use the Alliance PVP icon")
++assert_eq(src:find("PlusManz-Horde", 1, true), nil, "source does not use PlusManz-Horde")
++assert_eq(src:find("PlusManz-Alliance", 1, true), nil, "source does not use PlusManz-Alliance")
++assert_eq(src:find("Beef Paladin", 1, true), nil, "source does not invent Beef Paladin")
++assert_true(src:find("QuestBG", 1, true) ~= nil, "parchment uses stock QuestBG")
++assert_true(
++  src:find("UI-EmptySlot-White", 1, true) ~= nil
++    or src:find("MiniMap-TrackingBorder", 1, true) ~= nil,
++  "center uses a stock ring, not a faction crest"
++)
+ 
+ --------------------------------------------------------------------------------
+ -- Init: hidden, top-center, movable, clamped. No per-frame script at rest.
+@@ -189,6 +215,21 @@
+ assert_eq(frame._clamped, true, "HUD is clamped to screen")
+ assert_eq(frame:GetScript("OnUpdate"), nil, "a resting HUD runs nothing per frame")
+ assert_true(findStatusBar(frame) ~= nil, "Init mints a stock favor StatusBar")
++assert_eq(countStatusBars(frame), 2, "only the two favor halves are StatusBars")
++assert_eq(frame:GetWidth(), 420, "width stays a compact spectator card")
++assert_eq(frame:GetHeight(), 100, "unknown UIParent height keeps the compact card")
++assert_true(frame.parchment ~= nil, "iron/parchment dress has a parchment field")
++assert_eq(frame.parchment._cobTexture, "Interface\\QuestFrame\\QuestBG",
++  "parchment is stock QuestBG")
++assert_true(frame.seal ~= nil, "center has a stock ring")
++assert_true(
++  (frame.seal._cobTexture or ""):find("UI-EmptySlot-White", 1, true)
++    or (frame.seal._cobTexture or ""):find("MiniMap-TrackingBorder", 1, true),
++  "center seal is EmptySlot or TrackingBorder"
++)
++assert_eq(frame.vs:GetText(), "VS", "center still reads VS")
++assert_eq(frame.railA._type, "Texture", "mute rail A is a texture, not a health bar")
++assert_eq(frame.railB._type, "Texture", "mute rail B is a texture, not a health bar")
+ assert_eq(frame.favorLabel:IsShown(), false, "FAVOR label starts hidden")
+ assert_eq(frame.barA:IsShown(), false, "favor bar A starts hidden")
+ assert_eq(frame.barB:IsShown(), false, "favor bar B starts hidden")
+@@ -284,6 +325,9 @@
+ assert_eq(sameRgb(frame.levelB._cobColor, mage), false, "level B is not class-colored")
+ assert_eq(sameRgb(frame.titleB._cobColor, mage), false, "title B is not class-colored")
+ assert_eq(sameRgb(frame.recordB._cobColor, mage), false, "record B is not class-colored")
++assert_eq(sameRgb(frame.railA._cobColor, warrior), true, "mute rail A is fighter-tinted")
++assert_eq(sameRgb(frame.railB._cobColor, mage), true, "mute rail B is fighter-tinted")
++assert_eq(countStatusBars(frame), 2, "decorative rails did not add health StatusBars")
+ 
+ --------------------------------------------------------------------------------
+ -- Church title from the human rank. No Fresh Beef default on an unlinked row.
+@@ -294,6 +338,8 @@
+ view = Hud:Refresh()
+ assert_eq(view.fighterA.title, "Beef Knight", "linked Knight title comes from Ranks")
+ assert_eq(frame.titleA:GetText(), "Beef Knight", "Knight title is painted")
++assert_eq(string.find(frame.titleA:GetText() or "", "Paladin", 1, true), nil,
++  "title is the Church title, not a class mash")
+ assert_eq(view.fighterB.title, nil, "unlinked opponent still has no title")
+ assert_eq(frame.titleB:GetText(), "", "unlinked title paints empty, not Fresh Beef")
+ 
+@@ -635,6 +681,29 @@
+ 
+ assert_eq(sounds, 0, "the suite played no sound")
+ assert_eq(healthReads, 0, "the suite never scraped health")
++
++--------------------------------------------------------------------------------
++-- V-D height budget: ≤ 12% of UIParent when the parent height is known.
++-- Unknown parent stays the compact card (pinned at Init). Do not grow into a toast.
++--------------------------------------------------------------------------------
++UIParent:SetHeight(768)
++dofile("addon/ChurchOfBeef/UI/Hud.lua")
++Hud = COB.Hud
++reset()
++local budgeted = Hud:Init()
++local budget = math.floor(768 * 0.12 + 0.5)
++assert_eq(budgeted:GetHeight(), budget, "known UIParent height caps the HUD at 12%")
++assert_true(budgeted:GetHeight() <= budget, "height is ≤ 12% of UIParent")
++assert_true(budgeted:GetHeight() <= 100, "the 12% cap does not grow the card into a toast")
++assert_eq(budgeted:GetWidth(), 420, "rebuilt HUD keeps the compact width")
++assert_true(budgeted.parchment ~= nil, "rebuilt HUD still has parchment")
++assert_eq(countStatusBars(budgeted), 2, "rebuilt HUD still has only favor StatusBars")
++assert_eq(Hud:IsShown(), false, "rebuild in Quiet still hides the HUD")
++local copy = Hud:GetView()
++copy.shown = true
++copy.health = { a = 1 }
++assert_eq(Hud:GetView().shown, false, "GetView is still a copy after a rebuild")
++assert_eq(Hud:GetView().health, nil, "rebuilt view still has no health")
+ 
+ restore()
+ 

@@ -1,0 +1,290 @@
+diff --git a/addon/ChurchOfBeef/UI/Console.lua b/addon/ChurchOfBeef/UI/Console.lua
+--- a/addon/ChurchOfBeef/UI/Console.lua
++++ b/addon/ChurchOfBeef/UI/Console.lua
+@@ -8,11 +8,12 @@
+ -- is true. That predicate is fail-closed until the registered-Pope list (#8).
+ -- Toggle / Show / Hide only. No slash. No GuildPromote. No Notebook persist.
+ -- Favor pane is Pope-desk readout (not congregation theater). Congregation
+--- display is a per-event memory toggle. Post Decree writes Core (Decree:Set);
+--- BeefNet broadcast is bootstrap glue. Law 6: Decree is Quiet; Sound is not
+--- played. Layout: two-column stock desk, large targets, scrollable Presence /
+--- Gora lists, click-to-select. Not parchment. Not collapsible tabs (desks stay
+--- glanceable without window switching).
++-- display is a per-event memory toggle. Proposed bout is a stock pairing slot
++-- above SANCTION plus a one-line STIPULATION box. Post Decree writes Core
++-- (Decree:Set); BeefNet broadcast is bootstrap glue. Law 6: Decree is Quiet;
++-- Sound is not played. Layout: two-column stock desk, large targets, scrollable
++-- Presence / Gora lists, click-to-select. Not parchment. Not collapsible tabs
++-- (desks stay glanceable without window switching).
+ local Console = {
+   MODE = "event",
+ }
+@@ -20,11 +21,12 @@
+ 
+ local FRAME_NAME = "ChurchOfBeefConsoleFrame"
+ local REFUSE = "not the registered pope"
+-local DEFAULT_WIDTH, DEFAULT_HEIGHT = 780, 600
++local DEFAULT_WIDTH, DEFAULT_HEIGHT = 780, 636
+ local BTN_W, BTN_H, BTN_GAP = 172, 28, 8
+ local COL_W, COL_GAP = 370, 12
+ local ROW_H = 20
+-local DESK_H = 300
++local DESK_H = 336
++local GORA_VERB_Y = 186
+ local congregationFavorVisible = true
+ local lastSeenEventId
+ local DECREE_HEADER = "A GATHERING HAS BEEN DECREED"
+@@ -411,26 +413,36 @@
+   frame.PetitionsList = petitionList
+   frame.PetitionChild = petitionChild
+   frame.PetitionRows = {}
++  local boutHead = header(right, "PROPOSED BOUT")
++  boutHead:SetPoint("TOPLEFT", right, "TOPLEFT", 10, -144)
++  frame.ProposedBout = right:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
++  frame.ProposedBout:SetPoint("LEFT", boutHead, "RIGHT", 12, 0)
++  frame.ProposedBout:SetJustifyH("LEFT")
++  frame.ProposedBout:SetText("")
++  local stipHead = header(right, "STIPULATION")
++  stipHead:SetPoint("TOPLEFT", right, "TOPLEFT", 10, -164)
++  frame.Stipulation = stockEdit(right, COL_W - 130)
++  frame.Stipulation:SetPoint("LEFT", stipHead, "RIGHT", 8, 0)
+   local sanctionBtn = ritual("SANCTION BEEF GORA", function() Console:Sanction() end)
+   sanctionBtn:SetParent(right)
+-  sanctionBtn:SetPoint("TOPLEFT", right, "TOPLEFT", 8, -146)
++  sanctionBtn:SetPoint("TOPLEFT", right, "TOPLEFT", 8, -GORA_VERB_Y)
+   local dismissBtn = ritual("Dismiss", function() Console:Dismiss() end)
+   dismissBtn:SetParent(right)
+-  dismissBtn:SetPoint("TOPLEFT", right, "TOPLEFT", 8 + BTN_W + BTN_GAP, -146)
++  dismissBtn:SetPoint("TOPLEFT", right, "TOPLEFT", 8 + BTN_W + BTN_GAP, -GORA_VERB_Y)
+   local victorBtn = ritual("DECLARE VICTOR", function() Console:DeclareVictor() end)
+   victorBtn:SetParent(right)
+-  victorBtn:SetPoint("TOPLEFT", right, "TOPLEFT", 8, -146 - BTN_H - BTN_GAP)
++  victorBtn:SetPoint("TOPLEFT", right, "TOPLEFT", 8, -GORA_VERB_Y - BTN_H - BTN_GAP)
+   local cowardBtn = ritual("COWARDICE RECORDED", function() Console:CowardiceRecorded() end)
+   cowardBtn:SetParent(right)
+-  cowardBtn:SetPoint("TOPLEFT", right, "TOPLEFT", 8 + BTN_W + BTN_GAP, -146 - BTN_H - BTN_GAP)
++  cowardBtn:SetPoint("TOPLEFT", right, "TOPLEFT", 8 + BTN_W + BTN_GAP, -GORA_VERB_Y - BTN_H - BTN_GAP)
+   local voidBtn = ritual("VOID", function() Console:Void() end)
+   voidBtn:SetParent(right)
+-  voidBtn:SetPoint("TOPLEFT", right, "TOPLEFT", 8, -146 - 2 * (BTN_H + BTN_GAP))
++  voidBtn:SetPoint("TOPLEFT", right, "TOPLEFT", 8, -GORA_VERB_Y - 2 * (BTN_H + BTN_GAP))
+   local freeBtn = ritual("FREE RULING", function() Console:FreeRuling() end)
+   freeBtn:SetParent(right)
+-  freeBtn:SetPoint("TOPLEFT", right, "TOPLEFT", 8 + BTN_W + BTN_GAP, -146 - 2 * (BTN_H + BTN_GAP))
++  freeBtn:SetPoint("TOPLEFT", right, "TOPLEFT", 8 + BTN_W + BTN_GAP, -GORA_VERB_Y - 2 * (BTN_H + BTN_GAP))
+   frame.FreeRulingText = stockEdit(right, COL_W - 16)
+-  frame.FreeRulingText:SetPoint("TOPLEFT", right, "TOPLEFT", 8, -146 - 3 * (BTN_H + BTN_GAP))
++  frame.FreeRulingText:SetPoint("TOPLEFT", right, "TOPLEFT", 8, -GORA_VERB_Y - 3 * (BTN_H + BTN_GAP))
+ 
+   y = y + DESK_H + 12
+   local decreeHead = header(content, DECREE_HEADER)
+@@ -622,6 +634,12 @@
+   if frame.CongregationFavor then
+     frame.CongregationFavor:SetChecked(congregationFavorVisible)
+   end
++end
++
++local function paintProposedBout(frame)
++  if not frame or not frame.ProposedBout then return end
++  local bout = Console:GetProposedBout()
++  frame.ProposedBout:SetText(bout.label or "")
+ end
+ 
+ --------------------------------------------------------------------------------
+@@ -644,6 +662,7 @@
+   paintPetitions(self.frame, self:GetPetitions())
+   paintSelection(self.frame, presence)
+   paintFavor(self.frame)
++  paintProposedBout(self.frame)
+   applyGate(self.frame)
+ end
+ 
+@@ -768,6 +787,21 @@
+   self.selectedFighterA = fighterA
+   self.selectedFighterB = fighterB
+   return true
++end
++
++function Console:GetProposedBout()
++  local a, b = self.selectedFighterA, self.selectedFighterB
++  local out = { label = "" }
++  if isId(a) then out.fighterA = a end
++  if isId(b) then out.fighterB = b end
++  if out.fighterA and out.fighterB then
++    local nameA = characterName(out.fighterA)
++    local nameB = characterName(out.fighterB)
++    if nameA and nameB then
++      out.label = nameA .. " vs " .. nameB
++    end
++  end
++  return out
+ end
+ 
+ function Console:GetFavorSplit()
+@@ -936,6 +970,12 @@
+   if not COB.Gora or not COB.Gora.Sanction then
+     return nil, "gora is not available"
+   end
++  if stipulation == nil then
++    local box = self.frame and self.frame.Stipulation
++    if box and box.GetText then
++      stipulation = box:GetText()
++    end
++  end
+   local result, err = COB.Gora:Sanction(
+     fighterA or self.selectedFighterA,
+     fighterB or self.selectedFighterB,
+
+diff --git a/tests/test_console.lua b/tests/test_console.lua
+--- a/tests/test_console.lua
++++ b/tests/test_console.lua
+@@ -1,4 +1,5 @@
+--- Director Console stock desks (Phase 4 Lane E + Phase 6 Lane I + Wire W-E).
++-- Director Console stock desks (Phase 4 Lane E + Phase 6 Lane I + Wire W-E +
++-- Vestments B3-D proposed bout / stipulation).
+ -- Isolated: wow_ui_stub + Common + Ranks + Runtime + Store + Gora + Knighting +
+ -- Sender + Decree + Console. Toggle / Show / Hide only. Ritual verbs call
+ -- signed Core only when Sender:IsRegisteredPope(local) is true — always false
+@@ -184,6 +185,9 @@
+ assert_eq(type(Console.GetFavorCount), "function", "GetFavorCount is a standing-pick count")
+ assert_eq(type(Console.GetCongregationFavorVisible), "function", "congregation favor toggle is readable")
+ assert_eq(type(Console.SetCongregationFavorVisible), "function", "congregation favor toggle is settable")
++assert_eq(type(Console.GetProposedBout), "function", "GetProposedBout is a console readout")
++assert_eq(Console.WinnerPicker, nil, "no winner picker")
++assert_eq(Console.PickWinner, nil, "no winner picker")
+ 
+ assert_eq(Console.Grant, nil, "no Grant")
+ assert_eq(Console.Narrate, nil, "software does not narrate")
+@@ -222,7 +226,7 @@
+ assert_eq(frame._movable, true, "frame is movable")
+ assert_eq(frame._clamped, true, "frame is clamped to screen")
+ assert_eq(frame:GetParent(), UIParent, "insecure frame under UIParent")
+-assert_eq(countType(frame, "EditBox"), 3, "Decree line, flavor, and FREE RULING text")
++assert_eq(countType(frame, "EditBox"), 4, "Decree line, flavor, FREE RULING, and STIPULATION")
+ assert_true(frame.DecreeLine ~= nil, "Decree line is a stock EditBox")
+ assert_eq(frame.DecreeLine._type, "EditBox", "line box is an EditBox")
+ assert_eq(frame.DecreeLine._template, "InputBoxTemplate", "line box is InputBoxTemplate")
+@@ -234,6 +238,13 @@
+ assert_eq(frame.FreeRulingText._type, "EditBox", "FREE RULING box is an EditBox")
+ assert_eq(frame.FreeRulingText._template, "InputBoxTemplate", "FREE RULING box is InputBoxTemplate")
+ assert_eq(frame.FreeRulingText._autoFocus, false, "FREE RULING box does not steal focus")
++assert_true(frame.ProposedBout ~= nil, "proposed bout slot exists")
++assert_eq(frame.ProposedBout._type, "FontString", "proposed bout is a FontString")
++assert_eq(frame.ProposedBout:GetText(), "", "proposed bout starts empty")
++assert_true(frame.Stipulation ~= nil, "STIPULATION is a stock EditBox")
++assert_eq(frame.Stipulation._type, "EditBox", "STIPULATION box is an EditBox")
++assert_eq(frame.Stipulation._template, "InputBoxTemplate", "STIPULATION box is InputBoxTemplate")
++assert_eq(frame.Stipulation._autoFocus, false, "STIPULATION box does not steal focus")
+ assert_true(frame.CongregationFavor ~= nil, "congregation favor is a stock CheckButton")
+ assert_eq(frame.CongregationFavor._type, "CheckButton", "congregation toggle is a CheckButton")
+ assert_eq(frame.CongregationFavor._template, "UICheckButtonTemplate", "congregation toggle uses UICheckButtonTemplate")
+@@ -243,6 +254,8 @@
+ assert_true(findFont(frame, "Knighting") ~= nil, "Knighting desk header")
+ assert_true(findFont(frame, "Gora") ~= nil, "Gora desk header")
+ assert_true(findFont(frame, "FAVOR") ~= nil, "FAVOR pane is clerical")
++assert_true(findFont(frame, "PROPOSED BOUT") ~= nil, "proposed bout header")
++assert_true(findFont(frame, "STIPULATION") ~= nil, "STIPULATION header")
+ assert_true(findFont(frame, "Congregation sees favor") ~= nil, "congregation toggle label")
+ assert_true(findButton(frame, "Start Event") ~= nil, "Start Event is one click")
+ assert_true(findButton(frame, "Open Knighting") ~= nil, "Open Knighting is one click")
+@@ -852,7 +865,100 @@
+ 
+ Sender.IsRegisteredPope = savedPred
+ assert_eq(COB.Popes, nil, "still no Pope list after the favor desk")
++
++--------------------------------------------------------------------------------
++-- B3-D: proposed bout slot + one-line STIPULATION. No winner picker. No Net.
++--------------------------------------------------------------------------------
++reset()
++Console:Init()
++a = Store:CreateCharacter({ name = "Chuckroast", class = "Warrior", level = 70 })
++b = Store:CreateCharacter({ name = "Tendermage", class = "Mage", level = 68 })
++
++local emptyBout = Console:GetProposedBout()
++assert_eq(emptyBout.fighterA, nil, "empty proposed bout has no fighter A")
++assert_eq(emptyBout.fighterB, nil, "empty proposed bout has no fighter B")
++assert_eq(emptyBout.label, "", "empty proposed bout has an empty label")
++emptyBout.label = "mutated"
++emptyBout.fighterA = 99
++assert_eq(Console:GetProposedBout().label, "", "mutating an empty bout copy does not stick")
++assert_eq(Console:GetProposedBout().fighterA, nil, "mutating an empty bout copy does not invent A")
++
++Console:SelectFighters(a.id, nil)
++local oneBout = Console:GetProposedBout()
++assert_eq(oneBout.fighterA, a.id, "one selected fighter is reported")
++assert_eq(oneBout.fighterB, nil, "missing second fighter stays empty")
++assert_eq(oneBout.label, "", "label stays empty until both ids are selected")
++
++Console:SelectFighters(a.id, b.id)
++local pairBout = Console:GetProposedBout()
++assert_eq(pairBout.fighterA, a.id, "proposed bout has fighter A")
++assert_eq(pairBout.fighterB, b.id, "proposed bout has fighter B")
++assert_eq(pairBout.label, "Chuckroast vs Tendermage", "label is Store names vs")
++pairBout.fighterA = 0
++pairBout.label = "hacked"
++assert_eq(Console:GetProposedBout().fighterA, a.id, "mutating a bout copy does not change A")
++assert_eq(Console:GetProposedBout().label, "Chuckroast vs Tendermage",
++  "mutating a bout copy does not change the label")
++
++Console:Refresh()
++assert_eq(frame.ProposedBout:GetText(), "Chuckroast vs Tendermage",
++  "Refresh paints the proposed bout")
++
++Console:SelectFighters(nil, nil)
++Console:Refresh()
++assert_eq(frame.ProposedBout:GetText(), "", "Refresh clears the proposed bout")
+ 
++savedPred = Sender.IsRegisteredPope
++Sender.IsRegisteredPope = function() return true end
++
++local sendDecreeBout = 0
++local sendStateBout = 0
++local savedNetBout = COB.Net
++COB.Net = {
++  SendDecree = function()
++    sendDecreeBout = sendDecreeBout + 1
++  end,
++  SendState = function()
++    sendStateBout = sendStateBout + 1
++  end,
++}
++
++assert_true(Console:StartEvent() ~= nil, "stipulation Sanction needs a live event")
++Gora:Petition(a.id)
++Gora:Petition(b.id)
++Console:SelectFighters(a.id, b.id)
++frame.Stipulation:SetText("  no potions  ")
++local withStip = Console:Sanction()
++assert_true(withStip ~= nil, "Sanction with box text reaches Gora")
++assert_eq(withStip.fighterA, a.id, "box Sanction uses the proposed pair")
++assert_eq(withStip.stipulation, "no potions", "box stipulation is trimmed")
++assert_eq(Gora:GetSanctioned().stipulation, "no potions", "Gora remembers the trimmed line")
++assert_eq(sendDecreeBout, 0, "Sanction does not call Net:SendDecree")
++assert_eq(sendStateBout, 0, "Sanction does not call Net:SendState")
++
++frame.Stipulation:SetText("")
++local emptyStip = Console:Sanction(a.id, b.id)
++assert_true(emptyStip ~= nil, "empty-box Sanction still reaches Gora")
++assert_eq(emptyStip.stipulation, nil, "empty box omits stipulation")
++assert_eq(Gora:GetSanctioned().stipulation, nil, "empty box leaves Gora stipulation nil")
++
++frame.Stipulation:SetText("   ")
++local wsStip = Console:Sanction(a.id, b.id)
++assert_eq(wsStip.stipulation, nil, "whitespace box omits stipulation")
++
++frame.Stipulation:SetText("box leftover")
++local explicitStip = Console:Sanction(a.id, b.id, "combatants shall be nude")
++assert_eq(explicitStip.stipulation, "combatants shall be nude",
++  "an explicit Sanction argument wins over the box")
++
++frame.Stipulation:SetText("box leftover")
++local blankArg = Console:Sanction(a.id, b.id, "")
++assert_eq(blankArg.stipulation, nil, "explicit empty string omits stipulation")
++
++COB.Net = savedNetBout
++Sender.IsRegisteredPope = savedPred
++assert_eq(COB.Popes, nil, "still no Pope list after the proposed bout")
++
+ --------------------------------------------------------------------------------
+ -- No queue store, no auto-advance, no guild write, no theater in this file
+ --------------------------------------------------------------------------------

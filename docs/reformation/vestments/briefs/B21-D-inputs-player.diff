@@ -1,0 +1,234 @@
+# B21-D — Petition omits opponent when the player name read fails (implementation diff)
+
+Lane-only unified diff of the exclusive implementation files vs the pre-lane working tree.
+
+--- a/addon/ChurchOfBeef/UI/Inputs.lua
++++ b/addon/ChurchOfBeef/UI/Inputs.lua
+@@ -17,6 +17,8 @@
+ -- is false versus the whisper dest and the local player. Both unit-name
+ -- reads are pcalled. A missing unit-name API omits opponent. The target
+ -- name is trimmed (^%s+ / %s+$) before Same; empty after trim omits.
++-- A failed player pcall or a non-string player name omits opponent
++-- (fail-closed). Dest-same and player-same still omit.
+ -- Confess box sits TOP / -14 so it stays fully below the 12px TitleBar.
+ local Inputs = {
+   MODE = "Event",
+@@ -249,7 +251,8 @@
+     return nil
+   end
+   if COB.Names.Same(targetName, inputTarget) then return nil end
+-  if pok and COB.Names.Same(targetName, playerName) then return nil end
++  if not pok or type(playerName) ~= "string" then return nil end
++  if COB.Names.Same(targetName, playerName) then return nil end
+   return targetName
+ end
+ 
+
+--- a/tests/test_inputs.lua
++++ b/tests/test_inputs.lua
+@@ -1,5 +1,5 @@
+ -- Event congregation Petition / Confess / Catchup (B4-G, B5-E, B14-B, B15-A,
+--- B16-B, B17-C, B18-A). Isolated: wow_ui_stub + Common + Runtime + Inputs. Stub
++-- B16-B, B17-C, B18-A, B21-D). Isolated: wow_ui_stub + Common + Runtime + Inputs. Stub
+ -- COB.Net.SendPetition / SendConfession / RequestSnapshot. Event Mode only.
+ -- No Pope-name lookup. No Gora:Petition. No Proclaim. No sound. No
+ -- SendChatMessage. Isolation wrap. No TOC / bootstrap / run.lua. Confess
+@@ -10,6 +10,8 @@
+ -- not the local player (Names.Same). Both UnitName reads are pcalled.
+ -- Confess box sits TOP / -14 below the 12px TitleBar. HEIGHT 72 stays.
+ -- Opponent name is trimmed (^%s+ / %s+$) before Names.Same; empty omits.
++-- A failed player pcall or a non-string player name omits opponent
++-- (fail-closed). Dest-same and player-same still omit.
+ package.path = package.path .. ";./tests/?.lua"
+ 
+ local stub = require("wow_ui_stub")
+@@ -989,7 +991,7 @@
+ -- Trim opponent: whitespace-only omits; padded "  Chuckroast  " sends
+ -- "Chuckroast". B17-C challenge law, TitleBar persist, ESC ClearFocus,
+ -- not UISpecialFrames stay. Nested so the main chunk stays under Lua 5.1's
+--- 200-local cap.
++-- 200-local cap. B21-D is nested inside runB18A() (no new main-chunk locals).
+ --------------------------------------------------------------------------------
+ local function runB18A()
+ ChurchOfBeefDB = { ui = {} }
+@@ -1178,8 +1180,180 @@
+   assert_eq(COB.Sound, nil, "still no Sound after B18-A")
+   assert_eq(COB.Hud, nil, "still no Hud after B18-A")
+   assert_eq(type(SLASH_CHURCHOFBEEF1), "nil", "B18-A still does not register a slash")
++end
++
++--------------------------------------------------------------------------------
++-- B21-D: player pcall fail or non-string playerName omits opponent
++-- (fail-closed). Unpadded Chuckroast + successful player still names
++-- opponent. Quiet / ESC / TitleBar / isolation wrap stay. Nested in
++-- runB18A() so the main chunk stays under Lua 5.1's 200-local cap.
++--------------------------------------------------------------------------------
++local function runB21D()
++ChurchOfBeefDB = { ui = {} }
++reset()
++assert_true(Runtime:StartEvent() ~= nil, "B21-D StartEvent reaches ASSEMBLY")
++local frame = Inputs:Init()
++assert_true(frame ~= nil, "B21-D Init creates the frame")
++assert_eq(frame:IsShown(), true, "B21-D Event Init shows the Inputs panel")
++assert_eq(frame:GetWidth(), 328, "B21-D WIDTH stays 328")
++assert_eq(frame:GetHeight(), 72, "B21-D HEIGHT stays 72")
++
++local titleBar = rawget(frame, "TitleBar")
++assert_true(titleBar ~= nil, "B21-D TitleBar stays")
++if titleBar then
++  assert_eq(titleBar:GetHeight(), 12, "B21-D TitleBar height stays 12")
++end
++assert_eq(frame:GetScript("OnDragStart"), nil, "B21-D root still has no OnDragStart")
++
++local box = editBox()
++assert_true(box ~= nil, "B21-D confess box stays")
++assert_true(box:GetScript("OnEscapePressed") ~= nil, "B21-D OnEscapePressed stays")
++box:SetFocus()
++assert_eq(box:HasFocus(), true, "B21-D editBox can take focus")
++local fired, fireErr = pcall(function()
++  stub.fire(box, "OnEscapePressed")
++end)
++assert_eq(fired, true, "B21-D OnEscapePressed fire does not error")
++assert_eq(fireErr, nil, "B21-D OnEscapePressed fire has no error text")
++assert_eq(box:HasFocus(), false, "B21-D ESC ClearFocus")
++assert_eq(frame:IsShown(), true, "B21-D ESC does not Hide")
++assert_eq(Inputs:GetView().shown, true, "B21-D GetView().shown stays true after ESC")
++
++local listed = false
++for i = 1, #UISpecialFrames do
++  if UISpecialFrames[i] == "ChurchOfBeefInputs" then listed = true end
++end
++assert_eq(listed, false, "B21-D still not on UISpecialFrames")
++
++Inputs:SetInputTarget("Host")
++Inputs:SetLocalCharacterId(7)
++
++UnitName = function(unit)
++  if unit == "target" then return "Chuckroast" end
++  if unit == "player" then error("unitname player failed") end
++  return nil
++end
++sentPetitions = {}
++local ok, err = Inputs:Petition()
++assert_eq(ok, true, "B21-D player-throw still sends")
++assert_eq(err, nil, "B21-D player-throw has no error")
++assert_eq(#sentPetitions, 1, "B21-D player-throw sends once")
++assert_eq(sentPetitions[1].target, "Host", "B21-D player-throw whisper dest stays Host")
++assert_eq(sentPetitions[1].fields.characterId, 7, "B21-D player-throw keeps characterId")
++assert_eq(sentPetitions[1].fields.opponent, nil, "B21-D player-throw omits opponent")
++assert_eq(sentPetitions[1].fields.kind, nil, "B21-D does not invent a kind")
++assert_eq(targetCalls, 0, "B21-D player-throw does not TargetUnit")
++
++UnitName = function(unit)
++  if unit == "target" then return "Chuckroast" end
++  if unit == "player" then return "Beefina" end
++  return nil
++end
++sentPetitions = {}
++ok, err = Inputs:Petition()
++assert_eq(ok, true, "B21-D successful player still sends")
++assert_eq(err, nil, "B21-D successful player has no error")
++assert_eq(#sentPetitions, 1, "B21-D successful player sends once")
++assert_eq(sentPetitions[1].fields.opponent, "Chuckroast",
++  "B21-D unpadded Chuckroast + successful player still names opponent")
++assert_eq(sentPetitions[1].target, "Host", "B21-D successful player whisper dest stays Host")
++assert_eq(sentPetitions[1].fields.characterId, 7, "B21-D successful player keeps characterId")
++
++UnitName = function(unit)
++  if unit == "target" then return "Chuckroast" end
++  if unit == "player" then return nil end
++  return nil
++end
++sentPetitions = {}
++Inputs:Petition()
++assert_eq(sentPetitions[1].fields.opponent, nil, "B21-D non-string player omits opponent")
++assert_eq(sentPetitions[1].target, "Host", "B21-D non-string player whisper dest stays Host")
++
++UnitName = function(unit)
++  if unit == "target" then return "Host" end
++  if unit == "player" then error("unitname player failed") end
++  return nil
+ end
++sentPetitions = {}
++Inputs:Petition()
++assert_eq(sentPetitions[1].fields.opponent, nil, "B21-D dest-same still omits")
++assert_eq(sentPetitions[1].target, "Host", "B21-D dest-same whisper dest stays Host")
+ 
++UnitName = function(unit)
++  if unit == "target" then return "Beefina" end
++  if unit == "player" then return "Beefina" end
++  return nil
++end
++sentPetitions = {}
++Inputs:Petition()
++assert_eq(sentPetitions[1].fields.opponent, nil, "B21-D player-same still omits")
++assert_eq(sentPetitions[1].target, "Host", "B21-D player-same whisper dest stays Host")
++
++UnitName = nil
++sentPetitions = {}
++ok, err = Inputs:Petition()
++assert_eq(ok, true, "B21-D missing UnitName still sends")
++assert_eq(err, nil, "B21-D missing UnitName has no error")
++assert_eq(sentPetitions[1].fields.opponent, nil, "B21-D missing UnitName omits opponent")
++assert_eq(sentPetitions[1].target, "Host", "B21-D missing UnitName whisper dest stays Host")
++
++UnitName = function(unit)
++  if unit == "target" then return "Chuckroast" end
++  if unit == "player" then error("unitname player failed") end
++  return nil
++end
++assert_true(Runtime:EndEvent() ~= nil, "B21-D EndEvent returns QUIET")
++sentPetitions = {}
++ok = Inputs:Petition()
++assert_eq(ok, false, "B21-D Quiet Petition is false")
++assert_eq(#sentPetitions, 0, "B21-D Quiet does not send")
++
++assert_eq(targetCalls, 0, "B21-D never TargetUnit")
++assert_eq(sounds, 0, "B21-D plays no sound")
++assert_eq(goraCalls, 0, "B21-D does not call Gora")
++
++local playerSrcFile = io.open("addon/ChurchOfBeef/UI/Inputs.lua", "r")
++assert_true(playerSrcFile ~= nil, "Inputs.lua is readable after B21-D pins")
++local playerSrc = playerSrcFile:read("*a")
++playerSrcFile:close()
++assert_true(playerSrc:find('if not pok or type(playerName) ~= "string"', 1, true) ~= nil,
++  "B21-D failed player pcall or non-string playerName fail-closes")
++assert_true(playerSrc:find('gsub("^%s+", "")', 1, true) ~= nil, "B21-D source still trims leading whitespace")
++assert_true(playerSrc:find('gsub("%s+$", "")', 1, true) ~= nil, "B21-D source still trims trailing whitespace")
++assert_true(playerSrc:find('pcall(UnitName, "target")', 1, true) ~= nil,
++  "B21-D UnitName target read is pcalled")
++assert_true(playerSrc:find('pcall(UnitName, "player")', 1, true) ~= nil,
++  "B21-D UnitName player read is pcalled")
++assert_true(playerSrc:find("Names.Same", 1, true) ~= nil, "B21-D source compares with Names.Same")
++assert_eq(playerSrc:find("TargetUnit", 1, true), nil, "B21-D source does not TargetUnit")
++assert_eq(playerSrc:find("Gora:Petition", 1, true), nil, "B21-D source does not call Gora:Petition")
++assert_eq(playerSrc:find("PlaySound", 1, true), nil, "B21-D source does not play sound")
++assert_eq(playerSrc:find("Popes", 1, true), nil, "B21-D source has no Popes lookup")
++assert_eq(playerSrc:find("IsRegisteredPope", 1, true), nil, "B21-D source has no IsRegisteredPope")
++assert_eq(playerSrc:find("UISpecialFrames", 1, true), nil, "B21-D source does not use UISpecialFrames")
++assert_eq(playerSrc:find("SUMMON", 1, true), nil, "B21-D source has no SUMMON")
++assert_true(playerSrc:find("OnEscapePressed", 1, true) ~= nil, "B21-D source keeps OnEscapePressed")
++assert_true(playerSrc:find("ClearFocus", 1, true) ~= nil, "B21-D source keeps ClearFocus")
++assert_true(playerSrc:find("SetMultiLine(true)", 1, true) ~= nil, "B21-D source keeps SetMultiLine(true)")
++assert_true(playerSrc:find("TitleBar", 1, true) ~= nil, "B21-D source keeps TitleBar")
++assert_true(playerSrc:find("db.inputs", 1, true) ~= nil, "B21-D source keeps ui.inputs persist")
++assert_true(playerSrc:find("SetHeight(12)", 1, true) ~= nil, "B21-D source TitleBar height 12")
++assert_true(playerSrc:find("local WIDTH, HEIGHT = 328, 72", 1, true) ~= nil,
++  "B21-D source HEIGHT stays 72")
++assert_true(playerSrc:find('SetPoint("TOP", widget, "TOP", 0, -14)', 1, true) ~= nil,
++  "B21-D confess box SetPoint TOP -14 stays")
++
++if standalone then
++  assert_eq(COB.Console, nil, "still no Console after B21-D")
++  assert_eq(COB.Popes, nil, "still no Pope list after B21-D")
++  assert_eq(COB.Sender, nil, "still no Sender after B21-D")
++  assert_eq(COB.Sound, nil, "still no Sound after B21-D")
++  assert_eq(COB.Hud, nil, "still no Hud after B21-D")
++  assert_eq(type(SLASH_CHURCHOFBEEF1), "nil", "B21-D still does not register a slash")
++end
++end
++runB21D()
++
+ UnitName = savedUnitName
+ TargetUnit = savedTargetUnit
+ end

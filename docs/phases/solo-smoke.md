@@ -59,18 +59,17 @@ Account store is schema **7**: `{ version, ui, store, event, decree }`.
 | Surface | What a human will see |
 |---------|------------------------|
 | Quiet Tuesday | Almost nothing. Minimap present. Decree parchment **hidden until a line is Set**. No feeds, dashboards, bars, toasts, pips, or sound. |
-| `/beef` | Opens the **Records Book** (parchment superlatives, §14.2 / §10.9). Empty pages until real Gora rows exist. Not a Ladder. |
+| `/beef` | Opens the **Records Book** (parchment superlatives, §14.2 / §10.9). Empty pages until real Gora rows exist. Not a Ladder. Mouse wheel turns leaves (up Previous, down Next), including over the title bar, Close, ribbons, and page buttons. Page titles use stock `Fonts\\MORPHEUS.ttf` (FRIZQT / GameFont fallback) and re-apply that face on the book title and page title when the leaf turns. Hide remounts a missing OnHide so ESC still re-lists `ChurchOfBeefRecordsBook`. Show / Init remount a missing OnHide. pageIndex stays. |
 | Minimap (no Decree) | Same as `/beef` — Records Book. |
 | Minimap (Decree set) | Left-click **replays** the banner. Does not open the Book. |
 | `/beef minimap` | Hides or shows the button. `/beef` still opens the Book when the button is hidden. |
-| Decree | Stored `line` + optional `flavor`. Header **A GATHERING HAS BEEN DECREED** is UI copy. Banner once per login; thereafter minimap replay. No calendar, RSVP, reminders, recurrence, or attendance. Console **Post Decree** exists and refuses unless listed; `/run Decree:Set` is the unlisted path. |
-| `/beef console` | Opens the Director Console (stock desks). OPEN_QUESTIONS #11. Ritual buttons refuse unless the local character is listed as Pope. |
-| Pope list | `Sender:IsRegisteredPope` is true only when the local name is in `Data/Popes.lua` or `ChurchOfBeefDB.ui.popeOverrides`. **No names are shipped.** The list is empty until David adds his character. Do not invent a Pope name. |
-| Fight HUD | Inited; stays hidden in QUIET and without a live sanctioned pair. This smoke will not show it. |
+| Decree | Stored `line` + optional `flavor`. Header **A GATHERING HAS BEEN DECREED** is UI copy. Banner once per login; thereafter minimap replay. No calendar, RSVP, reminders, recurrence, or attendance. Console **Post Decree** exists and refuses unless listed; `/run Decree:Set` is the unlisted path. After Clear, the banner Refreshs itself (wipe + hide). Hide still blanks leftover line/flavor. Hide remounts `ChurchOfBeefDecree` on `UISpecialFrames`. ESC / widget Hide after Clear also blanks leftover Goldshire. |
+| `/beef console` | Opens the Director Console (stock desks). OPEN_QUESTIONS #11. Ritual buttons refuse unless the local character is listed as Pope. Desk now also has EXPORT / IMPORT ARCHIVE, CANONIZE, and FLAG UPSET (Pope-local; no theater). The desk body scrolls (stock mouse wheel, 36px step). Focused boxes ClearFocus on ESC (the desk stays). ESC dismisses the named desk once (`UISpecialFrames` deduped; Hide / Refresh remount a missing OnHide so ESC still re-lists `ChurchOfBeefConsoleFrame`). The Event dock drag persists to account SV. ESC hides the dock until Expand / Show or a **new** event (same-event Refresh does not pop it back). Hide / Show / Refresh / Init remount the named dock on `UISpecialFrames` and remount a missing OnHide so dismiss persist still writes. Theater owns §19.4 cues when Proclaim exists (the desk does not double-play). KNIGHT THIS BEEF does not demote a Lord. ELEVATE TO LORD does not demote a Butcher or Council. Confession inbox rows click-select the confessor; Call Forward still paints mute `"  called"`; a later line from the same confessor clears that token. Stock Dismiss drops a petition and, when Confession is loaded, the same id from the inbox. Successful Dismiss also drops leftover character selection so Call Forward / Declare Victor do not fire on the dismissed petitioner. Successful Dismiss of a pair member also drops leftover proposed pair / Recommend so leftover Flag Upset / Sanction do not fire on the dismissed fighter. Third-id Dismiss keeps the pair. Open Gora after Continue does not reopen leftover last fighters; the live sanctioned pair and a desk pick still win. Recommend paints mute `"  names  "` when a petition named the other combatant and the Pope had not already selected the pair; End Event / a new Start Event / a QUIET Refresh (including glue `Runtime:EndEvent`) clears that line. The selected pair still clears only on successful Start / End Event. Successful End Event also drops leftover human / character selection so Call Forward / Dismiss / KNIGHT THIS BEEF do not fire on the previous person. Start Event keeps a Quiet pick. No second Dismiss. Presence lists Store names (`here` false) while the guild roster is only a login seed; those rows dim at stock `SetAlpha(0.45)` and do not gain an "offline" word. Hidden leftover Presence buttons reset to alpha 1 when the list shrinks. |
+| Pope list | `Sender:IsRegisteredPope` is true only when the local name is in `Data/Popes.lua` or `ChurchOfBeefDB.ui.popeOverrides`. Shipped name: **Thedave**. Other characters stay fail-closed. Do not invent more names. |
+| Fight HUD | Inited; stays hidden in QUIET and without a live sanctioned pair. This smoke will not show it. Fighter card, Proclaim, and the small Event toast dismiss with ESC (`UISpecialFrames`); no close button and no panel whoosh. The Quiet shell Show remounts its OnHide. Hide remounts that OnHide and re-lists `ChurchOfBeefFrame` so ESC persist still writes `shown = false`. Already-hidden Hide also writes `shown = false` even when OnHide does not fire again. ESC on the small toast advances one queued toast. An interrupting toast does not lose the queued row. Fighter-card and HUD names use stock `Fonts\\MORPHEUS.ttf`. Shown HUD names re-tint after that face / GameFont apply so class color survives `SetFontObject`. Mute defense integers are `SetWidth(28)` so they do not grow into VS. A successful Target keeps the last candidate / fighter mark token and fighter names so the next Mark* can still clear it. Congregation Inputs confess text is trimmed; whitespace-only text omits the field and still whispers. `SendConfession` also trims on the wire so a padded body does not encode spaces. Pope-gated `SendSnapshot` refuses a whitespace dest before encode. Proclaim headlines re-apply that face on each shown beat. Fighter-card Show / Refresh / Hide restore a missing OnHide. Hide remounts `ChurchOfBeefFighterCard` on `UISpecialFrames`. Congregation Inputs confess box ClearFocuses on ESC (the panel stays) and sits below the 12px drag handle. Quiet Hide blanks leftover confess text; dest stays. Quiet HUD Refresh drops leftover congregation favor. Inputs drag from the TitleBar. Congregation favor plates send only during a Gora RITE. Knighting leftover fighters (and a prior Gora lastPair during a non-Gora RITE or CONSEQUENCE, including after Knighting Continue) do not paint the HUD. SNAPSHOT and live STATE last-pair overlay are Gora-only; Knighting CONSEQUENCE catch-up does not carry leftover Gora fighters. End Event Forgets leftover raid marks (Quiet sweep). Clear still refuses Quiet. Fighter-card Show / Refresh remount `ChurchOfBeefFighterCard`. HideAll remounts `ChurchOfBeefToast` and `ChurchOfBeefProclaim`. Existing-frame toast Init remounts both names. The Event dock Show / Refresh / Init remount a missing OnHide. A new candidate / fighter mark clears the previous raid mark. Grouped self-mark and Clear use the `player` token even if `GetNumGroupMembers` is missing. Petition may name `UnitName("target")` as opponent when that name is not the Pope whisper dest and the player name read is a non-empty trimmed string. Whisper dest is trimmed; whitespace-only dest is no target. The Gora desk still shows Store petitioners and Store presence while the guild roster is only a login seed. |
 | `InspectProgress()` | Owner inspection only. Not a slash. Sets a Goldshire Decree (persists), opens banner + Records + Console, plays one `sanction` cue inside `StartEvent` / `EndEvent`, returns Runtime to **QUIET**. Does **not** write Store Gora rows. Console buttons still refuse. |
 
-Slash is only `/beef`, `/beef minimap`, and `/beef console`. Unrecognised
-arguments open the Records Book.
+Slash (spaces stripped): `/beef`, `/beef minimap`, `/beef console`, `/beef petition`, `/beef confess`, `/beef catchup`. Unrecognised arguments open the Records Book.
 
 ---
 
@@ -164,10 +163,9 @@ Then `/reload` so the login banner can fire once.
 - [ ] Ritual buttons **refuse** unless the local character is a listed
       Pope. Start Event, Open Gora, KNIGHT THIS BEEF, and the other verbs
       do not start a night on an unlisted character
-- [ ] **Do not invent a Pope name.** `Data/Popes.lua` ships with **no
-      names** until David adds one. To list the character this client is
-      on, David adds that name to `Data/Popes.lua` or
-      `ChurchOfBeefDB.ui.popeOverrides`. Until then, refuse is the pass
+- [ ] Shipped Pope name is **Thedave**. Log in as Thedave for ritual
+      verbs to accept. Other characters stay fail-closed unless listed
+      in `ChurchOfBeefDB.ui.popeOverrides`. Do not invent more names.
 - [ ] Software does not auto-announce, auto-advance, or narrate (Law 4)
 
 ### 7. Owner inspection — `InspectProgress()` (not a slash)
@@ -237,9 +235,9 @@ MVP done.
 
 ## Leftovers (named, not fixed in this script)
 
-1. **Pope list empty until David adds a name** — rituals refuse. That is
-   the pass until he lists the character in `Data/Popes.lua` or
-   `ChurchOfBeefDB.ui.popeOverrides`.
+1. **Pope list ships Thedave.** Rituals accept on that character. Other
+   characters refuse unless listed in `ChurchOfBeefDB.ui.popeOverrides`.
+   Do not invent more names.
 2. **Console Post Decree** — on the desks; refuses unless listed. `/run`
    remains the unlisted Set path. Not a Gathering Post.
 3. **Fight HUD** — needs a real sanctioned pair. No fake Store rows.

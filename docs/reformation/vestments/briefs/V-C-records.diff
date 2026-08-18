@@ -1,0 +1,361 @@
+diff --git a/addon/ChurchOfBeef/UI/RecordsBook.lua b/addon/ChurchOfBeef/UI/RecordsBook.lua
+index 88ce93c..3cae06f 100644
+--- a/addon/ChurchOfBeef/UI/RecordsBook.lua
++++ b/addon/ChurchOfBeef/UI/RecordsBook.lua
+@@ -10,8 +10,10 @@ local RecordsBook = {
+ COB.RecordsBook = RecordsBook
+ 
+ local FRAME_NAME = "ChurchOfBeefRecordsBook"
+-local TITLE_FONT = "Interface\\AddOns\\ChurchOfBeef\\Media\\RecordsTitle.ttf"
+-local SEAL_TEXTURE = "Interface\\AddOns\\ChurchOfBeef\\Media\\records-seal"
++local PAGE_TITLE_FONT = "Fonts\\MORPHEUS.TTF"
++local FALLBACK_TITLE_FONT = "Fonts\\FRIZQT__.TTF"
++local PARCHMENT_TEXTURE = "Interface\\QuestFrame\\QuestBG"
++local SEAL_TEXTURE = "Interface\\Buttons\\UI-Quickslot2"
+ 
+ local PAGE_TITLES = {
+   "Most Sanctioned Victories",
+@@ -53,6 +55,10 @@ local function applyFont(fs, template, path, size)
+     local ok, applied = pcall(fs.SetFont, fs, path, size or 16, "")
+     used = ok and applied and true or false
+   end
++  if not used and path and path ~= FALLBACK_TITLE_FONT and fs.SetFont then
++    local ok, applied = pcall(fs.SetFont, fs, FALLBACK_TITLE_FONT, size or 16, "")
++    used = ok and applied and true or false
++  end
+   if not used and fs.SetFontObject then
+     local font = template
+     if type(template) == "string" then font = _G[template] end
+@@ -60,6 +66,56 @@ local function applyFont(fs, template, path, size)
+   end
+ end
+ 
++local ROMAN_MAP = {
++  { 1000, "M" }, { 900, "CM" }, { 500, "D" }, { 400, "CD" },
++  { 100, "C" }, { 90, "XC" }, { 50, "L" }, { 40, "XL" },
++  { 10, "X" }, { 9, "IX" }, { 5, "V" }, { 4, "IV" }, { 1, "I" },
++}
++
++local function toRoman(n)
++  if type(n) ~= "number" then return "" end
++  n = math.floor(n)
++  if n < 1 or n > 3999 then return "" end
++  local parts = {}
++  for i = 1, #ROMAN_MAP do
++    local value = ROMAN_MAP[i][1]
++    local glyph = ROMAN_MAP[i][2]
++    while n >= value do
++      parts[#parts + 1] = glyph
++      n = n - value
++    end
++  end
++  return table.concat(parts)
++end
++
++RecordsBook.toRoman = toRoman
++
++local function displayCount(n)
++  if type(n) ~= "number" then n = 0 end
++  return toRoman(n)
++end
++
++local function applyParchment(tex)
++  if not tex then return end
++  local used = false
++  if tex.SetTexture then
++    local ok = pcall(tex.SetTexture, tex, PARCHMENT_TEXTURE)
++    used = ok and true or false
++  end
++  if not used then
++    fill(tex, 0.78, 0.70, 0.52, 0.94)
++  end
++end
++
++local function tomeHeight()
++  local parent = UIParent
++  local h = parent and parent.GetHeight and parent:GetHeight()
++  if type(h) == "number" and h > 0 then
++    return math.floor(h * 0.7 + 0.5)
++  end
++  return 480
++end
++
+ local function labelButton(button, text, template)
+   if not button then return end
+   local fs = button:CreateFontString(nil, "OVERLAY", template or "GameFontNormal")
+@@ -342,24 +398,29 @@ local function bodyText(page)
+   local title = page.title
+   for i = 1, #page.entries do
+     local e = page.entries[i]
++    local line
+     if title == "Greatest Rivalry" then
+-      lines[#lines + 1] = string.format("%s  %d – %d  %s",
+-        e.nameA or "", e.scoreA or 0, e.scoreB or 0, e.nameB or "")
++      line = string.format("%s  %s – %s  %s",
++        e.nameA or "", displayCount(e.scoreA or 0), displayCount(e.scoreB or 0), e.nameB or "")
+     elseif title == "Famous Upsets" then
+-      lines[#lines + 1] = string.format("%s over %s", e.name or "", e.opponentName or "")
++      line = string.format("%s over %s", e.name or "", e.opponentName or "")
+     elseif title == "The Undefeated" then
+-      lines[#lines + 1] = e.name or ""
++      line = e.name or ""
+     elseif title == "Most Sanctioned Victories" then
+-      lines[#lines + 1] = string.format("%s — %d", e.name or "", e.wins or 0)
++      line = string.format("%s — %s", e.name or "", displayCount(e.wins or 0))
+     elseif title == "Longest Streak" then
+-      lines[#lines + 1] = string.format("%s — %d", e.name or "", e.streak or 0)
++      line = string.format("%s — %s", e.name or "", displayCount(e.streak or 0))
+     elseif title == "The Iron Chin" then
+-      lines[#lines + 1] = string.format("%s — %d", e.name or "", e.fought or 0)
++      line = string.format("%s — %s", e.name or "", displayCount(e.fought or 0))
+     elseif title == "The Glorious Martyr" then
+-      lines[#lines + 1] = string.format("%s — %d", e.name or "", e.losses or 0)
++      line = string.format("%s — %s", e.name or "", displayCount(e.losses or 0))
+     else
+-      lines[#lines + 1] = e.name or ""
++      line = e.name or ""
+     end
++    if type(e.citation) == "string" and e.citation ~= "" then
++      line = line .. "\n" .. e.citation
++    end
++    lines[#lines + 1] = line
+   end
+   return table.concat(lines, "\n")
+ end
+@@ -389,6 +450,16 @@ local function turn(delta)
+   paint()
+ end
+ 
++local function jumpToTitle(title)
++  for i = 1, #PAGE_TITLES do
++    if PAGE_TITLES[i] == title then
++      pageIndex = i
++      paint()
++      return
++    end
++  end
++end
++
+ local function rememberSpecial(name)
+   if type(UISpecialFrames) ~= "table" then return end
+   for i = 1, #UISpecialFrames do
+@@ -440,8 +511,8 @@ local function buildFrame()
+   frame:EnableMouse(true)
+   frame:SetMovable(true)
+   frame:SetClampedToScreen(true)
+-  frame:SetWidth(540)
+-  frame:SetHeight(400)
++  frame:SetWidth(720)
++  frame:SetHeight(tomeHeight())
+   frame:Hide()
+ 
+   local iron = frame:CreateTexture(nil, "BACKGROUND")
+@@ -457,38 +528,62 @@ local function buildFrame()
+ 
+   local parchment = frame:CreateTexture(nil, "ARTWORK")
+   parchment:SetPoint("TOPLEFT", frame, "TOPLEFT", 8, -8)
+-  parchment:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -8, 8)
+-  fill(parchment, 0.78, 0.70, 0.52, 0.94)
++  parchment:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 8, 8)
++  parchment:SetPoint("RIGHT", frame, "CENTER", -6, 0)
++  applyParchment(parchment)
+   frame.Parchment = parchment
+ 
++  local rightLeaf = frame:CreateTexture(nil, "ARTWORK")
++  rightLeaf:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -8, -8)
++  rightLeaf:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -8, 8)
++  rightLeaf:SetPoint("LEFT", frame, "CENTER", 6, 0)
++  applyParchment(rightLeaf)
++  frame.RightLeaf = rightLeaf
++
++  local gutter = frame:CreateTexture(nil, "OVERLAY")
++  gutter:SetWidth(2)
++  gutter:SetPoint("TOP", frame, "TOP", 0, -10)
++  gutter:SetPoint("BOTTOM", frame, "BOTTOM", 0, 10)
++  fill(gutter, 0.72, 0.62, 0.38, 1)
++  frame.Gutter = gutter
++
+   local seal = frame:CreateTexture(nil, "OVERLAY")
+   seal:SetTexture(SEAL_TEXTURE)
+-  seal:SetWidth(36)
+-  seal:SetHeight(36)
+-  seal:SetPoint("BOTTOM", frame, "BOTTOM", 0, 28)
++  if seal.SetVertexColor then seal:SetVertexColor(0.85, 0.72, 0.35, 1) end
++  seal:SetWidth(28)
++  seal:SetHeight(28)
++  seal:SetPoint("TOPLEFT", frame, "TOPLEFT", 16, -16)
+   frame.Seal = seal
+ 
+   local title = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalHuge")
+-  title:SetPoint("TOP", frame, "TOP", 0, -28)
+-  applyFont(title, "GameFontNormalHuge", TITLE_FONT, 20)
++  title:SetPoint("TOP", frame, "TOP", 0, -22)
++  applyFont(title, "GameFontNormalHuge", PAGE_TITLE_FONT, 20)
+   if title.SetTextColor then title:SetTextColor(0.45, 0.32, 0.12, 1) end
+   title:SetText("The Records Book")
+   frame.TitleText = title
+ 
+   local pageTitle = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+-  pageTitle:SetPoint("TOP", title, "BOTTOM", 0, -18)
+-  applyFont(pageTitle, "GameFontNormalLarge")
++  pageTitle:SetPoint("TOP", title, "BOTTOM", 0, -14)
++  applyFont(pageTitle, "GameFontNormalLarge", PAGE_TITLE_FONT, 18)
+   if pageTitle.SetTextColor then pageTitle:SetTextColor(0.42, 0.12, 0.10, 1) end
+   pageTitle:SetText("")
+   frame.PageTitle = pageTitle
+ 
++  local rule = frame:CreateTexture(nil, "OVERLAY")
++  rule:SetHeight(1)
++  rule:SetPoint("TOP", pageTitle, "BOTTOM", 0, -8)
++  rule:SetPoint("LEFT", frame, "LEFT", 28, 0)
++  rule:SetPoint("RIGHT", frame, "CENTER", -16, 0)
++  fill(rule, 0.72, 0.62, 0.38, 1)
++  frame.TitleRule = rule
++
+   local body = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+-  body:SetPoint("TOP", pageTitle, "BOTTOM", 0, -22)
++  body:SetPoint("TOP", rule, "BOTTOM", 0, -16)
+   body:SetPoint("LEFT", frame, "LEFT", 36, 0)
+-  body:SetPoint("RIGHT", frame, "RIGHT", -36, 0)
++  body:SetPoint("RIGHT", frame, "CENTER", -16, 0)
+   applyFont(body, "GameFontNormal")
+   if body.SetTextColor then body:SetTextColor(0.18, 0.12, 0.08, 1) end
+-  if body.SetJustifyH then body:SetJustifyH("CENTER") end
++  if body.SetJustifyH then body:SetJustifyH("LEFT") end
+   body:SetText("")
+   frame.Body = body
+ 
+@@ -513,6 +608,27 @@ local function buildFrame()
+   close:SetScript("OnClick", function() RecordsBook:Hide() end)
+   frame.CloseButton = close
+ 
++  local function addRibbon(label, title)
++    local btn = CreateFrame("Button", nil, frame)
++    btn:SetWidth(88)
++    btn:SetHeight(20)
++    labelButton(btn, label)
++    btn:SetScript("OnClick", function() jumpToTitle(title) end)
++    return btn
++  end
++
++  local victoriesRibbon = addRibbon("Victories", "Most Sanctioned Victories")
++  victoriesRibbon:SetPoint("BOTTOM", frame, "BOTTOM", -96, 42)
++  frame.VictoriesRibbon = victoriesRibbon
++
++  local rivalriesRibbon = addRibbon("Rivalries", "Greatest Rivalry")
++  rivalriesRibbon:SetPoint("BOTTOM", frame, "BOTTOM", 0, 42)
++  frame.RivalriesRibbon = rivalriesRibbon
++
++  local martyrsRibbon = addRibbon("Martyrs", "The Glorious Martyr")
++  martyrsRibbon:SetPoint("BOTTOM", frame, "BOTTOM", 96, 42)
++  frame.MartyrsRibbon = martyrsRibbon
++
+   local prev = CreateFrame("Button", nil, frame)
+   prev:SetWidth(96)
+   prev:SetHeight(22)
+diff --git a/tests/test_records.lua b/tests/test_records.lua
+index 1c71303..4e3e81e 100644
+--- a/tests/test_records.lua
++++ b/tests/test_records.lua
+@@ -160,6 +160,23 @@ if standalone then
+   assert_eq(COB.Hud, nil, "isolated suite does not load Hud")
+ end
+ 
++--------------------------------------------------------------------------------
++-- Source contract: stock dress only. No Media paths. No generated prose.
++--------------------------------------------------------------------------------
++local srcFile = io.open("addon/ChurchOfBeef/UI/RecordsBook.lua", "r")
++assert_true(srcFile ~= nil, "UI/RecordsBook.lua is readable")
++local src = srcFile:read("*a")
++srcFile:close()
++assert_eq(src:find("Media\\", 1, true), nil, "no required Media path")
++assert_eq(src:find("ordained", 1, true), nil, "source does not generate 'ordained' prose")
++assert_eq(src:find("This is not hatred", 1, true), nil, "source does not generate that sermon")
++assert_eq(src:find("PlaySound", 1, true), nil, "source does not play sound")
++assert_eq(src:find("SLASH_", 1, true), nil, "source does not register a slash")
++assert_true(src:find("QuestBG", 1, true) ~= nil or src:find("Stationery", 1, true) ~= nil,
++  "parchment uses stock QuestBG or stationery")
++assert_true(src:find("MORPHEUS", 1, true) ~= nil or src:find("FRIZQT", 1, true) ~= nil,
++  "page title uses a stock client font path")
++
+ --------------------------------------------------------------------------------
+ -- Init: hidden parchment tome. No auto-open. No sound. No OnUpdate.
+ --------------------------------------------------------------------------------
+@@ -184,6 +201,11 @@ assert_eq(frame.TitleText:GetText(), "The Records Book", "chrome title is the Bi
+ assert_true(frame.PageTitle ~= nil, "page title FontString exists")
+ assert_true(frame.Body ~= nil, "body FontString exists")
+ assert_true(frame.TitleText._template ~= nil, "title uses a GameFont* fallback template")
++assert_eq(frame:GetHeight(), 480, "unknown UIParent height caps the tome near 480")
++assert_eq(buttonFor("Search"), nil, "no search box chrome")
++assert_eq(stub.findChild(frame, function(child)
++  return child._type == "EditBox"
++end), nil, "no search EditBox")
+ assert_true(UISpecialFrames[1] == "ChurchOfBeefRecordsBook" or (function()
+   for i = 1, #UISpecialFrames do
+     if UISpecialFrames[i] == "ChurchOfBeefRecordsBook" then return true end
+@@ -526,6 +548,65 @@ assert_eq(frame.PageTitle:GetText(), "Most Sanctioned Victories", "Previous turn
+ assert_eq(sounds, 0, "leaf turns play no sound")
+ assert_eq(frame:GetScript("OnUpdate"), nil, "leaf turns install no OnUpdate")
+ 
++--------------------------------------------------------------------------------
++-- Painted counts are roman. GetPages measures stay arabic.
++--------------------------------------------------------------------------------
++assert_eq(type(Book.toRoman), "function", "toRoman is a public helper")
++if type(Book.toRoman) == "function" then
++  assert_eq(Book.toRoman(14), "XIV", "14 paints as XIV")
++  assert_eq(Book.toRoman(4), "IV", "4 paints as IV")
++  assert_eq(Book.toRoman(9), "IX", "9 paints as IX")
++end
++
++reset()
++local high = char("Highbeef")
++local foil14 = char("Foil")
++for i = 1, 14 do
++  bout(high, foil14, high, 9300 + i)
++end
++local fourteen = pageNamed("Most Sanctioned Victories")
++assert_eq(fourteen.entries[1].wins, 14, "GetPages keeps the arabic measure")
++assert_eq(fourteen.entries[1].name, "Highbeef", "the holder is Highbeef")
++Book:Show()
++assert_eq(frame.PageTitle:GetText(), "Most Sanctioned Victories", "open book starts on victories")
++local romanBody = frame.Body:GetText() or ""
++assert_true(romanBody:find("Highbeef", 1, true) ~= nil, "painted victories name the holder")
++assert_true(romanBody:find("XIV", 1, true) ~= nil, "painted victories use roman XIV")
++assert_eq(romanBody:find("14", 1, true), nil, "painted victories do not print raw 14")
++assert_eq(romanBody:find("ordained", 1, true), nil, "painted body does not invent ordained prose")
++
++--------------------------------------------------------------------------------
++-- Ribbon bookmarks jump only among existing Bible pages. Prev/next stay.
++--------------------------------------------------------------------------------
++reset()
++local markA = char("MarkA")
++local markB = char("MarkB")
++bout(markA, markB, markA, 9400)
++bout(markA, markB, markB, 9401)
++bout(markA, markB, markA, 9402)
++Book:Show()
++local victoriesRibbon = buttonFor("Victories")
++local rivalriesRibbon = buttonFor("Rivalries")
++local martyrsRibbon = buttonFor("Martyrs")
++assert_true(victoriesRibbon ~= nil, "Victories ribbon exists")
++assert_true(rivalriesRibbon ~= nil, "Rivalries ribbon exists")
++assert_true(martyrsRibbon ~= nil, "Martyrs ribbon exists")
++assert_eq(buttonFor("Cowardice"), nil, "no invented Cowardice superlative ribbon")
++if rivalriesRibbon then stub.fire(rivalriesRibbon, "OnClick") end
++assert_eq(frame.PageTitle:GetText(), "Greatest Rivalry", "Rivalries lands on Greatest Rivalry")
++local rivalryBody = frame.Body:GetText() or ""
++assert_true(rivalryBody:find("II", 1, true) ~= nil, "rivalry score paints roman")
++assert_eq(rivalryBody:find("2", 1, true), nil, "rivalry score does not print raw 2")
++if martyrsRibbon then stub.fire(martyrsRibbon, "OnClick") end
++assert_eq(frame.PageTitle:GetText(), "The Glorious Martyr", "Martyrs lands on The Glorious Martyr")
++local prevFromMartyr = buttonFor("Previous")
++assert_true(prevFromMartyr ~= nil, "Previous still exists beside ribbons")
++if prevFromMartyr then stub.fire(prevFromMartyr, "OnClick") end
++assert_eq(frame.PageTitle:GetText(), "The Undefeated", "Previous still turns a leaf")
++if victoriesRibbon then stub.fire(victoriesRibbon, "OnClick") end
++assert_eq(frame.PageTitle:GetText(), "Most Sanctioned Victories", "Victories lands on Most Sanctioned Victories")
++assert_eq(sounds, 0, "ribbons play no sound")
++
+ --------------------------------------------------------------------------------
+ -- ResetForTests is inert outside the harness.
+ --------------------------------------------------------------------------------

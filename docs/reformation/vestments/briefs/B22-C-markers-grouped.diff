@@ -1,0 +1,52 @@
+diff --git a/addon/ChurchOfBeef/UI/Markers.lua b/addon/ChurchOfBeef/UI/Markers.lua
+--- a/addon/ChurchOfBeef/UI/Markers.lua
++++ b/addon/ChurchOfBeef/UI/Markers.lua
+@@ -79,13 +79,16 @@
+ end
+ 
+ local function resolveUnit(name)
+-  if type(GetNumGroupMembers) ~= "function" or type(UnitName) ~= "function" then
++  if type(UnitName) ~= "function" then
+     return nil
+   end
+   local pok, me = pcall(UnitName, "player")
+   if pok and namesSame(me, name) then
+     return "player"
+   end
++  if type(GetNumGroupMembers) ~= "function" then
++    return nil
++  end
+   local ok, raw = pcall(GetNumGroupMembers)
+   if not ok then return nil end
+   local size = tonumber(raw) or 0
+diff --git a/tests/test_markers.lua b/tests/test_markers.lua
+--- a/tests/test_markers.lua
++++ b/tests/test_markers.lua
+@@ -575,6 +575,27 @@
+ assert_eq(#raidTargets, 0, "Quiet player Clear does not SetRaidTarget")
+ 
+ --------------------------------------------------------------------------------
++-- B22-C: grouped (IsInRaid) + Pope + Event, GetNumGroupMembers nil:
++-- MarkCandidate("Beefina") spies SetRaidTarget("player", …).
++-- Existing missing-group-APIs pin (both nil) stays fail-closed below.
++--------------------------------------------------------------------------------
++reset()
++Runtime:StartEvent()
++popeFlag = true
++armRaid("Chuckroast")
++do
++  local savedCount = GetNumGroupMembers
++  GetNumGroupMembers = nil
++  ok, err = Markers:MarkCandidate("Beefina")
++  assert_eq(ok, true, "grouped player MarkCandidate without GetNumGroupMembers is true")
++  assert_eq(err, nil, "successful player Mark without count API has no error")
++  assert_eq(#raidTargets, 1, "player Mark without count API spies SetRaidTarget once")
++  assert_eq((raidTargets[1] or {}).unit, "player", "player Mark without count API uses the player token")
++  assert_eq((raidTargets[1] or {}).index, 1, "player Mark without count API still places star")
++  GetNumGroupMembers = savedCount
++end
++
++--------------------------------------------------------------------------------
+ -- Missing API fail-closed. No throw.
+ --------------------------------------------------------------------------------
+ reset()

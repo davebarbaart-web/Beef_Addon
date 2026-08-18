@@ -1,0 +1,735 @@
+diff --git a/addon/ChurchOfBeef/Net/BeefNet.lua b/addon/ChurchOfBeef/Net/BeefNet.lua
+index ed64319..1c85843 100644
+--- a/addon/ChurchOfBeef/Net/BeefNet.lua
++++ b/addon/ChurchOfBeef/Net/BeefNet.lua
+@@ -9,8 +9,11 @@ local COB = ChurchOfBeef
+ -- a body Codec will not decode stays unknown, so HELLO-only suites stay green.
+ -- Older builds may still broadcast SUGGESTION, RANK_COMMIT, SYNC_REQUEST, or
+ -- SYNC_STATE; those are named so they die quietly and are never acted on.
+--- INPUT is not a live channel. Outbound STATE / SNAPSHOT send only if the local
++-- INPUT (favor, petition, confession) is live on whisper-to-Pope. GUILD INPUT
++-- stays unknown. Outbound STATE / SNAPSHOT / DECREE send only if the local
+ -- player is a registered Pope (always false until the #8 list — do not code it).
++-- SendFavor, SendPetition, SendConfession, and RequestSnapshot are congregation
++-- whisper and are not Pope-gated.
+ --
+ -- Classic+ port notes: the client APIs read here are behind type() guards and listed
+ -- below, so a host that renames one degrades to "cannot send" instead of erroring on
+@@ -350,6 +353,105 @@ function Net:SendSnapshot(fields, target)
+   return self:_TransmitWhisper(payload, target)
+ end
+ 
++function Net:SendDecree(fields, nowSeconds)
++  if not self:_LocalPope() then
++    return false, "not a registered pope"
++  end
++  if not (COB.Codec and COB.Codec.EncodeDecree) then
++    return false, "no codec"
++  end
++  local payload, err = COB.Codec:EncodeDecree(fields)
++  if not payload then
++    return false, err
++  end
++  return self:Send(payload, nowSeconds)
++end
++
++-- Congregation → Pope. Not Pope-gated. Favor+pick only.
++function Net:SendFavor(fields, target, nowSeconds)
++  if type(target) ~= "string" or target == "" then
++    return false, "no target"
++  end
++  if not (COB.Codec and COB.Codec.EncodeInput) then
++    return false, "no codec"
++  end
++  local body = type(fields) == "table" and {
++    kind = "favor",
++    characterId = fields.characterId,
++    pick = fields.pick,
++  } or { kind = "favor" }
++  local payload, err = COB.Codec:EncodeInput(body)
++  if not payload then
++    return false, err
++  end
++  return self:_TransmitWhisper(payload, target)
++end
++
++-- Congregation → Pope. Not Pope-gated. Petition id only; never a named opponent.
++-- Caller supplies the whisper target. Do not look up a Pope name.
++function Net:SendPetition(fields, target, nowSeconds)
++  if type(target) ~= "string" or target == "" then
++    return false, "no target"
++  end
++  if not (COB.Codec and COB.Codec.EncodeInput) then
++    return false, "no codec"
++  end
++  local body = type(fields) == "table" and {
++    kind = "petition",
++    characterId = fields.characterId,
++  } or { kind = "petition" }
++  local payload, err = COB.Codec:EncodeInput(body)
++  if not payload then
++    return false, err
++  end
++  return self:_TransmitWhisper(payload, target)
++end
++
++-- Congregation → Pope. Not Pope-gated. Confession text is optional.
++-- Caller supplies the whisper target. Do not look up a Pope name.
++function Net:SendConfession(fields, target, nowSeconds)
++  if type(target) ~= "string" or target == "" then
++    return false, "no target"
++  end
++  if not (COB.Codec and COB.Codec.EncodeInput) then
++    return false, "no codec"
++  end
++  if type(fields) == "table" and type(fields.text) == "string"
++      and fields.text:find("\n", 1, true) then
++    return false, "invalid text"
++  end
++  local body = type(fields) == "table" and {
++    kind = "confession",
++    characterId = fields.characterId,
++    text = fields.text,
++  } or { kind = "confession" }
++  local payload, err = COB.Codec:EncodeInput(body)
++  if not payload then
++    return false, err
++  end
++  return self:_TransmitWhisper(payload, target)
++end
++
++-- Congregation → Pope. Not Pope-gated. Caller supplies the whisper target.
++-- Do not look up a Pope name.
++function Net:RequestSnapshot(target, nowSeconds)
++  if type(target) ~= "string" or target == "" then
++    return false, "no target"
++  end
++  local payload, err
++  if COB.Snapshot and COB.Snapshot.Request then
++    payload, err = COB.Snapshot:Request()
++  elseif COB.Codec and COB.Codec.EncodeSnapshot then
++    payload, err = COB.Codec:EncodeSnapshot({ role = "request" })
++  else
++    return false, "no codec"
++  end
++  if not payload then
++    return false, err
++  end
++  return self:_TransmitWhisper(payload, target)
++end
++
+ --------------------------------------------------------------------------------
+ -- Inbound
+ --------------------------------------------------------------------------------
+@@ -423,7 +525,8 @@ end
+ 
+ function Net:OnAddonMessage(prefix, payload, channel, sender, nowSeconds)
+   if prefix ~= self.Prefix then return false end
+-  -- HELLO and STATE travel on GUILD. SNAPSHOT catch-up is whisper only.
++  -- HELLO, STATE, and DECREE travel on GUILD. SNAPSHOT catch-up and INPUT
++  -- (favor, petition, confession) are whisper only.
+   if channel ~= self.Channel and channel ~= "WHISPER" then return false end
+ 
+   -- Our own guild-channel traffic comes straight back to us and is not somebody
+@@ -456,17 +559,41 @@ function Net:_HandleV2(payload, channel, sender)
+     return false, "unknown message type"
+   end
+   local decoded = COB.Codec:Decode(payload)
+-  if not decoded or (decoded.type ~= "STATE" and decoded.type ~= "SNAPSHOT") then
++  if not decoded then
++    return false, "unknown message type"
++  end
++  local msgType = decoded.type
++  if msgType ~= "STATE" and msgType ~= "SNAPSHOT"
++      and msgType ~= "DECREE" and msgType ~= "INPUT" then
++    return false, "unknown message type"
++  end
++  -- GUILD INPUT stays unknown — not a live channel.
++  if msgType == "INPUT" and channel ~= "WHISPER" then
+     return false, "unknown message type"
+   end
+   if not COB.Codec:IsCompatible(decoded.version) then
+     self:_WarnVersion(decoded.version)
+     return false, "protocol mismatch"
+   end
+-  if decoded.type == "STATE" then
++  if msgType == "STATE" then
+     return self:_HandleState(decoded, channel, sender)
+   end
+-  return self:_HandleSnapshot(decoded, channel, sender, payload)
++  if msgType == "SNAPSHOT" then
++    return self:_HandleSnapshot(decoded, channel, sender, payload)
++  end
++  if msgType == "DECREE" then
++    return self:_HandleDecree(decoded, channel, sender)
++  end
++  if decoded.kind == "favor" then
++    return self:_HandleFavor(decoded, channel, sender)
++  end
++  if decoded.kind == "petition" then
++    return self:_HandlePetition(decoded, channel, sender)
++  end
++  if decoded.kind == "confession" then
++    return self:_HandleConfession(decoded, channel, sender)
++  end
++  return false, "unknown message type"
+ end
+ 
+ function Net:_HandleState(decoded, channel, sender)
+@@ -525,6 +652,84 @@ function Net:_HandleSnapshot(decoded, channel, sender, payload)
+   return false
+ end
+ 
++function Net:_HandleDecree(decoded, channel, sender)
++  if channel ~= self.Channel then
++    return false
++  end
++  -- Accept(sender, "DECREE") is false today. Call the registered-Pope predicate.
++  if not (COB.Sender and COB.Sender.IsRegisteredPope) then
++    return false
++  end
++  if not COB.Sender:IsRegisteredPope(sender) then
++    return false, "not accepted"
++  end
++  if COB.Decree and COB.Decree.Set then
++    local saved, err = COB.Decree:Set({
++      line = decoded.line,
++      flavor = decoded.flavor,
++    })
++    if not saved then
++      return false, err
++    end
++  end
++  return true
++end
++
++function Net:_HandleFavor(decoded, channel, sender)
++  if channel ~= "WHISPER" or decoded.kind ~= "favor" then
++    return false, "unknown message type"
++  end
++  if not self:_LocalPope() then
++    return false, "not a registered pope"
++  end
++  local pick = decoded.pick
++  if pick == nil then
++    return false
++  end
++  if not (COB.Gora and COB.Gora.RecordFavor) then
++    return false
++  end
++  local ok, err = COB.Gora:RecordFavor(decoded.characterId, pick)
++  if not ok then
++    return false, err
++  end
++  return true
++end
++
++function Net:_HandlePetition(decoded, channel, sender)
++  if channel ~= "WHISPER" or decoded.kind ~= "petition" then
++    return false, "unknown message type"
++  end
++  if not self:_LocalPope() then
++    return false, "not a registered pope"
++  end
++  if not (COB.Gora and COB.Gora.Petition) then
++    return false
++  end
++  local ok, err = COB.Gora:Petition(decoded.characterId)
++  if not ok then
++    return false, err
++  end
++  return true
++end
++
++function Net:_HandleConfession(decoded, channel, sender)
++  if channel ~= "WHISPER" or decoded.kind ~= "confession" then
++    return false, "unknown message type"
++  end
++  if not self:_LocalPope() then
++    return false, "not a registered pope"
++  end
++  if not (COB.Confession and COB.Confession.Receive) then
++    return false
++  end
++  local ok, err = COB.Confession:Receive(decoded.characterId, decoded.text)
++  if not ok then
++    return false, err
++  end
++  return true
++end
++
+ function Net:OnRosterUpdate()
+   local ready = false
+   if COB.Roster and COB.Roster.Refresh then
+diff --git a/tests/test_net_v2.lua b/tests/test_net_v2.lua
+index 67613c6..27a66df 100644
+--- a/tests/test_net_v2.lua
++++ b/tests/test_net_v2.lua
+@@ -1,7 +1,9 @@
+--- BeefNet v2 wire (Phase 4 Lane B). Isolated: Common + Runtime + Codec +
+--- Snapshot + Sender + BeefNet. STATE on GUILD, SNAPSHOT on WHISPER.
+--- HELLO stays the transport. Accept / IsRegisteredPope are false today.
+--- No #8 Pope list. No INPUT channel. No holdSeconds. No peer SYNC.
++-- BeefNet v2 wire (Phase 4 Lane B / W-D / B4-A). Isolated: Common + Runtime +
++-- Codec + Snapshot + Sender + BeefNet. STATE on GUILD, SNAPSHOT on WHISPER.
++-- DECREE on GUILD from a registered-Pope sender. INPUT is live for favor,
++-- petition, and confession on whisper-to-Pope. GUILD INPUT stays unknown.
++-- HELLO stays the transport. Accept / IsRegisteredPope are false today unless
++-- this suite stubs the predicate. No #8 Pope list. No holdSeconds. No peer SYNC.
+ -- Do not load TOC / bootstrap / run.lua / Store / UI / DB / Data/Popes.lua.
+ ChurchOfBeef = ChurchOfBeef or {}
+ ChurchOfBeef._IN_TEST = true
+@@ -181,6 +183,9 @@ if standalone then
+   assert_eq(COB.Ranks, nil, "isolated suite does not load Ranks")
+   assert_eq(COB.Archive, nil, "isolated suite does not load Archive")
+   assert_eq(COB.Recognition, nil, "isolated suite does not load Recognition")
++  assert_eq(COB.Gora, nil, "isolated suite does not load Gora")
++  assert_eq(COB.Decree, nil, "isolated suite does not load Decree")
++  assert_eq(COB.Confession, nil, "isolated suite does not load Confession")
+ end
+ 
+ assert_eq(Net.Prefix, "COB", "the prefix is COB")
+@@ -190,6 +195,11 @@ assert_eq(type(Net.SendHello), "function", "SendHello stays")
+ assert_eq(type(Net._WarnVersion), "function", "_WarnVersion stays")
+ assert_eq(type(Net.SendState), "function", "SendState exists")
+ assert_eq(type(Net.SendSnapshot), "function", "SendSnapshot exists")
++assert_eq(type(Net.SendDecree), "function", "SendDecree exists")
++assert_eq(type(Net.SendFavor), "function", "SendFavor exists")
++assert_eq(type(Net.SendPetition), "function", "SendPetition exists")
++assert_eq(type(Net.SendConfession), "function", "SendConfession exists")
++assert_eq(type(Net.RequestSnapshot), "function", "RequestSnapshot exists")
+ assert_eq(type(Net.OnAddonMessage), "function", "OnAddonMessage stays")
+ 
+ assert_eq(Net.SendSuggestion, nil, "SUGGESTION send is gone")
+@@ -424,27 +434,36 @@ assert_eq(#wire, 0, "GUILD SNAPSHOT does not fan out")
+ assert_eq(sent, 0, "GUILD SNAPSHOT does not send")
+ 
+ --------------------------------------------------------------------------------
+--- INPUT is not a live channel. Do not Restore. Do not paint. No inbox.
++-- INPUT: favor / petition / confession live on WHISPER only. GUILD INPUT stays
++-- unknown. Non-Pope whisper refuses. Do not Restore. Do not paint. No inbox.
+ --------------------------------------------------------------------------------
+ reset()
+ Runtime:StartEvent()
+ local beforeInput = Runtime:Snapshot()
+ local petition = Codec:EncodeInput({ kind = "petition", characterId = 12 })
+-local favor = Codec:EncodeInput({ kind = "favor", characterId = 2 })
++local favor = Codec:EncodeInput({ kind = "favor", characterId = 2, pick = 1 })
+ local confession = Codec:EncodeInput({ kind = "confession", characterId = 3, text = "free text" })
+ assert_eq(Codec:Decode(petition).type, "INPUT", "petition still decodes on Codec")
++assert_eq(Codec:Decode(favor).pick, 1, "favor INPUT carries pick")
+ 
+ _, why = guild(petition, "Petitioner")
+-assert_eq(why, "unknown message type", "INPUT on GUILD is not a live channel")
+-_, why = whisper(favor, "Petitioner")
+-assert_eq(why, "unknown message type", "INPUT on WHISPER is not a live channel")
+-_, why = guild(confession, "Petitioner")
+-assert_eq(why, "unknown message type", "confession INPUT is not a live channel")
++assert_eq(why, "unknown message type", "petition INPUT on GUILD is not a live channel")
++_, why = whisper(petition, "Petitioner")
++assert_eq(why, "not a registered pope", "petition INPUT on WHISPER to a non-Pope is discarded")
++_, why = guild(confession, "Confessor")
++assert_eq(why, "unknown message type", "confession INPUT on GUILD is not a live channel")
++_, why = whisper(confession, "Confessor")
++assert_eq(why, "not a registered pope", "confession INPUT on WHISPER to a non-Pope is discarded")
++_, why = guild(favor, "Favorer")
++assert_eq(why, "unknown message type", "favor INPUT on GUILD is discarded")
++_, why = whisper(favor, "Favorer")
++assert_eq(why, "not a registered pope", "favor INPUT on WHISPER to a non-Pope is discarded")
+ assert_unchanged(beforeInput, Runtime:Snapshot(), "INPUT does not Restore Runtime")
+ assert_eq(Net.inbox, nil, "INPUT does not invent a console queue")
+ assert_eq(Net.pendingInput, nil, "INPUT is not stored")
+ assert_eq(#wire, 0, "INPUT does not paint or fan out")
+-assert_eq(Sender:Accept("Petitioner", "INPUT"), true, "Accept INPUT may be true — Net still does not wire it")
++assert_eq(Sender:Accept("Petitioner", "INPUT"), true,
++  "Accept INPUT may be true — favor still requires a local Pope")
+ 
+ --------------------------------------------------------------------------------
+ -- Outbound SendState / SendSnapshot only if local IsRegisteredPope. No send today.
+@@ -480,8 +499,371 @@ assert_eq(#wire, 0, "request send does not look up a Pope and whisper")
+ 
+ assert_eq(Net:SendState(), false, "SendState with no fields still fails the Pope gate")
+ assert_eq(Net:SendSnapshot(), false, "SendSnapshot with no fields still fails the Pope gate")
++
++local decOk, decWhy = Net:SendDecree({ line = "Gather at the Pit" })
++assert_eq(decOk, false, "SendDecree does not send today")
++assert_eq(decWhy, "not a registered pope", "SendDecree names the local Pope gate")
++assert_eq(#wire, 0, "SendDecree does not transmit")
++assert_eq(sent, 0, "SendDecree does not SendAddonMessage")
++assert_eq(#Net.queue, 0, "SendDecree does not enqueue")
++
++local favorSendOk, favorSendWhy = Net:SendFavor({
++  kind = "favor",
++  characterId = 2,
++  pick = 1,
++}, "Pope")
++assert_eq(favorSendOk, true, "SendFavor is not Pope-gated")
++assert_eq(favorSendWhy, nil, "SendFavor does not name the Pope gate")
++assert_eq(#wire, 1, "SendFavor whispers once")
++assert_eq(wire[1].channel, "WHISPER", "SendFavor is whisper")
++assert_eq(wire[1].target, "Pope", "SendFavor uses the given target")
++assert_eq(wire[1].payload, "1:INPUT:favor:2:1", "SendFavor encodes favor+pick")
++
++local noTgt, noTgtWhy = Net:SendFavor({ kind = "favor", characterId = 2, pick = 1 })
++assert_eq(noTgt, false, "SendFavor requires a whisper target")
++assert_eq(noTgtWhy, "no target", "SendFavor names the missing target")
++
+ assert_eq(Runtime:Snapshot().state, "QUIET", "outbound gates do not change Runtime")
+ 
++--------------------------------------------------------------------------------
++-- Outbound SendPetition / SendConfession: congregation whisper. Not Pope-gated.
++--------------------------------------------------------------------------------
++reset()
++assert_eq(Sender:IsRegisteredPope(Net:PlayerName()), false, "local player is not a registered Pope")
++assert_eq(COB.Popes, nil, "empty Popes list — SendPetition does not invent one")
++
++local noPet, noPetWhy = Net:SendPetition({ characterId = 12 })
++assert_eq(noPet, false, "SendPetition without target fails")
++assert_eq(noPetWhy, "no target", "SendPetition names the missing target")
++assert_eq(#wire, 0, "SendPetition without target does not whisper")
++assert_eq(sent, 0, "SendPetition without target does not SendAddonMessage")
++assert_eq(#Net.queue, 0, "SendPetition without target does not enqueue")
++
++noPet, noPetWhy = Net:SendPetition({ characterId = 12 }, "")
++assert_eq(noPet, false, "SendPetition empty target fails")
++assert_eq(noPetWhy, "no target", "SendPetition empty target is missing")
++
++local petSendOk, petSendWhy = Net:SendPetition({
++  kind = "petition",
++  characterId = 12,
++  namedOpponentId = 99,
++}, "Pope")
++assert_eq(petSendOk, true, "SendPetition is not Pope-gated")
++assert_eq(petSendWhy, nil, "SendPetition does not name the Pope gate")
++assert_eq(#wire, 1, "SendPetition whispers once")
++assert_eq(wire[1].channel, "WHISPER", "SendPetition is whisper")
++assert_eq(wire[1].target, "Pope", "SendPetition uses the given target")
++assert_eq(wire[1].payload, "1:INPUT:petition:12", "SendPetition encodes petition+id only")
++assert_eq(sent, 1, "SendPetition SendAddonMessage once")
++assert_eq(#Net.queue, 0, "SendPetition does not enqueue on GUILD")
++
++local noConf, noConfWhy = Net:SendConfession({ characterId = 3, text = "free text" })
++assert_eq(noConf, false, "SendConfession without target fails")
++assert_eq(noConfWhy, "no target", "SendConfession names the missing target")
++
++noConf, noConfWhy = Net:SendConfession({ characterId = 3, text = "free text" }, "")
++assert_eq(noConf, false, "SendConfession empty target fails")
++assert_eq(noConfWhy, "no target", "SendConfession empty target is missing")
++
++local confSendOk, confSendWhy = Net:SendConfession({
++  kind = "confession",
++  characterId = 3,
++  text = "free text",
++}, "Pope")
++assert_eq(confSendOk, true, "SendConfession is not Pope-gated")
++assert_eq(confSendWhy, nil, "SendConfession does not name the Pope gate")
++assert_eq(#wire, 2, "SendConfession whispers once")
++assert_eq(wire[2].channel, "WHISPER", "SendConfession is whisper")
++assert_eq(wire[2].target, "Pope", "SendConfession uses the given target")
++assert_eq(wire[2].payload, "1:INPUT:confession:3:free text", "SendConfession encodes confession+text")
++
++local nlOk, nlWhy = Net:SendConfession({ characterId = 3, text = "a\nb" }, "Pope")
++assert_eq(nlOk, false, "SendConfession refuses a newline in the text")
++assert_eq(nlWhy, "invalid text", "SendConfession names the newline refusal")
++assert_eq(#wire, 2, "newline confession does not whisper")
++
++local silentOk = Net:SendConfession({ characterId = 3 }, "Pope")
++assert_eq(silentOk, true, "SendConfession text is optional")
++assert_eq(wire[3].payload, "1:INPUT:confession:3", "SendConfession encodes id without text")
++
++local stillPetBlocked, stillPetWhy = Net:SendState({
++  eventId = 1,
++  state = "ASSEMBLY",
++  sequence = 1,
++})
++assert_eq(stillPetBlocked, false, "empty Popes list still blocks SendState")
++assert_eq(stillPetWhy, "not a registered pope", "SendState stays Pope-gated after SendPetition")
++assert_eq(#Net.queue, 0, "SendState still does not enqueue")
++assert_eq(Net.LookupPope, nil, "SendPetition does not grow a Pope-name lookup")
++assert_eq(Runtime:Snapshot().state, "QUIET", "SendPetition does not change Runtime")
++
++--------------------------------------------------------------------------------
++-- Outbound RequestSnapshot: congregation whisper. Not Pope-gated.
++--------------------------------------------------------------------------------
++reset()
++assert_eq(Sender:IsRegisteredPope(Net:PlayerName()), false, "local player is not a registered Pope")
++assert_eq(COB.Popes, nil, "empty Popes list — RequestSnapshot does not invent one")
++
++local snapAskOk, snapAskWhy = Net:RequestSnapshot()
++assert_eq(snapAskOk, false, "RequestSnapshot without target fails")
++assert_eq(snapAskWhy, "no target", "RequestSnapshot names the missing target")
++assert_eq(#wire, 0, "RequestSnapshot without target does not whisper")
++assert_eq(sent, 0, "RequestSnapshot without target does not SendAddonMessage")
++assert_eq(#Net.queue, 0, "RequestSnapshot without target does not enqueue")
++
++snapAskOk, snapAskWhy = Net:RequestSnapshot("")
++assert_eq(snapAskOk, false, "RequestSnapshot empty target fails")
++assert_eq(snapAskWhy, "no target", "RequestSnapshot empty target is missing")
++
++snapAskOk, snapAskWhy = Net:RequestSnapshot("Steakina")
++assert_eq(snapAskOk, true, "RequestSnapshot with a target whispers")
++assert_eq(snapAskWhy, nil, "RequestSnapshot is not Pope-gated")
++assert_eq(#wire, 1, "RequestSnapshot whispers once")
++assert_eq(wire[1].channel, "WHISPER", "RequestSnapshot is whisper")
++assert_eq(wire[1].target, "Steakina", "RequestSnapshot uses the given target")
++assert_eq(wire[1].payload, Snapshot:Request(), "RequestSnapshot body is Snapshot:Request")
++assert_eq(wire[1].payload, "1:SNAPSHOT:request", "RequestSnapshot encodes request role only")
++assert_eq(sent, 1, "RequestSnapshot SendAddonMessage once")
++assert_eq(#Net.queue, 0, "RequestSnapshot does not enqueue on GUILD")
++
++local stillBlocked, stillWhy = Net:SendState({
++  eventId = 1,
++  state = "ASSEMBLY",
++  sequence = 1,
++})
++assert_eq(stillBlocked, false, "empty Popes list still blocks SendState")
++assert_eq(stillWhy, "not a registered pope", "SendState stays Pope-gated after RequestSnapshot")
++assert_eq(#Net.queue, 0, "SendState still does not enqueue")
++
++local stillDec, stillDecWhy = Net:SendDecree({ line = "Gather at the Pit" })
++assert_eq(stillDec, false, "SendDecree stays Pope-gated")
++assert_eq(stillDecWhy, "not a registered pope", "SendDecree names the local Pope gate")
++
++local stillSnap, stillSnapWhy = Net:SendSnapshot({ role = "request" }, "Steakina")
++assert_eq(stillSnap, false, "SendSnapshot request stays Pope-gated")
++assert_eq(stillSnapWhy, "not a registered pope", "SendSnapshot is not RequestSnapshot")
++
++assert_eq(Runtime:Snapshot().state, "QUIET", "RequestSnapshot does not change Runtime")
++assert_eq(Net.LookupPope, nil, "RequestSnapshot does not grow a Pope-name lookup")
++
++--------------------------------------------------------------------------------
++-- Unstubbed inbound DECREE: IsRegisteredPope is false. Do not Set. Do not Restore.
++--------------------------------------------------------------------------------
++reset()
++Runtime:StartEvent()
++local beforeDecree = Runtime:Snapshot()
++local decreeWire = Codec:EncodeDecree({
++  line = "Gather at the Pit",
++  flavor = "bring a fork",
++})
++assert_eq(Codec:Decode(decreeWire).type, "DECREE", "DECREE wire decodes on Codec")
++assert_eq(Sender:Accept("Beefina", "DECREE"), false, "Accept DECREE is false — Net uses IsRegisteredPope")
++assert_eq(Sender:IsRegisteredPope("Beefina"), false, "Beefina is not a registered Pope today")
++
++local decreeSets = 0
++COB.Decree = {
++  Set = function()
++    decreeSets = decreeSets + 1
++    return { line = "should not land" }
++  end,
++}
++ok, stateWhy = guild(decreeWire, "Beefina")
++assert_eq(ok, false, "unstubbed inbound DECREE is discarded")
++assert_eq(stateWhy, "not accepted", "unstubbed DECREE names the Pope sender gate")
++assert_eq(decreeSets, 0, "unstubbed DECREE does not Set")
++assert_eq(whisper(decreeWire, "Beefina"), false, "DECREE on WHISPER is discarded")
++assert_eq(decreeSets, 0, "wrong-channel DECREE does not Set")
++assert_unchanged(beforeDecree, Runtime:Snapshot(), "unstubbed DECREE does not Restore")
++COB.Decree = nil
++
++--------------------------------------------------------------------------------
++-- Stubbed registered Pope: SendDecree; inbound DECREE Set; favor / petition /
++-- confession INPUT on WHISPER.
++--------------------------------------------------------------------------------
++reset()
++local savedPred = Sender.IsRegisteredPope
++Sender.IsRegisteredPope = function(_, sender)
++  return COB.Names.Key(sender) == "beefina"
++end
++assert_eq(Sender:IsRegisteredPope(Net:PlayerName()), true, "stub lists the local player")
++assert_eq(Sender:IsRegisteredPope("Steakina"), false, "stub does not list a congregation name")
++
++local sendDecOk, sendDecWhy = Net:SendDecree({
++  line = "Gather at the Pit",
++  flavor = "bring a fork",
++})
++assert_eq(sendDecOk, true, "SendDecree sends when the local player is a registered Pope")
++assert_eq(sendDecWhy, nil, "SendDecree has no refusal when gated open")
++assert_eq(#wire, 1, "SendDecree transmits once")
++assert_eq(wire[1].channel, "GUILD", "SendDecree stays on GUILD")
++assert_eq(wire[1].payload, decreeWire, "SendDecree encodes line and flavor")
++
++local sendStateOk = Net:SendState({
++  eventId = 1,
++  state = "ASSEMBLY",
++  sequence = 1,
++})
++assert_eq(sendStateOk, true, "SendState sends when the local player is a registered Pope")
++
++local badLine, badLineWhy = Net:SendDecree({ line = "a\nb" })
++assert_eq(badLine, false, "SendDecree refuses a newline in the line")
++assert_eq(badLineWhy, "invalid line", "SendDecree names the codec refusal")
++
++reset()
++Sender.IsRegisteredPope = function(_, sender)
++  return COB.Names.Key(sender) == "beefina"
++end
++Runtime:StartEvent()
++local liveDecree = Runtime:Snapshot()
++decreeSets = {}
++COB.Decree = {
++  Set = function(_, fields)
++    decreeSets[#decreeSets + 1] = { line = fields.line, flavor = fields.flavor }
++    return { line = fields.line, flavor = fields.flavor }
++  end,
++}
++ok, stateWhy = guild(decreeWire, "Beefina")
++assert_eq(ok, true, "inbound DECREE from the stubbed Pope is accepted")
++assert_eq(#decreeSets, 1, "inbound DECREE from the stubbed Pope calls Decree:Set")
++assert_eq(decreeSets[1].line, "Gather at the Pit", "Decree:Set receives the line")
++assert_eq(decreeSets[1].flavor, "bring a fork", "Decree:Set receives the flavor")
++assert_unchanged(liveDecree, Runtime:Snapshot(), "accepted DECREE does not Restore Runtime")
++
++ok, stateWhy = guild(decreeWire, "Steakina")
++assert_eq(ok, false, "inbound DECREE from a congregation name is discarded")
++assert_eq(stateWhy, "not accepted", "congregation DECREE names the Pope sender gate")
++assert_eq(#decreeSets, 1, "congregation DECREE does not Set")
++
++assert_eq(whisper(decreeWire, "Beefina"), false, "DECREE on WHISPER is still discarded")
++assert_eq(#decreeSets, 1, "whisper DECREE does not Set")
++assert_eq(#wire, 0, "inbound DECREE does not fan out")
++COB.Decree = nil
++
++reset()
++Sender.IsRegisteredPope = function(_, sender)
++  return COB.Names.Key(sender) == "beefina"
++end
++Runtime:StartEvent()
++local liveFavor = Runtime:Snapshot()
++local favorCalls = {}
++COB.Gora = {
++  RecordFavor = function(_, characterId, pick)
++    favorCalls[#favorCalls + 1] = { characterId = characterId, pick = pick }
++    return true
++  end,
++}
++ok, stateWhy = whisper(favor, "Petitioner")
++assert_eq(ok, true, "favor INPUT on WHISPER to a Pope client is accepted")
++assert_eq(#favorCalls, 1, "Pope-side favor calls RecordFavor")
++assert_eq(favorCalls[1].characterId, 2, "RecordFavor receives characterId")
++assert_eq(favorCalls[1].pick, 1, "RecordFavor receives pick")
++assert_unchanged(liveFavor, Runtime:Snapshot(), "favor INPUT does not Restore Runtime")
++assert_eq(Net.inbox, nil, "favor INPUT does not invent a console queue")
++assert_eq(#wire, 0, "favor INPUT does not fan out")
++
++ok, stateWhy = guild(favor, "Petitioner")
++assert_eq(ok, false, "favor INPUT on GUILD is still discarded on a Pope client")
++assert_eq(stateWhy, "unknown message type", "favor on GUILD stays unknown")
++assert_eq(#favorCalls, 1, "favor on GUILD does not RecordFavor")
++
++COB.Gora.RecordFavor = function()
++  return nil, "no sanctioned gora"
++end
++ok, stateWhy = whisper(favor, "Petitioner")
++assert_eq(ok, false, "RecordFavor error does not invent a queue")
++assert_eq(stateWhy, "no sanctioned gora", "RecordFavor error is returned")
++assert_eq(Net.inbox, nil, "RecordFavor error does not invent an inbox")
++assert_eq(Net.pendingInput, nil, "RecordFavor error is not stored")
++assert_eq(#wire, 0, "RecordFavor error does not fan out")
++assert_unchanged(liveFavor, Runtime:Snapshot(), "RecordFavor error does not Restore")
++
++COB.Gora = nil
++
++reset()
++Sender.IsRegisteredPope = function(_, sender)
++  return COB.Names.Key(sender) == "beefina"
++end
++Runtime:StartEvent()
++local livePetition = Runtime:Snapshot()
++local petitionCalls = {}
++COB.Gora = {
++  Petition = function(_, characterId, namedOpponentId)
++    petitionCalls[#petitionCalls + 1] = {
++      characterId = characterId,
++      namedOpponentId = namedOpponentId,
++    }
++    return true
++  end,
++}
++local confessionCalls = {}
++COB.Confession = {
++  Receive = function(_, characterId, text)
++    confessionCalls[#confessionCalls + 1] = { characterId = characterId, text = text }
++    return true
++  end,
++}
++ok, stateWhy = whisper(petition, "Petitioner")
++assert_eq(ok, true, "petition INPUT on WHISPER to a Pope client is accepted")
++assert_eq(#petitionCalls, 1, "Pope-side petition calls Gora:Petition")
++assert_eq(petitionCalls[1].characterId, 12, "Petition receives characterId")
++assert_eq(petitionCalls[1].namedOpponentId, nil, "Petition does not pass a named opponent")
++assert_unchanged(livePetition, Runtime:Snapshot(), "petition INPUT does not Restore Runtime")
++assert_eq(Net.inbox, nil, "petition INPUT does not invent a console queue")
++assert_eq(#wire, 0, "petition INPUT does not fan out")
++
++ok, stateWhy = whisper(confession, "Petitioner")
++assert_eq(ok, true, "confession INPUT on WHISPER to a Pope client is accepted")
++assert_eq(#confessionCalls, 1, "Pope-side confession calls Confession:Receive")
++assert_eq(confessionCalls[1].characterId, 3, "Receive receives characterId")
++assert_eq(confessionCalls[1].text, "free text", "Receive receives text")
++assert_unchanged(livePetition, Runtime:Snapshot(), "confession INPUT does not Restore Runtime")
++assert_eq(Net.inbox, nil, "confession INPUT does not invent a console queue")
++assert_eq(#wire, 0, "confession INPUT does not fan out")
++
++ok, stateWhy = guild(petition, "Petitioner")
++assert_eq(ok, false, "petition INPUT on GUILD is still discarded on a Pope client")
++assert_eq(stateWhy, "unknown message type", "petition on GUILD stays unknown")
++assert_eq(#petitionCalls, 1, "petition on GUILD does not Petition")
++
++ok, stateWhy = guild(confession, "Petitioner")
++assert_eq(ok, false, "confession INPUT on GUILD is still discarded on a Pope client")
++assert_eq(stateWhy, "unknown message type", "confession on GUILD stays unknown")
++assert_eq(#confessionCalls, 1, "confession on GUILD does not Receive")
++
++COB.Gora = nil
++COB.Confession = nil
++
++reset()
++Sender.IsRegisteredPope = function(_, sender)
++  return COB.Names.Key(sender) == "beefina"
++end
++Runtime:StartEvent()
++local liveInputErr = Runtime:Snapshot()
++COB.Gora = {
++  Petition = function()
++    return nil, "no event"
++  end,
++}
++ok, stateWhy = whisper(confession, "Petitioner")
++assert_eq(ok, false, "missing Confession module fail-closes")
++assert_eq(stateWhy, nil, "missing Confession does not invent a queue")
++assert_eq(Net.inbox, nil, "missing Confession does not invent an inbox")
++
++ok, stateWhy = whisper(petition, "Petitioner")
++assert_eq(ok, false, "Petition error does not invent a queue")
++assert_eq(stateWhy, "no event", "Petition error is returned")
++assert_eq(Net.inbox, nil, "Petition error does not invent an inbox")
++assert_eq(Net.pendingInput, nil, "Petition error is not stored")
++assert_eq(#wire, 0, "Petition error does not fan out")
++assert_unchanged(liveInputErr, Runtime:Snapshot(), "Petition error does not Restore")
++
++COB.Gora = nil
++COB.Confession = nil
++Sender.IsRegisteredPope = savedPred
++assert_eq(Sender:IsRegisteredPope(Net:PlayerName()), false,
++  "wrapping the predicate in-test does not stub the list true")
++assert_eq(COB.Popes, nil, "still no Pope list")
++
+ --------------------------------------------------------------------------------
+ -- Incompatible version: _WarnVersion + discard. No second Quiet notice. No toast.
+ --------------------------------------------------------------------------------
+@@ -558,11 +940,12 @@ assert_eq(ChurchOfBeefDB.runtime, nil, "v2 handlers do not persist the event obj
+ assert_eq(Net.CreateFrame, nil, "Net does not grow a CreateFrame API")
+ 
+ --------------------------------------------------------------------------------
+--- Closed sets stay on Codec. This lane does not add opcodes or a fourth TYPE.
++-- Closed sets stay on Codec. This lane does not add HELLO types or a fifth TYPE.
+ --------------------------------------------------------------------------------
+ assert_eq(Codec.TYPES.STATE, true, "STATE stays a Codec type")
+ assert_eq(Codec.TYPES.SNAPSHOT, true, "SNAPSHOT stays a Codec type")
+-assert_eq(Codec.TYPES.INPUT, true, "INPUT stays a Codec type — not a live channel")
++assert_eq(Codec.TYPES.INPUT, true, "INPUT stays a Codec type")
++assert_eq(Codec.TYPES.DECREE, true, "DECREE is a Codec type")
+ assert_eq(Codec.TYPES.HELLO, nil, "HELLO stays on the transport")
+ assert_eq(type(Net.Encode), "function", "transport Encode stays for HELLO")
+ assert_eq(Net:Encode("HELLO", "0.1.0"), "1:HELLO:0.1.0", "HELLO is still the transport type")

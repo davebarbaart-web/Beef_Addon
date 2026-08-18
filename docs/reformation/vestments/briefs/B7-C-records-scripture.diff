@@ -1,0 +1,107 @@
+--- a/addon/ChurchOfBeef/UI/RecordsBook.lua
++++ b/addon/ChurchOfBeef/UI/RecordsBook.lua
+@@ -460,18 +460,26 @@
+   return titles
+ end
+ 
+-local function momentLocations()
++-- Location first, then Pope scripture when present. No invented copy.
++local function momentLines()
+   if not (COB.Store and COB.Store.GetMarkedMoments) then return {} end
+   local moments = COB.Store:GetMarkedMoments()
+   if type(moments) ~= "table" then return {} end
+-  local locs = {}
++  local lines = {}
+   for i = 1, #moments do
+-    local loc = moments[i] and moments[i].location
+-    if type(loc) == "string" and loc ~= "" then
+-      locs[#locs + 1] = loc
++    local row = moments[i]
++    if type(row) == "table" then
++      local loc = row.location
++      if type(loc) == "string" and loc ~= "" then
++        lines[#lines + 1] = loc
++      end
++      local scripture = row.scripture
++      if type(scripture) == "string" and scripture ~= "" then
++        lines[#lines + 1] = scripture
++      end
+     end
+   end
+-  return locs
++  return lines
+ end
+ 
+ local function identityText(rows)
+@@ -497,7 +505,7 @@
+     frame.Honorifics:SetText(identityText(localHonorifics()))
+   end
+   if frame.Moments and frame.Moments.SetText then
+-    frame.Moments:SetText(identityText(momentLocations()))
++    frame.Moments:SetText(identityText(momentLines()))
+   end
+ end
+ 
+--- a/tests/test_records.lua
++++ b/tests/test_records.lua
+@@ -177,6 +177,8 @@
+ assert_eq(src:find("SLASH_", 1, true), nil, "source does not register a slash")
+ assert_eq(src:find("AddHonorific", 1, true), nil, "the book does not grant honorifics")
+ assert_eq(src:find("FlagMoment", 1, true), nil, "the book does not mark moments")
++assert_eq(src:find("CanonizeMoment", 1, true), nil, "the book does not canonize")
++assert_true(src:find("scripture", 1, true) ~= nil, "right leaf reads moment.scripture")
+ assert_true(src:find("QuestBG", 1, true) ~= nil or src:find("Stationery", 1, true) ~= nil,
+   "parchment uses stock QuestBG or stationery")
+ assert_true(src:find("MORPHEUS", 1, true) ~= nil or src:find("FRIZQT", 1, true) ~= nil,
+@@ -671,6 +673,51 @@
+ assert_eq((frame.Honorifics:GetText() or ""):find("Martyr of Goldshire", 1, true), nil,
+   "another human's honorific is not borrowed")
+ 
++--------------------------------------------------------------------------------
++-- Right leaf: FlagMoment + scripture after location. PAGE_TITLES stay 9.
++--------------------------------------------------------------------------------
++-- Seed the scripture field. Use CanonizeMoment when Store already has it
++-- (B7-A); otherwise Restore the field onto the marked-moment row.
++local function seedScripture(momentId, text)
++  if type(Store.CanonizeMoment) == "function" then
++    return Store:CanonizeMoment(momentId, text)
++  end
++  local snap = Store:Snapshot()
++  local list = snap and snap.markedMoments
++  if type(list) ~= "table" then return nil end
++  for i = 1, #list do
++    if list[i] and list[i].id == momentId then
++      list[i].scripture = text
++      break
++    end
++  end
++  return Store:Restore(snap)
++end
++
++reset()
++assert_eq(#Book:GetPages(), #BIBLE_TITLES, "PAGE_TITLES stay the nine Bible titles")
++for i = 1, #BIBLE_TITLES do
++  assert_eq(Book:GetPages()[i].title, BIBLE_TITLES[i], "scripture paint does not rename page " .. i)
++end
++local canonLoc = Store:FlagMoment("Goldshire Inn", 13000)
++assert_true(canonLoc ~= nil, "FlagMoment returns a marked row")
++assert_true(seedScripture(canonLoc.id, "The fountain ran red") ~= nil, "scripture field is seeded")
++Book:Show()
++assert_eq(#Book:GetPages(), 9, "scripture is not a tenth PAGE_TITLE")
++assert_eq(frame.PageTitle:GetText(), "Most Sanctioned Victories", "left leaf stays on superlatives")
++local canonPaint = frame.Moments:GetText() or ""
++local locAt = canonPaint:find("Goldshire Inn", 1, true)
++local scriptureAt = canonPaint:find("The fountain ran red", 1, true)
++assert_true(locAt ~= nil, "right leaf still paints the marked location")
++assert_true(scriptureAt ~= nil, "right leaf paints Pope scripture")
++assert_true(locAt < scriptureAt, "scripture paints after the location")
++assert_eq(canonPaint:find("ordained", 1, true), nil, "scripture paint does not invent ordained")
++assert_eq(canonPaint:find("on this day", 1, true), nil, "scripture paint does not invent on-this-day copy")
++assert_eq((frame.Body:GetText() or ""):find("The fountain ran red", 1, true), nil,
++  "scripture stays off the superlative leaf")
++assert_eq((frame.Honorifics:GetText() or ""):find("The fountain ran red", 1, true), nil,
++  "scripture is not painted as an honorific")
++
+ --------------------------------------------------------------------------------
+ -- ResetForTests is inert outside the harness.
+ --------------------------------------------------------------------------------

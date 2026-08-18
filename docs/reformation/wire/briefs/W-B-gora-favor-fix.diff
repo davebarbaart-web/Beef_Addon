@@ -1,0 +1,369 @@
+diff --git a/addon/ChurchOfBeef/Core/Gora.lua b/addon/ChurchOfBeef/Core/Gora.lua
+index 5a62f25..e45f0f7 100644
+--- a/addon/ChurchOfBeef/Core/Gora.lua
++++ b/addon/ChurchOfBeef/Core/Gora.lua
+@@ -13,6 +13,17 @@ local Gora = {
+ }
+ COB.Gora = Gora
+ 
++-- Standing picks only. Latest replaces earlier. Never SV / Store / Archive.
++-- Tagged to the event the picks belong to so leftovers die with that event,
++-- not merely when sanctioned is nil (consequence beat still needs the map).
++local favorPicks = {}
++local favorEventId = nil
++
++local function wipeFavor()
++  favorPicks = {}
++  favorEventId = nil
++end
++
+ -- A challenge nobody ever records is social noise, not state. Expiring and
+ -- capping the table keeps a night of trash talk from growing without bound.
+ local CHALLENGE_TTL = 1800
+@@ -112,6 +123,7 @@ function Gora:_Expire()
+     self.petitions = {}
+     self.sanctioned = nil
+     self.proposal = nil
++    wipeFavor()
+     return
+   end
+   local drop = nil
+@@ -128,6 +140,9 @@ function Gora:_Expire()
+     self.sanctioned = nil
+     self.proposal = nil
+   end
++  if favorEventId ~= eventId then
++    wipeFavor()
++  end
+ end
+ 
+ -- One note per pair regardless of who called it out.
+@@ -302,6 +317,7 @@ function Gora:Sanction(fighterA, fighterB, stipulation)
+     stipulation = line,
+     eventId = eventId,
+   }
++  wipeFavor()
+   return copySanctioned(self.sanctioned)
+ end
+ 
+@@ -329,16 +345,20 @@ function Gora:GetProposal()
+   return self.proposal
+ end
+ 
+-local function writeBoth(idA, idB, ruling, wonA, wonB)
++local function writeBoth(idA, idB, ruling, wonA, wonB, text)
+   if not COB.Store or not COB.Store.RecordGoraResult then
+     return nil, "no store"
+   end
+   local fieldsA = { opponentId = idB, ruling = ruling }
+   local fieldsB = { opponentId = idA, ruling = ruling }
+-  if ruling ~= "void" then
++  if ruling ~= "void" and ruling ~= "free" then
+     fieldsA.won = wonA
+     fieldsB.won = wonB
+   end
++  if text ~= nil then
++    fieldsA.text = text
++    fieldsB.text = text
++  end
+   local ra, ea = COB.Store:RecordGoraResult(idA, fieldsA)
+   if not ra then return nil, ea end
+   local rb, eb = COB.Store:RecordGoraResult(idB, fieldsB)
+@@ -392,12 +412,52 @@ function Gora:FreeRuling(text)
+     line = trimLine(text)
+   end
+   local a, b = self.sanctioned.fighterA, self.sanctioned.fighterB
+-  local ok, err = writeBoth(a, b, "free", false, false)
++  local ok, err = writeBoth(a, b, "free", nil, nil, line)
+   if not ok then return nil, err end
++  if COB.Store.AppendCeremony then
++    COB.Store:AppendCeremony("free", { a, b }, resolveTime(), line)
++  end
+   clearLive(self)
+   return { ruling = "free", text = line }
+ end
+ 
++function Gora:RecordFavor(characterId, pickId)
++  self:_Expire()
++  if not self.sanctioned then return nil, "no sanctioned gora" end
++  if not isId(characterId) then return nil, "invalid character id" end
++  if not isId(pickId) then return nil, "pick must be a character id" end
++  if pickId ~= self.sanctioned.fighterA and pickId ~= self.sanctioned.fighterB then
++    return nil, "pick must be a sanctioned fighter"
++  end
++  favorPicks[characterId] = pickId
++  favorEventId = self.sanctioned.eventId
++  return true
++end
++
++function Gora:GetFavor()
++  self:_Expire()
++  local out = {}
++  for memberId, pickId in pairs(favorPicks) do
++    out[memberId] = pickId
++  end
++  return out
++end
++
++function Gora:GetFavorSplit()
++  self:_Expire()
++  local counts = { a = 0, b = 0 }
++  local pair = self.sanctioned
++  if not pair then return counts end
++  for _, pickId in pairs(favorPicks) do
++    if pickId == pair.fighterA then
++      counts.a = counts.a + 1
++    elseif pickId == pair.fighterB then
++      counts.b = counts.b + 1
++    end
++  end
++  return counts
++end
++
+ -- Test-only, matching the rest of Core: never clear live state in game.
+ function Gora:ResetForTests()
+   if not COB._IN_TEST then return false end
+@@ -405,5 +465,6 @@ function Gora:ResetForTests()
+   self.petitions = {}
+   self.sanctioned = nil
+   self.proposal = nil
++  wipeFavor()
+   return true
+ end
+diff --git a/tests/test_gora.lua b/tests/test_gora.lua
+index 3207602..c927c2b 100644
+--- a/tests/test_gora.lua
++++ b/tests/test_gora.lua
+@@ -106,6 +106,9 @@ assert_eq(type(Gora.DeclareVictor), "function", "DECLARE VICTOR is a verb")
+ assert_eq(type(Gora.CowardiceRecorded), "function", "COWARDICE RECORDED is a verb")
+ assert_eq(type(Gora.Void), "function", "VOID is a verb")
+ assert_eq(type(Gora.FreeRuling), "function", "free ruling is a verb")
++assert_eq(type(Gora.RecordFavor), "function", "RecordFavor is a verb")
++assert_eq(type(Gora.GetFavor), "function", "GetFavor reads standing picks")
++assert_eq(type(Gora.GetFavorSplit), "function", "GetFavorSplit reads the live split")
+ assert_eq(type(Gora.Recommend), "function", "Recommend is optional context")
+ assert_eq(type(Gora.Challenge), "function", "leftover Challenge remains")
+ assert_eq(type(Gora.GetPending), "function", "leftover GetPending remains")
+@@ -134,7 +137,8 @@ assert_eq(Gora.PETITION_TTL, nil, "no petition TTL number")
+ assert_eq(Gora.DISMISS_COOLDOWN, nil, "no dismiss cooldown number")
+ assert_eq(Gora.REPETITION_COOLDOWN, nil, "no re-petition cooldown number")
+ assert_eq(Gora.FamousUpsets, nil, "Famous Upsets are not computed")
+-assert_eq(Gora.Favor, nil, "favor is not this lane")
++assert_eq(Gora.FavorHistory, nil, "no favor history")
++assert_eq(Gora.Accuracy, nil, "no favor accuracy")
+ assert_eq(Gora.HUD, nil, "Fight HUD is not this lane")
+ 
+ --------------------------------------------------------------------------------
+@@ -144,9 +148,12 @@ reset()
+ Runtime:StartEvent()
+ local keepA, keepB = twoChars()
+ Gora:Petition(keepA.id)
++Gora:Sanction(keepA.id, keepB.id)
++Gora:RecordFavor(keepA.id, keepA.id)
+ ChurchOfBeef._IN_TEST = false
+ assert_eq(Gora:ResetForTests(), false, "ResetForTests refuses to run outside tests")
+ assert_eq(#Gora:GetPetitions(present(keepA.id)), 1, "out-of-harness reset does not wipe petitions")
++assert_eq(Gora:GetFavor()[keepA.id], keepA.id, "out-of-harness reset does not wipe favor")
+ ChurchOfBeef._IN_TEST = true
+ reset()
+ 
+@@ -454,7 +461,7 @@ assert_eq(Store:GetCharacter(a.id).gora.headToHeads[1].fights, 1, "Void still ha
+ assert_eq(Gora:GetSanctioned(), nil, "Void clears the live pair")
+ 
+ --------------------------------------------------------------------------------
+--- FreeRuling writes Store for both. Text is free text, not a new outcome enum.
++-- FreeRuling writes Store for both. No win/loss. Text is free text, not a new enum.
+ --------------------------------------------------------------------------------
+ a, b = livePair()
+ Gora:Sanction(a.id, b.id)
+@@ -463,12 +470,25 @@ assert_true(free ~= nil, "FreeRuling records the Pope's judgment")
+ assert_eq(freeErr, nil, "successful FreeRuling has no error")
+ assert_eq(free.ruling, "free", "free ruling uses the Store enum")
+ assert_eq(free.text, "rematch at the Pope's pleasure", "free text is remembered")
++assert_eq(Store:GetCharacter(a.id).gora.wins, 0, "FreeRuling does not increment wins")
++assert_eq(Store:GetCharacter(a.id).gora.losses, 0, "FreeRuling does not increment losses")
++assert_eq(Store:GetCharacter(b.id).gora.wins, 0, "FreeRuling does not increment the other wins")
++assert_eq(Store:GetCharacter(b.id).gora.losses, 0, "FreeRuling does not increment the other losses")
+ assert_eq(Store:GetCharacter(a.id).gora.results[1].ruling, "free", "Store stores free, not the text")
+ assert_eq(Store:GetCharacter(b.id).gora.results[1].ruling, "free", "both characters receive free")
+ assert_eq(Store:GetCharacter(a.id).gora.results[1].ruling ~= "rematch at the Pope's pleasure", true,
+   "the text is not a new outcome enum")
+-assert_eq(Store:GetCharacter(a.id).gora.results[1].won, false, "a free ruling without a named victor is not a win")
+-assert_eq(Store:GetCharacter(b.id).gora.results[1].won, false, "the other fighter is also not declared victor")
++assert_eq(Store:GetCharacter(a.id).gora.results[1].won, nil, "a free ruling writes no won flag")
++assert_eq(Store:GetCharacter(b.id).gora.results[1].won, nil, "the other fighter also has no won flag")
++assert_eq(Store:GetCharacter(a.id).gora.results[1].text, "rematch at the Pope's pleasure",
++  "the result stores the Pope's line")
++assert_eq(Store:GetCharacter(b.id).gora.results[1].text, "rematch at the Pope's pleasure",
++  "both sides store the Pope's line")
++assert_eq(Store:GetCeremonyLog()[1].type, "free", "FreeRuling appends a free ceremony row")
++assert_eq(Store:GetCeremonyLog()[1].participantIds[1], a.id, "ceremony log names fighter A")
++assert_eq(Store:GetCeremonyLog()[1].participantIds[2], b.id, "ceremony log names fighter B")
++assert_eq(Store:GetCeremonyLog()[1].text, "rematch at the Pope's pleasure",
++  "ceremony log stores the Pope's line")
+ assert_eq(Gora:GetSanctioned(), nil, "FreeRuling clears the live pair")
+ 
+ a, b = livePair()
+@@ -477,12 +497,152 @@ local quietFree = Gora:FreeRuling()
+ assert_true(quietFree ~= nil, "FreeRuling may omit text")
+ assert_eq(quietFree.text, nil, "omitted text is not invented")
+ assert_eq(Store:GetCharacter(a.id).gora.results[1].ruling, "free", "omitted text still writes free")
++assert_eq(Store:GetCharacter(a.id).gora.results[1].won, nil, "omitted text still writes no won flag")
++assert_eq(Store:GetCharacter(a.id).gora.results[1].text, nil, "omitted text is nil on the result")
++assert_eq(Store:GetCharacter(a.id).gora.wins, 0, "omitted-text FreeRuling does not increment wins")
++assert_eq(Store:GetCharacter(a.id).gora.losses, 0, "omitted-text FreeRuling does not increment losses")
++assert_eq(Store:GetCeremonyLog()[1].text, nil, "omitted text is not stored on the ceremony row")
++
++a, b = livePair()
++Gora:Sanction(a.id, b.id)
++local blankFree, blankFreeErr = Gora:FreeRuling("   ")
++assert_true(blankFree ~= nil, "whitespace-only FreeRuling is accepted")
++assert_eq(blankFreeErr, nil, "whitespace-only FreeRuling has no error")
++assert_eq(blankFree.text, nil, "whitespace-only text is omitted")
++
++a, b = livePair()
++Gora:Sanction(a.id, b.id)
++local badText, badTextErr = Gora:FreeRuling(12)
++assert_eq(badText, nil, "non-string ruling text is refused")
++assert_true(type(badTextErr) == "string", "non-string FreeRuling returns an error string")
++assert_eq(Gora:GetSanctioned().fighterA, a.id, "refused FreeRuling leaves the live pair")
++assert_eq(#Store:GetCharacter(a.id).gora.results, 0, "refused FreeRuling does not write Store")
+ 
+ a, b = livePair()
+ local noPair, noPairErr = Gora:Void()
+ assert_eq(noPair, nil, "Void without a sanctioned pair is refused")
+ assert_true(type(noPairErr) == "string", "unsanctioned Void returns an error string")
+ 
++--------------------------------------------------------------------------------
++-- Favor tally: one standing pick per member. Memory only. Cleared on Sanction / expire.
++--------------------------------------------------------------------------------
++a, b = livePair()
++local noPick, noPickErr = Gora:RecordFavor(a.id, a.id)
++assert_eq(noPick, nil, "RecordFavor without a sanctioned pair is refused")
++assert_true(type(noPickErr) == "string", "unsanctioned RecordFavor returns an error string")
++assert_eq(Gora:GetFavor()[a.id], nil, "a refused pick is not stored")
++assert_eq(Gora:GetFavorSplit().a, 0, "split is zero with no sanctioned pair")
++assert_eq(Gora:GetFavorSplit().b, 0, "split b is zero with no sanctioned pair")
++
++Gora:Sanction(a.id, b.id)
++assert_eq(Gora:GetFavorSplit().a, 0, "a new bout starts with an empty split")
++assert_eq(Gora:GetFavorSplit().b, 0, "a new bout starts with an empty split b")
++
++local fan1 = Store:CreateCharacter({ name = "FanOne" })
++local fan2 = Store:CreateCharacter({ name = "FanTwo" })
++local fan3 = Store:CreateCharacter({ name = "FanThree" })
++local pick, pickErr = Gora:RecordFavor(fan1.id, a.id)
++assert_true(pick ~= nil, "RecordFavor records a standing pick")
++assert_eq(pickErr, nil, "successful RecordFavor has no error")
++assert_eq(Gora:GetFavor()[fan1.id], a.id, "GetFavor maps the member to the fighter")
++
++Gora:RecordFavor(fan1.id, b.id)
++assert_eq(Gora:GetFavor()[fan1.id], b.id, "a later pick replaces the earlier pick")
++assert_eq(Gora:GetFavorSplit().a, 0, "replaced pick is not counted twice")
++assert_eq(Gora:GetFavorSplit().b, 1, "the replacement pick is the standing count")
++
++Gora:RecordFavor(fan1.id, a.id)
++Gora:RecordFavor(fan2.id, a.id)
++Gora:RecordFavor(fan3.id, b.id)
++local split = Gora:GetFavorSplit()
++assert_eq(split.a, 2, "two members pick fighter A")
++assert_eq(split.b, 1, "one member picks fighter B")
++assert_eq(Gora:GetFavor()[fan1.id], a.id, "member one stands with A")
++assert_eq(Gora:GetFavor()[fan2.id], a.id, "member two stands with A")
++assert_eq(Gora:GetFavor()[fan3.id], b.id, "member three stands with B")
++
++local favCopy = Gora:GetFavor()
++favCopy[fan1.id] = 0
++favCopy[999] = b.id
++assert_eq(Gora:GetFavor()[fan1.id], a.id, "mutating a favor copy does not change live picks")
++assert_eq(Gora:GetFavor()[999], nil, "mutating a favor copy does not add a pick")
++
++local splitCopy = Gora:GetFavorSplit()
++splitCopy.a = 99
++splitCopy.b = 99
++assert_eq(Gora:GetFavorSplit().a, 2, "mutating a split copy does not change the tally")
++assert_eq(Gora:GetFavorSplit().b, 1, "mutating a split copy does not change the other half")
++
++local crowd = Store:CreateCharacter({ name = "Crowd" })
++local outsiderPick, outsiderPickErr = Gora:RecordFavor(fan1.id, crowd.id)
++assert_eq(outsiderPick, nil, "RecordFavor refuses a pick who is not in the pair")
++assert_true(type(outsiderPickErr) == "string", "outsider pick returns an error string")
++assert_eq(Gora:GetFavor()[fan1.id], a.id, "a refused outsider pick does not replace the standing pick")
++assert_eq(Gora:GetFavorSplit().a, 2, "a refused outsider pick does not change the split")
++
++local badMember, badMemberErr = Gora:RecordFavor(0, a.id)
++assert_eq(badMember, nil, "RecordFavor refuses a non-store member id")
++assert_true(type(badMemberErr) == "string", "invalid member id returns an error string")
++
++local badPick, badPickErr = Gora:RecordFavor(fan1.id, 0)
++assert_eq(badPick, nil, "RecordFavor refuses a non-store pick id")
++assert_true(type(badPickErr) == "string", "invalid pick id returns an error string")
++
++local namePick, namePickErr = Gora:RecordFavor("FanOne", a.id)
++assert_eq(namePick, nil, "RecordFavor refuses a name string")
++assert_true(type(namePickErr) == "string", "name-string RecordFavor returns an error string")
++
++local extra = Store:CreateCharacter({ name = "Brisket" })
++local busyS, busySErr = Gora:Sanction(a.id, extra.id)
++assert_eq(busyS, nil, "a second live pair is refused")
++assert_true(type(busySErr) == "string", "busy Sanction returns an error string")
++assert_eq(Gora:GetFavor()[fan1.id], a.id, "failed Sanction does not clear picks")
++assert_eq(Gora:GetFavorSplit().a, 2, "failed Sanction leaves the split")
++
++local samePair = Gora:Sanction(a.id, b.id)
++assert_true(samePair ~= nil, "the same pair may be sanctioned again")
++assert_eq(Gora:GetFavor()[fan1.id], nil, "successful Sanction clears prior picks")
++assert_eq(Gora:GetFavor()[fan2.id], nil, "successful Sanction clears every standing pick")
++assert_eq(Gora:GetFavorSplit().a, 0, "a newly sanctioned bout starts empty")
++assert_eq(Gora:GetFavorSplit().b, 0, "a newly sanctioned bout starts empty on b")
++
++Gora:RecordFavor(fan1.id, b.id)
++local voidedFavor = Gora:Void()
++assert_true(voidedFavor ~= nil, "Void after a pick still records")
++assert_eq(Gora:GetFavor()[fan1.id], b.id, "Void leaves the favor tally")
++assert_eq(Gora:GetFavorSplit().a, 0, "split is zero once the live pair is gone")
++assert_eq(Gora:GetFavorSplit().b, 0, "split b is zero once the live pair is gone")
++
++Gora:Sanction(a.id, b.id)
++assert_eq(Gora:GetFavor()[fan1.id], nil, "the next Sanction clears leftover picks")
++
++Gora:RecordFavor(fan2.id, a.id)
++Gora:ResetForTests()
++assert_eq(Gora:GetFavor()[fan2.id], nil, "ResetForTests clears picks")
++assert_eq(Gora:GetFavorSplit().a, 0, "ResetForTests leaves an empty split")
++
++a, b = livePair()
++Gora:Sanction(a.id, b.id)
++Gora:RecordFavor(a.id, a.id)
++Runtime:EndEvent()
++assert_eq(Gora:GetSanctioned(), nil, "EndEvent expires the live pair")
++assert_eq(Gora:GetFavor()[a.id], nil, "EndEvent clears the favor tally")
++assert_eq(Gora:GetFavorSplit().a, 0, "expired split is zero")
++
++-- Production leak: verdict → EndEvent → StartEvent with no Gora call in QUIET.
++-- First GetFavor of the new event must be empty. Same-event Void still leaves the pick.
++a, b = livePair()
++Gora:Sanction(a.id, b.id)
++local nextEventFan = Store:CreateCharacter({ name = "NextEventFan" })
++Gora:RecordFavor(nextEventFan.id, a.id)
++local leftoverVoid = Gora:Void()
++assert_true(leftoverVoid ~= nil, "Void after a pick still records across the event boundary")
++assert_eq(Gora:GetFavor()[nextEventFan.id], a.id, "same-event Void still leaves the pick")
++Runtime:EndEvent()
++Runtime:StartEvent()
++assert_eq(Gora:GetFavor()[nextEventFan.id], nil, "first GetFavor after StartEvent does not inherit last event's picks")
++assert_eq(next(Gora:GetFavor()), nil, "a new event starts with an empty favor map")
++
+ --------------------------------------------------------------------------------
+ -- EndEvent expires an unrulied pair. No auto-void. No auto-declare.
+ --------------------------------------------------------------------------------
+@@ -530,6 +690,9 @@ local f1, f2 = twoChars()
+ Gora:Petition(f1.id, f2.id)
+ Gora:Recommend(f1.id, f2.id)
+ Gora:Sanction(f1.id, f2.id, "come as you are")
++Gora:RecordFavor(f1.id, f1.id)
++Gora:GetFavor()
++Gora:GetFavorSplit()
+ Gora:Propose({ ruling = "void" })
+ Gora:Void()
+ assert_eq(framed, 0, "Gora verbs never CreateFrame")

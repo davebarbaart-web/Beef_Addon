@@ -1,0 +1,219 @@
+diff --git a/addon/ChurchOfBeef/UI/Markers.lua b/addon/ChurchOfBeef/UI/Markers.lua
+--- a/addon/ChurchOfBeef/UI/Markers.lua
++++ b/addon/ChurchOfBeef/UI/Markers.lua
+@@ -119,6 +119,26 @@
+     pcall(GetRaidTargetIndex, unit)
+   end
+   return true
++end
++
++-- Index 0 on remembered last.unit / last.unitA / last.unitB that are not in
++-- the new keep-set. Do not call Markers:Clear (it overwrites last first).
++local function clearPrior(keepUnits)
++  keepUnits = keepUnits or {}
++  local seen = {}
++  local function sweep(unit)
++    if type(unit) ~= "string" or unit == "" then
++      return
++    end
++    if keepUnits[unit] or seen[unit] then
++      return
++    end
++    seen[unit] = true
++    applyMark(unit, 0)
++  end
++  sweep(last.unit)
++  sweep(last.unitA)
++  sweep(last.unitB)
+ end
+ 
+ local function remember(fields)
+@@ -190,6 +210,7 @@
+   if not unit then
+     return refuse("MarkCandidate", "unit not found", { name = trimmed })
+   end
++  clearPrior({ [unit] = true })
+   if not applyMark(unit, 1) then
+     return refuse("MarkCandidate", nil, { name = trimmed, unit = unit, index = 1 })
+   end
+@@ -222,6 +243,7 @@
+   if not unitA or not unitB then
+     return refuse("MarkFighters", "unit not found", { nameA = a, nameB = b })
+   end
++  clearPrior({ [unitA] = true, [unitB] = true })
+   if not applyMark(unitA, 2) or not applyMark(unitB, 3) then
+     return refuse("MarkFighters", nil, {
+       nameA = a,
+diff --git a/tests/test_markers.lua b/tests/test_markers.lua
+--- a/tests/test_markers.lua
++++ b/tests/test_markers.lua
+@@ -215,6 +215,8 @@
+ assert_eq(src:find("CastSpell", 1, true), nil, "source does not CastSpell")
+ assert_eq(src:find("UseAction", 1, true), nil, "source does not UseAction")
+ assert_eq(src:find("SecureActionButton", 1, true), nil, "no secure template")
++assert_eq(src:find("UnitIsDead", 1, true), nil, "source does not UnitIsDead")
++assert_true(src:find("local function clearPrior", 1, true) ~= nil, "clearPrior helper exists")
+ assert_eq(src:find("CreateFrame", 1, true), nil, "no frame this lane")
+ assert_eq(src:find("ShowUIPanel", 1, true), nil, "insecure only")
+ assert_eq(src:find("SLASH_", 1, true), nil, "source does not register a slash")
+@@ -593,8 +595,160 @@
+   assert_eq((raidTargets[1] or {}).unit, "player", "player Mark without count API uses the player token")
+   assert_eq((raidTargets[1] or {}).index, 1, "player Mark without count API still places star")
+   GetNumGroupMembers = savedCount
++end
++
++--------------------------------------------------------------------------------
++-- B32-D: new Mark* applyMark index 0 on remembered last.unit / last.unitA /
++-- last.unitB that are not in the new keep-set. Do not call Markers:Clear.
++-- Same-unit remake does not clear-then-mark. First mark still one spy.
++-- Fail-closed gates do not clear. Quiet / ungrouped / player-token pins stay.
++--------------------------------------------------------------------------------
++do
++  local markStart = src:find("function Markers:MarkCandidate", 1, true)
++  local fightStart = src:find("function Markers:MarkFighters", 1, true)
++  local clearStart = src:find("function Markers:Clear", 1, true)
++  assert_true(markStart ~= nil and fightStart ~= nil and clearStart ~= nil, "Mark* and Clear are findable")
++  local markBody = src:sub(markStart, fightStart - 1)
++  local fightBody = src:sub(fightStart, clearStart - 1)
++  assert_eq(markBody:find(":Clear(", 1, true), nil, "MarkCandidate does not call Clear")
++  assert_eq(fightBody:find(":Clear(", 1, true), nil, "MarkFighters does not call Clear")
++  assert_true(markBody:find("clearPrior", 1, true) ~= nil, "MarkCandidate calls clearPrior")
++  assert_true(fightBody:find("clearPrior", 1, true) ~= nil, "MarkFighters calls clearPrior")
+ end
++
++reset()
++Runtime:StartEvent()
++popeFlag = true
++armRaid("Chuckroast", "Tendermage")
++ok, err = Markers:MarkCandidate("Chuckroast")
++assert_eq(ok, true, "B32-D first MarkCandidate is true")
++assert_eq(err, nil, "B32-D first MarkCandidate has no error")
++assert_eq(#raidTargets, 1, "first MarkCandidate still one SetRaidTarget spy")
++assert_eq((raidTargets[1] or {}).unit, "raid2", "first MarkCandidate marks A")
++assert_eq((raidTargets[1] or {}).index, 1, "first MarkCandidate is star 1")
++
++ok, err = Markers:MarkCandidate("Chuckroast")
++assert_eq(ok, true, "same-name remake is true")
++assert_eq(#raidTargets, 2, "same-name remake does not add a clear spy")
++assert_eq((raidTargets[2] or {}).unit, "raid2", "same-name remake marks the same unit")
++assert_eq((raidTargets[2] or {}).index, 1, "same-name remake is still star 1")
++assert_eq((raidTargets[2] or {}).index ~= 0, true, "same-name remake has no extra 0 on that unit")
++
++ok, err = Markers:MarkCandidate("Ghost")
++assert_eq(ok, false, "unknown remake still refuses")
++assert_eq(err, "unit not found", "unknown remake names the error")
++assert_eq(#raidTargets, 2, "unit-not-found remake does not clear prior")
++
++reset()
++Runtime:StartEvent()
++popeFlag = true
++armRaid("Chuckroast", "Tendermage")
++ok, err = Markers:MarkCandidate("Chuckroast")
++assert_eq(ok, true, "A then B starts with A")
++assert_eq(#raidTargets, 1, "A then B first mark is one spy")
++ok, err = Markers:MarkCandidate("Tendermage")
++assert_eq(ok, true, "MarkCandidate B after A is true")
++assert_eq(#raidTargets, 3, "A then B spies A, clear A, then B")
++assert_eq((raidTargets[2] or {}).unit, "raid2", "A then B clears A")
++assert_eq((raidTargets[2] or {}).index, 0, "A then B clears A at index 0")
++assert_eq((raidTargets[3] or {}).unit, "raid3", "A then B marks B")
++assert_eq((raidTargets[3] or {}).index, 1, "A then B marks B at star 1")
++
++reset()
++Runtime:StartEvent()
++popeFlag = true
++stub.playerName = "Beefina"
++stub.inRaid = true
++stub.groupSize = 4
++stub.group = {
++  raid1 = { name = "Beefina" },
++  raid2 = { name = "Chuckroast" },
++  raid3 = { name = "Tendermage" },
++  raid4 = { name = "Brisket" },
++}
++ok, err = Markers:MarkCandidate("Brisket")
++assert_eq(ok, true, "candidate not in later pair marks")
++assert_eq(#raidTargets, 1, "first candidate still one spy")
++assert_eq((raidTargets[1] or {}).unit, "raid4", "candidate not in pair is raid4")
++assert_eq((raidTargets[1] or {}).index, 1, "candidate not in pair is star 1")
++ok, err = Markers:MarkFighters("Chuckroast", "Tendermage")
++assert_eq(ok, true, "MarkFighters after outsider candidate is true")
++assert_eq(#raidTargets, 4, "MarkFighters after outsider clears the candidate then marks the pair")
++assert_eq((raidTargets[2] or {}).unit, "raid4", "MarkFighters clears the outsider candidate")
++assert_eq((raidTargets[2] or {}).index, 0, "outsider candidate clear is index 0")
++assert_eq((raidTargets[3] or {}).unit, "raid2", "fighter A is raid2")
++assert_eq((raidTargets[3] or {}).index, 2, "fighter A is index 2")
++assert_eq((raidTargets[4] or {}).unit, "raid3", "fighter B is raid3")
++assert_eq((raidTargets[4] or {}).index, 3, "fighter B is index 3")
+ 
++for i = #raidTargets, 1, -1 do raidTargets[i] = nil end
++ok, err = Markers:MarkCandidate("Brisket")
++assert_eq(ok, true, "MarkCandidate after MarkFighters is true")
++assert_eq(#raidTargets, 3, "MarkCandidate after fighters clears both then marks")
++assert_eq((raidTargets[1] or {}).unit, "raid2", "prior fighter A is cleared")
++assert_eq((raidTargets[1] or {}).index, 0, "prior fighter A clear is index 0")
++assert_eq((raidTargets[2] or {}).unit, "raid3", "prior fighter B is cleared")
++assert_eq((raidTargets[2] or {}).index, 0, "prior fighter B clear is index 0")
++assert_eq((raidTargets[3] or {}).unit, "raid4", "new candidate is raid4")
++assert_eq((raidTargets[3] or {}).index, 1, "new candidate is star 1")
++
++reset()
++Runtime:StartEvent()
++popeFlag = true
++armRaid("Chuckroast", "Tendermage")
++ok, err = Markers:MarkCandidate("Chuckroast")
++assert_eq(ok, true, "keep-set candidate marks")
++for i = #raidTargets, 1, -1 do raidTargets[i] = nil end
++ok, err = Markers:MarkFighters("Chuckroast", "Tendermage")
++assert_eq(ok, true, "MarkFighters after in-pair candidate is true")
++assert_eq(#raidTargets, 2, "in-pair candidate is kept; no extra 0")
++assert_eq((raidTargets[1] or {}).unit, "raid2", "kept candidate is remade as fighter A")
++assert_eq((raidTargets[1] or {}).index, 2, "kept candidate is index 2 not 0")
++assert_eq((raidTargets[2] or {}).unit, "raid3", "fighter B is raid3")
++assert_eq((raidTargets[2] or {}).index, 3, "fighter B is index 3")
++
++reset()
++Runtime:StartEvent()
++popeFlag = true
++armRaid("Chuckroast")
++ok, err = Markers:MarkCandidate("Beefina")
++assert_eq(ok, true, "player first mark is true")
++assert_eq(#raidTargets, 1, "player first mark still one spy")
++assert_eq((raidTargets[1] or {}).unit, "player", "player first mark uses player token")
++ok, err = Markers:MarkCandidate("Chuckroast")
++assert_eq(ok, true, "MarkCandidate after player prior is true")
++assert_eq(#raidTargets, 3, "player prior is cleared then raid2 is marked")
++assert_eq((raidTargets[2] or {}).unit, "player", "player prior is cleared")
++assert_eq((raidTargets[2] or {}).index, 0, "player prior clear is index 0")
++assert_eq((raidTargets[3] or {}).unit, "raid2", "new mark is raid2")
++assert_eq((raidTargets[3] or {}).index, 1, "new mark is star 1")
++
++reset()
++Runtime:StartEvent()
++popeFlag = true
++armRaid("Chuckroast")
++ok, err = Markers:MarkCandidate("Chuckroast")
++assert_eq(ok, true, "pre-Quiet mark is true")
++assert_eq(#raidTargets, 1, "pre-Quiet mark is one spy")
++assert_true(Runtime:EndEvent() ~= nil, "EndEvent returns to QUIET for refuse pin")
++ok, err = Markers:MarkCandidate("Tendermage")
++assert_eq(ok, false, "Quiet after a live mark still refuses")
++assert_eq(err, "quiet", "Quiet after a live mark names quiet")
++assert_eq(#raidTargets, 1, "Quiet refuse does not clear prior")
++
++reset()
++Runtime:StartEvent()
++popeFlag = true
++armRaid("Chuckroast")
++ok, err = Markers:MarkCandidate("Chuckroast")
++assert_eq(ok, true, "pre-ungrouped mark is true")
++assert_eq(#raidTargets, 1, "pre-ungrouped mark is one spy")
++resetGroup()
++ok, err = Markers:MarkCandidate("Chuckroast")
++assert_eq(ok, false, "ungrouped after a live mark still refuses")
++assert_eq(err, "not in a group", "ungrouped after a live mark names the error")
++assert_eq(#raidTargets, 1, "ungrouped refuse does not clear prior")
++
+ --------------------------------------------------------------------------------
+ -- Missing API fail-closed. No throw.
+ --------------------------------------------------------------------------------

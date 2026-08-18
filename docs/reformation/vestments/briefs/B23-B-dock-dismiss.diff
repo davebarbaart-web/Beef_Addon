@@ -1,0 +1,204 @@
+diff --git a/addon/ChurchOfBeef/UI/ConsoleDock.lua b/addon/ChurchOfBeef/UI/ConsoleDock.lua
+--- a/addon/ChurchOfBeef/UI/ConsoleDock.lua
++++ b/addon/ChurchOfBeef/UI/ConsoleDock.lua
+@@ -6,8 +6,11 @@
+ -- local player is the registered Pope. Stock SANCTION calls
+ -- Console:Sanction when present. Expand calls Console:Show.
+ -- ESC Hide()s ChurchOfBeefConsoleDock via UISpecialFrames (deduped).
+--- Hide is not EndEvent. No Quiet chrome. No whisper fan-out. No cue.
+--- No congregation bar.
++-- OnHide (after create-time Hide) remembers dismiss while the event
++-- is live and sets lastView.shown false. Refresh does not re-show
++-- while dismissed. Show() clears dismiss. Quiet / not-mayShow clears
++-- dismiss. Hide is not EndEvent. No Quiet chrome. No whisper fan-out.
++-- No cue. No congregation bar.
+ local ConsoleDock = {
+   MODE = "Event",
+ }
+@@ -28,6 +31,7 @@
+ 
+ local frame = nil
+ local lastView = nil
++local dismissed = false
+ 
+ local function deepcopy(value)
+   if type(value) ~= "table" then return value end
+@@ -173,6 +177,20 @@
+   widget:SetHeight(HEIGHT)
+   restorePoint(widget)
+   widget:Hide()
++
++  -- After the initial Hide so create does not fire OnHide teardown.
++  if type(widget.SetScript) == "function" then
++    local existing = type(widget.GetScript) == "function" and widget:GetScript("OnHide")
++    if not existing then
++      widget:SetScript("OnHide", function()
++        if lastView == nil then lastView = hiddenView() end
++        lastView.shown = false
++        if eventLive() then
++          dismissed = true
++        end
++      end)
++    end
++  end
+ 
+   if widget.TitleText and widget.TitleText.SetText then
+     widget.TitleText:SetText(TITLE)
+@@ -234,13 +252,27 @@
+     lastView = hiddenView()
+     lastView.shown = false
+     lastView.pope = isLocalPope()
++    if not mayShow() then
++      dismissed = false
++    end
+     return self:GetView()
+   end
+-  paint(mayShow())
++  if not mayShow() then
++    dismissed = false
++    paint(false)
++    dismissed = false
++    return self:GetView()
++  end
++  if dismissed then
++    paint(false)
++    return self:GetView()
++  end
++  paint(true)
+   return self:GetView()
+ end
+ 
+ function ConsoleDock:Show()
++  dismissed = false
+   if not frame then
+     self:Init()
+   end
+@@ -262,11 +294,13 @@
+ 
+ function ConsoleDock:ResetForTests()
+   if not COB._IN_TEST then return false end
++  dismissed = false
+   lastView = hiddenView()
+   lastView.shown = false
+   if frame then
+     frame:Hide()
+     frame = nil
+   end
++  dismissed = false
+   return true
+ end
+
+diff --git a/tests/test_console_dock.lua b/tests/test_console_dock.lua
+--- a/tests/test_console_dock.lua
++++ b/tests/test_console_dock.lua
+@@ -2,6 +2,7 @@
+ -- wow_ui_stub + Common + Runtime + ConsoleDock. Stub Sender.IsRegisteredPope
+ -- and Console.Sanction / Show. Quiet hides. StartEvent + Pope shows, title pin.
+ -- B22-D: ChurchOfBeefConsoleDock on UISpecialFrames (rememberSpecial).
++-- B23-B: widget Hide / ESC stays dismissed until Show or QUIET.
+ -- No TOC / bootstrap / run.lua / Console.lua / Hud / Toasts. Isolation wrap.
+ ChurchOfBeef = ChurchOfBeef or {}
+ ChurchOfBeef._IN_TEST = true
+@@ -224,6 +225,14 @@
+   "source does not bare-insert UISpecialFrames")
+ assert_eq(src:find("IG_CHARACTER_INFO", 1, true), nil,
+   "source does not play IG_CHARACTER_INFO on hide")
++local hideAt = src:find("widget:Hide()", 1, true)
++local onHideAt = src:find('SetScript("OnHide"', 1, true)
++assert_true(hideAt ~= nil, "source has create-time Hide")
++assert_true(onHideAt ~= nil, "source hooks OnHide")
++assert_true(type(hideAt) == "number" and type(onHideAt) == "number" and hideAt < onHideAt,
++  "OnHide is after create-time Hide")
++assert_true(src:find("dismissed", 1, true) ~= nil, "source remembers dismiss")
++assert_eq(src:find("cooldown", 1, true), nil, "no dismiss-cooldown number")
+ assert_eq(src:find("Toasts", 1, true), nil, "source does not drive Toasts")
+ assert_eq(src:find("StatusBar", 1, true), nil, "source does not mint a StatusBar")
+ assert_eq(src:find("FAVOR", 1, true), nil, "source has no favor chrome")
+@@ -361,7 +370,76 @@
+ assert_eq(view.shown, false, "EndEvent hides the dock")
+ assert_eq(frame:IsShown(), false, "EndEvent hides the widget")
+ assert_eq(view.state, "QUIET", "ended view reports QUIET")
++
++--------------------------------------------------------------------------------
++-- B23-B: widget Hide (ESC) syncs lastView and stays hidden until Show or QUIET.
++--------------------------------------------------------------------------------
++reset()
++frame = ConsoleDock:Init()
++popeFlag = true
++Runtime:StartEvent()
++assert_eq(ConsoleDock:Show(), true, "StartEvent + Pope Show is true before widget Hide")
++assert_eq(frame:IsShown(), true, "StartEvent + Pope shows before widget Hide")
++assert_eq(ConsoleDock:GetView().shown, true, "StartEvent + Pope view is shown")
++assert_eq(frame:GetScript("OnHide") ~= nil, true, "shown dock has OnHide")
++
++frame:Hide()
++assert_eq(frame:IsShown(), false, "widget Hide hides the dock")
++assert_eq(ConsoleDock:GetView().shown, false, "widget Hide sets GetView().shown false")
++assert_eq(Runtime:Snapshot().state, "ASSEMBLY", "widget Hide is not EndEvent")
++assert_eq(countSpecial("ChurchOfBeefConsoleDock"), 1, "widget Hide keeps UISpecialFrames")
++assert_eq(sounds, 0, "widget Hide plays no sound")
++
++view = ConsoleDock:Refresh()
++assert_eq(view.shown, false, "Refresh after widget Hide stays hidden")
++assert_eq(frame:IsShown(), false, "Refresh after widget Hide does not re-show")
++assert_eq(Runtime:Snapshot().state, "ASSEMBLY", "Refresh after widget Hide is not EndEvent")
++assert_eq(view.state, "ASSEMBLY", "dismissed Refresh still reports ASSEMBLY")
++
++assert_eq(ConsoleDock:Show(), true, "Show after dismiss paints again")
++assert_eq(frame:IsShown(), true, "Show after dismiss shows the widget")
++assert_eq(ConsoleDock:GetView().shown, true, "Show after dismiss sets shown true")
++assert_eq(sounds, 0, "Show after dismiss plays no sound")
++
++frame:Hide()
++assert_eq(ConsoleDock:GetView().shown, false, "second widget Hide sets shown false")
++view = ConsoleDock:Refresh()
++assert_eq(view.shown, false, "Refresh after second dismiss stays hidden")
++assert_eq(frame:IsShown(), false, "Refresh after second dismiss does not re-show")
+ 
++Runtime:EndEvent()
++view = ConsoleDock:Refresh()
++assert_eq(view.shown, false, "EndEvent Refresh hides")
++assert_eq(frame:IsShown(), false, "EndEvent hides the widget")
++assert_eq(view.state, "QUIET", "EndEvent view reports QUIET")
++
++Runtime:StartEvent()
++view = ConsoleDock:Refresh()
++assert_eq(view.shown, true, "StartEvent + Refresh after EndEvent shows")
++assert_eq(frame:IsShown(), true, "StartEvent + Refresh after EndEvent shows the widget")
++assert_eq(view.state, "ASSEMBLY", "new event after EndEvent reports ASSEMBLY")
++assert_eq(frame.TitleText:GetText(), TITLE, "re-shown title stays DIRECTOR CONSOLE")
++if frame.CloseButton then
++  assert_eq(frame.CloseButton:IsShown(), false, "re-shown CloseButton stays hidden")
++end
++
++frame:Hide()
++assert_eq(ConsoleDock:GetView().shown, false, "widget Hide before Quiet Refresh sets shown false")
++Runtime:ResetForTests()
++view = ConsoleDock:Refresh()
++assert_eq(view.shown, false, "Quiet Refresh hides")
++assert_eq(frame:IsShown(), false, "Quiet Refresh hides the widget")
++assert_eq(view.state, "QUIET", "Quiet Refresh reports QUIET")
++assert_eq(Runtime:Snapshot().state, "QUIET", "Quiet Refresh is not a live event")
++
++Runtime:StartEvent()
++popeFlag = true
++view = ConsoleDock:Refresh()
++assert_eq(view.shown, true, "StartEvent + Refresh after Quiet Refresh shows")
++assert_eq(frame:IsShown(), true, "StartEvent + Refresh after Quiet Refresh shows the widget")
++assert_eq(view.state, "ASSEMBLY", "new event after Quiet Refresh reports ASSEMBLY")
++assert_eq(sounds, 0, "dismiss path plays no sound")
++
+ --------------------------------------------------------------------------------
+ -- SANCTION click spies Console:Sanction. Expand spies Console:Show.
+ --------------------------------------------------------------------------------
+@@ -551,6 +629,10 @@
+ assert_eq(src:find("IG_CHARACTER_INFO", 1, true), nil, "persist source still has no IG_CHARACTER_INFO")
+ assert_eq(src:find("rememberSpecial(FRAME_NAME)", 1, true) ~= nil, true,
+   "persist source still remembers FRAME_NAME")
++assert_true(src:find('SetScript("OnHide"', 1, true) ~= nil,
++  "persist source still hooks OnHide")
++assert_true(src:find("dismissed", 1, true) ~= nil, "persist source still remembers dismiss")
++assert_eq(src:find("cooldown", 1, true), nil, "persist source still has no dismiss-cooldown")
+ assert_eq(src:find("OnUpdate", 1, true), nil, "persist source still has no OnUpdate")
+ assert_eq(src:find("Media\\", 1, true), nil, "persist source still has no custom Media")
+ assert_eq(src:find("BasicFrameTemplate", 1, true) ~= nil, true, "dock stays BasicFrameTemplate")

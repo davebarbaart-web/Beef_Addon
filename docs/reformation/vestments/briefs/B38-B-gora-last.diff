@@ -1,0 +1,83 @@
+diff --git a/addon/ChurchOfBeef/Net/Snapshot.lua b/addon/ChurchOfBeef/Net/Snapshot.lua
+--- a/addon/ChurchOfBeef/Net/Snapshot.lua
++++ b/addon/ChurchOfBeef/Net/Snapshot.lua
+@@ -94,7 +94,7 @@
+     if liveA and liveB then
+       fields.subjects = overlaySubjects(fields.subjects, liveA, liveB)
+       usedLive = true
+-    elseif snap.state == "CONSEQUENCE" then
++    elseif snap.state == "CONSEQUENCE" and snap.riteType == "Gora" then
+       local lastA, lastB = callPair(gora, "GetLastSanctioned")
+       if lastA and lastB then
+         fields.subjects = overlaySubjects(fields.subjects, lastA, lastB)
+diff --git a/tests/test_net_snapshot.lua b/tests/test_net_snapshot.lua
+--- a/tests/test_net_snapshot.lua
++++ b/tests/test_net_snapshot.lua
+@@ -1031,6 +1031,67 @@
+ assert_eq(throwWire, encode_expected(missLine), "GetLine throw does not overlay candidate")
+ assert_unchanged(missLine, Runtime:Snapshot(), "GetLine throw does not change Runtime")
+ clearPairStubs()
++
++--------------------------------------------------------------------------------
++-- B38-B: last-pair overlay is Gora CONSEQUENCE only. Live GetSanctioned stays.
++-- Candidate overlay stays B14-A. Existing Gora CONSEQUENCE last pins stay.
++--------------------------------------------------------------------------------
++
++-- Existing Gora empty CONSEQUENCE + GetLastSanctioned still overlays.
++reset()
++Runtime:StartEvent()
++Runtime:OpenRite("Gora")
++Runtime:CloseRite()
++local goraLastStay = Runtime:Snapshot()
++assert_eq(goraLastStay.state, "CONSEQUENCE", "Gora CloseRite is CONSEQUENCE")
++assert_eq(goraLastStay.riteType, "Gora", "Gora CONSEQUENCE rite type")
++assert_eq(goraLastStay.subjects.fighters, nil, "Gora CONSEQUENCE without OpenRite fighters")
++COB.Gora = {
++  GetSanctioned = function()
++    return nil
++  end,
++  GetLastSanctioned = function()
++    return { fighterA = 41, fighterB = 42 }
++  end,
++}
++assert_eq(Snapshot:BuildResponse(), encode_overlay(goraLastStay, { 41, 42 }), "Gora CONSEQUENCE still overlays last pair")
++assert_unchanged(goraLastStay, Runtime:Snapshot(), "Gora last overlay does not change Runtime")
++local goraLastStayMsg = Codec:DecodeSnapshot(Snapshot:BuildResponse())
++assert_eq(goraLastStayMsg.subjects.fighters[1], 41, "Gora last overlay fighter A")
++assert_eq(goraLastStayMsg.subjects.fighters[2], 42, "Gora last overlay fighter B")
++clearPairStubs()
++
++-- Knighting CONSEQUENCE + last pair stub does not overlay leftover fighters.
++reset()
++Runtime:StartEvent()
++Runtime:OpenRite("Knighting")
++Runtime:CloseRite()
++local knightLastRefuse = Runtime:Snapshot()
++assert_eq(knightLastRefuse.state, "CONSEQUENCE", "Knighting CloseRite is CONSEQUENCE")
++assert_eq(knightLastRefuse.riteType, "Knighting", "Knighting CONSEQUENCE rite type")
++assert_eq(knightLastRefuse.subjects.fighters, nil, "Knighting CONSEQUENCE has no fighters")
++COB.Gora = {
++  GetSanctioned = function()
++    return nil
++  end,
++  GetLastSanctioned = function()
++    return { fighterA = 41, fighterB = 42 }
++  end,
++  GetLastFavorSplit = function()
++    return { a = 3, b = 1 }
++  end,
++}
++COB.Console = {
++  GetCongregationFavorVisible = function()
++    return true
++  end,
++}
++assert_eq(Snapshot:BuildResponse(), encode_expected(knightLastRefuse), "Knighting CONSEQUENCE does not overlay last pair")
++assert_unchanged(knightLastRefuse, Runtime:Snapshot(), "Knighting last pair stub does not change Runtime")
++local knightLastMsg = Codec:DecodeSnapshot(Snapshot:BuildResponse())
++assert_eq(#knightLastMsg.subjects.fighters, 0, "Knighting CONSEQUENCE wire has no leftover fighters")
++assert_eq(knightLastMsg.favor, nil, "Knighting CONSEQUENCE does not invent last favor")
++clearPairStubs()
+ 
+ clearPairStubs()
+ if standalone then

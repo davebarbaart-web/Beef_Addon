@@ -1,0 +1,31 @@
+# B20-B — Records title uses FrameXML Morpheus casing (implementation diff)
+
+Lane-only unified diff of the exclusive implementation files vs the pre-lane working tree.
+
+--- a/addon/ChurchOfBeef/UI/RecordsBook.lua
++++ b/addon/ChurchOfBeef/UI/RecordsBook.lua
+@@ -10,7 +10,7 @@
+ COB.RecordsBook = RecordsBook
+
+ local FRAME_NAME = "ChurchOfBeefRecordsBook"
+-local PAGE_TITLE_FONT = "Fonts\\MORPHEUS.TTF"
++local PAGE_TITLE_FONT = "Fonts\\MORPHEUS.ttf"
+ local FALLBACK_TITLE_FONT = "Fonts\\FRIZQT__.TTF"
+ local PARCHMENT_TEXTURE = "Interface\\QuestFrame\\QuestBG"
+ local SEAL_TEXTURE = "Interface\\Buttons\\UI-Quickslot2"
+
+--- a/tests/test_records.lua
++++ b/tests/test_records.lua
+@@ -183,6 +183,11 @@
+   "parchment uses stock QuestBG or stationery")
+ assert_true(src:find("MORPHEUS", 1, true) ~= nil or src:find("FRIZQT", 1, true) ~= nil,
+   "page title uses a stock client font path")
++assert_true(src:find("Fonts\\\\MORPHEUS.ttf", 1, true) ~= nil,
++  "page title uses FrameXML lowercase Morpheus")
++assert_eq(src:find("MORPHEUS.TTF", 1, true), nil, "page title path is not uppercase TTF")
++assert_eq(src:find("MORPHEUS_CYR", 1, true), nil, "source does not use GlueFonts MORPHEUS_CYR")
++assert_true(src:find("FRIZQT__.TTF", 1, true) ~= nil, "applyFont fallback face stays FRIZQT__.TTF")
++assert_true(src:find("SetFontObject", 1, true) ~= nil, "applyFont still falls back to GameFont")
+ assert_true(src:find("EnableMouseWheel", 1, true) ~= nil, "source contains EnableMouseWheel")
+ assert_true(src:find('type(frame.EnableMouseWheel) == "function"', 1, true) ~= nil,
+   "EnableMouseWheel is type-guarded")

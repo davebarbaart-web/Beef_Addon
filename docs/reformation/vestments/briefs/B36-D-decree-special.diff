@@ -1,0 +1,133 @@
+# B36-D — Decree Hide remounts UISpecialFrames membership (implementation diff)
+
+Lane-only unified diff of the exclusive implementation files vs the pre-lane working tree.
+
+--- a/addon/ChurchOfBeef/UI/Decree.lua
++++ b/addon/ChurchOfBeef/UI/Decree.lua
+@@ -336,6 +336,7 @@
+ function DecreeBanner:Hide()
+   if self.frame then
++    rememberSpecial(FRAME_NAME)
+     wireDecreeOnHide(self.frame)
+     if not getDecree() then
+       wipePaint(self.frame)
+     end
+
+--- a/tests/test_decree_ui.lua
++++ b/tests/test_decree_ui.lua
+@@ -1035,6 +1035,116 @@
+     Banner:Hide()
+   end
+   runB31B()
++
++  -- B36-D: Hide remounts UISpecialFrames membership when the frame
++  -- already exists. rememberSpecial(FRAME_NAME) before existing
++  -- OnHide remount + wipe-if-empty + frame:Hide(). Do not replace
++  -- an existing OnHide. No OnShow re-wire. No rebuild. Isolation wrap stays.
++  local function runB36D()
++    assert_true(type(hideBody) == "string" and hideBody ~= "",
++      "B36-D Hide body is readable")
++    local remAt = hideBody:find("rememberSpecial(FRAME_NAME)", 1, true)
++    local wireAt = hideBody:find("wireDecreeOnHide", 1, true)
++    local wipeAt = hideBody:find("wipePaint", 1, true)
++    local frameHideAt = hideBody:find(":Hide()", 1, true)
++    assert_true(remAt ~= nil, "Hide remounts rememberSpecial FRAME_NAME")
++    assert_true(wireAt ~= nil, "Hide remounts via wireDecreeOnHide")
++    assert_true(wipeAt ~= nil, "Hide still wipePaints when Get is nil")
++    assert_true(frameHideAt ~= nil, "Hide still hides the frame")
++    assert_true(type(remAt) == "number" and type(wireAt) == "number" and remAt < wireAt,
++      "Hide rememberSpecials before OnHide remount")
++    assert_true(type(remAt) == "number" and type(wipeAt) == "number" and remAt < wipeAt,
++      "Hide rememberSpecials before wipe")
++    assert_true(type(remAt) == "number" and type(frameHideAt) == "number" and remAt < frameHideAt,
++      "Hide remounts rememberSpecial FRAME_NAME before Hide")
++    assert_true(type(wireAt) == "number" and type(wipeAt) == "number" and wireAt < wipeAt,
++      "Hide wires OnHide before wipe")
++    assert_true(type(wireAt) == "number" and type(frameHideAt) == "number" and wireAt < frameHideAt,
++      "Hide wires OnHide before Hide")
++    assert_eq(hideBody:find('SetScript("OnHide"', 1, true), nil,
++      "Hide does not SetScript OnHide inline")
++    assert_eq(hideBody:find("OnShow", 1, true), nil,
++      "Hide does not re-wire OnShow")
++    assert_eq(hideBody:find("buildFrame", 1, true), nil,
++      "Hide does not rebuild")
++    assert_eq(hideBody:find("CreateFrame", 1, true), nil,
++      "Hide does not CreateFrame")
++    assert_eq(hideBody:find("PlaySound", 1, true), nil,
++      "Hide does not PlaySound")
++    assert_eq(hideBody:find("IG_CHARACTER_INFO", 1, true), nil,
++      "Hide does not PlaySound IG_CHARACTER_INFO")
++    assert_eq(hideBody:find(":Show()", 1, true), nil,
++      "Hide does not Show")
++    assert_eq(hideBody:find("ensureFrame", 1, true), nil,
++      "Hide does not call ensureFrame")
++    assert_eq(hideBody:find("Clear Decree", 1, true), nil,
++      "Hide has no Clear Decree chrome")
++    assert_true(type(earlyEnsure) == "string" and earlyEnsure ~= "",
++      "B36-D early-return body is readable")
++    assert_true(earlyEnsure:find("rememberSpecial(FRAME_NAME)", 1, true) ~= nil,
++      "ensureFrame remount rememberSpecial stays")
++    assert_true(earlyEnsure:find("wireDecreeOnHide", 1, true) ~= nil,
++      "ensureFrame remount stays")
++    assert_eq(refreshBody:find("wireDecreeOnHide", 1, true), nil,
++      "Refresh still does not call wireDecreeOnHide")
++    assert_true(src:find("Fonts\\\\MORPHEUS.ttf", 1, true) ~= nil,
++      "LINE_FONT stays FrameXML lowercase Morpheus after Hide special remount")
++    assert_eq(src:find("Clear Decree", 1, true), nil,
++      "source still has no Clear Decree chrome")
++    assert_eq(src:find("IG_CHARACTER_INFO", 1, true), nil,
++      "source still has no IG_CHARACTER_INFO")
++    assert_eq(src:find("PlaySound", 1, true), nil,
++      "source still does not play sound")
++
++    assert_true(Banner.frame ~= nil, "frame already exists before Hide special remount")
++    local same = Banner.frame
++    assert_eq(same:GetName(), "ChurchOfBeefDecree",
++      "B36-D frame name stays ChurchOfBeefDecree")
++    local existingOnHide = same:GetScript("OnHide")
++    assert_true(existingOnHide ~= nil, "OnHide is already wired before Hide special remount")
++    local savedSpecial = UISpecialFrames
++    UISpecialFrames = {}
++    assert_eq(countSpecial("ChurchOfBeefDecree"), 0,
++      "B36-D wipe clears ChurchOfBeefDecree")
++    local cuesHide = sounds
++    assert_eq(Banner:Hide(), true, "Hide remounts special")
++    assert_eq(Banner.frame, same, "Hide remount does not rebuild")
++    assert_eq(same:GetName(), "ChurchOfBeefDecree",
++      "Hide remount keeps the named frame")
++    assert_eq(countSpecial("ChurchOfBeefDecree"), 1,
++      "wiped UISpecialFrames + Hide lists ChurchOfBeefDecree once")
++    assert_eq(same:GetScript("OnHide"), existingOnHide,
++      "Hide remount does not replace existing OnHide")
++    assert_eq(same:GetScript("OnShow"), nil,
++      "Hide remount does not wire OnShow")
++    assert_eq(sounds, cuesHide, "Hide remount plays no sound")
++    Banner:Hide()
++    assert_eq(countSpecial("ChurchOfBeefDecree"), 1,
++      "second Hide after wipe does not duplicate ChurchOfBeefDecree")
++    assert_eq(same:GetScript("OnHide"), existingOnHide,
++      "second Hide keeps OnHide identity")
++    Banner:Hide()
++    assert_eq(countSpecial("ChurchOfBeefDecree"), 1,
++      "third Hide does not duplicate ChurchOfBeefDecree")
++    assert_eq(Banner.frame, same, "third Hide does not rebuild")
++    assert_eq(same:GetScript("OnHide"), existingOnHide,
++      "third Hide keeps OnHide identity")
++    assert_eq(sounds, cuesHide, "third Hide plays no sound")
++
++    same:SetScript("OnHide", nil)
++    assert_eq(same:GetScript("OnHide"), nil, "OnHide dropped before Hide remount stay")
++    assert_eq(Banner:Hide(), true, "Hide remount stay succeeds")
++    assert_eq(Banner.frame, same, "Hide remount stay does not rebuild")
++    local afterHide = same:GetScript("OnHide")
++    assert_true(afterHide ~= nil, "Hide remounts a missing OnHide")
++    assert_eq(countSpecial("ChurchOfBeefDecree"), 1,
++      "Hide remount stay still lists ChurchOfBeefDecree once")
++    assert_eq(sounds, cuesHide, "Hide remount stay plays no sound")
++    Decree:Clear()
++    Banner:Hide()
++    UISpecialFrames = savedSpecial
++  end
++  runB36D()
+ end
+ runB25B()

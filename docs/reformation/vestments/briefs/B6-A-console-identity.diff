@@ -1,0 +1,411 @@
+diff --git a/addon/ChurchOfBeef/UI/Console.lua b/addon/ChurchOfBeef/UI/Console.lua
+--- a/addon/ChurchOfBeef/UI/Console.lua
++++ b/addon/ChurchOfBeef/UI/Console.lua
+@@ -15,11 +15,15 @@
+ -- plate. Knighting line is a stock list plus Enqueue / Skip furniture.
+ -- Recommend proposes a pair and never Sanctions. CallForward marks the inbox
+ -- only — no Toasts, chat, or Sound. FlagMoment may read GetSubZoneText when
+--- location is omitted. Post Decree writes Core (Decree:Set); BeefNet broadcast
+--- is bootstrap glue. Law 6: Decree is Quiet; Sound is not played. Layout:
+--- two-column stock desk, large targets, scrollable Presence / Gora /
+--- Confession / Line lists, click-to-select. Not parchment. Not collapsible
+--- tabs (desks stay glanceable without window switching).
++-- location is omitted. GRANT HONORIFIC writes Store:AddHonorific (Pope-authored
++-- plain text; empty and embedded newline refuse). Recognition Begin / Complete /
++-- Cancel pass confirmer "pope" only — no Council button, no self-service, no
++-- UnitName bind, no auto-Complete on the 30s metadata duration. Post Decree
++-- writes Core (Decree:Set); BeefNet broadcast is bootstrap glue. Law 6: Decree
++-- is Quiet; Sound is not played. Layout: two-column stock desk, large targets,
++-- scrollable Presence / Gora / Confession / Line lists, click-to-select. Not
++-- parchment. Not collapsible tabs (desks stay glanceable without window
++-- switching).
+ local Console = {
+   MODE = "event",
+ }
+@@ -27,7 +31,7 @@
+ 
+ local FRAME_NAME = "ChurchOfBeefConsoleFrame"
+ local REFUSE = "not the registered pope"
+-local DEFAULT_WIDTH, DEFAULT_HEIGHT = 780, 700
++local DEFAULT_WIDTH, DEFAULT_HEIGHT = 780, 770
+ local BTN_W, BTN_H, BTN_GAP = 172, 28, 8
+ local COL_W, COL_GAP = 370, 12
+ local ROW_H = 20
+@@ -573,6 +577,17 @@
+   local momentBtn = ritual("MARK THIS MOMENT", function() Console:FlagMoment() end)
+   momentBtn:SetPoint("TOPLEFT", content, "TOPLEFT", 572, -y + 2)
+   y = y + 30
++
++  frame.HonorificText = stockEdit(content, 560)
++  frame.HonorificText:SetPoint("TOPLEFT", content, "TOPLEFT", 4, -y)
++  local honorBtn = ritual("GRANT HONORIFIC", function() Console:GrantHonorific() end)
++  honorBtn:SetPoint("TOPLEFT", content, "TOPLEFT", 572, -y + 2)
++  y = y + 28
++  y = placeRow(content, y, {
++    ritual("Begin Recognition", function() Console:BeginRecognition() end),
++    ritual("Complete Recognition", function() Console:CompleteRecognition() end),
++    ritual("Cancel Recognition", function() Console:CancelRecognition() end),
++  })
+ 
+   local notebook = header(content, "Notebook")
+   notebook:SetPoint("TOPLEFT", content, "TOPLEFT", 0, -y)
+@@ -1351,4 +1366,77 @@
+     showDecreeBanner()
+   end
+   return result, err
++end
++
++local function honorificText(self, text)
++  if text == nil then
++    local box = self.frame and self.frame.HonorificText
++    if box and box.GetText then
++      text = box:GetText()
++    end
++  end
++  local trimmed = trimText(text)
++  if not trimmed then
++    return nil, "honorific text required"
++  end
++  if trimmed:find("\n", 1, true) then
++    return nil, "honorific text must be one line"
++  end
++  return trimmed
++end
++
++local function wallNow()
++  if COB.Clock and type(COB.Clock.Wall) == "function" then
++    return COB.Clock.Wall()
++  end
++  if type(time) == "function" then
++    return time()
++  end
++  return nil
+ end
++
++function Console:GrantHonorific(humanId, text)
++  if not isRegisteredPope() then return nil, REFUSE end
++  if not COB.Store or type(COB.Store.AddHonorific) ~= "function" then
++    return nil, "store is not available"
++  end
++  local title, titleErr = honorificText(self, text)
++  if not title then return nil, titleErr end
++  local result, err = COB.Store:AddHonorific(humanId or self.selectedHumanId, title)
++  return after(self, result, err)
++end
++
++function Console:BeginRecognition(humanId, characterId)
++  if not isRegisteredPope() then return nil, REFUSE end
++  local Recognition = COB.Recognition
++  if type(Recognition) ~= "table" or type(Recognition.Begin) ~= "function" then
++    return nil, "recognition is not available"
++  end
++  local result, err = Recognition:Begin(
++    humanId or self.selectedHumanId,
++    characterId or self.selectedCharacterId,
++    "pope",
++    wallNow()
++  )
++  return after(self, result, err)
++end
++
++function Console:CompleteRecognition()
++  if not isRegisteredPope() then return nil, REFUSE end
++  local Recognition = COB.Recognition
++  if type(Recognition) ~= "table" or type(Recognition.Complete) ~= "function" then
++    return nil, "recognition is not available"
++  end
++  local result, err = Recognition:Complete(wallNow())
++  return after(self, result, err)
++end
++
++function Console:CancelRecognition()
++  if not isRegisteredPope() then return nil, REFUSE end
++  local Recognition = COB.Recognition
++  if type(Recognition) ~= "table" or type(Recognition.Cancel) ~= "function" then
++    return nil, "recognition is not available"
++  end
++  local result, err = Recognition:Cancel()
++  return after(self, result, err)
++end
+
+diff --git a/tests/test_console.lua b/tests/test_console.lua
+--- a/tests/test_console.lua
++++ b/tests/test_console.lua
+@@ -1,6 +1,7 @@
+ -- Director Console stock desks (Phase 4 Lane E + Phase 6 Lane I + Wire W-E +
+ -- Vestments B3-D proposed bout / stipulation + B4-D petition H2H / confession
+--- inbox / stock Dismiss + B5-C line / Recommend / CallForward / zone mark).
++-- inbox / stock Dismiss + B5-C line / Recommend / CallForward / zone mark +
++-- B6-A GRANT HONORIFIC / Recognition Begin-Complete-Cancel).
+ -- Isolated: wow_ui_stub + Common + Ranks + Runtime + Store + Gora + Knighting
+ -- + Sender + Decree + Console. Confession is stubbed when painted; this file
+ -- does not load Confession.lua. Knighting GetLine/Enqueue/Skip are stubbed
+@@ -259,6 +260,10 @@
+ assert_eq(type(Console.Skip), "function", "Skip is a console verb")
+ assert_eq(type(Console.Recommend), "function", "Recommend is a console verb")
+ assert_eq(type(Console.CallForward), "function", "CallForward is a console verb")
++assert_eq(type(Console.GrantHonorific), "function", "GRANT HONORIFIC is a console verb")
++assert_eq(type(Console.BeginRecognition), "function", "BeginRecognition is a console verb")
++assert_eq(type(Console.CompleteRecognition), "function", "CompleteRecognition is a console verb")
++assert_eq(type(Console.CancelRecognition), "function", "CancelRecognition is a console verb")
+ assert_eq(#Console:GetKnightingLine(), 0, "GetKnightingLine is empty before anyone is lined")
+ assert_eq(Console.WinnerPicker, nil, "no winner picker")
+ assert_eq(Console.PickWinner, nil, "no winner picker")
+@@ -300,7 +305,7 @@
+ assert_eq(frame._movable, true, "frame is movable")
+ assert_eq(frame._clamped, true, "frame is clamped to screen")
+ assert_eq(frame:GetParent(), UIParent, "insecure frame under UIParent")
+-assert_eq(countType(frame, "EditBox"), 4, "Decree line, flavor, FREE RULING, and STIPULATION")
++assert_eq(countType(frame, "EditBox"), 5, "Decree line, flavor, FREE RULING, STIPULATION, and honorific")
+ assert_true(frame.DecreeLine ~= nil, "Decree line is a stock EditBox")
+ assert_eq(frame.DecreeLine._type, "EditBox", "line box is an EditBox")
+ assert_eq(frame.DecreeLine._template, "InputBoxTemplate", "line box is InputBoxTemplate")
+@@ -1497,6 +1502,248 @@
+   "line API is stubbed or real")
+ 
+ --------------------------------------------------------------------------------
++-- B6-A: GRANT HONORIFIC + Recognition Begin/Complete/Cancel. Pope only.
++--------------------------------------------------------------------------------
++reset()
++Console:Init()
++assert_eq(Console.SaveNote, nil, "SaveNote stays nil")
++assert_eq(Console.GetNotes, nil, "no notes table")
++assert_eq(Console.LinkSelf, nil, "no self-service link")
++assert_eq(Console.LinkCharacter, nil, "LinkCharacter is not a console verb")
++assert_eq(Console.ConfirmCouncil, nil, "no Council confirmer verb")
++assert_eq(findButton(frame, "WHISPER ALL"), nil, "no WHISPER ALL chrome")
++assert_eq(findButton(frame, "Council"), nil, "no Council button")
++assert_eq(findButton(frame, "Council Confirm"), nil, "no Council Confirm button")
++assert_eq(findButton(frame, "Confirm as Council"), nil, "no Council confirmer button")
++
++local honorBtn = findButton(frame, "GRANT HONORIFIC")
++assert_true(honorBtn ~= nil, "GRANT HONORIFIC is one click")
++assert_eq(honorBtn._template, "UIPanelButtonTemplate", "GRANT HONORIFIC uses UIPanelButtonTemplate")
++local beginBtn = findButton(frame, "Begin Recognition")
++assert_true(beginBtn ~= nil, "Begin Recognition is one click")
++assert_eq(beginBtn._template, "UIPanelButtonTemplate", "Begin Recognition uses UIPanelButtonTemplate")
++local completeBtn = findButton(frame, "Complete Recognition")
++assert_true(completeBtn ~= nil, "Complete Recognition is one click")
++assert_eq(completeBtn._template, "UIPanelButtonTemplate", "Complete Recognition uses UIPanelButtonTemplate")
++local cancelBtn = findButton(frame, "Cancel Recognition")
++assert_true(cancelBtn ~= nil, "Cancel Recognition is one click")
++assert_eq(cancelBtn._template, "UIPanelButtonTemplate", "Cancel Recognition uses UIPanelButtonTemplate")
++
++assert_true(frame.HonorificText ~= nil, "honorific is a stock EditBox")
++assert_eq(frame.HonorificText._type, "EditBox", "honorific box is an EditBox")
++assert_eq(frame.HonorificText._template, "InputBoxTemplate", "honorific box is InputBoxTemplate")
++assert_eq(frame.HonorificText._autoFocus, false, "honorific box does not steal focus")
++assert_eq(countType(frame, "EditBox"), 5, "honorific is the fifth stock EditBox")
++
++local function isRitualB6(btn)
++  for i = 1, #(frame.RitualButtons or {}) do
++    if frame.RitualButtons[i] == btn then return true end
++  end
++  return false
++end
++assert_eq(isRitualB6(honorBtn), true, "GRANT HONORIFIC is a ritual plate")
++assert_eq(isRitualB6(beginBtn), true, "Begin Recognition is a ritual plate")
++assert_eq(isRitualB6(completeBtn), true, "Complete Recognition is a ritual plate")
++assert_eq(isRitualB6(cancelBtn), true, "Cancel Recognition is a ritual plate")
++assert_eq(isRitualB6(findButton(frame, "KNIGHT THIS BEEF")), true, "KNIGHT THIS BEEF stays ritual")
++assert_eq(isRitualB6(findButton(frame, "Recommend")), false, "Recommend stays furniture")
++
++Console:Refresh()
++assert_eq(honorBtn:IsEnabled(), false, "GRANT HONORIFIC stays gated")
++assert_eq(beginBtn:IsEnabled(), false, "Begin Recognition stays gated")
++assert_eq(findButton(frame, "KNIGHT THIS BEEF"):IsEnabled(), false, "existing ritual plates stay gated")
++assert_eq(findButton(frame, "Recommend"):IsEnabled(), true, "Recommend stays furniture")
++
++local honorHuman = seedHuman("Steve", 2)
++local honorChar = Store:CreateCharacter({ name = "Chuckroast", class = "Warrior", level = 70 })
++Store:LinkCharacter(honorChar.id, honorHuman.id, 4100)
++
++local addCalls = 0
++local realAddHonor = Store.AddHonorific
++Store.AddHonorific = function(self, ...)
++  addCalls = addCalls + 1
++  return realAddHonor(self, ...)
++end
++
++local okHonor, errHonor = Console:GrantHonorific(honorHuman.id, "Duke of the Fountain")
++assert_eq(okHonor, nil, "GrantHonorific refuses when not the registered Pope")
++assert_eq(errHonor, "not the registered pope", "GrantHonorific refuse reason")
++assert_eq(addCalls, 0, "Store:AddHonorific is not called when refused")
++assert_eq(#Store:GetHuman(honorHuman.id).honorifics, 0, "refused grant does not write")
++
++okHonor, errHonor = Console:BeginRecognition(honorHuman.id, honorChar.id)
++assert_eq(okHonor, nil, "BeginRecognition refuses when not the registered Pope")
++assert_eq(errHonor, "not the registered pope", "BeginRecognition refuse reason")
++okHonor, errHonor = Console:CompleteRecognition()
++assert_eq(okHonor, nil, "CompleteRecognition refuses when not the registered Pope")
++assert_eq(errHonor, "not the registered pope", "CompleteRecognition refuse reason")
++okHonor, errHonor = Console:CancelRecognition()
++assert_eq(okHonor, nil, "CancelRecognition refuses when not the registered Pope")
++assert_eq(errHonor, "not the registered pope", "CancelRecognition refuse reason")
++
++savedPred = Sender.IsRegisteredPope
++Sender.IsRegisteredPope = function() return true end
++
++local priorRecognition = COB.Recognition
++COB.Recognition = nil
++
++okHonor, errHonor = Console:BeginRecognition(honorHuman.id, honorChar.id)
++assert_eq(okHonor, nil, "BeginRecognition refuses when Recognition is missing")
++assert_true(type(errHonor) == "string", "missing Recognition returns a refuse string")
++okHonor, errHonor = Console:CompleteRecognition()
++assert_eq(okHonor, nil, "CompleteRecognition refuses when Recognition is missing")
++assert_true(type(errHonor) == "string", "missing Complete Recognition returns a refuse string")
++okHonor, errHonor = Console:CancelRecognition()
++assert_eq(okHonor, nil, "CancelRecognition refuses when Recognition is missing")
++assert_true(type(errHonor) == "string", "missing Cancel Recognition returns a refuse string")
++
++local granted = Console:GrantHonorific(honorHuman.id, "Duke of the Fountain")
++assert_true(granted ~= nil, "GrantHonorific writes Store when Pope")
++assert_eq(addCalls, 1, "GrantHonorific calls Store:AddHonorific once")
++assert_eq(#Store:GetHuman(honorHuman.id).honorifics, 1, "honorific is appended")
++assert_eq(Store:GetHuman(honorHuman.id).honorifics[1], "Duke of the Fountain",
++  "honorific text is stored as given")
++assert_eq(granted.honorifics[1], "Duke of the Fountain", "GrantHonorific returns the Store human")
++
++frame.HonorificText:SetText("  Defender of the Faith  ")
++Console:SelectHuman(honorHuman.id)
++local boxedHonor = Console:GrantHonorific()
++assert_true(boxedHonor ~= nil, "GrantHonorific reads the box when text is omitted")
++assert_eq(Store:GetHuman(honorHuman.id).honorifics[2], "Defender of the Faith",
++  "box text is trimmed")
++assert_eq(addCalls, 2, "box grant calls Store:AddHonorific")
++
++frame.HonorificText:SetText("box leftover")
++local explicitHonor = Console:GrantHonorific(honorHuman.id, "Martyr of Goldshire")
++assert_eq(explicitHonor.honorifics[3], "Martyr of Goldshire",
++  "an explicit GrantHonorific argument wins over the box")
++
++local beforeEmpty = #Store:GetHuman(honorHuman.id).honorifics
++okHonor, errHonor = Console:GrantHonorific(honorHuman.id, "")
++assert_eq(okHonor, nil, "empty honorific is refused")
++assert_true(type(errHonor) == "string", "empty honorific returns an error string")
++assert_eq(addCalls, 3, "empty honorific does not call Store")
++assert_eq(#Store:GetHuman(honorHuman.id).honorifics, beforeEmpty, "empty honorific is not appended")
++
++okHonor, errHonor = Console:GrantHonorific(honorHuman.id, "   ")
++assert_eq(okHonor, nil, "whitespace honorific is refused")
++assert_eq(addCalls, 3, "whitespace honorific does not call Store")
++
++okHonor, errHonor = Console:GrantHonorific(honorHuman.id, "Duke\nof the Fountain")
++assert_eq(okHonor, nil, "embedded newline honorific is refused")
++assert_true(type(errHonor) == "string", "newline honorific returns an error string")
++assert_eq(addCalls, 3, "newline honorific does not call Store")
++assert_eq(#Store:GetHuman(honorHuman.id).honorifics, beforeEmpty, "newline honorific is not appended")
++
++frame.HonorificText:SetText("")
++okHonor, errHonor = Console:GrantHonorific(honorHuman.id)
++assert_eq(okHonor, nil, "empty box honorific is refused")
++assert_eq(addCalls, 3, "empty box does not call Store")
++
++frame.HonorificText:SetText("Iron Chin")
++Console:SelectHuman(honorHuman.id)
++stub.fire(findButton(frame, "GRANT HONORIFIC"), "OnClick")
++assert_eq(Store:GetHuman(honorHuman.id).honorifics[4], "Iron Chin",
++  "the GRANT HONORIFIC button reads the box")
++Store.AddHonorific = realAddHonor
++
++local beginArgs = {}
++local completeCalls = 0
++local cancelCalls = 0
++local savedUnitName = UnitName
++COB.Recognition = {
++  Begin = function(_, humanId, characterId, role, now)
++    beginArgs = { humanId = humanId, characterId = characterId, role = role, now = now }
++    return {
++      humanId = humanId,
++      characterId = characterId,
++      confirmerRole = role,
++    }
++  end,
++  Complete = function()
++    completeCalls = completeCalls + 1
++    return true
++  end,
++  Cancel = function()
++    cancelCalls = cancelCalls + 1
++    return true
++  end,
++}
++UnitName = function()
++  return "Impostor"
++end
++
++Console:SelectHuman(honorHuman.id)
++Console:SelectCharacter(honorChar.id)
++local begun = Console:BeginRecognition()
++assert_true(begun ~= nil, "BeginRecognition reaches Recognition")
++assert_eq(beginArgs.humanId, honorHuman.id, "BeginRecognition uses the selected human")
++assert_eq(beginArgs.characterId, honorChar.id, "BeginRecognition uses the selected character")
++assert_eq(beginArgs.role, "pope", "BeginRecognition spies role pope")
++assert_eq(beginArgs.role == "pope", true, "BeginRecognition never passes another confirmer")
++assert_eq(begun.confirmerRole, "pope", "returned session confirmer is pope")
++
++local otherHuman = seedHuman("Dave", 1)
++local otherChar = Store:CreateCharacter({ name = "Brisket", class = "Rogue", level = 69 })
++local begunExplicit = Console:BeginRecognition(otherHuman.id, otherChar.id)
++assert_eq(beginArgs.humanId, otherHuman.id, "explicit human wins over selection")
++assert_eq(beginArgs.characterId, otherChar.id, "explicit character wins over selection")
++assert_eq(beginArgs.role, "pope", "explicit BeginRecognition still passes pope")
++assert_eq(begunExplicit.characterId, otherChar.id, "UnitName is not consulted")
++
++local soundId = {}
++local savedSoundHonor = COB.Sound
++COB.Sound = {
++  Play = function(_, name)
++    soundId[#soundId + 1] = name
++    return name
++  end,
++}
++local nSoundHonor = #soundId
++assert_true(Console:CompleteRecognition() ~= nil, "CompleteRecognition reaches Recognition")
++assert_eq(completeCalls, 1, "CompleteRecognition is one call")
++assert_eq(#soundId, nSoundHonor, "CompleteRecognition does not play Sound")
++assert_true(Console:CancelRecognition() ~= nil, "CancelRecognition reaches Recognition")
++assert_eq(cancelCalls, 1, "CancelRecognition is one call")
++assert_eq(#soundId, nSoundHonor, "CancelRecognition does not play Sound")
++assert_true(Console:GrantHonorific(honorHuman.id, "Quiet Knight") ~= nil,
++  "GrantHonorific succeeds with Sound stubbed")
++assert_eq(#soundId, nSoundHonor, "GrantHonorific does not play Sound")
++assert_true(Console:BeginRecognition(honorHuman.id, honorChar.id) ~= nil,
++  "BeginRecognition succeeds with Sound stubbed")
++assert_eq(#soundId, nSoundHonor, "BeginRecognition does not play Sound")
++
++stub.fire(findButton(frame, "Begin Recognition"), "OnClick")
++assert_eq(beginArgs.role, "pope", "the Begin Recognition button passes pope")
++assert_eq(#soundId, nSoundHonor, "the Begin Recognition button does not play Sound")
++stub.fire(findButton(frame, "Complete Recognition"), "OnClick")
++assert_eq(completeCalls, 2, "the Complete Recognition button reaches Recognition")
++assert_eq(#soundId, nSoundHonor, "the Complete Recognition button does not play Sound")
++stub.fire(findButton(frame, "Cancel Recognition"), "OnClick")
++assert_eq(cancelCalls, 2, "the Cancel Recognition button reaches Recognition")
++assert_eq(#soundId, nSoundHonor, "the Cancel Recognition button does not play Sound")
++
++assert_eq(frame:GetScript("OnUpdate"), nil, "no duration timer OnUpdate")
++local srcHonor = io.open("addon/ChurchOfBeef/UI/Console.lua", "r")
++assert_true(srcHonor ~= nil, "Console.lua is readable for B6-A")
++local srcHonorBody = srcHonor:read("*a")
++srcHonor:close()
++assert_eq(srcHonorBody:find("C_Timer", 1, true), nil, "no C_Timer auto-Complete")
++assert_eq(srcHonorBody:find("WHISPER ALL", 1, true), nil, "source must not contain WHISPER ALL")
++assert_eq(srcHonorBody:find('"council"', 1, true), nil, "source must not pass a council confirmer")
++
++UnitName = savedUnitName
++COB.Sound = savedSoundHonor
++COB.Recognition = priorRecognition
++Sender.IsRegisteredPope = savedPred
++Store.AddHonorific = realAddHonor
++assert_eq(Console.SaveNote, nil, "SaveNote stays nil after B6-A")
++if standalone then
++  assert_eq(COB.Recognition, nil, "isolation still does not load Recognition")
++end
++assert_eq(COB.Popes, nil, "still no Pope list after B6-A")
++
++--------------------------------------------------------------------------------
+ -- No queue store, no auto-advance, no guild write, no theater in this file
+ --------------------------------------------------------------------------------
+ reset()

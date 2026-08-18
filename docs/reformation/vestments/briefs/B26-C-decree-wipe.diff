@@ -1,0 +1,114 @@
+# B26-C — Empty Decree Show blanks leftover line paint (implementation diff)
+
+Lane-only unified diff of the exclusive implementation files vs the pre-lane working tree.
+
+--- a/addon/ChurchOfBeef/UI/Decree.lua
++++ b/addon/ChurchOfBeef/UI/Decree.lua
+@@ -137,6 +137,17 @@
+     else
+       frame.FlavorText:Hide()
+     end
++  end
++end
++
++local function wipePaint(frame)
++  if not frame then return end
++  if frame.LineText and frame.LineText.SetText then
++    frame.LineText:SetText("")
++  end
++  if frame.FlavorText then
++    if frame.FlavorText.SetText then frame.FlavorText:SetText("") end
++    frame.FlavorText:Hide()
+   end
+ end
+ 
+@@ -291,7 +302,10 @@
+   local decree = getDecree()
+   if not decree then
+     local frame = ensureFrame()
+-    if frame then frame:Hide() end
++    if frame then
++      wipePaint(frame)
++      frame:Hide()
++    end
+     return false
+   end
+   local frame = ensureFrame()
+
+--- a/tests/test_decree_ui.lua
++++ b/tests/test_decree_ui.lua
+@@ -222,7 +222,15 @@
+   "empty Show still calls ensureFrame")
+ assert_true(emptyShow:find(":Hide()", 1, true) ~= nil,
+   "empty Show Hides")
+-assert_eq(emptyShow:find("paint(", 1, true), nil,
++assert_true(
++  emptyShow:find("wipePaint(frame)", 1, true) ~= nil
++    or emptyShow:find('LineText:SetText("")', 1, true) ~= nil,
++  "empty Show blanks leftover LineText")
++assert_true(src:find('frame.LineText:SetText("")', 1, true) ~= nil,
++  "LineText SetText empty")
++assert_true(src:find('frame.FlavorText:SetText("")', 1, true) ~= nil,
++  "FlavorText SetText empty")
++assert_eq(emptyShow:find("paint(frame", 1, true), nil,
+   "empty Show does not paint")
+ assert_eq(emptyShow:find("frame:Show()", 1, true), nil,
+   "empty Show does not Show the banner")
+@@ -361,6 +369,47 @@
+     "second empty Show does not duplicate ChurchOfBeefDecree")
+   assert_eq(Banner:IsShown(), false, "second empty Show stays hidden")
+   UISpecialFrames = savedSpecial
++
++  -- B26-C: leftover Goldshire line/flavor must blank on empty Show.
++  -- B25-B wipe + Show-only uniqueness stays. Isolation wrap stays.
++  local function runB26C()
++    Decree:Set({
++      line = "Goldshire Inn — Sunday, 7:00 PM",
++      flavor = "Bring a friend.",
++    })
++    assert_eq(Banner:Show(), true, "B26-C Show paints Goldshire")
++    assert_eq(Banner:IsShown(), true, "B26-C Show opens the banner")
++    assert_eq(Banner.frame.LineText:GetText(), "Goldshire Inn — Sunday, 7:00 PM",
++      "B26-C leftover starts as Goldshire")
++    assert_eq(Banner.frame.FlavorText:GetText(), "Bring a friend.",
++      "B26-C leftover flavor starts set")
++    Decree:Clear()
++    assert_eq(Decree:Get(), nil, "B26-C Clear removes the Decree")
++    local cuesClear = sounds
++    local savedAfter = UISpecialFrames
++    UISpecialFrames = {}
++    assert_eq(Banner:Show(), false, "empty Show after Clear refuses parchment")
++    assert_eq(Banner:IsShown(), false, "empty Show after Clear stays hidden")
++    assert_eq(Banner.frame.LineText:GetText(), "",
++      "empty Show blanks leftover LineText")
++    assert_eq(Banner.frame.FlavorText:GetText(), "",
++      "empty Show blanks leftover FlavorText")
++    assert_eq(Banner.frame.FlavorText:IsShown(), false,
++      "empty Show hides leftover flavor")
++    assert_eq(countSpecial("ChurchOfBeefDecree"), 1,
++      "B26-C empty Show still remounts ChurchOfBeefDecree once")
++    assert_eq(sounds, cuesClear, "empty Show after Clear plays no sound")
++    Banner:Show()
++    assert_eq(countSpecial("ChurchOfBeefDecree"), 1,
++      "second empty Show after Clear still once")
++    assert_eq(Banner:IsShown(), false, "second empty Show after Clear stays hidden")
++    assert_eq(Banner.frame.LineText:GetText(), "",
++      "second empty Show keeps LineText blank")
++    assert_eq(Banner.frame.FlavorText:GetText(), "",
++      "second empty Show keeps FlavorText blank")
++    UISpecialFrames = savedAfter
++  end
++  runB26C()
+ end
+ runB25B()
+ 
+@@ -480,6 +529,9 @@
+ assert_eq(Decree:Get(), nil, "Core Clear removes the Decree")
+ assert_eq(Banner:Show(), false, "Show after Clear refuses empty parchment")
+ assert_eq(Banner:IsShown(), false, "Clear + Show hides rather than painting blanks")
++assert_eq(frame.LineText:GetText(), "", "Clear + empty Show blanks leftover line")
++assert_eq(frame.FlavorText:GetText(), "", "Clear + empty Show blanks leftover flavor")
++assert_eq(frame.FlavorText:IsShown(), false, "Clear + empty Show hides flavor")
+ 
+ ChurchOfBeefDB = { ui = {} }
+ reset()

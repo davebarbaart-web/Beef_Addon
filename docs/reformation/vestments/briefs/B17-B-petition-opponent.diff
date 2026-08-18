@@ -1,0 +1,193 @@
+diff --git a/addon/ChurchOfBeef/Net/BeefNet.lua b/addon/ChurchOfBeef/Net/BeefNet.lua
+--- a/addon/ChurchOfBeef/Net/BeefNet.lua
++++ b/addon/ChurchOfBeef/Net/BeefNet.lua
+@@ -9,9 +9,10 @@
+ -- a body Codec will not decode stays unknown, so HELLO-only suites stay green.
+ -- Older builds may still broadcast SUGGESTION, RANK_COMMIT, SYNC_REQUEST, or
+ -- SYNC_STATE; those are named so they die quietly and are never acted on.
+--- INPUT (favor, petition, confession) is live on whisper-to-Pope. GUILD INPUT
+--- stays unknown. Outbound STATE / SNAPSHOT / DECREE send only if the local
+--- player is a registered Pope (always false until the #8 list — do not code it).
++-- INPUT (favor, petition, confession) is live on whisper-to-Pope. A petition
++-- may carry an opponent name. GUILD INPUT stays unknown. Outbound STATE /
++-- SNAPSHOT / DECREE send only if the local player is a registered Pope
++-- (always false until the #8 list — do not code it).
+ -- SendFavor, SendPetition, SendConfession, and RequestSnapshot are congregation
+ -- whisper and are not Pope-gated.
+ --
+@@ -387,8 +388,9 @@
+   return self:_TransmitWhisper(payload, target)
+ end
+ 
+--- Congregation → Pope. Not Pope-gated. Petition id only; never a named opponent.
+--- Caller supplies the whisper target. Do not look up a Pope name.
++-- Congregation → Pope. Not Pope-gated. Petition id, optional opponent name.
++-- Do not copy namedOpponentId onto the wire. Caller supplies the whisper
++-- target. Do not look up a Pope name.
+ function Net:SendPetition(fields, target, nowSeconds)
+   if type(target) ~= "string" or target == "" then
+     return false, "no target"
+@@ -400,6 +402,10 @@
+     kind = "petition",
+     characterId = fields.characterId,
+   } or { kind = "petition" }
++  if type(fields) == "table" and type(fields.opponent) == "string"
++      and fields.opponent ~= "" then
++    body.opponent = fields.opponent
++  end
+   local payload, err = COB.Codec:EncodeInput(body)
+   if not payload then
+     return false, err
+@@ -696,6 +702,29 @@
+   return true
+ end
+ 
++-- Name → store id. First match on Snapshot().characters via Names.Key / Same.
++-- Missing Store, missing list, or no match → nil (caller refuses; do not Petition).
++local function resolveOpponentId(opponentName)
++  if not (COB.Store and type(COB.Store.Snapshot) == "function") then
++    return nil
++  end
++  if not (COB.Names and COB.Names.Key and COB.Names.Same) then
++    return nil
++  end
++  local snap = COB.Store:Snapshot()
++  local chars = type(snap) == "table" and snap.characters or nil
++  if type(chars) ~= "table" then
++    return nil
++  end
++  for i = 1, #chars do
++    local row = chars[i]
++    if type(row) == "table" and COB.Names.Same(row.name, opponentName) then
++      return row.id
++    end
++  end
++  return nil
++end
++
+ function Net:_HandlePetition(decoded, channel, sender)
+   if channel ~= "WHISPER" or decoded.kind ~= "petition" then
+     return false, "unknown message type"
+@@ -706,7 +735,15 @@
+   if not (COB.Gora and COB.Gora.Petition) then
+     return false
+   end
+-  local ok, err = COB.Gora:Petition(decoded.characterId)
++  local opponent = type(decoded.opponent) == "string" and trim(decoded.opponent) or nil
++  local namedOpponentId
++  if opponent then
++    namedOpponentId = resolveOpponentId(opponent)
++    if namedOpponentId == nil then
++      return false, "unknown opponent"
++    end
++  end
++  local ok, err = COB.Gora:Petition(decoded.characterId, namedOpponentId)
+   if not ok then
+     return false, err
+   end
+
+diff --git a/tests/test_net_v2.lua b/tests/test_net_v2.lua
+--- a/tests/test_net_v2.lua
++++ b/tests/test_net_v2.lua
+@@ -863,7 +863,101 @@
+ assert_eq(Sender:IsRegisteredPope(Net:PlayerName()), false,
+   "wrapping the predicate in-test does not stub the list true")
+ assert_eq(COB.Popes, nil, "still no Pope list")
++
++--------------------------------------------------------------------------------
++-- B17-B: petition may name an opponent. Isolate: stub Store.Snapshot, never dofile Store.
++--------------------------------------------------------------------------------
++do
++  local savedPope = Sender.IsRegisteredPope
++  reset()
++  Sender.IsRegisteredPope = function(_, sender)
++    return COB.Names.Key(sender) == "beefina"
++  end
++
++  local namedOk, namedWhy = Net:SendPetition({
++    characterId = 12,
++    opponent = "Chuckroast",
++  }, "Host")
++  assert_eq(namedOk, true, "SendPetition with opponent is not Pope-gated")
++  assert_eq(namedWhy, nil, "SendPetition with opponent does not name the Pope gate")
++  assert_eq(#wire, 1, "SendPetition with opponent whispers once")
++  local namedFrame = wire[1] or {}
++  assert_eq(namedFrame.channel, "WHISPER", "SendPetition with opponent is whisper")
++  assert_eq(namedFrame.target, "Host", "SendPetition with opponent uses the given target")
++  assert_eq(namedFrame.payload, "1:INPUT:petition:12:Chuckroast",
++    "SendPetition encodes petition+id+opponent name")
++
++  reset()
++  Sender.IsRegisteredPope = function(_, sender)
++    return COB.Names.Key(sender) == "beefina"
++  end
++  local idLeakOk = Net:SendPetition({
++    characterId = 12,
++    opponent = "Chuckroast",
++    namedOpponentId = 99,
++  }, "Host")
++  assert_eq(idLeakOk, true, "SendPetition still sends when namedOpponentId is also set")
++  local leakFrame = wire[1] or {}
++  assert_eq(leakFrame.payload, "1:INPUT:petition:12:Chuckroast",
++    "SendPetition does not copy namedOpponentId onto the wire")
++
++  local namedCalls = {}
++  COB.Gora = {
++    Petition = function(_, characterId, namedOpponentId)
++      namedCalls[#namedCalls + 1] = {
++        characterId = characterId,
++        namedOpponentId = namedOpponentId,
++      }
++      return true
++    end,
++  }
++  COB.Store = {
++    Snapshot = function()
++      return { characters = { { id = 7, name = "Chuckroast" } } }
++    end,
++  }
++  local namedWire = "1:INPUT:petition:12:Chuckroast"
++  local hitOk, hitWhy = whisper(namedWire, "Petitioner")
++  assert_eq(hitOk, true, "named-opponent petition on WHISPER to a Pope client is accepted")
++  assert_eq(hitWhy, nil, "resolved opponent has no refusal")
++  assert_eq(#namedCalls, 1, "resolved opponent calls Gora:Petition")
++  local hit = namedCalls[1] or {}
++  assert_eq(hit.characterId, 12, "resolved Petition receives characterId")
++  assert_eq(hit.namedOpponentId, 7, "resolved Petition receives namedOpponentId")
+ 
++  local beforeNil = #namedCalls
++  COB.Store = nil
++  local nilOk, nilWhy = whisper(namedWire, "Petitioner")
++  assert_eq(nilOk, false, "named-opponent petition without Store is refused")
++  assert_eq(nilWhy, "unknown opponent", "missing Store names unknown opponent")
++  assert_eq(#namedCalls, beforeNil, "missing Store does not call Petition")
++
++  COB.Store = {
++    Snapshot = function()
++      return { characters = {} }
++    end,
++  }
++  local beforeEmpty = #namedCalls
++  local emptyOk, emptyWhy = whisper(namedWire, "Petitioner")
++  assert_eq(emptyOk, false, "named-opponent petition with empty characters is refused")
++  assert_eq(emptyWhy, "unknown opponent", "empty characters names unknown opponent")
++  assert_eq(#namedCalls, beforeEmpty, "empty characters does not call Petition")
++
++  local beforeGuild = #namedCalls
++  local guildOk, guildWhy = guild(namedWire, "Petitioner")
++  assert_eq(guildOk, false, "named-opponent petition on GUILD is still discarded")
++  assert_eq(guildWhy, "unknown message type", "named-opponent petition on GUILD stays unknown")
++  assert_eq(#namedCalls, beforeGuild, "GUILD named-opponent petition does not Petition")
++
++  COB.Gora = nil
++  COB.Store = nil
++  Sender.IsRegisteredPope = savedPope
++  if standalone then
++    assert_eq(COB.Store, nil, "opponent pins do not load Store")
++    assert_eq(COB.Gora, nil, "opponent pins do not leave a Gora stub")
++  end
++end
++
+ --------------------------------------------------------------------------------
+ -- Incompatible version: _WarnVersion + discard. No second Quiet notice. No toast.
+ --------------------------------------------------------------------------------

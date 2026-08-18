@@ -1,0 +1,282 @@
+# B36-B — End Event drops leftover human / character selection (implementation diff)
+
+Lane-only unified diff of the exclusive implementation files vs the pre-lane working tree.
+
+--- a/addon/ChurchOfBeef/UI/Console.lua
++++ b/addon/ChurchOfBeef/UI/Console.lua
+@@ -20,11 +20,16 @@
+ -- Recommend proposes a pair and never Sanctions. lastRecommendation
+ -- and the selected fighter pair clear on successful StartEvent / EndEvent
+--- (before after() Refresh); failed Start / failed End / Continue keep
+--- the table and the pair. Refresh in QUIET (or when Runtime state is
+--- nil) nils lastRecommendation before paintRecommendation; it does
+--- not nil the selected pair. A selected pair does not inherit Core
+--- namedOpponent onto lastRecommendation.
++-- (before after() Refresh); successful EndEvent also nils selectedHumanId
++-- and selectedCharacterId so leftover CallForward / Dismiss /
++-- KnightThisBeef cannot fire on a dead pick. Successful StartEvent
++-- does not nil human / character — Quiet pick then Start then
++-- OpenRite / KnightThisBeef must keep. Failed Start / failed End /
++-- Continue keep the table, the pair, and the pick. Refresh in QUIET
++-- (or when Runtime state is nil) nils lastRecommendation before
++-- paintRecommendation; it does not nil the selected pair or the pick.
++-- A selected pair does not inherit Core namedOpponent onto
++-- lastRecommendation.
+ -- CallForward marks the inbox
+ -- only — no Toasts, chat, or Sound. FlagMoment may read GetSubZoneText when
+ -- location is omitted. GRANT HONORIFIC writes Store:AddHonorific (Pope-authored
+@@ -1573,6 +1578,8 @@
+     lastRecommendation = nil
+     self.selectedFighterA = nil
+     self.selectedFighterB = nil
++    self.selectedHumanId = nil
++    self.selectedCharacterId = nil
+   end
+   return after(self, result, err, nil, true)
+ end
+
+--- a/tests/test_console.lua
++++ b/tests/test_console.lua
+@@ -23,8 +23,9 @@
+ -- Refresh in QUIET nils lastRecommendation + B32-B
+ -- Console:Dismiss also reaches Confession:Dismiss + B33-B
+ -- Presence here == false stock SetAlpha + B34-B leftover
+--- Presence hide SetAlpha(1)).
++-- Presence hide SetAlpha(1) + B36-B
++-- successful EndEvent nils selectedHumanId / selectedCharacterId).
+ -- Isolated: wow_ui_stub + Common + Ranks + Runtime + Store + Gora + Knighting
+ -- + Sender + Decree + Console. Confession is stubbed when painted; this file
+ -- does not load Confession.lua. Knighting GetLine/Enqueue/Skip are stubbed
+@@ -3660,7 +3661,7 @@
+ assert_true(srcLifeBody:find("local result, err = COB.Runtime:StartEvent()\n  if result ~= nil then\n    lastRecommendation = nil\n    self.selectedFighterA = nil\n    self.selectedFighterB = nil\n  end\n  return after(self, result, err)", 1, true) ~= nil,
+   "successful StartEvent clears lastRecommendation before after")
+-assert_true(srcLifeBody:find("local result, err = COB.Runtime:EndEvent()\n  if result ~= nil then\n    lastRecommendation = nil\n    self.selectedFighterA = nil\n    self.selectedFighterB = nil\n  end\n  return after(self, result, err, nil, true)", 1, true) ~= nil,
++assert_true(srcLifeBody:find("local result, err = COB.Runtime:EndEvent()\n  if result ~= nil then\n    lastRecommendation = nil\n    self.selectedFighterA = nil\n    self.selectedFighterB = nil\n    self.selectedHumanId = nil\n    self.selectedCharacterId = nil\n  end\n  return after(self, result, err, nil, true)", 1, true) ~= nil,
+   "successful EndEvent clears lastRecommendation before after")
+ assert_true(srcLifeBody:find("local result, err = COB.Runtime:Continue()\n  return after(self, result, err)", 1, true) ~= nil,
+   "Continue does not clear lastRecommendation")
+@@ -3935,7 +3936,7 @@
+ assert_true(srcLifeBody:find("local result, err = COB.Runtime:StartEvent()\n  if result ~= nil then\n    lastRecommendation = nil\n    self.selectedFighterA = nil\n    self.selectedFighterB = nil\n  end\n  return after(self, result, err)", 1, true) ~= nil,
+   "successful StartEvent nils lastRecommendation and the selected pair before after")
+-assert_true(srcLifeBody:find("local result, err = COB.Runtime:EndEvent()\n  if result ~= nil then\n    lastRecommendation = nil\n    self.selectedFighterA = nil\n    self.selectedFighterB = nil\n  end\n  return after(self, result, err, nil, true)", 1, true) ~= nil,
++assert_true(srcLifeBody:find("local result, err = COB.Runtime:EndEvent()\n  if result ~= nil then\n    lastRecommendation = nil\n    self.selectedFighterA = nil\n    self.selectedFighterB = nil\n    self.selectedHumanId = nil\n    self.selectedCharacterId = nil\n  end\n  return after(self, result, err, nil, true)", 1, true) ~= nil,
+   "successful EndEvent nils lastRecommendation and the selected pair before after")
+ assert_true(srcLifeBody:find("local result, err = COB.Runtime:Continue()\n  return after(self, result, err)", 1, true) ~= nil,
+   "Continue does not clear the selected pair")
+@@ -4019,7 +4020,7 @@
+ assert_true(srcEscBody:find("local result, err = COB.Runtime:StartEvent()\n  if result ~= nil then\n    lastRecommendation = nil\n    self.selectedFighterA = nil\n    self.selectedFighterB = nil\n  end\n  return after(self, result, err)", 1, true) ~= nil,
+   "B26-A successful StartEvent still nils the selected pair")
+-assert_true(srcEscBody:find("local result, err = COB.Runtime:EndEvent()\n  if result ~= nil then\n    lastRecommendation = nil\n    self.selectedFighterA = nil\n    self.selectedFighterB = nil\n  end\n  return after(self, result, err, nil, true)", 1, true) ~= nil,
++assert_true(srcEscBody:find("local result, err = COB.Runtime:EndEvent()\n  if result ~= nil then\n    lastRecommendation = nil\n    self.selectedFighterA = nil\n    self.selectedFighterB = nil\n    self.selectedHumanId = nil\n    self.selectedCharacterId = nil\n  end\n  return after(self, result, err, nil, true)", 1, true) ~= nil,
+   "B26-A successful EndEvent still nils the selected pair")
+ assert_eq(srcEscBody:find("IG_CHARACTER_INFO", 1, true), nil,
+   "source does not PlaySound IG_CHARACTER_INFO_*")
+@@ -4141,7 +4142,7 @@
+ assert_true(srcEscBody:find("local result, err = COB.Runtime:StartEvent()\n  if result ~= nil then\n    lastRecommendation = nil\n    self.selectedFighterA = nil\n    self.selectedFighterB = nil\n  end\n  return after(self, result, err)", 1, true) ~= nil,
+   "B26-A successful StartEvent still nils the selected pair")
+-assert_true(srcEscBody:find("local result, err = COB.Runtime:EndEvent()\n  if result ~= nil then\n    lastRecommendation = nil\n    self.selectedFighterA = nil\n    self.selectedFighterB = nil\n  end\n  return after(self, result, err, nil, true)", 1, true) ~= nil,
++assert_true(srcEscBody:find("local result, err = COB.Runtime:EndEvent()\n  if result ~= nil then\n    lastRecommendation = nil\n    self.selectedFighterA = nil\n    self.selectedFighterB = nil\n    self.selectedHumanId = nil\n    self.selectedCharacterId = nil\n  end\n  return after(self, result, err, nil, true)", 1, true) ~= nil,
+   "B26-A successful EndEvent still nils the selected pair")
+ assert_eq(srcEscBody:find("IG_CHARACTER_INFO", 1, true), nil,
+   "source does not PlaySound IG_CHARACTER_INFO_*")
+@@ -4276,7 +4277,7 @@
+ assert_true(srcEscBody:find("local result, err = COB.Runtime:StartEvent()\n  if result ~= nil then\n    lastRecommendation = nil\n    self.selectedFighterA = nil\n    self.selectedFighterB = nil\n  end\n  return after(self, result, err)", 1, true) ~= nil,
+   "B26-A successful StartEvent still nils the selected pair")
+-assert_true(srcEscBody:find("local result, err = COB.Runtime:EndEvent()\n  if result ~= nil then\n    lastRecommendation = nil\n    self.selectedFighterA = nil\n    self.selectedFighterB = nil\n  end\n  return after(self, result, err, nil, true)", 1, true) ~= nil,
++assert_true(srcEscBody:find("local result, err = COB.Runtime:EndEvent()\n  if result ~= nil then\n    lastRecommendation = nil\n    self.selectedFighterA = nil\n    self.selectedFighterB = nil\n    self.selectedHumanId = nil\n    self.selectedCharacterId = nil\n  end\n  return after(self, result, err, nil, true)", 1, true) ~= nil,
+   "B26-A successful EndEvent still nils the selected pair")
+ assert_eq(srcEscBody:find("IG_CHARACTER_INFO", 1, true), nil,
+   "source does not PlaySound IG_CHARACTER_INFO_*")
+@@ -4384,7 +4385,7 @@
+ assert_true(srcQuietBody:find("local result, err = COB.Runtime:StartEvent()\n  if result ~= nil then\n    lastRecommendation = nil\n    self.selectedFighterA = nil\n    self.selectedFighterB = nil\n  end\n  return after(self, result, err)", 1, true) ~= nil,
+   "B26-A successful StartEvent still nils the selected pair")
+-assert_true(srcQuietBody:find("local result, err = COB.Runtime:EndEvent()\n  if result ~= nil then\n    lastRecommendation = nil\n    self.selectedFighterA = nil\n    self.selectedFighterB = nil\n  end\n  return after(self, result, err, nil, true)", 1, true) ~= nil,
++assert_true(srcQuietBody:find("local result, err = COB.Runtime:EndEvent()\n  if result ~= nil then\n    lastRecommendation = nil\n    self.selectedFighterA = nil\n    self.selectedFighterB = nil\n    self.selectedHumanId = nil\n    self.selectedCharacterId = nil\n  end\n  return after(self, result, err, nil, true)", 1, true) ~= nil,
+   "B26-A successful EndEvent still nils the selected pair")
+ assert_true(srcQuietBody:find("local result, err = COB.Runtime:Continue()\n  return after(self, result, err)", 1, true) ~= nil,
+   "Continue does not clear lastRecommendation")
+@@ -5075,6 +5076,179 @@
+   assert_eq(COB.Confession, nil, "isolation still does not load Confession")
+ end
+ assert_eq(COB.Popes, nil, "still no Pope list after B34-B")
+ end
+ runB34B()
++
++--------------------------------------------------------------------------------
++-- B36-B: successful EndEvent nils selectedHumanId / selectedCharacterId
++-- before after(). Fighter-pair clear stays. Successful StartEvent after
++-- a Quiet pick keeps human / character. Refresh does not nil selection.
++-- Failed End / Continue keep. Leftover CallForward / Dismiss /
++-- KnightThisBeef without an explicit id refuse or no-op.
++-- SaveNote nil. No SUMMON. Nested inside runB8E after runB34B().
++--------------------------------------------------------------------------------
++local function runB36B()
++reset()
++Console:Init()
++assert_eq(Console.SaveNote, nil, "SaveNote stays nil")
++assert_eq(Console.GetNotes, nil, "no notes table")
++assert_eq(Console.CopyCeremonySummary, nil, "no post-show ceremony summary")
++assert_eq(Console.CeremonySummary, nil, "no ceremony summary")
++assert_eq(findButton(frame, "SUMMON THE FAITHFUL"), nil, "no SUMMON chrome")
++assert_eq(findButton(frame, "COPY SUMMARY"), nil, "no ceremony-summary chrome")
++assert_eq(findButton(frame, "WHISPER ALL"), nil, "no WHISPER ALL chrome")
++assert_eq(findButton(frame, "RSVP"), nil, "no RSVP chrome")
++
++local srcEnd = io.open("addon/ChurchOfBeef/UI/Console.lua", "r")
++assert_true(srcEnd ~= nil, "Console.lua is readable for B36-B")
++local srcEndBody = srcEnd:read("*a")
++srcEnd:close()
++local startFn = srcEndBody:match("function Console:StartEvent%(%)(.-)\nfunction Console:OpenRite")
++assert_true(type(startFn) == "string" and startFn ~= "",
++  "StartEvent body is readable")
++assert_eq(startFn:find("selectedHumanId", 1, true), nil,
++  "StartEvent does not nil selectedHumanId")
++assert_eq(startFn:find("selectedCharacterId", 1, true), nil,
++  "StartEvent does not nil selectedCharacterId")
++assert_true(startFn:find("self.selectedFighterA = nil", 1, true) ~= nil,
++  "StartEvent still nils selected fighter A")
++assert_true(startFn:find("self.selectedFighterB = nil", 1, true) ~= nil,
++  "StartEvent still nils selected fighter B")
++local endFn = srcEndBody:match("function Console:EndEvent%(%)(.-)\nfunction Console:KnightThisBeef")
++assert_true(type(endFn) == "string" and endFn ~= "",
++  "EndEvent body is readable")
++assert_true(endFn:find("self.selectedHumanId = nil", 1, true) ~= nil,
++  "EndEvent nils selectedHumanId")
++assert_true(endFn:find("self.selectedCharacterId = nil", 1, true) ~= nil,
++  "EndEvent nils selectedCharacterId")
++assert_true(endFn:find("self.selectedFighterA = nil", 1, true) ~= nil,
++  "EndEvent still nils selected fighter A")
++assert_true(endFn:find("self.selectedFighterB = nil", 1, true) ~= nil,
++  "EndEvent still nils selected fighter B")
++assert_true(srcEndBody:find("local result, err = COB.Runtime:EndEvent()\n  if result ~= nil then\n    lastRecommendation = nil\n    self.selectedFighterA = nil\n    self.selectedFighterB = nil\n    self.selectedHumanId = nil\n    self.selectedCharacterId = nil\n  end\n  return after(self, result, err, nil, true)", 1, true) ~= nil,
++  "successful EndEvent nils lastRecommendation, the selected pair, and human / character before after")
++assert_true(srcEndBody:find("local result, err = COB.Runtime:StartEvent()\n  if result ~= nil then\n    lastRecommendation = nil\n    self.selectedFighterA = nil\n    self.selectedFighterB = nil\n  end\n  return after(self, result, err)", 1, true) ~= nil,
++  "successful StartEvent still nils only lastRecommendation and the selected pair")
++assert_true(srcEndBody:find("local result, err = COB.Runtime:Continue()\n  return after(self, result, err)", 1, true) ~= nil,
++  "Continue does not clear selection")
++local refreshFn = srcEndBody:match("function Console:Refresh%(%)(.-)\nfunction Console:Show")
++assert_true(type(refreshFn) == "string" and refreshFn ~= "",
++  "Refresh body is readable")
++assert_eq(refreshFn:find("selectedHumanId", 1, true), nil,
++  "Refresh does not nil selectedHumanId")
++assert_eq(refreshFn:find("selectedCharacterId", 1, true), nil,
++  "Refresh does not nil selectedCharacterId")
++assert_eq(refreshFn:find("selectedFighterA", 1, true), nil,
++  "Refresh still does not nil selectedFighterA")
++assert_eq(refreshFn:find("selectedFighterB", 1, true), nil,
++  "Refresh still does not nil selectedFighterB")
++assert_eq(srcEndBody:find("function Console:SaveNote", 1, true), nil,
++  "source must not define SaveNote")
++assert_eq(srcEndBody:find("SUMMON THE FAITHFUL", 1, true), nil,
++  "source must not contain SUMMON")
++assert_eq(srcEndBody:find("Parchment", 1, true), nil, "console stays stock, not parchment")
++assert_eq(srcEndBody:find("PanelTabButtonTemplate", 1, true), nil,
++  "desks are not collapsed into tabs")
++
++local savedPred = Sender.IsRegisteredPope
++Sender.IsRegisteredPope = function() return true end
++
++reset()
++Console:Init()
++local human, ch = seedLinked("Beefina", "Steve", 1)
++local otherHuman, otherChar = seedLinked("Chuckroast", "Chuck", 3)
++assert_eq(human.id ~= nil, true, "Quiet-pick human fixture exists")
++assert_eq(ch.id ~= nil, true, "Quiet-pick character fixture exists")
++assert_eq(otherHuman.id ~= nil, true, "second human fixture exists")
++assert_eq(otherChar.id ~= nil, true, "second character fixture exists")
++assert_eq(Console:SelectHuman(human.id), true, "Quiet pick selects the human")
++assert_eq(Console:SelectCharacter(ch.id), true, "Quiet pick selects the character")
++assert_eq(Console.selectedHumanId, human.id, "Quiet pick stores selectedHumanId")
++assert_eq(Console.selectedCharacterId, ch.id, "Quiet pick stores selectedCharacterId")
++Console:Refresh()
++assert_eq(Console.selectedHumanId, human.id, "Refresh does not nil selectedHumanId")
++assert_eq(Console.selectedCharacterId, ch.id, "Refresh does not nil selectedCharacterId")
++
++local started = Console:StartEvent()
++assert_true(started ~= nil, "StartEvent after a Quiet pick")
++assert_eq(Console.selectedHumanId, human.id, "StartEvent after Quiet pick keeps human")
++assert_eq(Console.selectedCharacterId, ch.id, "StartEvent after Quiet pick keeps character")
++assert_true(Console:OpenRite("Knighting") ~= nil, "OpenRite Knighting still uses the Quiet pick")
++local failEnd = Console:EndEvent()
++assert_eq(failEnd, nil, "EndEvent refuses from RITE")
++assert_eq(Console.selectedHumanId, human.id, "failed EndEvent keeps selectedHumanId")
++assert_eq(Console.selectedCharacterId, ch.id, "failed EndEvent keeps selectedCharacterId")
++assert_true(Console:CloseRite() ~= nil, "CloseRite reaches CONSEQUENCE")
++assert_true(Console:Continue() ~= nil, "Continue returns to ASSEMBLY")
++assert_eq(Console.selectedHumanId, human.id, "Continue keeps selectedHumanId")
++assert_eq(Console.selectedCharacterId, ch.id, "Continue keeps selectedCharacterId")
++assert_eq(Console:SelectFighters(ch.id, otherChar.id), true, "selected pair is set before End")
++assert_eq(Console.selectedFighterA, ch.id, "selected fighter A is set")
++assert_eq(Console.selectedFighterB, otherChar.id, "selected fighter B is set")
++assert_true(Gora:Petition(ch.id) ~= nil, "petition lands on the leftover character")
++
++local ended = Console:EndEvent()
++assert_true(ended ~= nil, "EndEvent returns to QUIET")
++assert_eq(Console.selectedHumanId, nil, "successful EndEvent nils selectedHumanId")
++assert_eq(Console.selectedCharacterId, nil, "successful EndEvent nils selectedCharacterId")
++assert_eq(Console.selectedFighterA, nil, "successful EndEvent still nils selected A")
++assert_eq(Console.selectedFighterB, nil, "successful EndEvent still nils selected B")
++
++assert_eq(COB.Confession, nil, "isolation Confession is nil after End")
++local called, callErr = Console:CallForward()
++assert_eq(called, nil, "CallForward without id refuses when Confession is nil")
++assert_eq(callErr, "confession is not available", "CallForward refuse is not a leftover fire")
++
++local callCount = 0
++local callId
++COB.Confession = {
++  CallForward = function(_, characterId)
++    callCount = callCount + 1
++    callId = characterId
++    if type(characterId) ~= "number" then return false end
++    return true
++  end,
++}
++local stubCalled = Console:CallForward()
++assert_eq(stubCalled, false, "CallForward without id no-ops after End")
++assert_eq(callCount, 1, "CallForward still reaches Confession with the resolved id")
++assert_eq(callId, nil, "CallForward is not called with leftover character")
++COB.Confession = nil
++
++local dismissId
++local realDismiss = Gora.Dismiss
++Gora.Dismiss = function(self, id)
++  dismissId = id
++  return realDismiss(self, id)
++end
++local dismissed = Console:Dismiss()
++Gora.Dismiss = realDismiss
++assert_eq(dismissed, false, "Dismiss without id no-ops after End")
++assert_eq(dismissId, nil, "Dismiss is not called with leftover character")
++
++local before = Store:GetHuman(human.id)
++assert_eq(before.rankId, 1, "leftover human is still Fresh Beef")
++local knightId
++local realKnight = Knighting.KnightThisBeef
++Knighting.KnightThisBeef = function(self, hid, now)
++  knightId = hid
++  return realKnight(self, hid, now)
++end
++local knighted = Console:KnightThisBeef()
++Knighting.KnightThisBeef = realKnight
++assert_eq(knighted, nil, "KnightThisBeef without id refuses after End")
++assert_eq(knightId, nil, "KnightThisBeef is not called with leftover human")
++local afterHuman = Store:GetHuman(human.id)
++assert_eq(afterHuman.rankId, 1, "leftover KnightThisBeef does not knight")
++
++Sender.IsRegisteredPope = savedPred
++assert_eq(Sender:IsRegisteredPope(COB.Group.PlayerName()), false,
++  "B36-B wrapping the predicate does not stub the list true")
++
++assert_eq(Console.SaveNote, nil, "SaveNote stays nil after B36-B")
++if standalone then
++  assert_eq(COB.Archive, nil, "isolation still does not load Archive")
++  assert_eq(COB.UI, nil, "isolation still does not load the Quiet shell")
++  assert_eq(COB.Toasts, nil, "isolation still does not load Toasts")
++  assert_eq(COB.Confession, nil, "isolation still does not load Confession")
++end
++assert_eq(COB.Popes, nil, "still no Pope list after B36-B")
++end
++runB36B()
+ end
+ runB8E()

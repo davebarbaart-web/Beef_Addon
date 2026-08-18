@@ -1,0 +1,291 @@
+diff --git a/tests/test_console.lua b/tests/test_console.lua
+--- a/tests/test_console.lua
++++ b/tests/test_console.lua
+@@ -9,7 +9,8 @@
+ -- Knighting line-head subject fallback + B13-D stockEdit OnEscapePressed
+ -- ClearFocus + B14-D UISpecialFrames rememberSpecial dedupe + B18-B named
+ -- petition paints "  names  " and click SelectFighters + B19-A
+--- presentCharacterIds fail-opens until Roster is complete).
++-- presentCharacterIds fail-opens until Roster is complete + B20-A
++-- Confession rows click-select and mute called token).
+ -- Isolated: wow_ui_stub + Common + Ranks + Runtime + Store + Gora + Knighting
+ -- + Sender + Decree + Console. Confession is stubbed when painted; this file
+ -- does not load Confession.lua. Knighting GetLine/Enqueue/Skip are stubbed
+@@ -2976,7 +2977,189 @@
+ assert_eq(COB.Popes, nil, "still no Pope list after B19-A")
+ end
+ runB19A()
++
++--------------------------------------------------------------------------------
++-- B20-A: Confession inbox click-select + mute "  called" token.
++-- paintRowButtons on ConfessionChild. No new Dismiss. No fan-out.
++-- Nested inside runB8E so the main chunk stays under Lua 5.1's 200-local cap.
++--------------------------------------------------------------------------------
++local function runB20A()
++reset()
++Console:Init()
++assert_eq(Console.SaveNote, nil, "SaveNote stays nil")
++assert_eq(Console.GetNotes, nil, "no notes table")
++assert_eq(Console.CopyCeremonySummary, nil, "no post-show ceremony summary")
++assert_eq(Console.CeremonySummary, nil, "no ceremony summary")
++assert_eq(findButton(frame, "SUMMON THE FAITHFUL"), nil, "no SUMMON chrome")
++assert_eq(findButton(frame, "COPY SUMMARY"), nil, "no ceremony-summary chrome")
++assert_eq(findButton(frame, "WHISPER ALL"), nil, "no WHISPER ALL chrome")
++assert_eq(findButton(frame, "RSVP"), nil, "no RSVP chrome")
++local builtRows = rawget(frame, "ConfessionRows")
++assert_true(builtRows ~= nil, "ConfessionRows exists on build")
++assert_eq(type(builtRows), "table", "ConfessionRows is a table on build")
++
++Console:Refresh()
++assert_true((frame.ConfessionList:GetText() or ""):find("No confessions", 1, true) ~= nil,
++  "empty inbox stays No confessions.")
++assert_eq(frame.ConfessionList:IsShown(), true, "empty inbox shows the FontString")
++
++local dismissCount = 0
++walk(frame, function(child)
++  if child._type == "Button" and child.GetText and child:GetText() == "Dismiss" then
++    dismissCount = dismissCount + 1
++  end
++end)
++assert_eq(dismissCount, 1, "no second Dismiss plate")
++assert_true(findButton(frame, "Dismiss") ~= nil, "Gora Dismiss stays")
++
++local savedPred = Sender.IsRegisteredPope
++Sender.IsRegisteredPope = function() return true end
++
++reset()
++Console:Init()
++local confessor = Store:CreateCharacter({ name = "Beefina", class = "Priest", level = 70 })
++assert_eq(Console.selectedCharacterId, nil, "no selected character before the confession click")
++local liveQueue = {
++  { characterId = confessor.id, text = "I ate the sacred brisket", called = false },
++}
++local callCount = 0
++local callId
++COB.Confession = {
++  GetQueue = function()
++    return liveQueue
++  end,
++  CallForward = function(_, characterId)
++    callCount = callCount + 1
++    callId = characterId
++    for i = 1, #liveQueue do
++      if liveQueue[i].characterId == characterId then
++        liveQueue[i].called = true
++      end
++    end
++    return true
++  end,
++}
++local queued = Console:GetConfessions()
++assert_eq(#queued, 1, "GetConfessions returns the stubbed queue")
++assert_eq(queued[1].characterId, confessor.id, "confession copy keeps the character id")
++assert_eq(queued[1].called, false, "confession copy keeps called")
++
++Console:Refresh()
++assert_eq(frame.ConfessionList:IsShown(), false, "inbox FontString hides when rows exist")
++assert_true((frame.ConfessionList:GetText() or ""):find("Beefina", 1, true) ~= nil,
++  "ConfessionList still SetTexts the confessor name")
++assert_true((frame.ConfessionList:GetText() or ""):find("I ate the sacred brisket", 1, true) ~= nil,
++  "ConfessionList still SetTexts the confession text")
++assert_eq((frame.ConfessionList:GetText() or ""):find("  called", 1, true), nil,
++  "uncalled FontString has no called token")
++
++local rowBtn = rawget(frame, "ConfessionRows") and rawget(frame, "ConfessionRows")[1]
++assert_true(rowBtn ~= nil, "a Confession row button exists")
++local rowText = (rowBtn and rowBtn.GetText and rowBtn:GetText()) or ""
++assert_eq(rowBtn and rowBtn._type, "Button", "confession row is a Button")
++assert_true(rowText:find("Beefina", 1, true) ~= nil,
++  "row button paints the confessor name")
++assert_true(rowText:find("I ate the sacred brisket", 1, true) ~= nil,
++  "row button paints the confession text")
++assert_eq(rowText:find("  called", 1, true), nil,
++  "uncalled row has no called token")
++assert_eq(rowText:find("CALLED FORWARD", 1, true), nil,
++  "row has no CALLED FORWARD oratory")
++assert_eq(rowText:find("DEMANDED", 1, true), nil,
++  "row has no DEMANDED oratory")
++
++local soundRec = {}
++local toastCalls = 0
++local chats = 0
++local savedSound = COB.Sound
++local savedToasts = COB.Toasts
++local savedChat = SendChatMessage
++COB.Sound = {
++  Play = function(_, name)
++    soundRec[#soundRec + 1] = name
++    return name
++  end,
++}
++COB.Toasts = {
++  Show = function()
++    toastCalls = toastCalls + 1
++  end,
++}
++SendChatMessage = function()
++  chats = chats + 1
+ end
++
++if rowBtn then
++  stub.fire(rowBtn, "OnClick")
++end
++assert_eq(Console.selectedCharacterId, confessor.id, "click SelectCharacter the confessor")
++assert_eq(#soundRec, 0, "confession click does not play Sound")
++assert_eq(toastCalls, 0, "confession click does not toast")
++assert_eq(chats, 0, "confession click does not SendChatMessage")
++
++local calledOk = Console:CallForward()
++assert_eq(calledOk, true, "CallForward reaches Confession")
++assert_eq(callCount, 1, "CallForward is one mark")
++assert_eq(callId, confessor.id, "CallForward uses the selected character")
++assert_eq(#soundRec, 0, "CallForward does not play Sound")
++assert_eq(toastCalls, 0, "CallForward does not toast")
++assert_eq(chats, 0, "CallForward does not SendChatMessage")
++assert_eq(liveQueue[1].called, true, "CallForward marks called on the stub")
++
++local paintedRows = rawget(frame, "ConfessionRows")
++local painted = (paintedRows and paintedRows[1] and paintedRows[1].GetText and paintedRows[1]:GetText()) or ""
++assert_true(painted:find("  called", 1, true) ~= nil,
++  "after CallForward the painted line contains the called token")
++assert_true(painted:find("Beefina", 1, true) ~= nil, "called line keeps the confessor name")
++assert_true((frame.ConfessionList:GetText() or ""):find("  called", 1, true) ~= nil,
++  "ConfessionList SetText also has the called token")
++assert_eq(painted:find("CALLED FORWARD", 1, true), nil, "painted line has no CALLED FORWARD")
++assert_eq(painted:find("DEMANDED", 1, true), nil, "painted line has no DEMANDED")
++
++local srcConfess = io.open("addon/ChurchOfBeef/UI/Console.lua", "r")
++assert_true(srcConfess ~= nil, "Console.lua is readable for B20-A")
++local srcConfessBody = srcConfess:read("*a")
++srcConfess:close()
++assert_true(srcConfessBody:find("frame.ConfessionRows = {}", 1, true) ~= nil,
++  "build seeds ConfessionRows")
++assert_true(srcConfessBody:find("local function onConfessionClick", 1, true) ~= nil,
++  "source has onConfessionClick")
++assert_true(srcConfessBody:find("Console:SelectCharacter(row.characterId)", 1, true) ~= nil,
++  "click SelectCharacter the row character")
++assert_true(srcConfessBody:find("row.called == true", 1, true) ~= nil,
++  "called token gates on called == true")
++assert_true(srcConfessBody:find('line = line .. "  called"', 1, true) ~= nil,
++  "mute called token matches needs Knighting")
++assert_eq(srcConfessBody:find("CALLED FORWARD", 1, true), nil,
++  "source must not invent CALLED FORWARD")
++assert_eq(srcConfessBody:find("DEMANDED", 1, true), nil, "source must not invent DEMANDED")
++assert_eq(srcConfessBody:find("function Console:SaveNote", 1, true), nil,
++  "source must not define SaveNote")
++assert_eq(srcConfessBody:find("SUMMON THE FAITHFUL", 1, true), nil,
++  "source must not contain SUMMON")
++assert_eq(srcConfessBody:find("Parchment", 1, true), nil, "console stays stock, not parchment")
++assert_eq(srcConfessBody:find("PanelTabButtonTemplate", 1, true), nil,
++  "desks are not collapsed into tabs")
++
++COB.Sound = savedSound
++COB.Toasts = savedToasts
++SendChatMessage = savedChat
++COB.Confession = nil
++Sender.IsRegisteredPope = savedPred
++assert_eq(Sender:IsRegisteredPope(COB.Group.PlayerName()), false,
++  "B20-A wrapping the predicate does not stub the list true")
++
++assert_eq(Console.SaveNote, nil, "SaveNote stays nil after B20-A")
++if standalone then
++  assert_eq(COB.Archive, nil, "isolation still does not load Archive")
++  assert_eq(COB.UI, nil, "isolation still does not load the Quiet shell")
++  assert_eq(COB.Toasts, nil, "isolation still does not load Toasts")
++  assert_eq(COB.Confession, nil, "isolation still does not load Confession")
++end
++assert_eq(COB.Popes, nil, "still no Pope list after B20-A")
++end
++runB20A()
++end
+ runB8E()
+ 
+ --------------------------------------------------------------------------------
+
+diff --git a/addon/ChurchOfBeef/UI/Console.lua b/addon/ChurchOfBeef/UI/Console.lua
+--- a/addon/ChurchOfBeef/UI/Console.lua
++++ b/addon/ChurchOfBeef/UI/Console.lua
+@@ -11,7 +11,8 @@
+ -- display is a per-event memory toggle. Proposed bout is a stock pairing slot
+ -- above SANCTION plus a one-line STIPULATION box. Named petitions append a
+ -- mute numeric H2H when Store has history. Confession inbox is a stock list
+--- on this desk only — never theater. Dismiss is stock furniture, not a ritual
++-- on this desk only — never theater. Rows click-select the character; a
++-- called row appends mute "  called". Dismiss is stock furniture, not a ritual
+ -- plate. Knighting line is a stock list plus Enqueue / Skip furniture.
+ -- Recommend proposes a pair and never Sanctions. CallForward marks the inbox
+ -- only — no Toasts, chat, or Sound. FlagMoment may read GetSubZoneText when
+@@ -356,14 +357,21 @@
+       name = ""
+     end
+   end
++  local line
+   local text = row.text
+   if type(text) == "string" and text ~= "" then
+     if name ~= "" then
+-      return name .. "  " .. text
++      line = name .. "  " .. text
++    else
++      line = text
+     end
+-    return text
++  else
++    line = name
++  end
++  if row.called == true then
++    line = line .. "  called"
+   end
+-  return name
++  return line
+ end
+ 
+ local function participantName(id, kind, index)
+@@ -634,6 +642,7 @@
+   confessionScroll:SetPoint("TOPLEFT", left, "TOPLEFT", 8, -306)
+   frame.ConfessionList = confessionList
+   frame.ConfessionChild = confessionChild
++  frame.ConfessionRows = {}
+   local callBtn = stockButton(left, "Call Forward", function() Console:CallForward() end)
+   callBtn:SetPoint("TOPLEFT", left, "TOPLEFT", 8, -372)
+   frame.CallForward = callBtn
+@@ -798,6 +807,13 @@
+   local row = btn and btn._row
+   if not row then return end
+   Console:SelectHuman(row.humanId)
++  Console:Refresh()
++end
++
++local function onConfessionClick(btn)
++  local row = btn and btn._row
++  if not row then return end
++  Console:SelectCharacter(row.characterId)
+   Console:Refresh()
+ end
+ 
+@@ -961,6 +977,26 @@
+   local body = table.concat(lines, "\n")
+   if body == "" then body = "No confessions." end
+   frame.ConfessionList:SetText(body)
++  if #rows == 0 then
++    frame.ConfessionList:Show()
++    if frame.ConfessionChild then
++      frame.ConfessionRows = acquireRows(frame.ConfessionRows, frame.ConfessionChild, 0, 100)
++      frame.ConfessionChild:SetHeight(56)
++    end
++  else
++    frame.ConfessionList:Hide()
++    if not frame.ConfessionChild then return end
++    frame.ConfessionRows = paintRowButtons(
++      frame.ConfessionRows,
++      frame.ConfessionChild,
++      rows,
++      confessionLine,
++      function(row)
++        return row.characterId ~= nil and row.characterId == Console.selectedCharacterId
++      end,
++      onConfessionClick
++    )
++  end
+ end
+ 
+ local function paintKnightingLine(frame, rows)

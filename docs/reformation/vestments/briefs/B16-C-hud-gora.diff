@@ -1,0 +1,146 @@
+diff --git a/addon/ChurchOfBeef/UI/Hud.lua b/addon/ChurchOfBeef/UI/Hud.lua
+--- a/addon/ChurchOfBeef/UI/Hud.lua
++++ b/addon/ChurchOfBeef/UI/Hud.lua
+@@ -9,8 +9,9 @@
+ -- (B9-E). Hide on QUIET / EndEvent / no last pair. A new live pair replaces
+ -- the remembered pair. clickPlate pick pair never uses lastPair (B11-B):
+ -- Pope (IsRegisteredPope local) → GetSanctioned() only; congregation →
+--- Runtime subjects.fighters only while RITE. Isolated suite with a live
+--- GetSanctioned still sends even if Sender is nil. No verdict qualifier.
++-- Runtime subjects.fighters only while RITE and riteType Gora (B16-C).
++-- Isolated suite with a live GetSanctioned still sends even if Sender
++-- is nil. No verdict qualifier.
+ -- Defined fallback: everything except live health. Favor split is
+ -- Pope-local from Gora (gora pair only, so a Runtime leftover after a
+ -- ruling does not thaw the freeze), or congregation broadcast only.
+@@ -352,14 +353,18 @@
+ -- Display persist may use lastPair. Favor picks close when the live
+ -- pair is gone. Isolated suite: a live GetSanctioned still sends
+ -- even if Sender is nil (existing Sanctioned plate-click pins).
++-- Congregation leftovers send only during a Gora RITE (B16-C).
+ local function pickPair()
+   local gora = goraPair()
+   if gora then return gora end
+   if isLocalPope() then return nil end
+   if not COB.Runtime or not COB.Runtime.Snapshot then return nil end
+   local snap = COB.Runtime:Snapshot()
+-  if type(snap) ~= "table" or snap.state ~= "RITE" then return nil end
+-  return runtimePair()
++  if type(snap) ~= "table" then return nil end
++  if snap.state == "RITE" and snap.riteType == "Gora" then
++    return runtimePair()
++  end
++  return nil
+ end
+ 
+ local function clickPlate(side)
+
+diff --git a/tests/test_hud.lua b/tests/test_hud.lua
+--- a/tests/test_hud.lua
++++ b/tests/test_hud.lua
+@@ -1,15 +1,17 @@
+ -- Fight HUD (Wire W-F favor + Vestments V-D dress + B4-F name fields
+ -- + B8-D mute defense integer + B9-E persist through the verdict
+ -- + B10-B congregation pair from Runtime subjects.fighters
+--- + B11-B leftover plate clicks never use lastPair). Isolated:
++-- + B11-B leftover plate clicks never use lastPair
++-- + B16-C congregation picks only while RITE and riteType Gora). Isolated:
+ -- wow_ui_stub + Common + Ranks + Runtime + Store + Gora + Hud. Event Mode
+ -- only. No live health, favor economy, sound, or toasts. Standalone wrap.
+ -- Congregation never Sanctions; the star pair is subjects.fighters.
+ -- Congregation favor is broadcast-only. Pope stub fills from
+ -- Gora:GetFavorSplit; after the pair clears, the last split is frozen.
+ -- Plate picks: live GetSanctioned (isolated / Pope) or Runtime fighters
+--- only while RITE. Never lastPair. Dress is stock iron/parchment only —
+--- no faction crests, no custom Media. Thin QuestBG fields sit behind
++-- only while RITE and riteType Gora (B16-C). Never lastPair. Dress is
++-- stock iron/parchment only — no faction crests, no custom Media. Thin
++-- QuestBG fields sit behind
+ -- name+title. Defense count is Store:CountDefenses as a mute integer;
+ -- zero or a missing method hides. Ranks is Data for Church titles.
+ -- No TOC / bootstrap / run.lua edits.
+@@ -208,6 +210,8 @@
+ assert_true(src:find("CountDefenses", 1, true) ~= nil, "source reads Store:CountDefenses")
+ assert_true(src:find("subjects", 1, true) ~= nil, "source reads Runtime subjects")
+ assert_true(src:find("fighters", 1, true) ~= nil, "source reads subjects.fighters")
++assert_true(src:find('riteType == "Gora"', 1, true) ~= nil,
++  "congregation pick requires snap.riteType Gora")
+ assert_eq(src:find("Gora:Sanction", 1, true), nil, "HUD does not call Gora:Sanction")
+ assert_true(src:find("defenseA", 1, true) ~= nil, "source names defenseA")
+ assert_true(src:find("defenseB", 1, true) ~= nil, "source names defenseB")
+@@ -971,8 +975,9 @@
+ --------------------------------------------------------------------------------
+ -- B11-B: leftover plate clicks. Display persist (lastPair) stays.
+ -- Pick never lastPair. Pope / live GetSanctioned only. Congregation
+--- Runtime subjects.fighters only while RITE. CONSEQUENCE / Continue
+--- persist / QUIET do not SendFavor. PickFavor missing-target pins stay.
++-- Runtime subjects.fighters only while RITE and riteType Gora (B16-C).
++-- CONSEQUENCE / Continue persist / QUIET do not SendFavor. PickFavor
++-- missing-target pins stay.
+ --------------------------------------------------------------------------------
+ local pickSent = {}
+ COB.Net = {
+@@ -1054,6 +1059,7 @@
+ view = Hud:Refresh()
+ assert_eq(Hud:IsShown(), true, "RITE subjects show the HUD")
+ assert_eq(Runtime:Snapshot().state, "RITE", "runtime is RITE for congregation pick")
++assert_eq(Runtime:Snapshot().riteType, "Gora", "congregation pick RITE is Gora")
+ assert_eq(view.fighterA.id, riteA.id, "RITE fighter A is the Runtime subject")
+ assert_eq(view.health, nil, "RITE subjects pick view has no health")
+ pickSent = {}
+@@ -1118,6 +1124,55 @@
+ assert_eq(healthReads, 0, "leftover pick lane never scraped health")
+ 
+ --------------------------------------------------------------------------------
++-- B16-C: congregation pickPair requires RITE and riteType Gora.
++-- Knighting RITE + two leftover Runtime fighters must not SendFavor.
++-- Existing OpenRite("Gora") congregation pins stay. Pope still
++-- GetSanctioned only. Isolation wrap stays. health nil.
++--------------------------------------------------------------------------------
++local knightSent = {}
++COB.Net = {
++  SendFavor = function(_, fields, target)
++    knightSent[#knightSent + 1] = { fields = fields, target = target }
++    return true
++  end,
++}
++
++reset()
++Runtime:StartEvent()
++local knightA, knightB = twoChars()
++assert_eq(Gora:GetSanctioned(), nil, "Knighting leftover has no Sanction")
++assert_true(
++  Runtime:OpenRite("Knighting", { candidate = knightA.id, fighters = { knightA.id, knightB.id } }) ~= nil,
++  "Knighting RITE can carry leftover fighters"
++)
++assert_eq(Runtime:Snapshot().state, "RITE", "Knighting leftover is RITE")
++assert_eq(Runtime:Snapshot().riteType, "Knighting", "rite type is Knighting")
++assert_eq(Gora:GetSanctioned(), nil, "OpenRite Knighting is not a Sanction")
++assert_true(type(Runtime:Snapshot().subjects.fighters) == "table",
++  "Knighting leftover still names two fighters")
++assert_eq(Runtime:Snapshot().subjects.fighters[1], knightA.id, "leftover fighter A remains")
++assert_eq(Runtime:Snapshot().subjects.fighters[2], knightB.id, "leftover fighter B remains")
++COB.Sender = nil
++local knightFrame = Hud:Init()
++Hud:SetFavorTarget("Host")
++local knightPicker = Store:CreateCharacter({ name = "KnightFan", class = "Priest", level = 70 })
++Hud:SetLocalCharacterId(knightPicker.id)
++view = Hud:Refresh()
++assert_eq(view.health, nil, "Knighting leftover pick view has no health")
++assert_eq(view.verdict, nil, "Knighting leftover has no verdict qualifier")
++knightSent = {}
++assert_eq(stub.fire(knightFrame.pickA, "OnClick"), true, "Knighting leftover plate A clicks")
++assert_eq(#knightSent, 0, "Knighting leftover plate does not SendFavor")
++assert_eq(stub.fire(knightFrame.pickB, "OnClick"), true, "Knighting leftover plate B clicks")
++assert_eq(#knightSent, 0, "Knighting leftover plate B does not SendFavor")
++
++COB.Net = nil
++COB.Sender = nil
++
++assert_eq(sounds, 0, "Knighting leftover pick played no sound")
++assert_eq(healthReads, 0, "Knighting leftover pick never scraped health")
++
++--------------------------------------------------------------------------------
+ -- V-D height budget: ≤ 12% of UIParent when the parent height is known.
+ -- Unknown parent stays the compact card (pinned at Init). Do not grow into a toast.
+ --------------------------------------------------------------------------------

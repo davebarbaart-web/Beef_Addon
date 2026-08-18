@@ -1,0 +1,126 @@
+# B36-A — SendConfession trims optional text (implementation diff)
+
+Lane-only unified diff of the exclusive implementation files vs the pre-lane working tree.
+
+--- a/addon/ChurchOfBeef/Net/BeefNet.lua
++++ b/addon/ChurchOfBeef/Net/BeefNet.lua
+@@ -432,8 +432,10 @@
+ end
+ 
+ -- Congregation → Pope. Not Pope-gated. Confession text is optional.
+--- Caller supplies the whisper target. Do not look up a Pope name.
++-- Trim text (Names.Trim or local trim). Empty after trim omits
++-- body.text and still sends. Caller supplies the whisper target.
++-- Do not look up a Pope name.
+ function Net:SendConfession(fields, target, nowSeconds)
+   target = destName(target)
+   if not target then
+@@ -446,10 +448,21 @@
+       and fields.text:find("\n", 1, true) then
+     return false, "invalid text"
+   end
++  local text
++  if type(fields) == "table" then
++    if COB.Names and type(COB.Names.Trim) == "function" then
++      text = COB.Names.Trim(fields.text)
++    else
++      text = trim(fields.text)
++    end
++  end
+   local body = type(fields) == "table" and {
+     kind = "confession",
+     characterId = fields.characterId,
+-    text = fields.text,
+   } or { kind = "confession" }
++  if type(text) == "string" then
++    body.text = text
++  end
+   local payload, err = COB.Codec:EncodeInput(body)
+   if not payload then
+     return false, err
+
+--- a/tests/test_net_v2.lua
++++ b/tests/test_net_v2.lua
+@@ -861,6 +861,84 @@
+     assert_eq(COB.Confession, nil, "snapshot dest pins do not leave a Confession stub")
+   end
+ end
+ 
++--------------------------------------------------------------------------------
++-- B36-A: SendConfession trims optional text. Empty after trim omits.
++--------------------------------------------------------------------------------
++do
++  reset()
++  assert_eq(Sender:IsRegisteredPope(Net:PlayerName()), false, "confess trim pins do not invent a Pope")
++  assert_eq(Net.LookupPope, nil, "confess trim pins do not grow a Pope-name lookup")
++  assert_eq(Net.FindPope, nil, "confess trim pins do not grow FindPope")
++
++  local ok, why
++  ok, why = Net:SendConfession({ characterId = 3, text = "  forgive me  " }, "Pope")
++  assert_eq(ok, true, "SendConfession padded text sends")
++  assert_eq(why, nil, "SendConfession padded text has no refusal")
++  assert_eq(#wire, 1, "SendConfession padded text whispers once")
++  assert_eq(wire[1].channel, "WHISPER", "SendConfession padded text stays whisper")
++  assert_eq(wire[1].target, "Pope", "SendConfession padded text dest is unchanged")
++  assert_eq(wire[1].payload, "1:INPUT:confession:3:forgive me",
++    "SendConfession encodes trimmed text")
++  assert_eq(Codec:Decode(wire[1].payload).text, "forgive me",
++    "padded confession text decodes trimmed")
++  assert_eq(Codec:Decode(wire[1].payload).dest, nil, "padded confession has no dest on INPUT")
++  assert_eq(Codec:Decode(wire[1].payload).kind, "confession",
++    "padded confession kind is unchanged")
++
++  ok, why = Net:SendConfession({ characterId = 3, text = "   " }, "Pope")
++  assert_eq(ok, true, "SendConfession whitespace text still sends")
++  assert_eq(why, nil, "SendConfession whitespace text is not a refusal")
++  assert_eq(wire[2].payload, "1:INPUT:confession:3",
++    "SendConfession whitespace text omits text")
++  assert_eq(Codec:Decode(wire[2].payload).text, nil, "whitespace confession has no text")
++
++  ok, why = Net:SendConfession({ characterId = 3, text = "" }, "Pope")
++  assert_eq(ok, true, "SendConfession empty text still sends")
++  assert_eq(why, nil, "SendConfession empty text is not a refusal")
++  assert_eq(wire[3].payload, "1:INPUT:confession:3",
++    "SendConfession empty text omits text")
++  assert_eq(wire[3].payload, wire[2].payload, "empty text matches whitespace omit")
++
++  ok, why = Net:SendConfession({ characterId = 3, text = "a\nb" }, "Pope")
++  assert_eq(ok, false, "SendConfession newline refuse stays")
++  assert_eq(why, "invalid text", "SendConfession newline stay is invalid text")
++  assert_eq(#wire, 3, "newline confession still does not whisper")
++
++  ok, why = Net:SendConfession({ characterId = 3 }, "Pope")
++  assert_eq(ok, true, "SendConfession optional text stays")
++  assert_eq(wire[4].payload, "1:INPUT:confession:3", "SendConfession no-text payload stays")
++  assert_eq(wire[4].payload, wire[2].payload, "whitespace omit matches no-text")
++
++  ok, why = Net:SendConfession({ characterId = 3, text = "free text" }, "   ")
++  assert_eq(ok, false, "SendConfession whitespace dest still fails")
++  assert_eq(why, "no target", "SendConfession whitespace dest stays no target")
++  assert_eq(#wire, 4, "whitespace dest still does not whisper")
++
++  reset()
++  ok, why = Net:SendConfession({ characterId = 3, text = "free text" }, "  Host  ")
++  assert_eq(ok, true, "SendConfession padded dest still sends")
++  assert_eq(why, nil, "SendConfession padded dest still has no refusal")
++  assert_eq(wire[1].target, "Host", "SendConfession dest trim stays")
++  assert_eq(wire[1].payload, "1:INPUT:confession:3:free text",
++    "SendConfession padded dest still has no dest on INPUT")
++  assert_eq(Codec:Decode(wire[1].payload).dest, nil,
++    "padded dest confession body has no dest")
++
++  assert_eq(Runtime:Snapshot().state, "QUIET", "confess trim pins do not change Runtime")
++  assert_eq(Net.LookupPope, nil, "confess trim does not grow a Pope-name lookup")
++
++  if standalone then
++    assert_eq(COB.Store, nil, "confess trim pins do not load Store")
++    assert_eq(COB.UI, nil, "confess trim pins do not load UI")
++    assert_eq(COB.Popes, nil, "confess trim pins do not load a Pope list")
++    assert_eq(COB.Gora, nil, "confess trim pins do not leave a Gora stub")
++    assert_eq(COB.Confession, nil, "confess trim pins do not leave a Confession stub")
++  end
++end
++
+ --------------------------------------------------------------------------------
+ -- Unstubbed inbound DECREE: IsRegisteredPope is false. Do not Set. Do not Restore.
+ --------------------------------------------------------------------------------

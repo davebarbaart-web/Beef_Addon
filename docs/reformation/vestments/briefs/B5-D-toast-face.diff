@@ -1,0 +1,231 @@
+diff --git a/addon/ChurchOfBeef/UI/Toasts.lua b/addon/ChurchOfBeef/UI/Toasts.lua
+--- a/addon/ChurchOfBeef/UI/Toasts.lua
++++ b/addon/ChurchOfBeef/UI/Toasts.lua
+@@ -7,6 +7,7 @@
+ -- Engine: system / debug via Push; sanction / verdict / cowardice /
+ -- knighting / elevation via Proclaim.
+ -- Clerical copy only. Never generate oratory. Never SendChatMessage.
++-- Proclaim headlines try stock Morpheus (FrameXML). Body stays GameFont*.
+ local Toasts = {}
+ COB.Toasts = Toasts
+ 
+@@ -43,6 +44,9 @@ local PANEL_FALLBACK_W = 420
+ local GOLD = { 0.85, 0.72, 0.28, 1 }
+ local OXBLOOD = { 0.45, 0.08, 0.10, 1 }
+ local IRON = { 0.28, 0.24, 0.18, 1 }
++-- FrameXML lowercase (V-stock / GlueFonts). pcall; GameFont fallback.
++local HEADLINE_FONT = "Fonts\\MORPHEUS.ttf"
++local HEADLINE_SIZE = 18
+ 
+ local pending = {}
+ local recentKeys = {}
+@@ -444,6 +448,28 @@ local function theaterAllowed()
+   return true
+ end
+ 
++local function applyHeadlineFont(fs)
++  if not fs then return end
++  local used = false
++  if fs.SetFont then
++    local ok, applied = pcall(fs.SetFont, fs, HEADLINE_FONT, HEADLINE_SIZE)
++    used = ok and applied and true or false
++  end
++  if not used and fs.SetFontObject then
++    local font = GameFontNormalLarge
++    if type(font) == "string" then font = _G[font] end
++    if font then pcall(fs.SetFontObject, fs, font) end
++  end
++end
++
++-- First clerical line is the display-face headline; the rest is body.
++local function splitHeadline(text)
++  if type(text) ~= "string" then return "", "" end
++  local nl = string.find(text, "\n", 1, true)
++  if not nl then return text, "" end
++  return string.sub(text, 1, nl - 1), string.sub(text, nl + 1)
++end
++
+ local function clericalCopy(kind, fields)
+   if type(fields) ~= "table" then fields = {} end
+ 
+@@ -590,19 +616,27 @@ function Toasts:InitTheater()
+   tint:SetPoint("BOTTOMRIGHT", panel, "BOTTOMRIGHT", -8, 8)
+   tint:SetHeight(6)
+ 
+-  local copy = panel:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+-  copy:SetPoint("TOPLEFT", panel, "TOPLEFT", 16, -16)
++  local headline = panel:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
++  headline:SetPoint("TOPLEFT", panel, "TOPLEFT", 16, -16)
++  headline:SetPoint("TOPRIGHT", panel, "TOPRIGHT", -16, -16)
++  headline:SetJustifyH("CENTER")
++  headline:SetJustifyV("TOP")
++  if headline.SetWordWrap then headline:SetWordWrap(true) end
++  applyHeadlineFont(headline)
++
++  local copy = panel:CreateFontString(nil, "OVERLAY", "GameFontNormal")
++  copy:SetPoint("TOPLEFT", headline, "BOTTOMLEFT", 0, -8)
+   copy:SetPoint("BOTTOMRIGHT", panel, "BOTTOMRIGHT", -16, 20)
+   copy:SetJustifyH("CENTER")
+   copy:SetJustifyV("MIDDLE")
+   if copy.SetWordWrap then copy:SetWordWrap(true) end
+ 
+   self.theater = {
+     root = root,
+     dim = dim,
+     panel = panel,
+     tint = tint,
++    headline = headline,
+     copy = copy,
+     dimAlpha = DIM_ALPHA,
+   }
+@@ -636,7 +670,15 @@ function Toasts:Proclaim(kind, fields)
+   if theater.panel.ClearAllPoints then theater.panel:ClearAllPoints() end
+   theater.panel:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
+ 
+-  theater.copy:SetText(text)
++  local headline, body = splitHeadline(text)
++  theater.headline:SetText(headline)
++  theater.copy:SetText(body)
++  if body ~= "" then
++    theater.copy:Show()
++  else
++    theater.copy:Hide()
++  end
+   theater.dimAlpha = DIM_ALPHA
+   if theater.dim.SetColorTexture then
+     theater.dim:SetColorTexture(0, 0, 0, DIM_ALPHA)
+diff --git a/tests/test_ui.lua b/tests/test_ui.lua
+--- a/tests/test_ui.lua
++++ b/tests/test_ui.lua
+@@ -378,9 +378,9 @@ COB.UI:RefreshLadder()
+ assert_eq(COB.UI.frame.FooterText:GetText(), "", "coalesced paint never restores Eternal Grazing")
+ 
+ --------------------------------------------------------------------------------
+--- V-B + B3-A: sanction / verdict / cowardice / knighting / elevation.
++-- V-B + B3-A + B5-D: sanction / verdict / cowardice / knighting / elevation.
+ -- Push/Proclaim only. Runtime + Sound are loaded here (not wired
+--- from Console / Gora / Knighting).
++-- from Console / Gora / Knighting). Headlines try stock Morpheus.
+ --------------------------------------------------------------------------------
+ dofile("addon/ChurchOfBeef/Core/Runtime.lua")
+ dofile("addon/ChurchOfBeef/UI/Sound.lua")
+@@ -419,10 +419,16 @@ local function theaterReset()
+ end
+ 
+ local function theaterCopy()
+   local theater = COB.Toasts.theater
+-  if not theater or not theater.copy then return nil end
+-  return theater.copy:GetText()
++  if not theater then return nil end
++  local head = theater.headline and theater.headline.GetText and theater.headline:GetText()
++  local body = theater.copy and theater.copy.GetText and theater.copy:GetText()
++  if type(head) ~= "string" then head = "" end
++  if type(body) ~= "string" then body = "" end
++  if head == "" and body == "" then return nil end
++  if body == "" then return head end
++  if head == "" then return body end
++  return head .. "\n" .. body
+ end
+ 
+ local function findButton(widget)
+@@ -473,6 +479,28 @@ assert_eq(COB.Toasts:Proclaim("sanction", {
+ local sanctionCopy = theaterCopy()
+ assert_true(type(sanctionCopy) == "string", "sanction paints clerical copy")
+ assert_true(sanctionCopy:find("A Beef Gora is Sanctioned", 1, true) ~= nil,
+   "sanction headline is clerical")
++assert_true(COB.Toasts.theater.headline ~= nil, "Proclaim has a headline FontString")
++assert_eq(COB.Toasts.theater.headline._template, "GameFontNormalLarge",
++  "headline fallback is the existing GameFontNormalLarge template")
++assert_eq(COB.Toasts.theater.copy._template, "GameFontNormal",
++  "body stays GameFont*")
++assert_eq(COB.Toasts.theater.headline:GetText(), "A Beef Gora is Sanctioned",
++  "sanction headline is the first clerical line")
++assert_true(COB.Toasts.theater.copy:GetText():find("Juicyj", 1, true) ~= nil,
++  "sanction body paints fighter A")
++local headFont = COB.Toasts.theater.headline.GetFont
++  and select(1, COB.Toasts.theater.headline:GetFont())
++if type(headFont) == "string" then
++  assert_true(string.find(headFont, "MORPHEUS", 1, true) ~= nil,
++    "SetFont reports stock Morpheus when the stub records it")
++end
++local bodyFont = COB.Toasts.theater.copy.GetFont
++  and select(1, COB.Toasts.theater.copy:GetFont())
++if type(bodyFont) == "string" then
++  assert_eq(string.find(bodyFont, "MORPHEUS", 1, true), nil,
++    "body does not wear Morpheus")
++end
+ assert_true(sanctionCopy:find("Juicyj", 1, true) ~= nil, "sanction paints fighter A")
+ assert_true(sanctionCopy:find("Meat Is Murder", 1, true) ~= nil, "sanction paints fighter B")
+@@ -501,6 +529,11 @@ theaterReset()
+ assert_eq(COB.Toasts:Proclaim("cowardice", { name = "Thickcut" }), true,
+   "Event Mode cowardice is accepted")
+ assert_eq(theaterCopy(), "Cowardice recorded: Thickcut. So ruled by the Beef Pope.",
+   "cowardice copy is the clerical sentence")
++assert_eq(COB.Toasts.theater.headline:GetText(),
++  "Cowardice recorded: Thickcut. So ruled by the Beef Pope.",
++  "single-line cowardice sits on the headline")
++assert_eq(COB.Toasts.theater.copy:GetText(), "",
++  "single-line cowardice has no body")
+ assert_eq(played[#played], "cowardice", "cowardice plays the cowardice cue")
+ assert_eq(findButton(COB.Toasts.theater.root), nil, "cowardice has no close button")
+@@ -511,6 +544,8 @@ theaterReset()
+ assert_eq(COB.Toasts:Proclaim("verdict", { ruling = "victor", name = "Thickcut" }), true,
+   "Event Mode victor is accepted")
+ assert_eq(theaterCopy(), "Victor declared: Thickcut.", "victor copy is clerical")
++assert_eq(COB.Toasts.theater.headline:GetText(), "Victor declared: Thickcut.",
++  "victor headline is the clerical sentence")
+ assert_eq(played[#played], "verdict", "victor plays the verdict cue")
+ 
+ theaterReset()
+@@ -564,6 +599,10 @@ assert_eq(COB.Toasts:Proclaim("knighting", { name = "Beefina" }), true,
+ assert_true(COB.Toasts.theater ~= nil, "knighting mints a theater overlay")
+ assert_eq(COB.Toasts.theater.root:IsShown(), true, "knighting shows the overlay")
+ assert_eq(theaterCopy(), "RISE, BEEF KNIGHT\nBeefina",
+   "knighting copy is the fixed headline plus name")
++assert_eq(COB.Toasts.theater.headline:GetText(), "RISE, BEEF KNIGHT",
++  "knighting headline is the fixed clerical line")
++assert_eq(COB.Toasts.theater.copy:GetText(), "Beefina",
++  "knighting body is the name")
+ assert_eq(theaterCopy():find("found worthy", 1, true), nil,
+   "knighting does not generate oratory")
+@@ -586,6 +625,10 @@ theaterReset()
+ assert_eq(COB.Toasts:Proclaim("elevation", { name = "Juicyj" }), true,
+   "Event Mode elevation is accepted")
+ assert_eq(theaterCopy(), "RISE, BEEF LORD\nJuicyj",
+   "elevation copy is the fixed headline plus name")
++assert_eq(COB.Toasts.theater.headline:GetText(), "RISE, BEEF LORD",
++  "elevation headline is the fixed clerical line")
++assert_eq(COB.Toasts.theater.copy:GetText(), "Juicyj",
++  "elevation body is the name")
+ assert_eq(played[#played], "elevation", "elevation plays the elevation cue")
+ assert_eq(findButton(COB.Toasts.theater.root), nil, "elevation has no close button")
+@@ -620,6 +663,8 @@ theaterReset()
+ assert_eq(COB.Toasts:Celebrate("knighting", { name = "Beefina" }), true,
+   "Celebrate routes knighting to Proclaim")
+ assert_eq(theaterCopy(), "RISE, BEEF KNIGHT\nBeefina",
+   "Celebrate knighting paints the same clerical copy")
++assert_eq(COB.Toasts.theater.headline:GetText(), "RISE, BEEF KNIGHT",
++  "Celebrate knighting uses the same headline FontString")
+ assert_eq(played[#played], "knighting", "Celebrate knighting plays the knighting cue")
+ 
+ theaterReset()
+@@ -669,6 +714,12 @@ assert_eq(toastSrc:find("COB.Knighting", 1, true), nil, "source does not wire Knig
+ assert_eq(toastSrc:find("Their third meeting", 1, true), nil, "source does not generate H2H oratory")
+ assert_eq(toastSrc:find("Let it be known", 1, true), nil, "source does not generate sermons")
+ assert_eq(toastSrc:find("found worthy", 1, true), nil, "source does not generate knighting oratory")
++assert_true(toastSrc:find("MORPHEUS", 1, true) ~= nil, "Proclaim headlines try stock Morpheus")
++assert_true(toastSrc:find("MORPHEUS.ttf", 1, true) ~= nil,
++  "headline path is FrameXML lowercase Morpheus")
++local toastSrcSansFace = toastSrc:gsub("Fonts\\\\MORPHEUS%.ttf", "")
++assert_eq(toastSrcSansFace:find(".ttf", 1, true), nil, "source does not load custom fonts")
++assert_eq(toastSrcSansFace:find(".TTF", 1, true), nil, "source does not load custom TTF")
++assert_eq(toastSrc:find("Media\\", 1, true), nil, "source does not require custom Media")
+ 
+ theaterReset()
+ assert_eq(COB.Toasts:Push({ kind = "system", text = "system still lives" }), true,
+   "system Push stays green after theater")
+ assert_eq(COB.Toasts:ShowingKind(), "system", "system kind still queues")
+ assert_eq(COB.Toasts.frame.text:GetText(), "system still lives", "system toast text is unchanged")
++assert_eq(COB.Toasts.frame.text._template, "GameFontNormal",
++  "system toast stays GameFont* — Morpheus is Proclaim headlines only")
+ COB.Toasts:ResetForTests()

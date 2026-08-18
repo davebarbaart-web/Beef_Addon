@@ -1,0 +1,142 @@
+diff --git a/addon/ChurchOfBeef/UI/FighterCard.lua b/addon/ChurchOfBeef/UI/FighterCard.lua
+--- a/addon/ChurchOfBeef/UI/FighterCard.lua
++++ b/addon/ChurchOfBeef/UI/FighterCard.lua
+@@ -3,8 +3,8 @@
+ 
+ -- Event Mode mute fighter card (Bible §10.6). Tale of the tape.
+ -- The card shows; the Pope tells. Hidden in Quiet / no pair.
+--- Stock QuestBG + WHITE8X8. Center-third, two facing plates.
+--- No live health. No sound. No generated flavor.
++-- Stock QuestBG + WHITE8X8. Left-third, two facing plates.
++-- Names try stock Morpheus. No live health. No sound. No generated flavor.
+ local FighterCard = {
+   MODE = "Event",
+ }
+@@ -15,6 +15,7 @@
+ local WHITE8X8 = "Interface\\Buttons\\WHITE8X8"
+ local PARCHMENT_TEXTURE = "Interface\\QuestFrame\\QuestBG"
+ local SEAL_TEXTURE = "Interface\\Buttons\\UI-EmptySlot-White"
++local NAME_FONT = "Fonts\\MORPHEUS.TTF"
+ 
+ local INK = { r = 0.95, g = 0.88, b = 0.70 }
+ local MUTED = { r = 0.55, g = 0.50, b = 0.42 }
+@@ -279,6 +280,20 @@
+   local fs = parent:CreateFontString(nil, "OVERLAY", template or "GameFontNormal")
+   if fs.SetJustifyH and justify then fs:SetJustifyH(justify) end
+   return fs
++end
++
++local function applyNameFont(fs)
++  if not fs then return end
++  local used = false
++  if fs.SetFont then
++    local ok, applied = pcall(fs.SetFont, fs, NAME_FONT, 16, "")
++    used = ok and applied and true or false
++  end
++  if not used and fs.SetFontObject then
++    local font = GameFontHighlight
++    if type(font) == "string" then font = _G[font] end
++    if font then pcall(fs.SetFontObject, fs, font) end
++  end
+ end
+ 
+ local function buildPlate(parent, justify)
+@@ -287,6 +302,7 @@
+   if plate.parchment.SetAllPoints then plate.parchment:SetAllPoints(plate) end
+   applyParchment(plate.parchment)
+   plate.name = makeLabel(plate, "GameFontHighlight", justify)
++  applyNameFont(plate.name)
+   plate.title = makeLabel(plate, "GameFontNormal", justify)
+   plate.level = makeLabel(plate, "GameFontNormal", justify)
+   plate.record = makeLabel(plate, "GameFontNormal", justify)
+@@ -301,7 +317,7 @@
+   widget:SetClampedToScreen(true)
+   if widget.EnableMouse then widget:EnableMouse(false) end
+   if widget.SetFrameStrata then widget:SetFrameStrata("DIALOG") end
+-  widget:SetPoint("CENTER", parent, "CENTER", 0, 0)
++  widget:SetPoint("LEFT", parent, "LEFT", 0, 0)
+   if widget.SetBackdrop then
+     widget:SetBackdrop({
+       bgFile = WHITE8X8,
+
+diff --git a/tests/test_fighter_card.lua b/tests/test_fighter_card.lua
+--- a/tests/test_fighter_card.lua
++++ b/tests/test_fighter_card.lua
+@@ -191,7 +191,9 @@
+ assert_eq(src:find("one apiece", 1, true), nil, "source has no apiece flavor")
+ assert_eq(src:find(".tga", 1, true), nil, "source does not load custom tga")
+ assert_eq(src:find(".blp", 1, true), nil, "source does not load custom blp")
+-assert_eq(src:find(".ttf", 1, true), nil, "source does not load custom fonts")
++assert_true(src:find("MORPHEUS", 1, true) ~= nil, "names try stock Morpheus")
++assert_eq(src:gsub("Fonts\\\\MORPHEUS%.TTF", ""):find(".ttf", 1, true), nil,
++  "source does not load custom fonts")
+ assert_eq(src:find("Media\\", 1, true), nil, "source does not require custom Media")
+ assert_eq(src:find("Toasts", 1, true), nil, "source does not drive Toasts")
+ assert_eq(src:find("SendChatMessage", 1, true), nil, "source does not send chat")
+@@ -205,7 +207,7 @@
+ assert_true(src:find("WHITE8X8", 1, true) ~= nil, "iron fill uses stock WHITE8X8")
+ 
+ --------------------------------------------------------------------------------
+--- Init: hidden, center-third, two plates. No per-frame script at rest.
++-- Init: hidden, left-third, two plates. No per-frame script at rest.
+ --------------------------------------------------------------------------------
+ reset()
+ local frame = FighterCard:Init()
+@@ -229,9 +231,26 @@
+ assert_eq(frame.plateB._type, "Frame", "plate B is a frame")
+ 
+ local point, relativeTo, relativePoint = frame:GetPoint(1)
+-assert_eq(point, "CENTER", "default anchor is the center")
++assert_eq(point, "LEFT", "default anchor is LEFT")
+ assert_eq(relativeTo, UIParent, "default relative is UIParent")
+-assert_eq(relativePoint, "CENTER", "default relative point is the center")
++assert_eq(relativePoint, "LEFT", "default relative point is LEFT")
++assert_eq(frame._clamped, true, "card stays clamped to screen")
++assert_eq(frame.plateA.name._template, "GameFontHighlight", "name fallback is GameFontHighlight")
++assert_eq(frame.plateB.name._template, "GameFontHighlight", "name B fallback is GameFontHighlight")
++assert_eq(frame.plateA.title._template, "GameFontNormal", "titles stay GameFont*")
++assert_eq(frame.plateB.title._template, "GameFontNormal", "title B stays GameFont*")
++assert_eq(frame.plateA.record._template, "GameFontNormal", "records stay GameFont*")
++assert_eq(frame.plateB.record._template, "GameFontNormal", "record B stays GameFont*")
++local nameFontA = frame.plateA.name.GetFont and select(1, frame.plateA.name:GetFont())
++if type(nameFontA) == "string" then
++  assert_true(string.find(nameFontA, "MORPHEUS", 1, true) ~= nil,
++    "SetFont reports stock Morpheus when the stub records it")
++end
++local nameFontB = frame.plateB.name.GetFont and select(1, frame.plateB.name:GetFont())
++if type(nameFontB) == "string" then
++  assert_true(string.find(nameFontB, "MORPHEUS", 1, true) ~= nil,
++    "name B reports stock Morpheus when the stub records it")
++end
+ 
+ local view0 = FighterCard:GetView()
+ assert_eq(view0.shown, false, "Quiet view is hidden")
+@@ -477,7 +496,7 @@
+ assert_eq(healthReads, 0, "the suite never scraped health")
+ 
+ --------------------------------------------------------------------------------
+--- Center-third when UIParent size is known. Not a full-screen toast.
++-- Left-third when UIParent size is known. Not a full-screen toast.
+ --------------------------------------------------------------------------------
+ UIParent:SetWidth(1024)
+ UIParent:SetHeight(768)
+@@ -485,10 +504,16 @@
+ FighterCard = COB.FighterCard
+ reset()
+ local budgeted = FighterCard:Init()
+-assert_eq(budgeted:GetWidth(), math.floor(1024 / 3), "known UIParent width is the center third")
+-assert_true(budgeted:GetWidth() < 1024, "width is not full-screen")
+-assert_true(budgeted:GetHeight() <= math.floor(768 / 3), "height stays inside the center third")
++assert_eq(budgeted:GetWidth(), math.floor(1024 / 3), "known UIParent width is the left third")
++assert_true(budgeted:GetWidth() < 1024, "width is not full-screen")
++assert_true(budgeted:GetHeight() <= math.floor(768 / 3), "height stays inside the left third")
+ assert_true(budgeted:GetHeight() <= 220, "height does not grow into a toast")
++local bp, brto, brp = budgeted:GetPoint(1)
++assert_eq(bp, "LEFT", "rebuilt default anchor is LEFT")
++assert_eq(brto, UIParent, "rebuilt relative is UIParent")
++assert_eq(brp, "LEFT", "rebuilt relative point is LEFT")
++assert_eq(budgeted._clamped, true, "rebuilt card stays clamped")
++assert_eq(budgeted.plateA.name._template, "GameFontHighlight", "rebuilt name fallback is GameFontHighlight")
+ assert_true(budgeted.plateA ~= nil, "rebuilt card still has plate A")
+ assert_true(budgeted.plateB ~= nil, "rebuilt card still has plate B")
+ assert_eq(findStatusBar(budgeted), nil, "rebuilt card still has no StatusBar")

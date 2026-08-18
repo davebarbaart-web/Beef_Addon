@@ -1,0 +1,265 @@
+diff --git a/addon/ChurchOfBeef/UI/FighterCard.lua b/addon/ChurchOfBeef/UI/FighterCard.lua
+--- a/addon/ChurchOfBeef/UI/FighterCard.lua
++++ b/addon/ChurchOfBeef/UI/FighterCard.lua
+@@ -5,7 +5,9 @@
+ -- The card shows; the Pope tells. Hidden in Quiet / no pair.
+ -- Stock QuestBG + WHITE8X8. Left-third, two facing plates.
+ -- Names try stock Morpheus. Honorifics are Pope text from Store human.
+--- Empty honorifics hide. No live health. No sound. No generated flavor.
++-- Empty honorifics hide. Defenses are a mute CountDefenses integer.
++-- Zero or a missing method hides the line. No live health. No sound.
++-- No generated flavor.
+ local FighterCard = {
+   MODE = "Event",
+ }
+@@ -127,6 +129,15 @@
+   return first
+ end
+ 
++local function defensesFrom(id)
++  if not (COB.Store and type(COB.Store.CountDefenses) == "function") then
++    return nil
++  end
++  local n = COB.Store:CountDefenses(id)
++  if type(n) ~= "number" or n < 1 then return nil end
++  return n
++end
++
+ local function livePair()
+   if not COB.Gora or not COB.Gora.GetSanctioned then return nil end
+   local pair = COB.Gora:GetSanctioned()
+@@ -164,6 +175,7 @@
+       level = nil,
+       title = nil,
+       honorific = nil,
++      defenses = nil,
+       wins = 0,
+       losses = 0,
+       nameColor = nil,
+@@ -177,6 +189,7 @@
+     level = ch.level,
+     title = churchTitle(id),
+     honorific = honorificFrom(ch),
++    defenses = defensesFrom(id),
+     wins = gora.wins or 0,
+     losses = gora.losses or 0,
+     nameColor = classColor(ch.class),
+@@ -210,11 +223,32 @@
+   tint(fs, MUTED)
+ end
+ 
++local function paintDefenses(plate, count)
++  if type(count) == "number" and count > 0 then
++    plate.defenses:SetText(tostring(count))
++    if plate.defenses.Show then plate.defenses:Show() end
++  else
++    plate.defenses:SetText("")
++    if plate.defenses.Hide then plate.defenses:Hide() end
++  end
++  tint(plate.defenses, MUTED)
++  local relative = (type(count) == "number" and count > 0) and plate.defenses or plate.record
++  if plate.honorific and plate.honorific.ClearAllPoints then
++    plate.honorific:ClearAllPoints()
++  end
++  if plate._justify == "RIGHT" then
++    plate.honorific:SetPoint("TOPRIGHT", relative, "BOTTOMRIGHT", 0, -4)
++  else
++    plate.honorific:SetPoint("TOPLEFT", relative, "BOTTOMLEFT", 0, -4)
++  end
++end
++
+ local function paintFighter(plate, fighter)
+   plate.name:SetText(fighter.name or "")
+   plate.level:SetText(levelText(fighter))
+   plate.title:SetText(fighter.title or "")
+   plate.record:SetText(recordText(fighter))
++  paintDefenses(plate, fighter.defenses)
+   paintHonorific(plate.honorific, fighter.honorific)
+   tint(plate.name, fighter.nameColor or INK)
+   tint(plate.level, MUTED)
+@@ -237,6 +271,10 @@
+   frame.plateB.honorific:SetText("")
+   if frame.plateA.honorific.Hide then frame.plateA.honorific:Hide() end
+   if frame.plateB.honorific.Hide then frame.plateB.honorific:Hide() end
++  frame.plateA.defenses:SetText("")
++  frame.plateB.defenses:SetText("")
++  if frame.plateA.defenses.Hide then frame.plateA.defenses:Hide() end
++  if frame.plateB.defenses.Hide then frame.plateB.defenses:Hide() end
+   frame.headToHead:SetText("")
+   if frame.headToHead.Hide then frame.headToHead:Hide() end
+   frame.stipulation:SetText("")
+@@ -327,6 +365,7 @@
+ 
+ local function buildPlate(parent, justify)
+   local plate = CreateFrame("Frame", nil, parent)
++  plate._justify = justify
+   plate.parchment = plate:CreateTexture(nil, "BACKGROUND")
+   if plate.parchment.SetAllPoints then plate.parchment:SetAllPoints(plate) end
+   applyParchment(plate.parchment)
+@@ -335,6 +374,8 @@
+   plate.title = makeLabel(plate, "GameFontNormal", justify)
+   plate.level = makeLabel(plate, "GameFontNormal", justify)
+   plate.record = makeLabel(plate, "GameFontNormal", justify)
++  plate.defenses = makeLabel(plate, "GameFontNormal", justify)
++  if plate.defenses.Hide then plate.defenses:Hide() end
+   plate.honorific = makeLabel(plate, "GameFontNormal", justify)
+   if plate.honorific.Hide then plate.honorific:Hide() end
+   return plate
+@@ -404,6 +445,8 @@
+   widget.plateB.level:SetPoint("TOPRIGHT", widget.plateB.title, "BOTTOMRIGHT", 0, -4)
+   widget.plateA.record:SetPoint("TOPLEFT", widget.plateA.level, "BOTTOMLEFT", 0, -4)
+   widget.plateB.record:SetPoint("TOPRIGHT", widget.plateB.level, "BOTTOMRIGHT", 0, -4)
++  widget.plateA.defenses:SetPoint("TOPLEFT", widget.plateA.record, "BOTTOMLEFT", 0, -4)
++  widget.plateB.defenses:SetPoint("TOPRIGHT", widget.plateB.record, "BOTTOMRIGHT", 0, -4)
+   widget.plateA.honorific:SetPoint("TOPLEFT", widget.plateA.record, "BOTTOMLEFT", 0, -4)
+   widget.plateB.honorific:SetPoint("TOPRIGHT", widget.plateB.record, "BOTTOMRIGHT", 0, -4)
+ 
+
+diff --git a/tests/test_fighter_card.lua b/tests/test_fighter_card.lua
+--- a/tests/test_fighter_card.lua
++++ b/tests/test_fighter_card.lua
+@@ -204,6 +204,7 @@
+ assert_eq(src:find("Squire", 1, true), nil, "source does not invent Squire")
+ assert_eq(src:find("Paladin", 1, true), nil, "source does not invent Paladin-as-title")
+ assert_eq(src:find("Duke of", 1, true), nil, "source does not invent Duke of")
++assert_eq(src:find("defenses of the realm", 1, true), nil, "source has no realm flavor")
+ assert_true(src:find("QuestBG", 1, true) ~= nil, "parchment uses stock QuestBG")
+ assert_true(src:find("WHITE8X8", 1, true) ~= nil, "iron fill uses stock WHITE8X8")
+ 
+@@ -248,6 +249,12 @@
+ assert_eq(frame.plateB.honorific._template, "GameFontNormal", "honorific B stays GameFont*")
+ assert_eq(frame.plateA.honorific:IsShown(), false, "honorific starts hidden")
+ assert_eq(frame.plateB.honorific:IsShown(), false, "honorific B starts hidden")
++assert_true(frame.plateA.defenses ~= nil, "defenses line exists on plate A")
++assert_true(frame.plateB.defenses ~= nil, "defenses line exists on plate B")
++assert_eq(frame.plateA.defenses._template, "GameFontNormal", "defenses stay GameFont*")
++assert_eq(frame.plateB.defenses._template, "GameFontNormal", "defenses B stay GameFont*")
++assert_eq(frame.plateA.defenses:IsShown(), false, "defenses start hidden")
++assert_eq(frame.plateB.defenses:IsShown(), false, "defenses B start hidden")
+ local nameFontA = frame.plateA.name.GetFont and select(1, frame.plateA.name:GetFont())
+ if type(nameFontA) == "string" then
+   assert_true(string.find(nameFontA, "MORPHEUS", 1, true) ~= nil,
+@@ -330,6 +337,9 @@
+ assert_eq(frame.plateA.honorific:IsShown(), false, "no honorifics → widget hidden")
+ assert_eq(frame.plateB.honorific:IsShown(), false, "other plate hides without honorifics")
+ assert_eq(frame.plateA.honorific:GetText(), "", "empty honorific paints empty")
++assert_eq(frame.plateA.defenses:IsShown(), false, "zero defenses hide")
++assert_eq(frame.plateB.defenses:IsShown(), false, "zero defenses hide on the other plate")
++assert_eq(frame.plateA.defenses:GetText(), "", "zero defenses paint empty")
+ assert_eq(findStatusBar(frame), nil, "shown card still has no StatusBar")
+ assert_eq(sounds, 0, "showing the card plays no sound")
+ assert_eq(healthReads, 0, "showing the card does not read live health")
+@@ -357,6 +367,7 @@
+ assert_eq(sameRgb(frame.plateA.title._cobColor, warrior), false, "title A is not class-colored")
+ assert_eq(sameRgb(frame.plateA.record._cobColor, warrior), false, "record A is not class-colored")
+ assert_eq(sameRgb(frame.plateA.honorific._cobColor, warrior), false, "honorific A is not class-colored")
++assert_eq(sameRgb(frame.plateA.defenses._cobColor, warrior), false, "defenses A is not class-colored")
+ assert_eq(sameRgb(frame.plateB.level._cobColor, mage), false, "level B is not class-colored")
+ assert_eq(sameRgb(frame.plateB.title._cobColor, mage), false, "title B is not class-colored")
+ assert_eq(sameRgb(frame.plateB.record._cobColor, mage), false, "record B is not class-colored")
+@@ -485,6 +496,81 @@
+ assert_eq(frame.plateB.honorific:IsShown(), false, "unseeded rematch honorific stays hidden")
+ 
+ --------------------------------------------------------------------------------
++-- Defenses: mute integer from Store:CountDefenses. Zero / missing method hides.
++--------------------------------------------------------------------------------
++reset()
++Runtime:StartEvent()
++local lordChar, challenger = twoChars()
++local humanLord = rankBoth(lordChar, challenger, 4, 1)
++assert_true(Gora:Sanction(lordChar.id, challenger.id) ~= nil, "Lord pair can be sanctioned")
++assert_true(Gora:DeclareVictor(lordChar.id) ~= nil, "post-elevation win is recorded")
++local savedCountDefenses = Store.CountDefenses
++if type(Store.CountDefenses) ~= "function" then
++  Store.CountDefenses = function(_, id)
++    if id == lordChar.id then return 1 end
++    return 0
++  end
++else
++  assert_eq(Store:CountDefenses(lordChar.id), 1, "sitting Lord post-elevation win is one defense")
++  assert_eq(Store:CountDefenses(challenger.id), 0, "Fresh Beef has no defenses")
++end
++assert_eq(Store:GetCharacter(lordChar.id).gora.defenses, nil, "card does not write gora.defenses")
++local lordRematch = Gora:Sanction(lordChar.id, challenger.id)
++assert_true(lordRematch ~= nil, "Lord rematch may be sanctioned")
++assert_eq(FighterCard:Show(), true, "Lord rematch Show is true")
++view = FighterCard:GetView()
++assert_eq(view.fighterA.title, "Beef Lord", "elevated fighter keeps the Lord title")
++assert_eq(view.fighterA.defenses, 1, "plate view carries the CountDefenses integer")
++assert_eq(view.fighterB.defenses, nil, "zero CountDefenses stays omitted")
++assert_eq(view.defenses, nil, "view does not invent a top-level defenses field")
++assert_eq(view.health, nil, "defenses paint does not invent health")
++assert_eq(frame.plateA.defenses:IsShown(), true, "nonzero defenses show")
++assert_eq(frame.plateA.defenses:GetText(), "1", "defenses is a mute integer")
++assert_eq(frame.plateB.defenses:IsShown(), false, "zero defenses hide on the other plate")
++assert_eq(frame.plateB.defenses:GetText(), "", "zero defenses paint empty")
++assert_eq(frame.plateA.record:GetText(), "1-0", "1-0 pin stays with defenses")
++assert_eq(frame.plateB.record:GetText(), "0-1", "loser record stays 0-1 with defenses")
++assert_eq(frame.headToHead:GetText(), "1-0", "H2H 1-0 pin stays with defenses")
++assert_eq(frame.headToHead:IsShown(), true, "H2H still shows after defenses paint")
++assert_eq(string.find(frame.plateA.defenses:GetText() or "", "realm", 1, true), nil,
++  "defenses line is not realm flavor")
++assert_eq(string.find(frame.plateA.defenses:GetText() or "", "defense", 1, true), nil,
++  "defenses line has no copy")
++assert_eq(sameRgb(frame.plateA.defenses._cobColor, RAID_CLASS_COLORS.WARRIOR), false,
++  "defenses is not class-colored")
++
++Store:AddHonorific(humanLord.id, "Defender of the Faith")
++view = FighterCard:Refresh()
++assert_eq(view.fighterA.honorific, "Defender of the Faith", "honorific stays with defenses")
++assert_eq(frame.plateA.honorific:IsShown(), true, "honorific still shown with defenses")
++assert_eq(frame.plateA.honorific:GetText(), "Defender of the Faith", "honorific text unchanged")
++assert_eq(frame.plateA.defenses:GetText(), "1", "defenses stay while honorific paints")
++assert_eq(frame.plateA.record:GetText(), "1-0", "1-0 stays with honorific and defenses")
++assert_eq(frame.headToHead:GetText(), "1-0", "H2H 1-0 stays with honorific and defenses")
++
++Store.CountDefenses = function(_, id)
++  if id == lordChar.id then return 2 end
++  return 0
++end
++view = FighterCard:Refresh()
++assert_eq(view.fighterA.defenses, 2, "card paints whatever CountDefenses returns")
++assert_eq(frame.plateA.defenses:GetText(), "2", "stub integer replaces the derived one")
++assert_eq(frame.plateA.honorific:IsShown(), true, "honorific stays when the integer changes")
++assert_eq(frame.plateA.record:GetText(), "1-0", "stubbing CountDefenses does not change W/L")
++assert_eq(frame.headToHead:GetText(), "1-0", "H2H 1-0 stays when CountDefenses is stubbed")
++
++Store.CountDefenses = nil
++view = FighterCard:Refresh()
++assert_eq(view.fighterA.defenses, nil, "missing CountDefenses omits the field")
++assert_eq(frame.plateA.defenses:IsShown(), false, "missing CountDefenses hides the line")
++assert_eq(frame.plateA.defenses:GetText(), "", "missing CountDefenses paints empty")
++assert_eq(frame.plateA.honorific:IsShown(), true, "honorific stays when defenses hide")
++assert_eq(frame.plateA.record:GetText(), "1-0", "1-0 stays when CountDefenses is missing")
++assert_eq(frame.headToHead:GetText(), "1-0", "H2H 1-0 stays when CountDefenses is missing")
++
++Store.CountDefenses = savedCountDefenses
++
++--------------------------------------------------------------------------------
+ -- Missing class colors and unknown class still paint names. Level omitted if absent.
+ --------------------------------------------------------------------------------
+ reset()
+@@ -520,11 +606,13 @@
+ view.shown = false
+ view.stipulation = "invented"
+ view.fighterA.honorific = "Duke of the Fountain"
++view.fighterA.defenses = 99
+ local again = FighterCard:GetView()
+ assert_eq(again.fighterA.name, "Chuckroast", "mutating GetView does not change the live view")
+ assert_eq(again.shown, true, "mutating GetView does not hide the card")
+ assert_eq(again.stipulation, nil, "mutating GetView does not invent a stipulation")
+ assert_eq(again.fighterA.honorific, nil, "mutating GetView does not invent an honorific")
++assert_eq(again.fighterA.defenses, nil, "mutating GetView does not invent defenses")
+ assert_eq(Store:GetCharacter(a.id).name, "Chuckroast", "card does not write the character")
+ assert_eq(Gora:GetSanctioned().fighterA, a.id, "card does not clear the live pair")
+ 
+@@ -582,6 +670,9 @@
+ assert_true(budgeted.plateA.honorific ~= nil, "rebuilt card still has honorific A")
+ assert_true(budgeted.plateB.honorific ~= nil, "rebuilt card still has honorific B")
+ assert_eq(budgeted.plateA.honorific:IsShown(), false, "rebuilt Quiet hides honorific")
++assert_true(budgeted.plateA.defenses ~= nil, "rebuilt card still has defenses A")
++assert_true(budgeted.plateB.defenses ~= nil, "rebuilt card still has defenses B")
++assert_eq(budgeted.plateA.defenses:IsShown(), false, "rebuilt Quiet hides defenses")
+ assert_eq(findStatusBar(budgeted), nil, "rebuilt card still has no StatusBar")
+ assert_eq(budgeted:IsShown(), false, "rebuild in Quiet still hides the card")
+ local copy = FighterCard:GetView()

@@ -1,0 +1,157 @@
+# B27-C — Quiet shell Init restores a missing OnHide (implementation diff)
+
+Lane-only unified diff of the exclusive implementation files vs the pre-lane working tree.
+
+--- a/addon/ChurchOfBeef/UI/MainFrame.lua
++++ b/addon/ChurchOfBeef/UI/MainFrame.lua
+@@ -476,13 +476,29 @@
+   UISpecialFrames[#UISpecialFrames + 1] = name
+ end
+ 
++-- ESC Hide via UISpecialFrames bypasses UI:Hide. Restore a missing OnHide;
++-- never replace an existing script. No panel whoosh.
++local function wireShellOnHide(frame)
++  if not frame then return end
++  if type(frame.SetScript) ~= "function" then return end
++  local existing = type(frame.GetScript) == "function" and frame:GetScript("OnHide")
++  if existing then return end
++  frame:SetScript("OnHide", function()
++    -- Escape via UISpecialFrames bypasses UI:Hide — never stay stuck sizing.
++    UI:_StopSizing()
++    local ui = uiDb()
++    if ui then ui.shown = false end
++  end)
++end
++
+ --------------------------------------------------------------------------------
+ -- Lifecycle
+ --------------------------------------------------------------------------------
+ 
+ function UI:Init()
+   if self.frame then
+     rememberSpecial(FRAME_NAME)
++    wireShellOnHide(self.frame)
+     return self.frame
+   end
+   if type(CreateFrame) ~= "function" then return nil end
+@@ -516,13 +532,7 @@
+     end
+     UI:OnStatusChanged()
+     UI:RefreshLadder()
+   end)
+-  frame:SetScript("OnHide", function()
+-    -- Escape via UISpecialFrames bypasses UI:Hide — never stay stuck sizing.
+-    UI:_StopSizing()
+-    local ui = uiDb()
+-    if ui then ui.shown = false end
+-  end)
++  wireShellOnHide(frame)
+ 
+   rememberSpecial(FRAME_NAME)
+ 
+--- a/tests/test_ui.lua
++++ b/tests/test_ui.lua
+@@ -5,8 +5,9 @@
+ -- B20-D small-toast OnHide pump, B21-C interrupt Hide idle,
+ -- B23-C Init early-return rememberSpecial,
+ -- B24-C Quiet-shell Init early-return rememberSpecial,
+--- and B26-B Init early-return restores a missing OnHide
++-- B26-B Init early-return restores a missing OnHide,
++-- and B27-C Quiet-shell Init restores a missing OnHide
+ -- live in runB12D() (Lua 5.1 200-local cap).
+ -- No tab registry. No Standing / Ladder / Officer IA. No promote / rite toast
+ -- kinds. Isolation stays under standalone.
+@@ -1111,20 +1112,47 @@
+   assert_eq(COB.Toasts.frame:IsShown(), false, "last restore Hide()s the small toast")
+ 
+-  -- B24-C: UI:Init early-return re-registers ChurchOfBeefFrame after a
+-  -- wiped UISpecialFrames. Do not rebuild. Do not re-wire OnShow /
+-  -- OnHide. First-create / rebuild uniqueness pins stay. Isolation
+-  -- wrap stays.
++  -- B24-C / B27-C: UI:Init early-return re-registers ChurchOfBeefFrame
++  -- after a wiped UISpecialFrames and may call wireShellOnHide when
++  -- OnHide is missing. SetScript lives in the helper. Do not rebuild.
++  -- Do not re-wire OnShow. First-create / rebuild uniqueness pins stay.
++  -- Isolation wrap stays.
+   local shellEarly = shellSrc:match("function UI:Init%(%)%s*\n%s*if self%.frame then(.-)return self%.frame")
+   assert_true(type(shellEarly) == "string" and shellEarly ~= "",
+     "UI:Init early-return body is readable")
+   assert_true(shellEarly:find("rememberSpecial(FRAME_NAME)", 1, true) ~= nil,
+     "early-return rememberSpecial FRAME_NAME")
++  assert_true(shellEarly:find("wireShellOnHide", 1, true) ~= nil,
++    "early-return wireShellOnHide")
+   assert_eq(shellEarly:find("SetScript", 1, true), nil,
+-    "early-return does not SetScript")
++    "early-return does not SetScript inline")
+   assert_eq(shellEarly:find("OnShow", 1, true), nil,
+     "early-return does not re-wire OnShow")
+-  assert_eq(shellEarly:find("OnHide", 1, true), nil,
+-    "early-return does not re-wire OnHide")
+   assert_eq(shellEarly:find("buildFrame", 1, true), nil,
+     "early-return does not rebuild")
+   assert_eq(shellEarly:find("PlaySound", 1, true), nil,
+     "early-return does not PlaySound")
+   assert_eq(shellSrc:find("PlaySound", 1, true), nil,
+     "Quiet shell still has no PlaySound")
+   assert_true(shellSrc:find("rememberSpecial(FRAME_NAME)", 1, true) ~= nil,
+     "B15-C uniqueness: Init still rememberSpecial FRAME_NAME")
++  assert_true(shellSrc:find("local function wireShellOnHide", 1, true) ~= nil,
++    "source has wireShellOnHide")
++  local wireShell = shellSrc:match("local function wireShellOnHide%(frame%)(.-)\nfunction UI:Init")
++  assert_true(type(wireShell) == "string" and wireShell ~= "",
++    "wireShellOnHide body is readable")
++  if type(wireShell) ~= "string" then wireShell = "" end
++  assert_true(wireShell:find("SetScript", 1, true) ~= nil,
++    "wireShellOnHide holds SetScript")
++  assert_true(wireShell:find("_StopSizing", 1, true) ~= nil,
++    "wireShellOnHide calls _StopSizing")
++  assert_true(wireShell:find("shown = false", 1, true) ~= nil,
++    "wireShellOnHide persists shown = false")
++  assert_eq(wireShell:find("OnShow", 1, true), nil,
++    "wireShellOnHide does not touch OnShow")
++  assert_eq(wireShell:find("PlaySound", 1, true), nil,
++    "wireShellOnHide does not PlaySound")
++  assert_eq(wireShell:find("buildFrame", 1, true), nil,
++    "wireShellOnHide does not rebuild")
+ 
+   COB.UI:Init()
+   assert_eq(countSpecial("ChurchOfBeefFrame"), 1,
+@@ -1161,6 +1191,36 @@
+     "third Init after wipe does not duplicate ChurchOfBeefFrame")
+   UISpecialFrames = savedSpecial
+ 
++  -- B27-C: nil the shell OnHide, second Init restores. Third Init with
++  -- the script already set keeps identity. Do not rebuild. Do not
++  -- re-wire OnShow. Wipe uniqueness / B24-C rememberSpecial / B26-B
++  -- toast pins stay. Isolation wrap stays.
++  assert_true(COB.UI.frame ~= nil, "Quiet shell frame still exists")
++  COB.UI.frame:SetScript("OnHide", nil)
++  assert_eq(COB.UI.frame:GetScript("OnHide"), nil,
++    "OnHide niled before second Init")
++  local cuesShellRestore = #played
++  assert_eq(COB.UI:Init(), existingShell,
++    "niled OnHide Init returns the existing frame")
++  local restoredShellOnHide = COB.UI.frame:GetScript("OnHide")
++  assert_true(restoredShellOnHide ~= nil, "second Init restores missing OnHide")
++  assert_eq(COB.UI.frame, existingShell, "restore Init does not rebuild")
++  assert_eq(COB.UI.frame:GetScript("OnShow"), shellOnShow,
++    "restore Init does not re-wire OnShow")
++  assert_eq(#played, cuesShellRestore, "restore Init plays no sound")
++  assert_eq(countSpecial("ChurchOfBeefFrame"), 1,
++    "restore Init does not duplicate ChurchOfBeefFrame")
++  COB.UI:Init()
++  assert_eq(COB.UI.frame:GetScript("OnHide"), restoredShellOnHide,
++    "third Init does not replace OnHide")
++  assert_eq(COB.UI.frame, existingShell, "third Init does not rebuild")
++
++  ChurchOfBeefDB.ui.shown = true
++  COB.UI._sizing = true
++  COB.UI.frame:Show()
++  COB.UI.frame:Hide()
++  assert_eq(ChurchOfBeefDB.ui.shown, false,
++    "restored OnHide persists shown = false")
++  assert_eq(COB.UI._sizing, false, "restored OnHide calls _StopSizing")
++
+   if standalone then
+     assert_eq(COB.Console, nil, "isolation still does not load Console")
+     assert_eq(COB.Hud, nil, "isolation still does not load Hud")

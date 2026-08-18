@@ -1,0 +1,416 @@
+diff --git a/addon/ChurchOfBeef/UI/Console.lua b/addon/ChurchOfBeef/UI/Console.lua
+--- a/addon/ChurchOfBeef/UI/Console.lua
++++ b/addon/ChurchOfBeef/UI/Console.lua
+@@ -9,11 +9,14 @@
+ -- Toggle / Show / Hide only. No slash. No GuildPromote. No Notebook persist.
+ -- Favor pane is Pope-desk readout (not congregation theater). Congregation
+ -- display is a per-event memory toggle. Proposed bout is a stock pairing slot
+--- above SANCTION plus a one-line STIPULATION box. Post Decree writes Core
+--- (Decree:Set); BeefNet broadcast is bootstrap glue. Law 6: Decree is Quiet;
+--- Sound is not played. Layout: two-column stock desk, large targets, scrollable
+--- Presence / Gora lists, click-to-select. Not parchment. Not collapsible tabs
+--- (desks stay glanceable without window switching).
++-- above SANCTION plus a one-line STIPULATION box. Named petitions append a
++-- mute numeric H2H when Store has history. Confession inbox is a stock list
++-- on this desk only — never theater. Dismiss is stock furniture, not a ritual
++-- plate. Post Decree writes Core (Decree:Set); BeefNet broadcast is bootstrap
++-- glue. Law 6: Decree is Quiet; Sound is not played. Layout: two-column stock
++-- desk, large targets, scrollable Presence / Gora / Confession lists,
++-- click-to-select. Not parchment. Not collapsible tabs (desks stay glanceable
++-- without window switching).
+ local Console = {
+   MODE = "event",
+ }
+@@ -223,15 +226,61 @@
+   return line
+ end
+ 
++local function h2hScore(characterId, opponentId)
++  if not isId(characterId) or not isId(opponentId) then return nil end
++  if not COB.Store or type(COB.Store.GetCharacter) ~= "function" then return nil end
++  local ch = COB.Store:GetCharacter(characterId)
++  if type(ch) ~= "table" or type(ch.gora) ~= "table" then return nil end
++  local list = ch.gora.headToHeads
++  if type(list) ~= "table" then return nil end
++  for i = 1, #list do
++    local row = list[i]
++    if type(row) == "table" and row.opponentId == opponentId then
++      local wins = row.wins
++      local losses = row.losses
++      if type(wins) ~= "number" then wins = 0 end
++      if type(losses) ~= "number" then losses = 0 end
++      return tostring(wins) .. "-" .. tostring(losses)
++    end
++  end
++  return nil
++end
++
+ local function petitionLine(row)
+   local left = characterName(row.characterId) or tostring(row.characterId)
+   if row.namedOpponentId ~= nil then
+     local right = characterName(row.namedOpponentId) or tostring(row.namedOpponentId)
+-    return left .. "  names  " .. right
++    local line = left .. "  names  " .. right
++    local score = h2hScore(row.characterId, row.namedOpponentId)
++    if score then
++      line = line .. "  " .. score
++    end
++    return line
+   end
+   return left
+ end
+ 
++local function confessionLine(row)
++  local name = characterName(row.characterId)
++  if type(name) ~= "string" or name == "" then
++    if type(row.name) == "string" and row.name ~= "" then
++      name = row.name
++    elseif row.characterId ~= nil then
++      name = tostring(row.characterId)
++    else
++      name = ""
++    end
++  end
++  local text = row.text
++  if type(text) == "string" and text ~= "" then
++    if name ~= "" then
++      return name .. "  " .. text
++    end
++    return text
++  end
++  return name
++end
++
+ local function acquireRows(pool, parent, count, width)
+   pool = pool or {}
+   for i = 1, count do
+@@ -384,6 +433,13 @@
+   local lordBtn = ritual("ELEVATE TO LORD", function() Console:ElevateToLord() end)
+   lordBtn:SetParent(left)
+   lordBtn:SetPoint("TOPLEFT", left, "TOPLEFT", 8 + BTN_W + BTN_GAP, -202)
++  local confessionHead = header(left, "Confession")
++  confessionHead:SetPoint("TOPLEFT", left, "TOPLEFT", 10, -238)
++  local confessionScroll, confessionChild, confessionList = scrollList(
++    left, FRAME_NAME .. "ConfessionScroll", COL_W - 28, 70)
++  confessionScroll:SetPoint("TOPLEFT", left, "TOPLEFT", 8, -256)
++  frame.ConfessionList = confessionList
++  frame.ConfessionChild = confessionChild
+ 
+   local right = panel(content)
+   right:SetPoint("TOPLEFT", content, "TOPLEFT", COL_W + COL_GAP, -y)
+@@ -426,9 +482,9 @@
+   local sanctionBtn = ritual("SANCTION BEEF GORA", function() Console:Sanction() end)
+   sanctionBtn:SetParent(right)
+   sanctionBtn:SetPoint("TOPLEFT", right, "TOPLEFT", 8, -GORA_VERB_Y)
+-  local dismissBtn = ritual("Dismiss", function() Console:Dismiss() end)
+-  dismissBtn:SetParent(right)
++  local dismissBtn = stockButton(right, "Dismiss", function() Console:Dismiss() end)
+   dismissBtn:SetPoint("TOPLEFT", right, "TOPLEFT", 8 + BTN_W + BTN_GAP, -GORA_VERB_Y)
++  frame.Dismiss = dismissBtn
+   local victorBtn = ritual("DECLARE VICTOR", function() Console:DeclareVictor() end)
+   victorBtn:SetParent(right)
+   victorBtn:SetPoint("TOPLEFT", right, "TOPLEFT", 8, -GORA_VERB_Y - BTN_H - BTN_GAP)
+@@ -525,9 +581,7 @@
+   if not frame.PetitionsList then return end
+   local lines = {}
+   for i = 1, #petitions do
+-    local row = petitions[i]
+-    lines[#lines + 1] = tostring(row.characterId)
+-      .. (row.namedOpponentId ~= nil and ("  names  " .. tostring(row.namedOpponentId)) or "")
++    lines[#lines + 1] = petitionLine(petitions[i])
+   end
+   local body = table.concat(lines, "\n")
+   if body == "" then body = "No petitions." end
+@@ -642,6 +696,17 @@
+   frame.ProposedBout:SetText(bout.label or "")
+ end
+ 
++local function paintConfessions(frame, rows)
++  if not frame or not frame.ConfessionList then return end
++  local lines = {}
++  for i = 1, #rows do
++    lines[#lines + 1] = confessionLine(rows[i])
++  end
++  local body = table.concat(lines, "\n")
++  if body == "" then body = "No confessions." end
++  frame.ConfessionList:SetText(body)
++end
++
+ --------------------------------------------------------------------------------
+ -- Lifecycle
+ --------------------------------------------------------------------------------
+@@ -663,6 +728,7 @@
+   paintSelection(self.frame, presence)
+   paintFavor(self.frame)
+   paintProposedBout(self.frame)
++  paintConfessions(self.frame, self:GetConfessions())
+   applyGate(self.frame)
+ end
+ 
+@@ -769,6 +835,27 @@
+ function Console:GetPetitions()
+   if not COB.Gora or not COB.Gora.GetPetitions then return {} end
+   return COB.Gora:GetPetitions(presentCharacterIds())
++end
++
++function Console:GetConfessions()
++  local Confession = COB.Confession
++  if type(Confession) ~= "table" or type(Confession.GetQueue) ~= "function" then
++    return {}
++  end
++  local queue = Confession:GetQueue()
++  if type(queue) ~= "table" then return {} end
++  local out = {}
++  for i = 1, #queue do
++    local row = queue[i]
++    if type(row) == "table" then
++      local copy = {}
++      for k, v in pairs(row) do
++        copy[k] = v
++      end
++      out[#out + 1] = copy
++    end
++  end
++  return out
+ end
+ 
+ function Console:SelectHuman(humanId)
+
+diff --git a/tests/test_console.lua b/tests/test_console.lua
+--- a/tests/test_console.lua
++++ b/tests/test_console.lua
+@@ -1,12 +1,13 @@
+ -- Director Console stock desks (Phase 4 Lane E + Phase 6 Lane I + Wire W-E +
+--- Vestments B3-D proposed bout / stipulation).
+--- Isolated: wow_ui_stub + Common + Ranks + Runtime + Store + Gora + Knighting +
+--- Sender + Decree + Console. Toggle / Show / Hide only. Ritual verbs call
+--- signed Core only when Sender:IsRegisteredPope(local) is true — always false
+--- today; this suite does not stub a Pope list. Favor pane and congregation
+--- toggle are Pope-desk chrome (memory only). Post Decree is Decree:Set; this
+--- file does not call Net. Sound / Hud / Decree UI are stubs when needed.
+--- No TOC / bootstrap / run.lua / MainFrame / slash.
++-- Vestments B3-D proposed bout / stipulation + B4-D petition H2H / confession
++-- inbox / stock Dismiss). Isolated: wow_ui_stub + Common + Ranks + Runtime +
++-- Store + Gora + Knighting + Sender + Decree + Console. Confession is stubbed
++-- when painted; this file does not load Confession.lua. Toggle / Show / Hide
++-- only. Ritual verbs call signed Core only when Sender:IsRegisteredPope(local)
++-- is true — always false today; this suite does not stub a Pope list. Favor
++-- pane and congregation toggle are Pope-desk chrome (memory only). Post Decree
++-- is Decree:Set; this file does not call Net. Sound / Hud / Decree UI are
++-- stubs when needed. No TOC / bootstrap / run.lua / MainFrame / slash.
+ ChurchOfBeef = ChurchOfBeef or {}
+ ChurchOfBeef._IN_TEST = true
+ 
+@@ -158,6 +159,7 @@
+   assert_eq(COB.Toasts, nil, "isolated suite does not load Toasts")
+   assert_eq(COB.Codec, nil, "isolated suite does not load Codec")
+   assert_eq(COB.Snapshot, nil, "isolated suite does not load Snapshot")
++  assert_eq(COB.Confession, nil, "isolated suite does not load Confession")
+ end
+ 
+ assert_eq(type(Console.Init), "function", "Init exists")
+@@ -186,6 +188,8 @@
+ assert_eq(type(Console.GetCongregationFavorVisible), "function", "congregation favor toggle is readable")
+ assert_eq(type(Console.SetCongregationFavorVisible), "function", "congregation favor toggle is settable")
+ assert_eq(type(Console.GetProposedBout), "function", "GetProposedBout is a console readout")
++assert_eq(type(Console.GetConfessions), "function", "GetConfessions is a console readout")
++assert_eq(#Console:GetConfessions(), 0, "GetConfessions is empty without a Confession module")
+ assert_eq(Console.WinnerPicker, nil, "no winner picker")
+ assert_eq(Console.PickWinner, nil, "no winner picker")
+ 
+@@ -958,7 +962,195 @@
+ COB.Net = savedNetBout
+ Sender.IsRegisteredPope = savedPred
+ assert_eq(COB.Popes, nil, "still no Pope list after the proposed bout")
++
++--------------------------------------------------------------------------------
++-- B4-D: mute petition H2H, confession inbox, stock Dismiss. No WHISPER ALL.
++--------------------------------------------------------------------------------
++reset()
++Console:Init()
++assert_eq(Console.SaveNote, nil, "SaveNote stays nil")
++assert_eq(Console.GetNotes, nil, "no notes table")
++assert_eq(findButton(frame, "WHISPER ALL"), nil, "no WHISPER ALL chrome")
++assert_eq(findButton(frame, "SUMMON THE FAITHFUL"), nil, "no SUMMON chrome")
++
++local srcFile = io.open("addon/ChurchOfBeef/UI/Console.lua", "r")
++assert_true(srcFile ~= nil, "Console.lua is readable")
++local src = srcFile:read("*a")
++srcFile:close()
++assert_eq(src:find("WHISPER ALL", 1, true), nil, "source must not contain WHISPER ALL")
++
++local dismissBtn = findButton(frame, "Dismiss")
++assert_true(dismissBtn ~= nil, "Dismiss button still exists")
++assert_eq(dismissBtn._template, "UIPanelButtonTemplate", "Dismiss uses UIPanelButtonTemplate")
++local dismissIsRitual = false
++for i = 1, #(frame.RitualButtons or {}) do
++  if frame.RitualButtons[i] == dismissBtn then dismissIsRitual = true end
++end
++assert_eq(dismissIsRitual, false, "Dismiss is furniture, not a ritual plate")
++Console:Refresh()
++assert_eq(dismissBtn:IsEnabled(), true, "Dismiss stays enabled when not the registered Pope")
++
++assert_true(findFont(frame, "Confession") ~= nil, "Confession inbox header")
++assert_true(frame.ConfessionList ~= nil, "confession inbox is a stock FontString")
++assert_eq(frame.ConfessionList._type, "FontString", "confession inbox is a FontString")
++assert_true(findButton(frame, "SANCTION BEEF GORA") ~= nil, "SANCTION stays")
++assert_true(findButton(frame, "Post Decree") ~= nil, "Post Decree stays")
++assert_true(findButton(frame, "FREE RULING") ~= nil, "FREE RULING stays")
++assert_true(findButton(frame, "MARK THIS MOMENT") ~= nil, "MARK THIS MOMENT stays")
++assert_true(frame.ProposedBout ~= nil, "proposed bout stays")
++assert_true(frame.FavorSplit ~= nil, "favor pane stays")
++
++local noModule = Console:GetConfessions()
++assert_eq(#noModule, 0, "GetConfessions is empty without a Confession module")
++noModule[1] = { text = "injected" }
++assert_eq(#Console:GetConfessions(), 0, "GetConfessions returns a copy when empty")
++COB.Confession = {}
++assert_eq(#Console:GetConfessions(), 0, "GetConfessions is empty when GetQueue is missing")
++COB.Confession = nil
++Console:Refresh()
++assert_true((frame.ConfessionList:GetText() or ""):find("No confessions", 1, true) ~= nil,
++  "empty inbox paints a stock empty line")
++
++a = Store:CreateCharacter({ name = "Chuckroast", class = "Warrior", level = 70 })
++b = Store:CreateCharacter({ name = "Tendermage", class = "Mage", level = 68 })
++local unnamed = Store:CreateCharacter({ name = "Brisket", class = "Rogue", level = 69 })
++Store:RecordGoraResult(a.id, {
++  opponentId = b.id,
++  ruling = "victor",
++  won = true,
++}, 2100)
++assert_eq(Store:GetCharacter(a.id).gora.headToHeads[1].wins, 1, "Store has petitioner H2H")
++assert_true(Runtime:StartEvent() ~= nil, "petition H2H needs a live event")
++Gora:Petition(a.id, b.id)
++Gora:Petition(unnamed.id)
++COB.Roster = {
++  ready = true,
++  members = {
++    chuckroast = { name = "Chuckroast", guildRankIndex = 4 },
++    tendermage = { name = "Tendermage", guildRankIndex = 5 },
++    brisket = { name = "Brisket", guildRankIndex = 6 },
++  },
++}
++local namedPets = Console:GetPetitions()
++assert_eq(#namedPets, 2, "named and unnamed petitions are present")
++Console:Refresh()
++
++local namedLine
++local unnamedLine
++walk(frame, function(child)
++  if child._type == "Button" and child.GetText then
++    local text = child:GetText() or ""
++    if text:find("Chuckroast", 1, true) and text:find("names", 1, true) then
++      namedLine = text
++    end
++    if text:find("Brisket", 1, true) and not text:find("names", 1, true) then
++      unnamedLine = text
++    end
++  end
++end)
++assert_true(namedLine ~= nil, "named petition paints a row")
++assert_true(namedLine:find("Chuckroast", 1, true) ~= nil, "named petition keeps the petitioner name")
++assert_true(namedLine:find("Tendermage", 1, true) ~= nil, "named petition keeps the opponent name")
++assert_true(namedLine:find("1-0", 1, true) ~= nil, "named petition appends mute numeric H2H")
++assert_eq(namedLine:find("meeting", 1, true), nil, "H2H line has no meeting prose")
++assert_eq(namedLine:find("demanded", 1, true), nil, "H2H line has no demanded prose")
++assert_eq(namedLine:find("odds", 1, true), nil, "H2H line has no odds prose")
++assert_true(unnamedLine ~= nil, "unnamed petition paints a row")
++assert_eq(unnamedLine:find("1-0", 1, true), nil, "unnamed petition is name only")
+ 
++Gora:Dismiss(a.id)
++Gora:Petition(unnamed.id, a.id)
++Console:Refresh()
++local noHistLine
++walk(frame, function(child)
++  if child._type == "Button" and child.GetText then
++    local text = child:GetText() or ""
++    if text:find("Brisket", 1, true) and text:find("names", 1, true) then
++      noHistLine = text
++    end
++  end
++end)
++assert_true(noHistLine ~= nil, "named petition without history still paints")
++assert_eq(noHistLine:find("1-0", 1, true), nil, "no H2H row means names only")
++
++local confessor = Store:CreateCharacter({ name = "Beefina", class = "Priest", level = 70 })
++local liveQueue = {
++  { characterId = confessor.id, text = "I ate the sacred brisket" },
++}
++COB.Confession = {
++  GetQueue = function()
++    return liveQueue
++  end,
++}
++local queued = Console:GetConfessions()
++assert_eq(#queued, 1, "GetConfessions returns the stubbed queue")
++assert_eq(queued[1].characterId, confessor.id, "confession copy keeps the character id")
++assert_eq(queued[1].text, "I ate the sacred brisket", "confession copy keeps the text")
++queued[1].text = "mutated"
++assert_eq(Console:GetConfessions()[1].text, "I ate the sacred brisket",
++  "mutating a confession copy does not rewrite the queue")
++assert_eq(liveQueue[1].text, "I ate the sacred brisket",
++  "mutating a confession copy does not rewrite the stub")
++
++local toastCalls = 0
++local hudCalls = 0
++local netCalls = 0
++local savedToasts = COB.Toasts
++local savedHudConf = COB.Hud
++local savedNetConf = COB.Net
++COB.Toasts = {
++  Show = function()
++    toastCalls = toastCalls + 1
++  end,
++}
++COB.Hud = {
++  Refresh = function()
++    hudCalls = hudCalls + 1
++  end,
++}
++COB.Net = {
++  SendState = function()
++    netCalls = netCalls + 1
++  end,
++  SendDecree = function()
++    netCalls = netCalls + 1
++  end,
++}
++local decreeBefore = Decree:Get()
++Console:Refresh()
++local inboxText = frame.ConfessionList:GetText() or ""
++assert_true(inboxText:find("Beefina", 1, true) ~= nil, "inbox paints the confessor name")
++assert_true(inboxText:find("I ate the sacred brisket", 1, true) ~= nil,
++  "inbox paints the confession text")
++assert_eq(toastCalls, 0, "Refresh does not send confession text to Toasts")
++assert_eq(hudCalls, 0, "Refresh does not send confession text to Hud")
++assert_eq(netCalls, 0, "Refresh does not send confession text to Net")
++assert_eq(Decree:Get(), decreeBefore, "Refresh does not write confession text to Decree")
++assert_eq((frame.DecreeLine:GetText() or ""):find("sacred brisket", 1, true), nil,
++  "confession text does not leak into the Decree line")
++
++savedPred = Sender.IsRegisteredPope
++Sender.IsRegisteredPope = function() return true end
++Gora:Petition(a.id)
++Console:SelectCharacter(a.id)
++assert_eq(Console:Dismiss(), true, "Dismiss still reaches Gora")
++Gora:Petition(a.id)
++Console:SelectCharacter(a.id)
++stub.fire(findButton(frame, "Dismiss"), "OnClick")
++local afterBtn = Console:GetPetitions()
++local stillPetitioner = false
++for i = 1, #afterBtn do
++  if afterBtn[i].characterId == a.id then stillPetitioner = true end
++end
++assert_eq(stillPetitioner, false, "the Dismiss button still reaches Gora")
++Sender.IsRegisteredPope = savedPred
++
++COB.Toasts = savedToasts
++COB.Hud = savedHudConf
++COB.Net = savedNetConf
++COB.Confession = nil
++assert_eq(COB.Popes, nil, "still no Pope list after the inbox")
++
+ --------------------------------------------------------------------------------
+ -- No queue store, no auto-advance, no guild write, no theater in this file
+ --------------------------------------------------------------------------------

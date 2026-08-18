@@ -1,0 +1,250 @@
+diff --git a/addon/ChurchOfBeef/UI/Decree.lua b/addon/ChurchOfBeef/UI/Decree.lua
+index a6ee863..ffde595 100644
+--- a/addon/ChurchOfBeef/UI/Decree.lua
++++ b/addon/ChurchOfBeef/UI/Decree.lua
+@@ -3,9 +3,12 @@ local COB = ChurchOfBeef
+ 
+ -- Quiet Mode parchment banner (Bible §14.1 / Law 6 / Law 10). The one Quiet
+ -- feature beyond minimap presence. Header is UI copy, not a stored field.
++-- The decree line is the visual headline; church name is small by the seal.
+ -- Shown once per login; thereafter reachable from the minimap. No sound.
+--- No scheduling suite, attendance reply, deputy, Console, HUD, or Records host.
++-- Stock Blizzard textures/fonts only. No scheduling suite, attendance reply,
++-- deputy, Console, HUD, or Records host.
+ local HEADER = "A GATHERING HAS BEEN DECREED"
++local CHURCH_NAME = "Church of Beef"
+ 
+ local DecreeBanner = {
+   MODE = "QUIET",
+@@ -14,9 +17,10 @@ local DecreeBanner = {
+ COB.DecreeBanner = DecreeBanner
+ 
+ local FRAME_NAME = "ChurchOfBeefDecree"
+-local TITLE_FONT = "Interface\\AddOns\\ChurchOfBeef\\Media\\DecreeTitle.ttf"
+-local SEAL_TEXTURE = "Interface\\AddOns\\ChurchOfBeef\\Media\\decree-seal"
+-local PARCHMENT_TEXTURE = "Interface\\AddOns\\ChurchOfBeef\\Media\\decree-parchment"
++local PARCHMENT_TEXTURE = "Interface\\QuestFrame\\QuestBG"
++local SEAL_TEXTURE = "Interface\\Buttons\\UI-Quickslot2"
++local LINE_FONT = "Fonts\\MORPHEUS.TTF"
++local BODY_FONT = "Fonts\\FRIZQT__.TTF"
+ local TOP_INSET = -72
+ 
+ local ANCHORS = {
+@@ -46,6 +50,12 @@ local function fill(tex, r, g, b, a)
+   end
+ end
+ 
++local function applyTexture(tex, path)
++  if not tex or not path or not tex.SetTexture then return false end
++  local ok = pcall(tex.SetTexture, tex, path)
++  return ok and true or false
++end
++
+ local function applyFont(fs, template, path, size)
+   if not fs then return end
+   local used = false
+@@ -137,8 +147,8 @@ local function buildFrame()
+   frame:EnableMouse(true)
+   frame:SetMovable(true)
+   frame:SetClampedToScreen(true)
+-  frame:SetWidth(520)
+-  frame:SetHeight(188)
++  frame:SetWidth(320)
++  frame:SetHeight(148)
+   frame:Hide()
+ 
+   local iron = frame:CreateTexture(nil, "BACKGROUND")
+@@ -147,58 +157,81 @@ local function buildFrame()
+   frame.Iron = iron
+ 
+   local gold = frame:CreateTexture(nil, "BORDER")
+-  gold:SetPoint("TOPLEFT", frame, "TOPLEFT", 3, -3)
+-  gold:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -3, 3)
++  gold:SetPoint("TOPLEFT", frame, "TOPLEFT", 2, -2)
++  gold:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -2, 2)
+   fill(gold, 0.72, 0.62, 0.38, 1)
+   frame.GoldEdge = gold
+ 
+   local parchment = frame:CreateTexture(nil, "ARTWORK")
+-  parchment:SetPoint("TOPLEFT", frame, "TOPLEFT", 8, -8)
+-  parchment:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -8, 8)
+-  if parchment.SetTexture then parchment:SetTexture(PARCHMENT_TEXTURE) end
+-  fill(parchment, 0.78, 0.70, 0.52, 0.94)
++  parchment:SetPoint("TOPLEFT", frame, "TOPLEFT", 5, -5)
++  parchment:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -5, 5)
++  if not applyTexture(parchment, PARCHMENT_TEXTURE) then
++    fill(parchment, 0.62, 0.52, 0.34, 0.94)
++  end
+   frame.Parchment = parchment
+ 
+-  local seal = frame:CreateTexture(nil, "OVERLAY")
+-  seal:SetTexture(SEAL_TEXTURE)
+-  seal:SetWidth(28)
+-  seal:SetHeight(28)
+-  seal:SetPoint("BOTTOM", frame, "BOTTOM", 0, 16)
+-  frame.Seal = seal
+-
+-  local header = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalHuge")
+-  header:SetPoint("TOP", frame, "TOP", 0, -28)
+-  applyFont(header, "GameFontNormalHuge", TITLE_FONT, 18)
++  local header = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
++  header:SetPoint("TOP", frame, "TOP", 0, -10)
++  header:SetPoint("LEFT", frame, "LEFT", 16, 0)
++  header:SetPoint("RIGHT", frame, "RIGHT", -32, 0)
++  applyFont(header, "GameFontNormalSmall", BODY_FONT, 10)
+   if header.SetTextColor then header:SetTextColor(0.45, 0.32, 0.12, 1) end
+   if header.SetJustifyH then header:SetJustifyH("CENTER") end
+   header:SetText(HEADER)
+   frame.HeaderText = header
+ 
+-  local line = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+-  line:SetPoint("TOP", header, "BOTTOM", 0, -16)
+-  line:SetPoint("LEFT", frame, "LEFT", 36, 0)
+-  line:SetPoint("RIGHT", frame, "RIGHT", -36, 0)
+-  applyFont(line, "GameFontNormalLarge")
++  local line = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalHuge")
++  line:SetPoint("TOP", header, "BOTTOM", 0, -4)
++  line:SetPoint("LEFT", frame, "LEFT", 16, 0)
++  line:SetPoint("RIGHT", frame, "RIGHT", -16, 0)
++  applyFont(line, "GameFontNormalHuge", LINE_FONT, 18)
+   if line.SetTextColor then line:SetTextColor(0.18, 0.12, 0.08, 1) end
+   if line.SetJustifyH then line:SetJustifyH("CENTER") end
+   line:SetText("")
+   frame.LineText = line
+ 
++  local rule = frame:CreateTexture(nil, "OVERLAY")
++  rule:SetHeight(1)
++  rule:SetPoint("TOPLEFT", line, "BOTTOMLEFT", 12, -5)
++  rule:SetPoint("TOPRIGHT", line, "BOTTOMRIGHT", -12, -5)
++  fill(rule, 0.72, 0.62, 0.38, 0.9)
++  frame.GoldRule = rule
++
+   local flavor = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+-  flavor:SetPoint("TOP", line, "BOTTOM", 0, -12)
+-  flavor:SetPoint("LEFT", frame, "LEFT", 36, 0)
+-  flavor:SetPoint("RIGHT", frame, "RIGHT", -36, 0)
+-  applyFont(flavor, "GameFontNormal")
++  flavor:SetPoint("TOP", rule, "BOTTOM", 0, -6)
++  flavor:SetPoint("LEFT", frame, "LEFT", 16, 0)
++  flavor:SetPoint("RIGHT", frame, "RIGHT", -16, 0)
++  applyFont(flavor, "GameFontNormal", BODY_FONT, 12)
+   if flavor.SetTextColor then flavor:SetTextColor(0.32, 0.24, 0.14, 1) end
+   if flavor.SetJustifyH then flavor:SetJustifyH("CENTER") end
+   flavor:SetText("")
+   flavor:Hide()
+   frame.FlavorText = flavor
+ 
++  local seal = frame:CreateTexture(nil, "OVERLAY")
++  seal:SetWidth(22)
++  seal:SetHeight(22)
++  seal:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 12, 10)
++  if not applyTexture(seal, SEAL_TEXTURE) then
++    fill(seal, 0.72, 0.62, 0.38, 1)
++  end
++  if seal.SetVertexColor then
++    pcall(seal.SetVertexColor, seal, 0.85, 0.72, 0.28, 1)
++  end
++  frame.Seal = seal
++
++  local church = frame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
++  church:SetPoint("LEFT", seal, "RIGHT", 4, 0)
++  applyFont(church, "GameFontHighlightSmall", BODY_FONT, 10)
++  if church.SetTextColor then church:SetTextColor(0.45, 0.32, 0.12, 1) end
++  if church.SetJustifyH then church:SetJustifyH("LEFT") end
++  church:SetText(CHURCH_NAME)
++  frame.ChurchName = church
++
+   local titleBar = CreateFrame("Frame", nil, frame)
+-  titleBar:SetPoint("TOPLEFT", frame, "TOPLEFT", 8, -4)
+-  titleBar:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -36, -4)
+-  titleBar:SetHeight(28)
++  titleBar:SetPoint("TOPLEFT", frame, "TOPLEFT", 6, -4)
++  titleBar:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -28, -4)
++  titleBar:SetHeight(22)
+   titleBar:EnableMouse(true)
+   titleBar:RegisterForDrag("LeftButton")
+   titleBar:SetScript("OnDragStart", function() frame:StartMoving() end)
+@@ -209,9 +242,9 @@ local function buildFrame()
+   frame.TitleBar = titleBar
+ 
+   local close = CreateFrame("Button", nil, frame)
+-  close:SetWidth(24)
+-  close:SetHeight(24)
+-  close:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -10, -10)
++  close:SetWidth(20)
++  close:SetHeight(20)
++  close:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -8, -8)
+   labelButton(close, "Close")
+   close:SetScript("OnClick", function() DecreeBanner:Hide() end)
+   frame.CloseButton = close
+diff --git a/tests/test_decree_ui.lua b/tests/test_decree_ui.lua
+index 28ffb75..6eb4944 100644
+--- a/tests/test_decree_ui.lua
++++ b/tests/test_decree_ui.lua
+@@ -94,6 +94,20 @@ local function tipHas(text)
+   return false
+ end
+ 
++local function pointRelativeTo(region, other)
++  if not region or type(region._points) ~= "table" then return false end
++  for i = 1, #region._points do
++    if region._points[i].relativeTo == other then return true end
++  end
++  return false
++end
++
++local function isSmallClerical(template)
++  return template == "GameFontHighlightSmall"
++      or template == "GameFontNormalSmall"
++      or template == "GameFontDisableSmall"
++end
++
+ --------------------------------------------------------------------------------
+ -- Isolated surface: stub + Common + Decree + Decree UI + Minimap.
+ --------------------------------------------------------------------------------
+@@ -167,6 +181,21 @@ assert_eq(src:find("COB.Toasts", 1, true), nil, "banner does not drive Toasts")
+ assert_eq(src:find("alreadySeen", 1, true), nil, "source does not persist already-seen")
+ assert_eq(src:find("decreeSeen", 1, true), nil, "source does not persist decreeSeen")
+ assert_eq(src:find("SLASH_", 1, true), nil, "source does not register a slash")
++assert_eq(src:find("✠", 1, true), nil, "source has no cross glyphs")
++assert_eq(src:find("DecreeTitle.ttf", 1, true), nil, "no missing DecreeTitle.ttf path")
++assert_eq(src:find("decree-seal", 1, true), nil, "no missing Media\\decree-seal path")
++assert_eq(src:find("decree-parchment", 1, true), nil, "no missing Media\\decree-parchment path")
++assert_eq(src:find("Media\\\\", 1, true), nil, "no Media\\ paths required to load")
++assert_eq(src:find("UI-PVP", 1, true), nil, "seal is not a PVP crest")
++assert_eq(src:find("PVP-Banner", 1, true), nil, "seal is not a PVP banner")
++assert_eq(src:find("Horde", 1, true), nil, "seal is not a Horde crest")
++assert_eq(src:find("Alliance", 1, true), nil, "seal is not an Alliance crest")
++assert_true(
++  src:find("QuestBG", 1, true) ~= nil or src:find("StationeryTest1", 1, true) ~= nil,
++  "parchment uses a stock QuestBG or Stationery texture"
++)
++assert_true(src:find("0.62, 0.52, 0.34", 1, true) ~= nil, "parchment fill is aged, not a printed card")
++assert_eq(src:find("0.78, 0.70, 0.52", 1, true), nil, "bright parchment fill is dropped")
+ 
+ local miniFile = io.open("addon/ChurchOfBeef/UI/Minimap.lua", "r")
+ assert_true(miniFile ~= nil, "UI/Minimap.lua is readable")
+@@ -203,6 +232,23 @@ assert_true(frame.HeaderText ~= nil, "header FontString exists")
+ assert_true(frame.LineText ~= nil, "line FontString exists")
+ assert_true(frame.FlavorText ~= nil, "flavor FontString exists")
+ assert_true(frame.HeaderText._template ~= nil, "header uses a GameFont* fallback template")
++assert_true(frame:GetWidth() >= 300 and frame:GetWidth() <= 340, "banner is quest-tracker wide")
++assert_true(frame:GetHeight() >= 130 and frame:GetHeight() <= 160, "banner is quest-tracker tall")
++assert_eq(frame.LineText._template, "GameFontNormalHuge", "line is the visual headline")
++assert_true(frame.HeaderText._template ~= "GameFontNormalHuge", "header is not the largest line")
++assert_true(isSmallClerical(frame.HeaderText._template), "header stays small clerical")
++local churchName = rawget(frame, "ChurchName")
++assert_true(churchName ~= nil, "church name sits on the parchment")
++if churchName then
++  assert_eq(churchName:GetText(), "Church of Beef", "church name is the institution, not a Pope")
++  assert_eq(churchName._template, "GameFontHighlightSmall", "church name is small by the seal")
++  assert_true(
++    pointRelativeTo(churchName, frame.Seal) or pointRelativeTo(frame.Seal, churchName),
++    "church name is anchored next to the seal"
++  )
++end
++assert_true(frame.Seal ~= nil, "seal exists")
++assert_true(rawget(frame, "GoldRule") ~= nil, "a gold rule dresses the parchment")
+ assert_eq(buttonFor("RSVP"), nil, "no RSVP chrome")
+ assert_eq(buttonFor("Attend"), nil, "no attendance chrome")
+ assert_eq(buttonFor("Calendar"), nil, "no calendar chrome")

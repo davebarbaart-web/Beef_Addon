@@ -6,7 +6,7 @@ local COB = ChurchOfBeef
 -- Local override is ChurchOfBeefDB.ui.popeOverrides (array of name strings)
 -- via /run — no settings panel. This file never reads SavedVariables.
 -- The Pope is not a rank. Do not invent a character name here.
-local LIST = {}
+local LIST = { "Thedave" }
 
 local function isListed(name)
   if not (COB.Names and COB.Names.Key) then

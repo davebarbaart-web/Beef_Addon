@@ -1,0 +1,209 @@
+# B41-B — RecordsBook Init remounts missing OnHide (implementation diff)
+
+Lane-only unified diff of the exclusive implementation files vs the pre-lane working tree.
+
+--- a/addon/ChurchOfBeef/UI/RecordsBook.lua
++++ b/addon/ChurchOfBeef/UI/RecordsBook.lua
+@@ -5,7 +5,8 @@
+ -- superlatives (Law 10 / §10.9 / §19.3). Not a sortable ladder. Toggle / Show /
+ -- Hide only. Hide remounts a missing OnHide before rememberSpecial
+ -- then frame:Hide(). Show remounts a missing OnHide, then paint /
+--- frame:Show(). OnHide remounts rememberSpecial so ESC still
++-- frame:Show(). Existing-frame Init remounts a missing OnHide, then
++-- rememberSpecial. OnHide remounts rememberSpecial so ESC still
+ -- re-lists. Do not reset pageIndex. The UI never records outcomes,
+ -- never narrates, and never tells jokes.
+ local RecordsBook = {
+@@ -852,6 +853,7 @@
+ 
+ function RecordsBook:Init()
+   if self.frame then
++    wireBookOnHide(self.frame)
+     rememberSpecial(FRAME_NAME)
+     return self.frame
+   end
+
+--- a/tests/test_records.lua
++++ b/tests/test_records.lua
+@@ -6,6 +6,7 @@
+ -- B31-D paint() re-applies TitleText PAGE_TITLE_FONT lives in runB31D() nested in runB25C().
+ -- B38-D Hide remounts missing OnHide lives in runB38D() nested in runB25C().
+ -- B40-B Show remounts missing OnHide lives in runB40B() nested in runB25C().
++-- B41-B Init remounts missing OnHide lives in runB41B() nested in runB25C().
+ -- No TOC / bootstrap / run.lua / MainFrame / Console / Hud / Store / Net edits. No slash.
+ ChurchOfBeef = ChurchOfBeef or {}
+ ChurchOfBeef._IN_TEST = true
+@@ -625,8 +626,8 @@
+       "B25-C Init early-return body stays readable")
+     assert_true(earlyInit:find("rememberSpecial(FRAME_NAME)", 1, true) ~= nil,
+       "B25-C early-return rememberSpecial FRAME_NAME stays")
+-    assert_eq(earlyInit:find("wireBookOnHide", 1, true), nil,
+-      "Init remount does not remount OnHide")
++    assert_true(earlyInit:find("wireBookOnHide", 1, true) ~= nil,
++      "Init remounts OnHide via wireBookOnHide")
+     assert_eq(earlyInit:find("buildFrame", 1, true), nil,
+       "B25-C early-return still does not rebuild")
+ 
+@@ -769,8 +770,8 @@
+       "B25-C Init early-return body stays readable")
+     assert_true(earlyInit:find("rememberSpecial(FRAME_NAME)", 1, true) ~= nil,
+       "B25-C early-return rememberSpecial FRAME_NAME stays")
+-    assert_eq(earlyInit:find("wireBookOnHide", 1, true), nil,
+-      "Init remount does not remount OnHide")
++    assert_true(earlyInit:find("wireBookOnHide", 1, true) ~= nil,
++      "Init remounts OnHide via wireBookOnHide")
+     assert_eq(earlyInit:find("buildFrame", 1, true), nil,
+       "B25-C early-return still does not rebuild")
+ 
+@@ -862,7 +863,151 @@
+     end
+   end
+   runB40B()
++
++  -- B41-B: existing-frame Init remounts a missing OnHide.
++  -- wireBookOnHide then rememberSpecial(FRAME_NAME). Never replace
++  -- an existing script. Wipe list, nil OnHide, Init: OnHide
++  -- restored, ChurchOfBeefRecordsBook re-listed once,
++  -- pageIndex unchanged, no sound. Third Init does not
++  -- replace OnHide. No OnShow re-wire. No rebuild.
++  -- Isolation wrap stays.
++  local function runB41B()
++    local earlyInit = src:match("function RecordsBook:Init%(%)%s*\n%s*if self%.frame then(.-)return self%.frame")
++    assert_true(type(earlyInit) == "string" and earlyInit ~= "",
++      "B41-B Init early-return body is readable")
++    local wireAt = earlyInit:find("wireBookOnHide", 1, true)
++    local remountAt = earlyInit:find("rememberSpecial(FRAME_NAME)", 1, true)
++    assert_true(wireAt ~= nil, "Init remounts OnHide via wireBookOnHide")
++    assert_true(remountAt ~= nil, "Init remount still rememberSpecial FRAME_NAME")
++    assert_true(type(wireAt) == "number" and type(remountAt) == "number" and wireAt < remountAt,
++      "Init remounts OnHide before rememberSpecial")
++    assert_eq(earlyInit:find("SetScript", 1, true), nil,
++      "Init does not SetScript inline")
++    assert_eq(earlyInit:find("OnShow", 1, true), nil,
++      "Init does not re-wire OnShow")
++    assert_eq(earlyInit:find("pageIndex", 1, true), nil,
++      "Init does not reset pageIndex")
++    assert_eq(earlyInit:find("buildFrame", 1, true), nil,
++      "Init remount does not rebuild")
++    assert_eq(earlyInit:find("CreateFrame", 1, true), nil,
++      "Init remount does not CreateFrame")
++    assert_eq(earlyInit:find("PlaySound", 1, true), nil,
++      "Init remount does not PlaySound")
++    assert_eq(earlyInit:find("IG_CHARACTER_INFO", 1, true), nil,
++      "Init remount has no IG_CHARACTER_INFO")
++    assert_eq(earlyInit:find("paint()", 1, true), nil,
++      "Init remount does not paint")
++    assert_eq(earlyInit:find(":Show()", 1, true), nil,
++      "Init remount does not Show")
++    assert_eq(earlyInit:find(":Hide()", 1, true), nil,
++      "Init remount does not Hide")
+ 
++    local showBody = src:match("function RecordsBook:Show%(%)(.-)function RecordsBook:Hide")
++    assert_true(type(showBody) == "string" and showBody ~= "",
++      "B40-B Show body stays readable")
++    assert_true(showBody:find("wireBookOnHide", 1, true) ~= nil,
++      "B40-B Show remount still wireBookOnHide")
++
++    local hideBody = src:match("function RecordsBook:Hide%(%)(.-)function RecordsBook:Toggle")
++    assert_true(type(hideBody) == "string" and hideBody ~= "",
++      "B38-D Hide body stays readable")
++    assert_true(hideBody:find("wireBookOnHide", 1, true) ~= nil,
++      "B38-D Hide remount still wireBookOnHide")
++    assert_true(hideBody:find("rememberSpecial(FRAME_NAME)", 1, true) ~= nil,
++      "B38-D Hide remount still rememberSpecial FRAME_NAME")
++
++    assert_true(src:find("local function wireBookOnHide", 1, true) ~= nil,
++      "wireBookOnHide helper stays")
++    assert_true(src:find("if existing then return", 1, true) ~= nil,
++      "wireBookOnHide still does not replace an existing OnHide")
++    assert_true(src:find("local function rememberSpecial", 1, true) ~= nil,
++      "rememberSpecial helper stays")
++    assert_true(src:find('FRAME_NAME = "ChurchOfBeefRecordsBook"', 1, true) ~= nil,
++      "FRAME_NAME stays ChurchOfBeefRecordsBook")
++    assert_true(src:find('PAGE_TITLE_FONT = "Fonts\\\\MORPHEUS.ttf"', 1, true) ~= nil,
++      "PAGE_TITLE_FONT stays Fonts\\MORPHEUS.ttf")
++    assert_true(src:find("Fonts\\\\MORPHEUS.ttf", 1, true) ~= nil,
++      "PAGE_TITLE_FONT stays FrameXML lowercase Morpheus")
++    assert_eq(src:find("MORPHEUS.TTF", 1, true), nil,
++      "page title path is still not uppercase TTF")
++    assert_eq(#Book:GetPages(), #BIBLE_TITLES, "PAGE_TITLES stay the nine Bible titles")
++    assert_eq(#Book:GetPages(), 9, "PAGE_TITLES stay 9")
++    assert_eq(src:find("PlaySound", 1, true), nil,
++      "source still does not play sound")
++    assert_eq(src:find("IG_CHARACTER_INFO", 1, true), nil,
++      "source still has no IG_CHARACTER_INFO")
++
++    reset()
++    Book:Show()
++    local existing = Book.frame
++    assert_true(existing ~= nil, "B41-B Show so the frame exists")
++    assert_eq(existing:GetName(), "ChurchOfBeefRecordsBook",
++      "B41-B frame name stays ChurchOfBeefRecordsBook")
++    local nextBtn = existing.NextButton
++    assert_true(nextBtn ~= nil, "Next leaf control exists")
++    stub.fire(nextBtn, "OnClick")
++    assert_eq(existing.PageTitle:GetText(), "Longest Streak",
++      "turned to second leaf before remount")
++    local savedInitList = UISpecialFrames
++    UISpecialFrames = {}
++    assert_eq(countSpecial("ChurchOfBeefRecordsBook"), 0,
++      "B41-B wipe clears ChurchOfBeefRecordsBook")
++    existing:SetScript("OnHide", nil)
++    assert_eq(existing:GetScript("OnHide"), nil, "OnHide niled before Init")
++    local cuesInit = sounds
++    local initCreates = 0
++    local savedInitCreate = CreateFrame
++    CreateFrame = function(...)
++      initCreates = initCreates + 1
++      return savedInitCreate(...)
++    end
++    local remounted = Book:Init()
++    CreateFrame = savedInitCreate
++    assert_eq(remounted, existing, "Init remount returns the existing frame")
++    local restored = existing:GetScript("OnHide")
++    assert_true(restored ~= nil, "Init remounts missing OnHide")
++    assert_eq(existing:IsShown(), true, "Init remount does not close the book")
++    assert_eq(countSpecial("ChurchOfBeefRecordsBook"), 1,
++      "ChurchOfBeefRecordsBook re-listed once")
++    assert_eq(initCreates, 0, "Init remount does not rebuild")
++    assert_eq(sounds, cuesInit, "Init remount plays no sound")
++    assert_eq(existing:GetName(), "ChurchOfBeefRecordsBook",
++      "Init remount keeps FRAME_NAME ChurchOfBeefRecordsBook")
++    assert_eq(Book.frame, existing, "Init remount keeps the same frame")
++    assert_eq(existing.PageTitle:GetText(), "Longest Streak",
++      "Init does not reset pageIndex")
++    assert_eq(existing:GetScript("OnShow"), nil,
++      "Init remount does not wire OnShow")
++
++    Book:Init()
++    assert_eq(existing:GetScript("OnHide"), restored,
++      "second Init does not replace OnHide")
++    assert_eq(existing.PageTitle:GetText(), "Longest Streak",
++      "second Init still does not reset pageIndex")
++    Book:Init()
++    assert_eq(existing:GetScript("OnHide"), restored,
++      "third Init does not replace OnHide")
++    assert_eq(countSpecial("ChurchOfBeefRecordsBook"), 1,
++      "third Init does not duplicate UISpecialFrames")
++    assert_eq(sounds, cuesInit, "third Init plays no sound")
++    assert_eq(Book.frame, existing, "third Init still same frame pointer")
++    assert_eq(existing:IsShown(), true, "third Init stays open")
++    assert_eq(existing.PageTitle:GetText(), "Longest Streak",
++      "third Init still does not reset pageIndex")
++    assert_eq(#Book:GetPages(), 9, "OnHide remount is not a tenth page")
++
++    UISpecialFrames = savedInitList
++
++    if standalone then
++      assert_eq(COB.Runtime, nil, "B41-B isolation still does not load Runtime")
++      assert_eq(COB.UI, nil, "B41-B isolation still does not load MainFrame")
++      assert_eq(COB.Toasts, nil, "B41-B isolation still does not load Toasts")
++      assert_eq(COB.Console, nil, "B41-B isolation still does not load Console")
++      assert_eq(COB.Hud, nil, "B41-B isolation still does not load Hud")
++    end
++  end
++  runB41B()
++
+   if standalone then
+     assert_eq(COB.Runtime, nil, "isolation still does not load Runtime")
+     assert_eq(COB.UI, nil, "isolation still does not load MainFrame")

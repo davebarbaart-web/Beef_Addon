@@ -1,0 +1,30 @@
+# B19-D — Decree line uses FrameXML Morpheus casing (implementation diff)
+
+Lane-only unified diff of the exclusive implementation files vs the pre-lane working tree.
+
+--- a/addon/ChurchOfBeef/UI/Decree.lua
++++ b/addon/ChurchOfBeef/UI/Decree.lua
+@@ -19,7 +19,7 @@
+ local FRAME_NAME = "ChurchOfBeefDecree"
+ local PARCHMENT_TEXTURE = "Interface\\QuestFrame\\QuestBG"
+ local SEAL_TEXTURE = "Interface\\Buttons\\UI-Quickslot2"
+-local LINE_FONT = "Fonts\\MORPHEUS.TTF"
++local LINE_FONT = "Fonts\\MORPHEUS.ttf"
+ local BODY_FONT = "Fonts\\FRIZQT__.TTF"
+ local TOP_INSET = -72
+
+--- a/tests/test_decree_ui.lua
++++ b/tests/test_decree_ui.lua
+@@ -196,6 +196,11 @@
+ )
+ assert_true(src:find("0.62, 0.52, 0.34", 1, true) ~= nil, "parchment fill is aged, not a printed card")
+ assert_eq(src:find("0.78, 0.70, 0.52", 1, true), nil, "bright parchment fill is dropped")
++assert_true(src:find("Fonts\\\\MORPHEUS.ttf", 1, true) ~= nil,
++  "decree line uses FrameXML lowercase Morpheus")
++assert_eq(src:find("MORPHEUS.TTF", 1, true), nil, "line path is not uppercase TTF")
++assert_eq(src:find("MORPHEUS_CYR", 1, true), nil, "source does not use GlueFonts MORPHEUS_CYR")
++assert_true(src:find("FRIZQT__.TTF", 1, true) ~= nil, "body font stays FRIZQT__.TTF")
++assert_true(src:find("SetFontObject", 1, true) ~= nil, "applyFont still falls back to GameFont")
+ 
+ local miniFile = io.open("addon/ChurchOfBeef/UI/Minimap.lua", "r")
+ assert_true(miniFile ~= nil, "UI/Minimap.lua is readable")

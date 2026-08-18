@@ -1,0 +1,84 @@
+# B25-B — Empty Decree Show still registers ESC then hides (implementation diff)
+
+Lane-only unified diff of the exclusive implementation files vs the pre-lane working tree.
+
+--- a/addon/ChurchOfBeef/UI/Decree.lua
++++ b/addon/ChurchOfBeef/UI/Decree.lua
+@@ -290,7 +290,8 @@
+ function DecreeBanner:Show()
+   local decree = getDecree()
+   if not decree then
+-    if self.frame then self.frame:Hide() end
++    local frame = ensureFrame()
++    if frame then frame:Hide() end
+     return false
+   end
+   local frame = ensureFrame()
+
+--- a/tests/test_decree_ui.lua
++++ b/tests/test_decree_ui.lua
+@@ -215,6 +215,19 @@
+   "early-return does not CreateFrame")
+ assert_true(src:find("Fonts\\\\MORPHEUS.ttf", 1, true) ~= nil,
+   "LINE_FONT stays FrameXML lowercase Morpheus")
++local emptyShow = src:match("function DecreeBanner:Show%(%)%s*\n%s*local decree = getDecree%(%)%s*\n%s*if not decree then(.-)return false")
++assert_true(type(emptyShow) == "string" and emptyShow ~= "",
++  "Show empty-Get body is readable")
++assert_true(emptyShow:find("ensureFrame()", 1, true) ~= nil,
++  "empty Show still calls ensureFrame")
++assert_true(emptyShow:find(":Hide()", 1, true) ~= nil,
++  "empty Show Hides")
++assert_eq(emptyShow:find("paint(", 1, true), nil,
++  "empty Show does not paint")
++assert_eq(emptyShow:find("frame:Show()", 1, true), nil,
++  "empty Show does not Show the banner")
++assert_eq(emptyShow:find("PlaySound", 1, true), nil,
++  "empty Show does not PlaySound")
+ 
+ local miniFile = io.open("addon/ChurchOfBeef/UI/Minimap.lua", "r")
+ assert_true(miniFile ~= nil, "UI/Minimap.lua is readable")
+@@ -311,6 +324,8 @@
+     "third Init after wipe does not duplicate ChurchOfBeefDecree")
+   UISpecialFrames = {}
+   assert_eq(Banner:Show(), false, "Show without a Decree stays silent")
++  assert_eq(countSpecial("ChurchOfBeefDecree"), 1,
++    "wiped UISpecialFrames + Show without Decree lists ChurchOfBeefDecree once")
+   assert_eq(Banner:Init(), frame, "Show miss still leaves ensureFrame on Init")
+   assert_eq(countSpecial("ChurchOfBeefDecree"), 1,
+     "wiped UISpecialFrames + Init after Show lists ChurchOfBeefDecree once")
+@@ -319,6 +334,35 @@
+   UISpecialFrames = savedSpecial
+ end
+ runB24D()
++
++-- B25-B: empty Show still ensureFrame (re-register ESC) then Hide. Do not
++-- paint. Do not Show the banner. Quiet silent. Isolation wrap stays.
++local function runB25B()
++  local function countSpecial(name)
++    local n = 0
++    if type(UISpecialFrames) ~= "table" then return 0 end
++    for i = 1, #UISpecialFrames do
++      if UISpecialFrames[i] == name then n = n + 1 end
++    end
++    return n
++  end
++  assert_true(Banner.frame ~= nil, "Init so the frame exists")
++  assert_eq(Decree:Get(), nil, "B25-B Show path has no active Decree")
++  local savedSpecial = UISpecialFrames
++  UISpecialFrames = {}
++  local cuesWipe = sounds
++  assert_eq(Banner:Show(), false, "Show without a Decree stays silent")
++  assert_eq(Banner:IsShown(), false, "empty Show does not paint the banner")
++  assert_eq(countSpecial("ChurchOfBeefDecree"), 1,
++    "wiped UISpecialFrames + Show-only lists ChurchOfBeefDecree once")
++  assert_eq(sounds, cuesWipe, "empty Show plays no sound")
++  Banner:Show()
++  assert_eq(countSpecial("ChurchOfBeefDecree"), 1,
++    "second empty Show does not duplicate ChurchOfBeefDecree")
++  assert_eq(Banner:IsShown(), false, "second empty Show stays hidden")
++  UISpecialFrames = savedSpecial
++end
++runB25B()
+ 
+ local view0 = Banner:GetView()
+ assert_eq(view0.shown, false, "silent view is hidden")

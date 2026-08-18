@@ -1,0 +1,189 @@
+# B37-D — Quiet Hide blanks leftover confess text (implementation diff)
+
+Lane-only unified diff of the exclusive implementation files vs the pre-lane working tree.
+
+--- a/addon/ChurchOfBeef/UI/Inputs.lua
++++ b/addon/ChurchOfBeef/UI/Inputs.lua
+@@ -26,6 +26,8 @@
+ -- Confess trims optional text (Names.Trim, fallback ^%s+ / %s+$).
+ -- Empty after trim omits fields.text and still sends. Dest /
+ -- readyToSend stay. Opponent trim stays. No Pope-name lookup.
++-- paintHidden blanks leftover confessBox text (SetText("") if present).
++-- Dest / inputTarget persist. Width / ESC ClearFocus stay.
+ -- Confess box sits TOP / -14 so it stays fully below the 12px TitleBar.
+ local Inputs = {
+   MODE = "Event",
+@@ -78,7 +80,11 @@
+ end
+ 
+ local function paintHidden()
+-  if Inputs.frame then Inputs.frame:Hide() end
++  if Inputs.frame then
++    local box = Inputs.frame.confessBox
++    if box and box.SetText then box:SetText("") end
++    Inputs.frame:Hide()
++  end
+   lastView = hiddenView()
+ end
+ 
+--- a/tests/test_inputs.lua
++++ b/tests/test_inputs.lua
+@@ -1,5 +1,5 @@
+ -- Event congregation Petition / Confess / Catchup (B4-G, B5-E, B14-B, B15-A,
+--- B16-B, B17-C, B18-A, B21-D, B23-D, B33-A, B35-B). Isolated: wow_ui_stub + Common + Runtime + Inputs. Stub
++-- B16-B, B17-C, B18-A, B21-D, B23-D, B33-A, B35-B, B37-D). Isolated: wow_ui_stub + Common + Runtime + Inputs. Stub
+ -- COB.Net.SendPetition / SendConfession / RequestSnapshot. Event Mode only.
+ -- No Pope-name lookup. No Gora:Petition. No Proclaim. No sound. No
+ -- SendChatMessage. Isolation wrap. No TOC / bootstrap / run.lua. Confess
+@@ -16,6 +16,7 @@
+ -- dest (Names.Trim, fallback ^%s+ / %s+$); empty after trim is no target.
+ -- Confess trims optional text (Names.Trim, fallback ^%s+ / %s+$);
+ -- empty after trim omits fields.text and still sends.
++-- Quiet Hide blanks leftover confess text; dest / inputTarget persist.
+ package.path = package.path .. ";./tests/?.lua"
+ 
+ local stub = require("wow_ui_stub")
+@@ -995,7 +996,7 @@
+ -- Trim opponent: whitespace-only omits; padded "  Chuckroast  " sends
+ -- "Chuckroast". B17-C challenge law, TitleBar persist, ESC ClearFocus,
+ -- not UISpecialFrames stay. Nested so the main chunk stays under Lua 5.1's
+--- 200-local cap. B21-D / B23-D / B33-A / B35-B nest inside runB18A() (no new main-chunk locals).
++-- 200-local cap. B21-D / B23-D / B33-A / B35-B / B37-D nest inside runB18A() (no new main-chunk locals).
+ --------------------------------------------------------------------------------
+ local function runB18A()
+ ChurchOfBeefDB = { ui = {} }
+@@ -1191,7 +1192,7 @@
+ -- (fail-closed). Unpadded Chuckroast + successful player still names
+ -- opponent. Quiet / ESC / TitleBar / isolation wrap stay. Nested in
+ -- runB18A() so the main chunk stays under Lua 5.1's 200-local cap.
+--- B23-D / B33-A / B35-B nest inside runB21D().
++-- B23-D / B33-A / B35-B / B37-D nest inside runB21D().
+ --------------------------------------------------------------------------------
+ local function runB21D()
+ ChurchOfBeefDB = { ui = {} }
+@@ -1757,7 +1758,7 @@
+ -- %s+$). Empty after trim omits fields.text and still sends. Dest /
+ -- readyToSend stay. Opponent trim stays. Isolation wrap stays.
+ -- Nested after runB33A() inside runB21D() so the main chunk stays
+--- under Lua 5.1's 200-local cap.
++-- under Lua 5.1's 200-local cap. B37-D follows runB35B().
+ --------------------------------------------------------------------------------
+ local function runB35B()
+ ChurchOfBeefDB = { ui = {} }
+@@ -1941,6 +1942,117 @@
+ end
+ end
+ runB35B()
++
++--------------------------------------------------------------------------------
++-- B37-D: Quiet Hide blanks leftover confess text. paintHidden
++-- SetText("") if confessBox is present. Dest / inputTarget persist.
++-- Width / ESC ClearFocus stay. New Event Show + Confess() without
++-- a new arg does not send leftover text. Isolation wrap stays.
++-- Nested after runB35B() inside runB21D() so the main chunk stays
++-- under Lua 5.1's 200-local cap.
++--------------------------------------------------------------------------------
++local function runB37D()
++ChurchOfBeefDB = { ui = {} }
++reset()
++assert_true(Runtime:StartEvent() ~= nil, "B37-D StartEvent reaches ASSEMBLY")
++local frame = Inputs:Init()
++assert_true(frame ~= nil, "B37-D Init creates the frame")
++assert_eq(frame:IsShown(), true, "B37-D Event Init shows the Inputs panel")
++assert_eq(frame:GetWidth(), 328, "B37-D WIDTH stays 328")
++assert_eq(frame:GetHeight(), 72, "B37-D HEIGHT stays 72")
++
++local titleBar = rawget(frame, "TitleBar")
++assert_true(titleBar ~= nil, "B37-D TitleBar stays")
++if titleBar then
++  assert_eq(titleBar:GetHeight(), 12, "B37-D TitleBar height stays 12")
++end
++assert_eq(frame:GetScript("OnDragStart"), nil, "B37-D root still has no OnDragStart")
++
++local box = editBox()
++assert_true(box ~= nil, "B37-D confess box stays")
++assert_true(box:GetScript("OnEscapePressed") ~= nil, "B37-D OnEscapePressed stays")
++box:SetFocus()
++assert_eq(box:HasFocus(), true, "B37-D editBox can take focus")
++local fired, fireErr = pcall(function()
++  stub.fire(box, "OnEscapePressed")
++end)
++assert_eq(fired, true, "B37-D OnEscapePressed fire does not error")
++assert_eq(fireErr, nil, "B37-D OnEscapePressed fire has no error text")
++assert_eq(box:HasFocus(), false, "B37-D ESC ClearFocus")
++assert_eq(frame:IsShown(), true, "B37-D ESC does not Hide")
++
++Inputs:SetLocalCharacterId(7)
++Inputs:SetInputTarget("Host")
++assert_eq(Inputs:GetView().target, "Host", "B37-D dest stores Host")
++
++box:SetText("leftover line")
++assert_eq(box:GetText(), "leftover line", "B37-D box holds leftover text")
++
++assert_true(Runtime:EndEvent() ~= nil, "B37-D EndEvent returns QUIET")
++assert_eq(Inputs:Hide(), true, "B37-D Quiet Hide returns true")
++assert_eq(frame:IsShown(), false, "B37-D Quiet Hide dismisses the widget")
++assert_eq(box:GetText(), "", "B37-D Quiet Hide blanks leftover confess text")
++assert_eq(Inputs:GetView().target, "Host", "B37-D dest stays after Quiet Hide")
++assert_eq(Inputs:GetView().shown, false, "B37-D view is hidden after Quiet Hide")
++
++assert_true(Runtime:StartEvent() ~= nil, "B37-D new Event reaches ASSEMBLY")
++assert_eq(Inputs:Show(), true, "B37-D new Event Show")
++assert_eq(frame:IsShown(), true, "B37-D new Event Show paints the widget")
++assert_eq(box:GetText(), "", "B37-D box stays blank after new Event Show")
++assert_eq(Inputs:GetView().target, "Host", "B37-D dest stays after new Event Show")
++
++sentConfessions = {}
++local ok, err = Inputs:Confess()
++assert_eq(ok, true, "B37-D Confess without arg still sends")
++assert_eq(err, nil, "B37-D Confess without arg has no error")
++assert_eq(#sentConfessions, 1, "B37-D Confess without arg sends once")
++assert_eq(sentConfessions[1].target, "Host", "B37-D Confess without arg dest stays Host")
++assert_eq(sentConfessions[1].fields.characterId, 7, "B37-D Confess without arg keeps characterId")
++local sentText = sentConfessions[1].fields.text
++assert_true(sentText == nil or sentText == "",
++  "B37-D Confess without arg does not send leftover text")
++assert_eq(sentText ~= "leftover line", true, "B37-D leftover line is not sent")
++
++assert_eq(sounds, 0, "B37-D plays no sound")
++assert_eq(goraCalls, 0, "B37-D does not call Gora")
++
++local wipeSrcFile = io.open("addon/ChurchOfBeef/UI/Inputs.lua", "r")
++assert_true(wipeSrcFile ~= nil, "Inputs.lua is readable after B37-D pins")
++local wipeSrc = wipeSrcFile:read("*a")
++wipeSrcFile:close()
++local paintAt = wipeSrc:find("local function paintHidden", 1, true)
++assert_true(paintAt ~= nil, "B37-D paintHidden exists")
++local paintEnd = wipeSrc:find("\nlocal function paintShown", paintAt + 1, true)
++local paintBody = wipeSrc:sub(paintAt, paintEnd or #wipeSrc)
++assert_true(paintBody:find('SetText("")', 1, true) ~= nil,
++  "B37-D paintHidden blanks confessBox with SetText")
++assert_eq(paintBody:find("inputTarget", 1, true), nil,
++  "B37-D paintHidden does not clear dest")
++assert_true(wipeSrc:find("function Inputs:Hide", 1, true) ~= nil, "B37-D Hide stays")
++local hideAt = wipeSrc:find("function Inputs:Hide", 1, true)
++local hideEnd = wipeSrc:find("\nfunction Inputs:", hideAt + 1, true)
++local hideBody = wipeSrc:sub(hideAt, hideEnd or #wipeSrc)
++assert_true(hideBody:find("paintHidden()", 1, true) ~= nil, "B37-D Hide still calls paintHidden")
++assert_true(wipeSrc:find("OnEscapePressed", 1, true) ~= nil, "B37-D source keeps OnEscapePressed")
++assert_true(wipeSrc:find("ClearFocus", 1, true) ~= nil, "B37-D source keeps ClearFocus")
++assert_true(wipeSrc:find("local WIDTH, HEIGHT = 328, 72", 1, true) ~= nil,
++  "B37-D source HEIGHT stays 72")
++assert_eq(wipeSrc:find("Popes", 1, true), nil, "B37-D source has no Popes lookup")
++assert_eq(wipeSrc:find("IsRegisteredPope", 1, true), nil, "B37-D source has no IsRegisteredPope")
++assert_eq(wipeSrc:find("TargetUnit", 1, true), nil, "B37-D source does not TargetUnit")
++assert_eq(wipeSrc:find("PlaySound", 1, true), nil, "B37-D source does not play sound")
++
++if standalone then
++  assert_eq(COB.Console, nil, "still no Console after B37-D")
++  assert_eq(COB.Popes, nil, "still no Pope list after B37-D")
++  assert_eq(COB.Sender, nil, "still no Sender after B37-D")
++  assert_eq(COB.Sound, nil, "still no Sound after B37-D")
++  assert_eq(COB.Hud, nil, "still no Hud after B37-D")
++  assert_eq(type(SLASH_CHURCHOFBEEF1), "nil", "B37-D still does not register a slash")
++end
++end
++runB37D()
+ end
+ runB21D()
+ 

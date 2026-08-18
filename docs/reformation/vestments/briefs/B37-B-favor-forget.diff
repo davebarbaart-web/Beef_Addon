@@ -1,0 +1,138 @@
+# B37-B — Quiet forget also drops leftover congregation favor (implementation diff)
+
+Lane-only unified diff of the exclusive implementation files vs the pre-lane working tree.
+
+--- a/addon/ChurchOfBeef/UI/Hud.lua
++++ b/addon/ChurchOfBeef/UI/Hud.lua
+@@ -23,6 +23,8 @@
+ -- Defined fallback: everything except live health. Favor split is
+ -- Pope-local from Gora (gora pair only, so a Runtime leftover after a
+ -- ruling does not thaw the freeze), or congregation broadcast only.
++-- Quiet forgetPersist also nils broadcastFavor (License 2 / §10.6
++-- per-event); it does not nil favorTarget (dest persist, B37-B).
+ -- Dress is stock iron/parchment (QuestBG + WHITE8X8 + tooltip border). Thin
+ -- parchment fields sit behind name+title. Center is a stock ring, not a
+ -- faction crest. Mute rails are decorative, not live HP. Defense count is
+@@ -303,6 +305,7 @@
+ local function forgetPersist()
+   lastPair = nil
+   lastPopeFavor = nil
++  broadcastFavor = nil
+ end
+ 
+ local function displayPair()
+
+--- a/tests/test_hud.lua
++++ b/tests/test_hud.lua
+@@ -10,7 +10,8 @@
+ -- + B22-B fighter names try Fonts\\MORPHEUS.ttf
+ -- + B25-D Refresh/paintShown re-applies applyNameFont
+ -- + B34-A paintShown re-tints names after applyNameFont
+--- + B35-A defenseA / defenseB SetWidth(28)). Isolated:
++-- + B35-A defenseA / defenseB SetWidth(28)
++-- + B37-B Quiet forgetPersist also nils broadcastFavor). Isolated:
+ -- wow_ui_stub + Common + Ranks + Runtime + Store + Gora + Hud. Event Mode
+ -- only. No live health, favor economy, sound, or toasts. Standalone wrap.
+@@ -22,7 +23,8 @@
+ -- A non-Gora refuse forgets lastPair so Knighting Continue stays
+ -- hidden (B32-A). paintShown restores class tint after applyNameFont
+--- (B34-A). Defense labels are SetWidth(28) (B35-A). Never lastPair clicks. Dress is
++-- (B34-A). Defense labels are SetWidth(28) (B35-A). Quiet forget
++-- also drops leftover congregation favor (B37-B). Never lastPair clicks. Dress is
+ -- stock iron/parchment only — no faction crests, no custom Media. Thin
+ -- QuestBG fields sit behind
+@@ -1293,6 +1296,9 @@
+ -- B35-A (nested): defenseA / defenseB SetWidth(28); Init and
+ -- nonzero CountDefenses paint GetWidth() == 28.
++-- B37-B (nested): SetBroadcastFavor a split, Quiet Refresh,
++-- view.favor is nil; a later live pair without a new
++-- SetBroadcastFavor still has no leftover favor.
+ -- Gora CONSEQUENCE and ASSEMBLY Continue persist stay. Existing
+ -- Sanction-during-Knighting pin stays shown. Isolation wrap stays.
+ -- health nil.
+@@ -1503,6 +1509,84 @@
+     Store.CountDefenses = savedCount
+   end
+   runB35A()
++
++  local function runB37B()
++    local forgetAt = src:find("local function forgetPersist", 1, true)
++    assert_true(forgetAt ~= nil, "B37-B forgetPersist exists")
++    local forgetEnd = src:find("\nlocal function ", forgetAt + 1, true)
++    if not forgetEnd then
++      forgetEnd = src:find("\nfunction ", forgetAt + 1, true)
++    end
++    assert_true(forgetEnd ~= nil, "B37-B forgetPersist body has a following function")
++    local forgetBody = src:sub(forgetAt, forgetEnd - 1)
++    assert_true(forgetBody:find("lastPair = nil", 1, true) ~= nil,
++      "forgetPersist still nils lastPair")
++    assert_true(forgetBody:find("lastPopeFavor = nil", 1, true) ~= nil,
++      "forgetPersist still nils lastPopeFavor")
++    assert_true(forgetBody:find("broadcastFavor = nil", 1, true) ~= nil,
++      "forgetPersist also nils leftover congregation favor")
++    assert_eq(forgetBody:find("favorTarget", 1, true), nil,
++      "forgetPersist does not nil dest persist")
++
++    COB.Sender = nil
++    Hud:SetFavorTarget("Host")
++    Hud:SetBroadcastFavor({ a = 2, b = 1 })
++    painted = Hud:Refresh()
++    assert_eq(painted.shown, true, "B37-B live Gora pair still shows")
++    assert_eq(painted.favor.a, 2, "broadcast split paints congregation favor a")
++    assert_eq(painted.favor.b, 1, "broadcast split paints congregation favor b")
++    assert_eq(painted.favor.pctA, 66, "broadcast 2/1 is still 66%")
++    assert_eq(hud.favorLabel:IsShown(), true, "broadcast still shows FAVOR")
++
++    assert_true(Runtime:CloseRite() ~= nil, "CloseRite reaches Gora CONSEQUENCE")
++    assert_true(Runtime:EndEvent() ~= nil, "EndEvent from CONSEQUENCE is Quiet")
++    assert_eq(Runtime:Snapshot().state, "QUIET", "runtime is QUIET after EndEvent")
++    painted = Hud:Refresh()
++    assert_eq(painted.shown, false, "Quiet Refresh hides the HUD")
++    assert_eq(painted.favor, nil, "Quiet Refresh drops leftover congregation favor")
++    assert_eq(painted.fighterA, nil, "Quiet Refresh has no leftover fighter A")
++    assert_eq(painted.fighterB, nil, "Quiet Refresh has no leftover fighter B")
++    assert_eq(painted.health, nil, "Quiet Refresh has no health")
++    assert_eq(hud.nameA:GetText(), "", "hidden paint stays empty on name A")
++    assert_eq(hud.nameB:GetText(), "", "hidden paint stays empty on name B")
++    assert_eq(hud.favorLabel:IsShown(), false, "hidden paint hides FAVOR")
++    assert_eq(hud.barA:IsShown(), false, "hidden paint hides bar A")
++    assert_eq(hud.barB:IsShown(), false, "hidden paint hides bar B")
++
++    assert_true(Runtime:StartEvent() ~= nil, "StartEvent after Quiet forget")
++    assert_true(
++      Runtime:OpenRite("Gora", { fighters = { goraA.id, goraB.id } }) ~= nil,
++      "later live pair without a new SetBroadcastFavor"
++    )
++    painted = Hud:Refresh()
++    assert_eq(painted.shown, true, "later live pair is shown")
++    assert_eq(painted.favor, nil, "later live pair has no leftover favor")
++    assert_eq(hud.favorLabel:IsShown(), false, "STATE-off still omits FAVOR")
++    assert_eq(hud.barA:IsShown(), false, "STATE-off still omits bar A")
++    assert_eq(hud.barB:IsShown(), false, "STATE-off still omits bar B")
++    assert_eq(sameRgb(painted.fighterA.nameColor, warrior), true,
++      "later live pair still class-colors A Warrior")
++    assert_eq(sameRgb(painted.fighterB.nameColor, mage), true,
++      "later live pair still class-colors B Mage")
++    assert_eq(painted.health, nil, "later live pair has no health")
++
++    local destSent = {}
++    COB.Net = {
++      SendFavor = function(_, fields, target)
++        destSent[#destSent + 1] = { fields = fields, target = target }
++        return true
++      end,
++    }
++    local destPicker = Store:CreateCharacter({ name = "DestFan", class = "Priest", level = 70 })
++    Hud:SetLocalCharacterId(destPicker.id)
++    assert_eq(stub.fire(hud.pickA, "OnClick"), true, "later live plate still clicks")
++    assert_eq(#destSent, 1, "dest persist still sends after Quiet forget")
++    assert_eq(destSent[1].target, "Host", "favorTarget survives forgetPersist")
++    assert_eq(destSent[1].fields.pick, goraA.id, "later live plate still picks A")
++    COB.Net = nil
++
++    assert_eq(sounds, 0, "B37-B hide played no sound")
++    assert_eq(healthReads, 0, "B37-B never scraped health")
++  end
++  runB37B()
+ end
+ runB19C()
