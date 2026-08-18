@@ -9,6 +9,9 @@ local COB = ChurchOfBeef
 -- Toggle / Show / Hide only. No slash. No GuildPromote. No Notebook persist.
 -- No favor / INPUT. Post Decree is a Quiet desk verb on this Event tool
 -- (Law 6: Decree is Quiet; Sound is not played). No Decree wire kind.
+-- Layout: two-column stock desk, large targets, scrollable Presence / Gora
+-- lists, click-to-select. Not parchment. Not collapsible tabs (desks stay
+-- glanceable without window switching).
 local Console = {
   MODE = "event",
 }
@@ -16,8 +19,16 @@ COB.Console = Console
 
 local FRAME_NAME = "ChurchOfBeefConsoleFrame"
 local REFUSE = "not the registered pope"
-local DEFAULT_WIDTH, DEFAULT_HEIGHT = 560, 720
+local DEFAULT_WIDTH, DEFAULT_HEIGHT = 780, 580
+local BTN_W, BTN_H, BTN_GAP = 172, 28, 8
+local COL_W, COL_GAP = 370, 12
+local ROW_H = 20
 local DECREE_HEADER = "A GATHERING HAS BEEN DECREED"
+local ANCHORS = {
+  TOPLEFT = true, TOP = true, TOPRIGHT = true,
+  LEFT = true, CENTER = true, RIGHT = true,
+  BOTTOMLEFT = true, BOTTOM = true, BOTTOMRIGHT = true,
+}
 
 local function isId(n)
   return type(n) == "number" and n == math.floor(n) and n >= 1
@@ -82,6 +93,33 @@ local function presentCharacterIds()
   return set
 end
 
+local function uiDb()
+  if type(ChurchOfBeefDB) ~= "table" then return nil end
+  if type(ChurchOfBeefDB.ui) ~= "table" then ChurchOfBeefDB.ui = {} end
+  return ChurchOfBeefDB.ui
+end
+
+local function savePoint(widget)
+  local db = uiDb()
+  if not db then return end
+  local point, _, relativePoint, x, y = widget:GetPoint(1)
+  if type(point) ~= "string" or type(x) ~= "number" or type(y) ~= "number" then return end
+  db.console = { point = point, relativePoint = relativePoint or point, x = x, y = y }
+end
+
+local function restorePoint(widget)
+  local db = uiDb()
+  local p = db and db.console
+  widget:ClearAllPoints()
+  local relative = type(p) == "table" and (p.relativePoint or p.point) or nil
+  if type(p) == "table" and ANCHORS[p.point] and ANCHORS[relative]
+      and type(p.x) == "number" and type(p.y) == "number" then
+    widget:SetPoint(p.point, UIParent, relative, p.x, p.y)
+  else
+    widget:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
+  end
+end
+
 local function header(parent, text)
   local fs = parent:CreateFontString(nil, "OVERLAY", "GameFontNormal")
   fs:SetText(text)
@@ -91,8 +129,8 @@ end
 
 local function stockButton(parent, label, onClick)
   local btn = CreateFrame("Button", nil, parent, "UIPanelButtonTemplate")
-  btn:SetWidth(150)
-  btn:SetHeight(22)
+  btn:SetWidth(BTN_W)
+  btn:SetHeight(BTN_H)
   btn:SetText(label)
   btn:SetScript("OnClick", onClick)
   return btn
@@ -101,9 +139,119 @@ end
 local function stockEdit(parent, width)
   local box = CreateFrame("EditBox", nil, parent, "InputBoxTemplate")
   box:SetWidth(width or 520)
-  box:SetHeight(20)
+  box:SetHeight(22)
   box:SetAutoFocus(false)
   return box
+end
+
+local function panel(parent)
+  local box = CreateFrame("Frame", nil, parent)
+  local bg = box:CreateTexture(nil, "BACKGROUND")
+  bg:SetAllPoints(box)
+  bg:SetTexture("Interface\\Tooltips\\UI-Tooltip-Background")
+  if bg.SetVertexColor then
+    bg:SetVertexColor(0.08, 0.08, 0.08, 1)
+  end
+  return box
+end
+
+local function scrollList(parent, name, width, height)
+  local scroll = CreateFrame("ScrollFrame", name, parent, "UIPanelScrollFrameTemplate")
+  scroll:SetWidth(width)
+  scroll:SetHeight(height)
+  local child = CreateFrame("Frame", nil, scroll)
+  child:SetWidth(width - 22)
+  child:SetHeight(height)
+  scroll:SetScrollChild(child)
+  local fs = child:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+  fs:SetPoint("TOPLEFT", child, "TOPLEFT", 2, -2)
+  fs:SetWidth(width - 26)
+  fs:SetJustifyH("LEFT")
+  fs:SetJustifyV("TOP")
+  fs:SetText("")
+  return scroll, child, fs
+end
+
+local function characterName(id)
+  if not isId(id) then return nil end
+  local snap = storeSnap()
+  local chars = snap and snap.characters or {}
+  for i = 1, #chars do
+    if chars[i].id == id then return chars[i].name end
+  end
+  return tostring(id)
+end
+
+local function presenceLine(row)
+  local line = row.name or ""
+  if row.rankTitle then
+    line = line .. "  " .. row.rankTitle
+  end
+  if row.needsKnighting then
+    line = line .. "  needs Knighting"
+  end
+  return line
+end
+
+local function petitionLine(row)
+  local left = characterName(row.characterId) or tostring(row.characterId)
+  if row.namedOpponentId ~= nil then
+    local right = characterName(row.namedOpponentId) or tostring(row.namedOpponentId)
+    return left .. "  names  " .. right
+  end
+  return left
+end
+
+local function acquireRows(pool, parent, count, width)
+  pool = pool or {}
+  for i = 1, count do
+    local btn = pool[i]
+    if not btn then
+      btn = CreateFrame("Button", nil, parent)
+      btn:SetHeight(ROW_H)
+      local fs = btn:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+      fs:SetPoint("LEFT", btn, "LEFT", 4, 0)
+      fs:SetJustifyH("LEFT")
+      btn:SetFontString(fs)
+      btn.Label = fs
+      pool[i] = btn
+    end
+    btn:SetWidth(width)
+    if btn.Label then btn.Label:SetWidth(width - 8) end
+    btn:ClearAllPoints()
+    btn:SetPoint("TOPLEFT", parent, "TOPLEFT", 2, -((i - 1) * ROW_H))
+    btn:Show()
+  end
+  for i = count + 1, #pool do
+    pool[i]:Hide()
+  end
+  return pool
+end
+
+local function paintRowButtons(pool, parent, rows, lineOf, selectedOf, onClick)
+  local width = (parent.GetWidth and parent:GetWidth()) or 300
+  pool = acquireRows(pool, parent, #rows, width - 4)
+  for i = 1, #rows do
+    local row = rows[i]
+    local btn = pool[i]
+    local label = lineOf(row)
+    if selectedOf(row) then
+      label = "> " .. label
+    end
+    btn:SetText(label)
+    if btn.Label then btn.Label:SetText(label) end
+    btn._row = row
+    btn:SetScript("OnClick", onClick)
+  end
+  parent:SetHeight(math.max(80, #rows * ROW_H + 4))
+  return pool
+end
+
+local function placeRow(parent, y, buttons)
+  for i = 1, #buttons do
+    buttons[i]:SetPoint("TOPLEFT", parent, "TOPLEFT", (i - 1) * (BTN_W + BTN_GAP), -y)
+  end
+  return y + BTN_H + BTN_GAP
 end
 
 local function buildFrame()
@@ -115,8 +263,9 @@ local function buildFrame()
   frame:SetClampedToScreen(true)
   frame:SetWidth(DEFAULT_WIDTH)
   frame:SetHeight(DEFAULT_HEIGHT)
-  frame:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
+  restorePoint(frame)
   frame:Hide()
+  frame.RitualButtons = {}
 
   if frame.TitleText and frame.TitleText.SetText then
     frame.TitleText:SetText("Director Console")
@@ -129,7 +278,10 @@ local function buildFrame()
   titleBar:EnableMouse(true)
   titleBar:RegisterForDrag("LeftButton")
   titleBar:SetScript("OnDragStart", function() frame:StartMoving() end)
-  titleBar:SetScript("OnDragStop", function() frame:StopMovingOrSizing() end)
+  titleBar:SetScript("OnDragStop", function()
+    frame:StopMovingOrSizing()
+    savePoint(frame)
+  end)
   frame.TitleBar = titleBar
 
   local close = frame.CloseButton
@@ -142,119 +294,117 @@ local function buildFrame()
   end
 
   local content = CreateFrame("Frame", nil, frame)
-  content:SetPoint("TOPLEFT", frame, "TOPLEFT", 12, -30)
-  content:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -12, 12)
+  content:SetPoint("TOPLEFT", frame, "TOPLEFT", 14, -30)
+  content:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -14, 12)
   frame.Content = content
 
-  local y = 0
-  local function place(widget, x, height)
-    widget:SetPoint("TOPLEFT", content, "TOPLEFT", x or 0, -y)
-    y = y + (height or 18) + 4
+  local function ritual(label, onClick)
+    local btn = stockButton(content, label, onClick)
+    frame.RitualButtons[#frame.RitualButtons + 1] = btn
+    return btn
   end
 
-  frame.RuntimeState = content:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+  frame.RuntimeState = content:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+  frame.RuntimeState:SetPoint("TOPLEFT", content, "TOPLEFT", 0, 0)
   frame.RuntimeState:SetJustifyH("LEFT")
   frame.RuntimeState:SetText("QUIET")
-  place(frame.RuntimeState, 0, 16)
 
-  local startBtn = stockButton(content, "Start Event", function() Console:StartEvent() end)
-  startBtn:SetPoint("TOPLEFT", content, "TOPLEFT", 0, -y)
-  local closeRiteBtn = stockButton(content, "Close Rite", function() Console:CloseRite() end)
-  closeRiteBtn:SetPoint("TOPLEFT", content, "TOPLEFT", 154, -y)
-  local continueBtn = stockButton(content, "Continue", function() Console:Continue() end)
-  continueBtn:SetPoint("TOPLEFT", content, "TOPLEFT", 308, -y)
-  local endBtn = stockButton(content, "End Event", function() Console:EndEvent() end)
-  endBtn:SetPoint("TOPLEFT", content, "TOPLEFT", 0, -(y + 26))
-  y = y + 52
+  frame.GateStatus = content:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+  frame.GateStatus:SetPoint("LEFT", frame.RuntimeState, "RIGHT", 12, 0)
+  frame.GateStatus:SetJustifyH("LEFT")
+  frame.GateStatus:SetText("")
 
-  local openK = stockButton(content, "Open Knighting", function() Console:OpenRite("Knighting") end)
-  openK:SetPoint("TOPLEFT", content, "TOPLEFT", 0, -y)
-  local openG = stockButton(content, "Open Gora", function() Console:OpenRite("Gora") end)
-  openG:SetPoint("TOPLEFT", content, "TOPLEFT", 154, -y)
-  local openC = stockButton(content, "Open Confession", function() Console:OpenRite("Confession") end)
-  openC:SetPoint("TOPLEFT", content, "TOPLEFT", 308, -y)
-  local openP = stockButton(content, "Open Proclamation", function() Console:OpenRite("Proclamation") end)
-  openP:SetPoint("TOPLEFT", content, "TOPLEFT", 0, -(y + 26))
-  y = y + 52
+  frame.SelectionStatus = content:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+  frame.SelectionStatus:SetPoint("TOPLEFT", content, "TOPLEFT", 0, -16)
+  frame.SelectionStatus:SetJustifyH("LEFT")
+  frame.SelectionStatus:SetText("No one selected")
 
-  local presenceHead = header(content, "Presence")
-  place(presenceHead, 0, 16)
-  frame.PresenceList = content:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-  frame.PresenceList:SetJustifyH("LEFT")
-  frame.PresenceList:SetJustifyV("TOP")
-  frame.PresenceList:SetWidth(520)
-  frame.PresenceList:SetText("")
-  place(frame.PresenceList, 0, 72)
+  local y = 34
+  y = placeRow(content, y, {
+    ritual("Start Event", function() Console:StartEvent() end),
+    ritual("Close Rite", function() Console:CloseRite() end),
+    ritual("Continue", function() Console:Continue() end),
+    ritual("End Event", function() Console:EndEvent() end),
+  })
+  y = placeRow(content, y, {
+    ritual("Open Knighting", function() Console:OpenRite("Knighting") end),
+    ritual("Open Gora", function() Console:OpenRite("Gora") end),
+    ritual("Open Confession", function() Console:OpenRite("Confession") end),
+    ritual("Open Proclamation", function() Console:OpenRite("Proclamation") end),
+  })
+  y = y + 6
 
-  local knightHead = header(content, "Knighting")
-  place(knightHead, 0, 16)
-  local knightBtn = stockButton(content, "KNIGHT THIS BEEF", function()
-    Console:KnightThisBeef()
-  end)
-  knightBtn:SetPoint("TOPLEFT", content, "TOPLEFT", 0, -y)
-  local lordBtn = stockButton(content, "ELEVATE TO LORD", function()
-    Console:ElevateToLord()
-  end)
-  lordBtn:SetPoint("TOPLEFT", content, "TOPLEFT", 154, -y)
+  local left = panel(content)
+  left:SetPoint("TOPLEFT", content, "TOPLEFT", 0, -y)
+  left:SetWidth(COL_W)
+  left:SetHeight(248)
+  local presenceHead = header(left, "Presence")
+  presenceHead:SetPoint("TOPLEFT", left, "TOPLEFT", 10, -8)
+  local presenceScroll, presenceChild, presenceList = scrollList(
+    left, FRAME_NAME .. "PresenceScroll", COL_W - 28, 150)
+  presenceScroll:SetPoint("TOPLEFT", left, "TOPLEFT", 8, -26)
+  frame.PresenceList = presenceList
+  frame.PresenceChild = presenceChild
+  frame.PresenceRows = {}
+  local knightHead = header(left, "Knighting")
+  knightHead:SetPoint("TOPLEFT", left, "TOPLEFT", 10, -182)
+  local knightBtn = ritual("KNIGHT THIS BEEF", function() Console:KnightThisBeef() end)
+  knightBtn:SetParent(left)
+  knightBtn:SetPoint("TOPLEFT", left, "TOPLEFT", 8, -202)
+  local lordBtn = ritual("ELEVATE TO LORD", function() Console:ElevateToLord() end)
+  lordBtn:SetParent(left)
+  lordBtn:SetPoint("TOPLEFT", left, "TOPLEFT", 8 + BTN_W + BTN_GAP, -202)
+
+  local right = panel(content)
+  right:SetPoint("TOPLEFT", content, "TOPLEFT", COL_W + COL_GAP, -y)
+  right:SetWidth(COL_W)
+  right:SetHeight(248)
+  local goraHead = header(right, "Gora")
+  goraHead:SetPoint("TOPLEFT", right, "TOPLEFT", 10, -8)
+  local petitionScroll, petitionChild, petitionList = scrollList(
+    right, FRAME_NAME .. "PetitionScroll", COL_W - 28, 92)
+  petitionScroll:SetPoint("TOPLEFT", right, "TOPLEFT", 8, -26)
+  frame.PetitionsList = petitionList
+  frame.PetitionChild = petitionChild
+  frame.PetitionRows = {}
+  local sanctionBtn = ritual("SANCTION BEEF GORA", function() Console:Sanction() end)
+  sanctionBtn:SetParent(right)
+  sanctionBtn:SetPoint("TOPLEFT", right, "TOPLEFT", 8, -124)
+  local dismissBtn = ritual("Dismiss", function() Console:Dismiss() end)
+  dismissBtn:SetParent(right)
+  dismissBtn:SetPoint("TOPLEFT", right, "TOPLEFT", 8 + BTN_W + BTN_GAP, -124)
+  local victorBtn = ritual("DECLARE VICTOR", function() Console:DeclareVictor() end)
+  victorBtn:SetParent(right)
+  victorBtn:SetPoint("TOPLEFT", right, "TOPLEFT", 8, -124 - BTN_H - BTN_GAP)
+  local cowardBtn = ritual("COWARDICE RECORDED", function() Console:CowardiceRecorded() end)
+  cowardBtn:SetParent(right)
+  cowardBtn:SetPoint("TOPLEFT", right, "TOPLEFT", 8 + BTN_W + BTN_GAP, -124 - BTN_H - BTN_GAP)
+  local voidBtn = ritual("VOID", function() Console:Void() end)
+  voidBtn:SetParent(right)
+  voidBtn:SetPoint("TOPLEFT", right, "TOPLEFT", 8, -124 - 2 * (BTN_H + BTN_GAP))
+  local freeBtn = ritual("FREE RULING", function() Console:FreeRuling() end)
+  freeBtn:SetParent(right)
+  freeBtn:SetPoint("TOPLEFT", right, "TOPLEFT", 8 + BTN_W + BTN_GAP, -124 - 2 * (BTN_H + BTN_GAP))
+
+  y = y + 260
+  local decreeHead = header(content, DECREE_HEADER)
+  decreeHead:SetPoint("TOPLEFT", content, "TOPLEFT", 0, -y)
+  frame.DecreeHeader = decreeHead
+  y = y + 18
+  frame.DecreeLine = stockEdit(content, 560)
+  frame.DecreeLine:SetPoint("TOPLEFT", content, "TOPLEFT", 4, -y)
+  local postBtn = ritual("Post Decree", function() Console:PostDecree() end)
+  postBtn:SetPoint("TOPLEFT", content, "TOPLEFT", 572, -y + 2)
+  y = y + 28
+  frame.DecreeFlavor = stockEdit(content, 560)
+  frame.DecreeFlavor:SetPoint("TOPLEFT", content, "TOPLEFT", 4, -y)
+  local momentBtn = ritual("MARK THIS MOMENT", function() Console:FlagMoment() end)
+  momentBtn:SetPoint("TOPLEFT", content, "TOPLEFT", 572, -y + 2)
   y = y + 30
-
-  local goraHead = header(content, "Gora")
-  place(goraHead, 0, 16)
-  frame.PetitionsList = content:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-  frame.PetitionsList:SetJustifyH("LEFT")
-  frame.PetitionsList:SetJustifyV("TOP")
-  frame.PetitionsList:SetWidth(520)
-  frame.PetitionsList:SetText("")
-  place(frame.PetitionsList, 0, 48)
-
-  local sanctionBtn = stockButton(content, "SANCTION BEEF GORA", function()
-    Console:Sanction()
-  end)
-  sanctionBtn:SetPoint("TOPLEFT", content, "TOPLEFT", 0, -y)
-  local dismissBtn = stockButton(content, "Dismiss", function()
-    Console:Dismiss()
-  end)
-  dismissBtn:SetPoint("TOPLEFT", content, "TOPLEFT", 154, -y)
-  y = y + 26
-  local victorBtn = stockButton(content, "DECLARE VICTOR", function()
-    Console:DeclareVictor()
-  end)
-  victorBtn:SetPoint("TOPLEFT", content, "TOPLEFT", 0, -y)
-  local cowardBtn = stockButton(content, "COWARDICE RECORDED", function()
-    Console:CowardiceRecorded()
-  end)
-  cowardBtn:SetPoint("TOPLEFT", content, "TOPLEFT", 154, -y)
-  local voidBtn = stockButton(content, "VOID", function()
-    Console:Void()
-  end)
-  voidBtn:SetPoint("TOPLEFT", content, "TOPLEFT", 308, -y)
-  y = y + 26
-  local freeBtn = stockButton(content, "FREE RULING", function()
-    Console:FreeRuling()
-  end)
-  freeBtn:SetPoint("TOPLEFT", content, "TOPLEFT", 0, -y)
-  y = y + 30
-
-  local momentBtn = stockButton(content, "MARK THIS MOMENT", function()
-    Console:FlagMoment()
-  end)
-  place(momentBtn, 0, 22)
 
   local notebook = header(content, "Notebook")
-  place(notebook, 0, 16)
+  notebook:SetPoint("TOPLEFT", content, "TOPLEFT", 0, -y)
   frame.NotebookLabel = notebook
-
-  local decreeHead = header(content, DECREE_HEADER)
-  place(decreeHead, 0, 16)
-  frame.DecreeHeader = decreeHead
-  frame.DecreeLine = stockEdit(content, 520)
-  place(frame.DecreeLine, 0, 20)
-  frame.DecreeFlavor = stockEdit(content, 520)
-  place(frame.DecreeFlavor, 0, 20)
-  local postBtn = stockButton(content, "Post Decree", function()
-    Console:PostDecree()
-  end)
-  place(postBtn, 0, 22)
 
   if type(UISpecialFrames) == "table" then
     table.insert(UISpecialFrames, FRAME_NAME)
@@ -263,21 +413,54 @@ local function buildFrame()
   return frame
 end
 
+local function onPresenceClick(btn)
+  local row = btn and btn._row
+  if not row then return end
+  Console:SelectHuman(row.humanId)
+  Console:SelectCharacter(row.characterId)
+  Console:Refresh()
+end
+
+local function onPetitionClick(btn)
+  local row = btn and btn._row
+  if not row then return end
+  Console:SelectCharacter(row.characterId)
+  if row.namedOpponentId ~= nil then
+    Console:SelectFighters(row.characterId, row.namedOpponentId)
+  end
+  Console:Refresh()
+end
+
 local function paintPresence(frame, rows)
   if not frame.PresenceList then return end
   local lines = {}
   for i = 1, #rows do
-    local row = rows[i]
-    local line = row.name or ""
-    if row.rankTitle then
-      line = line .. "  " .. row.rankTitle
-    end
-    if row.needsKnighting then
-      line = line .. "  needs Knighting"
-    end
-    lines[#lines + 1] = line
+    lines[#lines + 1] = presenceLine(rows[i])
   end
-  frame.PresenceList:SetText(table.concat(lines, "\n"))
+  local body = table.concat(lines, "\n")
+  if body == "" then body = "No one on the roster yet." end
+  frame.PresenceList:SetText(body)
+  if #rows == 0 then
+    frame.PresenceList:Show()
+    if frame.PresenceChild then
+      frame.PresenceRows = acquireRows(frame.PresenceRows, frame.PresenceChild, 0, 100)
+      frame.PresenceChild:SetHeight(80)
+    end
+  else
+    frame.PresenceList:Hide()
+    if not frame.PresenceChild then return end
+    frame.PresenceRows = paintRowButtons(
+      frame.PresenceRows,
+      frame.PresenceChild,
+      rows,
+      presenceLine,
+      function(row)
+        return (row.humanId ~= nil and row.humanId == Console.selectedHumanId)
+          or (row.characterId ~= nil and row.characterId == Console.selectedCharacterId)
+      end,
+      onPresenceClick
+    )
+  end
 end
 
 local function paintPetitions(frame, petitions)
@@ -285,13 +468,32 @@ local function paintPetitions(frame, petitions)
   local lines = {}
   for i = 1, #petitions do
     local row = petitions[i]
-    local line = tostring(row.characterId)
-    if row.namedOpponentId ~= nil then
-      line = line .. "  names  " .. tostring(row.namedOpponentId)
-    end
-    lines[#lines + 1] = line
+    lines[#lines + 1] = tostring(row.characterId)
+      .. (row.namedOpponentId ~= nil and ("  names  " .. tostring(row.namedOpponentId)) or "")
   end
-  frame.PetitionsList:SetText(table.concat(lines, "\n"))
+  local body = table.concat(lines, "\n")
+  if body == "" then body = "No petitions." end
+  frame.PetitionsList:SetText(body)
+  if #petitions == 0 then
+    frame.PetitionsList:Show()
+    if frame.PetitionChild then
+      frame.PetitionRows = acquireRows(frame.PetitionRows, frame.PetitionChild, 0, 100)
+      frame.PetitionChild:SetHeight(80)
+    end
+  else
+    frame.PetitionsList:Hide()
+    if not frame.PetitionChild then return end
+    frame.PetitionRows = paintRowButtons(
+      frame.PetitionRows,
+      frame.PetitionChild,
+      petitions,
+      petitionLine,
+      function(row)
+        return row.characterId ~= nil and row.characterId == Console.selectedCharacterId
+      end,
+      onPetitionClick
+    )
+  end
 end
 
 local function paintRuntime(frame)
@@ -301,6 +503,42 @@ local function paintRuntime(frame)
     frame.RuntimeState:SetText((snap and snap.state) or "")
   else
     frame.RuntimeState:SetText("")
+  end
+end
+
+local function paintSelection(frame, presence)
+  if not frame.SelectionStatus then return end
+  local name
+  for i = 1, #presence do
+    local row = presence[i]
+    if (row.humanId ~= nil and row.humanId == Console.selectedHumanId)
+        or (row.characterId ~= nil and row.characterId == Console.selectedCharacterId) then
+      name = row.name
+      break
+    end
+  end
+  if not name then
+    name = characterName(Console.selectedCharacterId)
+  end
+  if name then
+    frame.SelectionStatus:SetText("Selected: " .. name)
+  else
+    frame.SelectionStatus:SetText("No one selected")
+  end
+end
+
+local function applyGate(frame)
+  local ok = isRegisteredPope()
+  if frame.GateStatus then
+    frame.GateStatus:SetText(ok and "" or REFUSE)
+  end
+  local buttons = frame.RitualButtons or {}
+  for i = 1, #buttons do
+    if ok then
+      buttons[i]:Enable()
+    else
+      buttons[i]:Disable()
+    end
   end
 end
 
@@ -317,9 +555,12 @@ end
 
 function Console:Refresh()
   if not self.frame then return end
+  local presence = self:GetPresence()
   paintRuntime(self.frame)
-  paintPresence(self.frame, self:GetPresence())
+  paintPresence(self.frame, presence)
   paintPetitions(self.frame, self:GetPetitions())
+  paintSelection(self.frame, presence)
+  applyGate(self.frame)
 end
 
 function Console:Show()

@@ -248,6 +248,11 @@ assert_true(findButton(frame, "MARK THIS MOMENT") ~= nil, "MARK THIS MOMENT butt
 assert_true(findFont(frame, "Notebook") ~= nil, "Notebook is a disabled label")
 assert_true(findFont(frame, "A GATHERING HAS BEEN DECREED") ~= nil, "Decree header is UI copy")
 assert_true(findButton(frame, "Post Decree") ~= nil, "Post Decree is one click")
+assert_true(frame:GetWidth() >= 740, "console is a two-column desk")
+assert_true(frame:GetHeight() >= 540, "console fits the two desks without a tall stack")
+local startBtn = findButton(frame, "Start Event")
+assert_true(startBtn:GetHeight() >= 28, "sacred verbs are large targets")
+assert_true(startBtn:GetWidth() >= 160, "sacred verbs are wide enough")
 assert_eq(findButton(frame, "Favor"), nil, "no favor chrome")
 assert_eq(findButton(frame, "RSVP"), nil, "no RSVP chrome")
 assert_eq(findButton(frame, "Calendar"), nil, "no calendar chrome")
@@ -312,6 +317,20 @@ local presenceText = frame.PresenceList:GetText() or ""
 assert_true(presenceText:find("Beefina", 1, true) ~= nil, "Presence paints who is here")
 assert_true(presenceText:find("needs Knighting", 1, true) ~= nil, "Presence paints the Knighting flag")
 assert_true(presenceText:find("Fresh Beef", 1, true) ~= nil, "Presence paints the Church rank")
+
+local beefinaBtn
+walk(frame, function(child)
+  if not beefinaBtn and child._type == "Button" and child.GetText then
+    local text = child:GetText() or ""
+    if text:find("Beefina", 1, true) then beefinaBtn = child end
+  end
+end)
+assert_true(beefinaBtn ~= nil, "Presence rows are clickable")
+stub.fire(beefinaBtn, "OnClick")
+assert_eq(Console.selectedHumanId, human.id, "clicking Presence selects the human")
+assert_eq(Console.selectedCharacterId, char.id, "clicking Presence selects the character")
+assert_true((frame.SelectionStatus:GetText() or ""):find("Beefina", 1, true) ~= nil,
+  "selection is glanceable")
 
 --------------------------------------------------------------------------------
 -- Ritual verbs refuse while the registered-Pope list is fail-closed
