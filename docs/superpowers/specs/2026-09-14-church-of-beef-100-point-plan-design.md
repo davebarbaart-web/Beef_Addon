@@ -336,7 +336,11 @@ Subagent reviews (Grok 4.6 extra high, read-only):
 - [BeefNet / ceremony wire](d6fbd2bb-967d-478b-ad48-a03ffdb93cce)
 - [Assets / polish leftovers](af04108b-94b4-4d40-a409-a8642e96dcc7)
 
-Deep research (`parallel-cli`, run `trun_91f36069f09644808119d4546045a5d4`) was in flight at write time. It does not outrank the Bible. If it later contradicts a P0 item, keep the Bible and file a named question.
+Deep research completed 2026-09-14 (`trun_91f36069f09644808119d4546045a5d4`). Files: `wow-tbc-addon-ceremony-2026.json` (repo root; gitignored by `/*.json`) and the poll’s metadata. Research is **guidance**, not product law.
+
+**Keep (already in this plan):** verify `20506` on the live client before any public zip; `GUILD` + `WHISPER` only (Classic `CHANNEL` is dead); compact sequence-numbered STATE, not prose; send-queued ≠ delivered (HELLO + `RequestSnapshot`); account-level `ChurchOfBeefDB`; insecure informational frames; no gameplay automation; Forever is a separate untested target (OPEN_QUESTIONS #22–#25); coalesce to the 10-burst / 1-per-second prefix budget (items 69–71).
+
+**Reject (contradicts Bible / Ten Laws):** officer-only control path (rituals are Pope-listed, not `OFFICER`); coordinator re-election or timeout self-promote (Law 5, §20.3); per-character identity SV (Law 7, §12); a new ACK/election protocol; multi-TOC Classic Era / Forever flavors this pass; “load out of date” as a release strategy.
 
 ---
 
