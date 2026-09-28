@@ -1,0 +1,6 @@
+[mcp_servers.wow-api]
+command = "npx"
+args = [
+    "-y",
+    "@nighthawk42/wow-api-mcp",
+]

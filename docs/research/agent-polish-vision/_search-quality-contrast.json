@@ -1,0 +1,78 @@
+{
+  "search_id": "search_49f587651068ea8fecce9c2cd02bcfd4",
+  "session_id": "session_49f587651068ea8fecce9c2cd02bcfd4",
+  "status": "ok",
+  "results": [
+    {
+      "url": "https://accessibleweb.com/color-contrast-checker",
+      "title": "Web Accessibility Color Contrast Checker - Conform to WCAG",
+      "publish_date": "2025-12-16",
+      "excerpts": [
+        "# WCAG Color Contrast Checker\n\nEnter color combinations below to check whether they conform to Web Content Accessibility Guidelines. Check colors straight from your browser with our free Chrome extension, Accessible Web Helper.\n\n[Add to Chrome for Free](https://chrome.google.com/webstore/detail/accessible-web-helper/gdnpkbipbholkoaggmlblpbmgemddbgb)\n\n## How it Works\n\nPlease select a foreground color and a background color. You can enter hex color codes or use the color selector tool (aka eye dropper in the color input element). The \u201cWCAG Compliance Information\u201d chart will tell you if the selected colors pass conformance.\n\n## Select Colors\n\nForeground Color Picker\n\nForeground Color Eye Dropper\n\nBackground Color Picker\n\nBackground Color Eye Dropper\n\nContrast Ratio\n\n21\\.00:1\n\n## WCAG Compliance Results\n\n|Element Type |AA |AAA |\n| --- | --- | --- |\n|Small Text |\n|Large Text |\n|UI Components |\n\nReverse Foreground and Background Colors\n\nSMALL sample text: 14pt ( 18\\.5px )"
+      ]
+    },
+    {
+      "url": "https://reciteme.com/us/news/wcag-contrast-ratio-4-5-1",
+      "title": "WCAG Contrast Ratio 4.5:1 - How It Works & Why It's Important",
+      "publish_date": "2026-07-13",
+      "excerpts": [
+        "WCAG Contrast Ratio 4.5:1 - How It Works & Why It's Important\nAs established Level AA is the minimum level that organisations should be striving to achieve, and this level requires a contrast ratio of at least 4.5:1 for normal text and at least 3:1 for large text and design elements. Large text is considered as 18 pt or 14pt in bold or larger."
+      ]
+    },
+    {
+      "url": "https://www.w3.org/WAI/WCAG22/Understanding/contrast-minimum.html",
+      "title": "Understanding Success Criterion 1.4.3: Contrast (Minimum) | WAI | W3C",
+      "publish_date": null,
+      "excerpts": [
+        "Understanding Success Criterion 1.4.3: Contrast (Minimum) | WAI\nA contrast ratio of 3:1 is the minimum level recommended by [ISO-9241-3] and [ANSI-HFES-100-1988] for standard text and vision. The 4.5:1 ratio is used in"
+      ]
+    },
+    {
+      "url": "https://www.w3.org/WAI/WCAG21/Understanding/contrast-minimum.html",
+      "title": "Understanding Success Criterion 1.4.3: Contrast (Minimum) | WAI | W3C",
+      "publish_date": null,
+      "excerpts": [
+        "Understanding Success Criterion 1.4.3: Contrast (Minimum) | WAI\nA contrast ratio of 3:1 is the minimum level recommended by [ISO-9241-3] and [ANSI-HFES-100-1988] for standard text and vision. The 4.5:1 ratio is used in this"
+      ]
+    },
+    {
+      "url": "https://primer-docs-preview.github.com/accessibility/design-guidance/color-considerations",
+      "title": "Color considerations - Primer",
+      "publish_date": null,
+      "excerpts": [
+        "Color considerations - Primer\nIf the validation message is both text and an icon, it must meet a contrast ratio of 4.5:1 for \"normal text\", or 3:1 for \"large text\". In this context the icon"
+      ]
+    },
+    {
+      "url": "https://wowwiki-archive.fandom.com/wiki/API_GetItemQualityColor",
+      "title": "API GetItemQualityColor | WoWWiki | Fandom",
+      "publish_date": "2026-03-18",
+      "excerpts": [
+        "in: World of Warcraft API\n\nEnglish\n\n* [\u0420\u0443\u0441\u0441\u043a\u0438\u0439](https://wowwiki.fandom.com/ru/wiki/%D0%A8%D0%B0%D0%B1%D0%BB%D0%BE%D0%BD:WoWAPI)\n\n# API GetItemQualityColor\n\n[Sign In to Save Save](https://auth.fandom.com/signin?redirect=https%3A%2F%2Fwowwiki-archive.fandom.com%2Fwiki%2FAPI_GetItemQualityColor%3Fcollections%3Dsave&uselang=en&metadata=collections-save-button \"Sign In to Save\") [Edit](https://auth.fandom.com/signin?redirect=https%3A%2F%2Fwowwiki-archive.fandom.com%2Fwiki%2FAPI_GetItemQualityColor%3Fveaction%3Dedit&uselang=en&metadata=article-registration-edit-article)\n\n* [History](https://wowwiki-archive.fandom.com/wiki/API_GetItemQualityColor?action=history)\n* [Purge](https://wowwiki-archive.fandom.com/wiki/API_GetItemQualityColor?action=purge)\n* [Talk (0)](https://wowwiki-archive.fandom.com/wiki/Talk:API_GetItemQualityColor?action=edit&redlink=1)\n\n## Contents\n\n* 1 Arguments\n* 2 Returns\n* 3 Example\n  \n    + 3\\.1 Result\n* 4 Details\n* 5 Changes\n* 6 See also\n\u2190 WoW API < GetItemQualityColor\n\nReturns RGB color codes for an item quality .\n\n```\nr, g, b, hex = GetItemQualityColor(quality)\n```\n\n## Arguments [ ]\n\n* quality (number) - The numeric ID of the quality from 0 (Poor) to 7 (Heirloom).\n\n## Returns [ ]\n\n* r (number) - The Red component of the color (0 to 1, inclusive).\n* g (number) - The Green component of the color (0 to 1, inclusive).\n* b (number) - The Blue component of the color (0 to 1, inclusive).\n* hex (string) - The 4 character hex UI escape sequence for this color\n\n## Example [ ]\n\n```\nfor i = 0, 8 do\n  local r, g, b, hex = GetItemQualityColor(i)\n  print(i, hex, _G[\"ITEM_QUALITY\" .. i .. \"_DESC\"], hex:sub(5))\nend\n```\n\n### Result [ ]\n\n    Will print all qualities, in their individual colors (example result from version 6.2.4).\n\n```\n0 Poor ff9d9d9d \n1 Common ffffffff \n2 Uncommon ff1eff00 \n3 Rare ff0070dd \n4 Epic ffa335ee \n5 Legendary ffff8000 \n6 Artifact ffe6cc80 \n7 Heirloom ffe6cc80 \n8 WoW Token ff00ccff\n```\n\n## Details [ ]\nGetItemQualityColor() was added in 1.9.1\n\n    If an invalid quality index is specified, GetItemQualityColor() returns white (same as index 1):\n\n    r = 1\n    g = 1\n    b = 1\n    hex = |cffffffff\n\n## Changes [ ]\n\n* Quality 7 was added in version Patch 3.0 for heirloom items\n* ITEM\\_QUALITY7\\_DESC is now defined as of Patch 3.1.1\n* Patch 6.1.2 introduced quality 8, WoW Token.\n* Patch 7.0.3 changed the Heirloom color from Heirloom ffe6cc80 to Heirloom ff00ccff . This was likely done to avoid confusion with Artifact ffe6cc80.\n\n## See also [ ]\n\n* API ITEM\\_QUALITY\\_COLORS\n* API TYPE Quality\n\nCategories\n\n* Categories :\n* World of Warcraft API\n\nLanguages\n\n[\u0420\u0443\u0441\u0441\u043a\u0438\u0439](https://wowwiki.fandom.com/ru/wiki/%D0%A8%D0%B0%D0%B1%D0%BB%D0%BE%D0%BD:WoWAPI)\n\nCommunity content is available under [CC-BY-SA](https://www.fandom.com/licensing) unless otherwise noted.\n\nMore Fandoms\n\n* [Fantasy](https://www.fandom.com/fancentral/fantasy)\n* [World of Warcraft](https://www.fandom."
+      ]
+    },
+    {
+      "url": "https://wowpedia.fandom.com/wiki/API_GetItemQualityColor",
+      "title": "GetItemQualityColor - Wowpedia - Your wiki guide to the World of Warcraft",
+      "publish_date": null,
+      "excerpts": [
+        "In particular, ITEM_QUALITY_COLORS[quality].hex already includes the leading &quot;|c&quot; escape sequence whereas the fourth return value of this function does not. If an invalid quality index is specified, GetItemQualityColor() returns white (same as index 1): ... for i = 0, 8 do local r, g, b, hex = GetItemQualityColor(i) print(i, &#x27;|c&#x27;..hex, _G[&quot;ITEM_QUALITY&quot; .."
+      ]
+    },
+    {
+      "url": "https://addonstudio.org/wiki/WoW:API_GetItemQualityColor",
+      "title": "WoW API: GetItemQualityColor - AddOn Studio",
+      "publish_date": "2023-08-15",
+      "excerpts": [
+        "<strong>Returns RGB color codes for an item quality"
+      ]
+    }
+  ],
+  "usage": [
+    {
+      "name": "sku_search",
+      "count": 1
+    }
+  ],
+  "warnings": []
+}

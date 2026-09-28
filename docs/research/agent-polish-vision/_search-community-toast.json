@@ -1,0 +1,94 @@
+{
+  "search_id": "search_fad069d085d841bde041954443d5aaec",
+  "session_id": "session_fad069d085d841bde041954443d5aaec",
+  "status": "ok",
+  "results": [
+    {
+      "url": "https://us.forums.blizzard.com/en/wow/t/wow-toasts-popup/1985768",
+      "title": "WoW Toasts Popup - General Discussion - World of Warcraft Forums",
+      "publish_date": "2024-10-15",
+      "excerpts": [
+        "If you are also a victim of this, just <strong>hit ESC &gt; OPTIONS&gt; Search Bar \u201cToast\u201d and Uncheck that box</strong>. No idea why this specific window is not in the \u201cEdit Mode\u201d but it what it is."
+      ]
+    },
+    {
+      "url": "https://us.forums.blizzard.com/en/wow/t/lootachievement-toast-window-is-annoying/2205396",
+      "title": "Loot/Achievement Toast Window is annoying - General Discussion - World of Warcraft Forums",
+      "publish_date": null,
+      "excerpts": [
+        "There\u2019s no option to move or remove this thing. I\u2019ll be in the middle of combat and my guild will randomly get a guild achieve or loot will finally drop into my bags\u2026 and BOOM Toast window blocks out my spell abilities and i cant see nothin. Theres no way to customize is currently so"
+      ]
+    },
+    {
+      "url": "https://www.reddit.com/r/wow/comments/1dm5mu6/how_do_i_disable_those_popups/",
+      "title": "r/wow on Reddit: How do I disable those popups?",
+      "publish_date": "2024-06-22",
+      "excerpts": [
+        "Okay so I had the same issue, those popups suck donkey balls. This is the addon you want that will take care of all your issues. LS:toasts The notification go to your top left and you can edit in the options what you want to show."
+      ]
+    },
+    {
+      "url": "https://www.reddit.com/r/WowUI/comments/zirjaq/help_how_to_remove_toast_notifications/",
+      "title": "r/WowUI on Reddit: [Help] How to remove toast notifications?",
+      "publish_date": "2022-12-11",
+      "excerpts": [
+        "Hiya, I&#x27;m having small annoying problem. I cant turn off social notifications, these &quot;toasts&quot; or whatever they&#x27;re called. Every time my friend or"
+      ]
+    },
+    {
+      "url": "https://www.wowinterface.com/downloads/info24123-lsToasts.html",
+      "title": "LS: Toasts : Character Advancement  : World of Warcraft AddOns",
+      "publish_date": "2016-08-09",
+      "excerpts": [
+        "|Categories: |**Character Advancement** , TradeSkill Mods |\n\n# LS: Toasts Popular! (More than 5000 hits)\n\nVersion: 110207.02\n\nby: [**lightspark**](https://www.wowinterface.com/forums/member.php?s=72d16e387b2e734b268fb2e46c6fef83&action=getinfo&userid=301665) [ [More](https://www.wowinterface.com/downloads/author-301665.html) ]\n\nReplacement for the default alert system. Better toasts, cheers!  \n  \n  \n  \n  \nOptions  \nUse **/LSTOASTS** or **/LST** to open in-game config.  \n  \nFeedback and Feature Requests  \nIf you found a bug or want to share an idea on how to improve my addon, either use the issue tracker on [GitHub](https://github.com/ls-/ls_Toasts/issues) or join our [Discord](https://discord.gg/7QcJgQkDYD) server.  \n  \nLocalisation  \nFeel free to add and/or review translations on [Curse](https://wow.curseforge.com/projects/ls-toasts/localization) , alternatively, you may create a PR on [project's GitHub page](https://github.com/ls-/ls_Toasts/pulls) .  \n  \nFAQ\n**Q:** Is it possible to use the default achievement/loot/etc toast while using the addon?  \n**A:** No, the default system is written in a way that makes it hard or even impossible to toggle parts of it individually.  \n  \nLicense  \nPlease see [LICENSE](https://github.com/ls-/ls_Toasts/blob/master/LICENSE.txt) file.\n\nVersion 110207.02  \n  \n\\- Added an option to disable the glow/shine visual effects on toasts. It can be toggled for each toast type  \nindividually. You can disable them at /LST > Toast Types > Toast Type > Visual Effects.  \n  \n\\### Loot (Common)  \n  \n\\- Added a way to white-/blacklist items by ID. These lists will ignore the quality threshold setting. However, you  \ncan't whitelist items that got filtered out by the \"Legacy Equipment\" pre-filter.  \n  \nVersion 110207.01  \n  \n\\- Added 11.2.7 support.  \n  \nVersion 110205.01  \n  \n\\- Added 11.2.5 support.  \n  \nVersion 110200.02  \n  \n\\### Loot (Currency)  \n  \n\\- Fixed an issue during the currency transfer.  \n  \nVersion 110200.\n01  \n  \n\\- Added 11.2.0 support.  \n  \nVersion 110107.01  \n  \n\\- Added 11.1.7 support.  \n  \nVersion 110105.01  \n  \n\\- Added 11.1.5 support.  \n  \n\\### Loot (Common) & Loot (Special)  \n  \n\\- Added an option to suppress toasts for legacy armour and weapons. You can disable toasts for legacy equipment by  \nunchecking /LST > Toast Types > Loot (Common|Special) > Legacy Equipment, enabled by default.  \n  \nVersion 110100.01  \n  \n\\- Added 11.1.0 support.  \n  \n\\### Achievement  \n  \n\\- From now on only new achievements will be toasted. You can enable toasts for previously earned achievements at /LST >  \nToast Types > Achievement > Earned.  \n  \n\\### Collection  \n  \n\\- Added Warband Scene aka Campsite toasts.  \n  \nVersion 110005.01  \n  \n\\- Added 11.0.5 support.  \n\\- Added a set of AzeriteUI themed skins.  \n\\- Added missing Beautycase (Legacy) skin.  \n\\- Updated Spanish translation. Translated by Distopic@Curse.  \n  \nVersion 110002.03  \n  \n\\- Removed the workaround for the guild achievement spam.\nIt's finally fixed by Blizzard. An ancient bug that had been  \nignored for years got fixed asap after it showed up multiple times during RWF streams and caused a few wipes.  \n  \nVersion 110002.02  \n  \n\\- Reworked the workaround for the guild achievement spam. After further investigating the issue it became apparent that  \nit's impossible to reliably automate it without affecting newer smaller guilds that might want to see toasts for these  \nachievements. For this reason I'm adding a toggle to enable filtering for guild achievements if your guild is  \nexperiencing it. This will block toasts for a bunch of faction-specific PvP and reputation achievements. Can be found  \nat /LST > Toast Types > Achievement > Filter Guild Achievements, disabled by default.  \n\\- Updated Traditional Chinese translation. Translated by BNS333@Curse.  \n  \nVersion 110002.01  \n  \n\\- Added a workaround for buggy guild achievement spam. If your character is in a guild, the addon will add already\n\n...\n\nassumptions, so if it works, good, if it doesn't, oh well. But \"need\", \"greed\", and \"disenchant\" rolls should work as  \nexpected.  \n  \n  \n  \nVersion 100205.02  \n  \n\\- Added partial Brazilian Portuguese translation. Translated by paulovnas@GitHub.  \n  \nVersion 100205.01  \n  \n\\- Added 10.2.5 support.  \n  \nVersion 100200.01  \n  \n\\- Added 10.2 support.  \n\\- Added \"LS: Toasts\" entry to the addon compartment in the top right corner of the minimap.  \n\\- Tweaked toast borders so that the texture looks more consistent with no warping or shifting.  \nDoesn't affect ElvUI skins.  \n  \n\\### Transmogrification  \n  \n\\- Fixed an issue where sometimes a toast wouldn't show up. It's primarily affecting \"Quantum Items\" that unlock  \na random appearance on use.  \n  \n  \n  \n  \nVersion 100105.01  \n  \n\\- Added 10.1.5 support.  \n  \nVersion 100100.03  \n  \n\\- Added \"Two Tone\" variants to all built-in skins. They have a two tone background that's similar to that of Blizz  \nachievement toasts.\nI might tweak the textures depending on the feedback.  \n\\- Updated Spanish translation. Translated by Shacoulrophobia@Curse.  \n  \n  \n  \nVersion 100100.02  \n  \n\\- Fixed world quest toasts.  \n  \nVersion 100100.01  \n  \n\\- Added 10.1.0 support.  \n  \nVersion 100007.01  \n  \n\\- Added 10.0.7 support.  \n  \nVersion 100005.03  \n  \n\\- Added \"Traveler's Log\" toasts for monthly activities.  \n  \n\\### Loot (Currency)  \n  \n\\- Added support for Trader's Tenders. They might be buggy due to how they're implemented on Blizz end. Unlike other  \ncurrencies these update reliably only when the Trading Post UI is shown, that's why if you gain them while you're away  \nfrom the Trading Post you may or may not get the toast.  \n  \n  \nVersion 100005.02  \n  \n\\### Loot (Common)  \n  \n\\- Reworked the reagent and crafted item quality icon.  \n  \n  \n  \nVersion 100005.01  \n  \n\\- Added 10.0.5 support.  \n  \n\\### Loot (Common)  \n  \n\\- Added support for reagent ranks.  \n  \n\\### Loot (Currency)\n\\- Updated the currency blacklist.  \n  \nVersion 100002.02  \n  \n\\- Fixed \"10.0 Dragonrider PVP - Whirling Surge Dismounts\" spam.  \n\\- Updated French translation. Translated by agstegiel@Curse and Braincell1980@Curse.  \n\\- Updated German translation. Translated by MrKimab@Curse.  \n  \nVersion 100002.01  \n  \n\\- Added 10.0.2 support.  \n\\- Fixed an issue where the addon would load the achievement UI too early which in turn could cause  \nerrors.  \n  \nVersion 100000.03  \n  \n\\- Fixed file loading order.  \n  \nVersion 100000.02  \n  \n\\- Added an option to show poor quality quality items via common loot toasts. Thanks to Faqar@GitHub.  \n\\- Added leaf ornaments to achievement toasts. I can't re-enable Blizz achievement toasts, so as a  \ncompromise I chose to make achievement toasts more unique. If you want them to stand out even more  \ncreate a separate anchor to display them.  \n\\- Fixed an issue where repeatedly testing toasts and flushing the queue would sometimes lock up the  \naddon.\n\\- Fixed corrupt beautycase border texture. It worked, but baked-in shadows were messed up.  \n\\- Updated Traditional Chinese translation. Translated by BNS333@Curse.  \n  \n[mg]https://i.imgur.com/yqJ7C6S.png[/img]  \n  \nVersion 100000.01  \n  \n\\- Added 10.0.0 support;  \n\\- Added new \"Info\" panel to the config. It has links to various resourced including my Discord  \nserver dedicated to LS: \\* addons;  \n\\- Renamed \"Recipe\" toasts to \"Profession\". Added profession skill line toasts;  \n\\- Updated \"Collection\" toasts;  \n\\- Updated embeds.  \n  \nVersion 90207.01  \n  \n\\- Added 9.2.7 support;  \n\\- Fixed an issue where archaeology toasts would show the loss of fragments;  \n\\- Fixed an issue where currency toasts would show decimals for quantities;  \n\\- Updated Traditional Chinese translation. Translated by RainbowUI@Curse.  \n  \nVersion 90200.01  \n  \n\\- Added 9.2.0 support;  \n\\- Updated French translation. Translated by agstegiel@Curse.  \n  \nVersion 90105.01  \n  \n\\- Added 9.1.5 support.\nVersion 90100.03  \n  \n\\- Fixed \"Torghast - Scoreboard\" toast spam. Once again. Blizz continue adding  \nmore info with hotfixes, so this most likely isn't the last spam fix.  \n  \nVersion 90100.02  \n  \n\\- Fixed \"Torghast - Scoreboard\" toast spam.  \n  \nVersion 90100.01  \n  \n\\- Added 9.1.0 support.  \n  \nVersion 90005.01  \n  \n\\- Added 9.0.5 support.  \n  \nVersion 90002.01  \n  \n\\- Added 9.0.2 support.  \n  \nVersion 90001.04  \n  \n\\- Added Italian translation. Translated by vabatta@GitHub;  \n\\- Updated Korean translation. Translated by unrealcrom96@Curse;  \n\\- Updated Traditional Chinese translation. Translated by RainbowUI@Curse.  \n  \nVersion 90001.03  \n  \n\\- Added currency toast filters. They will allow you to blacklist certain currencies entirely and  \nto set thresholds below which toasts won't be generated. The addon will try to populate the  \ncurrency list with discovered currencies automatically, thus you should log in on a character\nthat discovered them most currencies at least once, but there's a way to add currency IDs  \nmanually. Out of the box, the only active currency filter is for `\"Honor\"`, it's set to 25;  \n\\- Updated Traditional Chinese translation. Translated by RainbowUI@Curse.  \n  \n  \n  \nVersion 90001.02  \n  \n\\- Added support for runecarving toasts which become available later after SL launch;  \n\\- Added honour throttling for currency toasts. For the time being any honour gains below 20  \nwill be ignored to avoid any toast spam in BGs. It's a temporary measure, I'll replace it  \nwith proper currency filtering later.  \n  \nVersion 90001.01  \n  \n\\- Added 9.0.1 support.\n\nArchived Files (6)\n\n|**File Name** |**Version** |**Size** |**Author** |**Date** |\n| --- | --- | --- | --- | --- |\n| [LS: Toasts](https://www.wowinterface.com/downloads/getfile.php?s=72d16e387b2e734b268fb2e46c6fef83&id=24123&aid=162192) |110205\\.01 |604kB |lightspark |10-07-25 09:24 AM |\n| [LS: Toasts](https://www.wowinterface."
+      ]
+    },
+    {
+      "url": "https://www.wowinterface.com/forums/showthread.php?t=48283",
+      "title": "Prevent specific BNet toasts from showing up - taint free! - WoWInterface",
+      "publish_date": null,
+      "excerpts": [
+        "Prevent specific BNet toasts from showing up - taint free! Tutorials &amp; Other Helpful Info."
+      ]
+    },
+    {
+      "url": "https://forum.warmane.com/showthread.php?t=285492",
+      "title": " ElvUI has been Backported to Wrath of the Lich King (3.3.5)",
+      "publish_date": "2015-02-18",
+      "excerpts": [
+        "warmane.com/member.php?username=Kkthnx \"Kkthnx is offline\")\n   \n   [**Kkthnx**](https://forum.warmane.com/member.php?username=Kkthnx \"Kkthnx is offline\")\n   \n    + [View Profile](https://forum.warmane.com/member.php?username=Kkthnx)\n    + [View Forum Posts](https://forum.warmane.com/search.php?s=e92dcde3824ae966f0fdc05d8c6698e0&do=finduser&userid=1627&contenttype=vBForum_Post&showposts=1)\n    + [Private Message](https://forum.warmane.com/private.php?s=e92dcde3824ae966f0fdc05d8c6698e0&do=newpm&u=1627)\n   \n   Member\n   \n    * * *\n   \n   ## ElvUI has been Backported to Wrath of the Lich King (3.3.5)\n   \n   > \n   > So many people have been waiting for this! We can finally thank Bunny67 for \"Backporting\" ElvUI for us Wrath of the Lich King users/players! The UI runs great and has all the current features that ElvUI has in Warlords of Draenor. You can now enjoy it for 3.3.5!\n   > \n   > \n   > \n   > Direct Download Link -> <https://github.com/ElvUI/ElvUI/archive/master.zip>"
+      ]
+    },
+    {
+      "url": "https://www.curseforge.com/wow/addons/elvui-enhanced-again/files/2663814",
+      "title": "ElvUI Enhanced Again (DF) - 3.3.5-beta1 - World of Warcraft Addons - CurseForge",
+      "publish_date": "2024-04-03",
+      "excerpts": [
+        "Date:   Sat Jan 5 11:27:05 2019 +0100\n\nProgression updated for new 8.1 raids  \n  \nProgression updated with Battle of Dazar'alor and Crucible of Storms\n\nWorld of Warcraft Discover [Browse](https://www.curseforge.com/wow/search?page=1&pageSize=20&sortBy=relevancy) Search\n\nCurseForge - a world of endless gaming possibilities for modders and gamers alike.  \nDownload the best mods and addons!\n\n* [](https://www.instagram.com/curseforgeofficial \"Instagram\")\n* [](https://www.tiktok.com/@curseforge \"TikTok\")\n* [](https://www.youtube.com/@CurseForge \"YouTube\")\n* [](https://discord.gg/curseforge \"Discord\")\n* [](https://x.com/CurseForge \"Twitter / X\")\n* [](https://www.reddit.com/r/CurseForge \"Reddit\")\n\n* [Terms of Service](https://legal.overwolf.com/docs/overwolf/platform/platform-terms-of-use)\n* [Privacy Policy](https://legal.overwolf.com/docs/overwolf/platform/platform-privacy-policy)\n* Licenses\n* [Mod Author Terms](https://legal.overwolf.com/docs/curseforge/mod-authors-terms)\n*"
+      ]
+    },
+    {
+      "url": "https://warperia.com/addon-wotlk/elvui",
+      "title": "ElvUI - Warperia",
+      "publish_date": "2026-01-19",
+      "excerpts": [
+        "wsrc_token=eyJ1cmwiOiJodHRwczpcL1wvZ2l0aHViLmNvbVwvRWx2VUktV290TEtcL0VsdlVJXC9pc3N1ZXMiLCJleHAiOjE3ODQ1ODI5MTYsImlwIjoiMjMuMjUxLjE0Ni4xMTUiLCJ1YSI6Ik1vemlsbGFcLzUuMCBBcHBsZVdlYktpdFwvNTM3LjM2IChLSFRNTCwgbGlrZSBHZWNrbyk7IGNvbXBhdGlibGU7IFNoYXBCb3RcLzAuMS4wIiwicyI6IjU2NjMzZTUyYTEyNmM4OTJiMmRlY2ZhMDNhNDk0NTJlIiwidCI6ImV4dHNyYyJ9fDRiN2U3MTYyY2E3M2Q0MzNjM2Y2ZTU0YmYwMjBlOTc2MGM5ZDlmOTY4MzZiYmY0YzRiMWYxNDY0Yjk3NWFlZDU)\n* [Join our Discord](https://discord.gg/PukXuK4E8w)\n\n* Description\n* Images\n* Plugins\n* Variations\n* Expansions\n* Comments\n\nElvUI is a full UI replacement. It completely replaces the default Blizzard UI at every level with a new and better interface. As such, you\u2019ll only ever have to update ElvUI and not worry too much about its individual components. This UI will arrange your interface to be more flexible and practical.\n\n* * *\n\n**In-Game Commands**\n\n1. **/elvui** \u2013 Opens the Configuration GUI\n2. **/reloadui** \u2013 Reloads your whole UI\n\n* * *\n\n**Browse Profiles**\n\n...\n\n[Cataclysm ##### Cataclysm 4\\.3.4](https://warperia.com/addon-cata/elvui/)\n\n[Mists of Pandaria ##### Mists of Pandaria 5\\.4.8](https://warperia.com/addon-mop/elvui/)\n\n[Vanilla ##### Vanilla 1\\.12.1](https://warperia.com/addon-vanilla/elvui/)\n\n[The Burning Crusade ##### The Burning Crusade 2\\.4.3](https://warperia.com/addon-tbc/elvui/)\n\nAvailable variations\n\n[ElvUI Epoch ##### ElvUI Epoch An ElvUI modification that prevents a crash on\u2026](https://warperia.com/addon-wotlk/elvui-epoch/)\n\nYou must be [logged in](https://warperia.com/login) to leave a comment.\n\n##### Comments (0)\n\n## More addons for Wrath of the Lich King\n\nDiscover other addons that might interest you\n\n[DBM \u2013 Warmane #### DBM \u2013 Warmane Alerts you when a Boss begins to cast certain spells or use certain skills.](https://warperia.com/addon-wotlk/dbm-warmane/) [UnitFramesImproved #### UnitFramesImproved Extends the Blizzard unitframes for better visuals, with a minimal 17KB footprint.](https://warperia.\n\n...\n\nBe as specific as possible to help the developer understand and resolve the issue.\n\nCancel Submit Report\n\nReason for reporting \\* Select a reason Spam Inappropriate content Harassment Other\n\nAdditional details (optional):\n\nCancel Submit Report\n\n**Notification**"
+      ]
+    },
+    {
+      "url": "https://www.reddit.com/r/wowaddons/comments/1lvqcht/addon_or_weakaura_to_hide_you_received_spam/",
+      "title": "r/wowaddons on Reddit: addon or weakaura to hide \"you received\" spam?",
+      "publish_date": "2025-07-09",
+      "excerpts": [
+        "This is the right answer. I finally got fed up with the &quot;you received&quot; loot windows and I searched around for something to suppress them. LS:Toasts is the one you want (https://www.curseforge.com/wow/addons/ls-toasts)."
+      ]
+    }
+  ],
+  "usage": [
+    {
+      "name": "sku_search",
+      "count": 1
+    }
+  ],
+  "warnings": []
+}

@@ -1,0 +1,1449 @@
+diff --git a/addon/ChurchOfBeef/ChurchOfBeef.lua b/addon/ChurchOfBeef/ChurchOfBeef.lua
+index 4b9748c..d763ef1 100644
+--- a/addon/ChurchOfBeef/ChurchOfBeef.lua
++++ b/addon/ChurchOfBeef/ChurchOfBeef.lua
+@@ -10,10 +10,43 @@ function COB:OnLoad()
+   COB.loaded = true
+ end
+ 
+-function COB:OnLogin()
+-  if COB.UI and COB.UI.Init then
+-    COB.UI:Init()
++-- UI init lives on the bootstrap now that the Quiet shell is retired (Lane T).
++-- Every module Init is pcall'd (Wave 2 Task 1). A Hud inherit abort must
++-- still reach Net:Init. No shell frame, no UISpecialFrames listing for it,
++-- no roster event registration on a shell, no ui.shown reopen-on-login
++-- (the SV key stays in DB defaults harmlessly).
++local function initChat(text)
++  if type(DEFAULT_CHAT_FRAME) == "table" and DEFAULT_CHAT_FRAME.AddMessage then
++    DEFAULT_CHAT_FRAME:AddMessage("|cffffaa00Church of Beef|r: " .. text)
+   end
++end
++
++local function initModule(name, mod)
++  if type(mod) ~= "table" or type(mod.Init) ~= "function" then
++    return
++  end
++  local ok = pcall(mod.Init, mod)
++  if not ok then
++    initChat(name .. " failed to start.")
++  end
++end
++
++local function initUi()
++  initModule("Minimap", COB.Minimap)
++  initModule("RecordsBook", COB.RecordsBook)
++  initModule("PlayerCard", COB.PlayerCard)
++  initModule("Hud", COB.Hud)
++  initModule("Console", COB.Console)
++  initModule("Toasts", COB.Toasts)
++  initModule("DecreeBanner", COB.DecreeBanner)
++  initModule("Sound", COB.Sound)
++  initModule("FighterCard", COB.FighterCard)
++  initModule("Inputs", COB.Inputs)
++  initModule("Markers", COB.Markers)
++end
++
++function COB:OnLogin()
++  initUi()
+   if COB.Net and COB.Net.Init then
+     COB.Net:Init()
+   end
+@@ -173,13 +206,10 @@ local function bindLocalCharacter()
+   end
+ end
+ 
+-local function hideInputsAndDock()
++local function hideInputs()
+   if COB.Inputs and type(COB.Inputs.Hide) == "function" then
+     pcall(COB.Inputs.Hide, COB.Inputs)
+   end
+-  if COB.ConsoleDock and type(COB.ConsoleDock.Hide) == "function" then
+-    pcall(COB.ConsoleDock.Hide, COB.ConsoleDock)
+-  end
+ end
+ 
+ local function refreshEventFurniture()
+@@ -187,9 +217,6 @@ local function refreshEventFurniture()
+   if COB.Inputs and type(COB.Inputs.Refresh) == "function" then
+     pcall(COB.Inputs.Refresh, COB.Inputs)
+   end
+-  if COB.ConsoleDock and type(COB.ConsoleDock.Refresh) == "function" then
+-    pcall(COB.ConsoleDock.Refresh, COB.ConsoleDock)
+-  end
+   -- Knighting OpenRite / Continue must forget leftover lastPair in place.
+   if COB.Hud and type(COB.Hud.Refresh) == "function" then
+     pcall(COB.Hud.Refresh, COB.Hud)
+@@ -209,6 +236,16 @@ local function hideFighterCard()
+   end
+ end
+ 
++-- The Pope's HUD refresh after a verdict is deterministic on his client — it
++-- does not wait for the STATE echo. skipSend-guarded like its neighbors.
++local function refreshHud()
++  if skipSend() then return end
++  local Hud = COB.Hud
++  if type(Hud) == "table" and type(Hud.Refresh) == "function" then
++    pcall(Hud.Refresh, Hud)
++  end
++end
++
+ local function afterEndEvent()
+   sendState()
+   refreshEventFurniture()
+@@ -230,7 +267,7 @@ end
+ 
+ local function paintInboundInputs(sender)
+   if skipSend() then
+-    hideInputsAndDock()
++    hideInputs()
+     return
+   end
+   if COB.Inputs then
+@@ -241,19 +278,6 @@ local function paintInboundInputs(sender)
+       pcall(COB.Inputs.Refresh, COB.Inputs)
+     end
+   end
+-  if COB.ConsoleDock and type(COB.ConsoleDock.Refresh) == "function" then
+-    pcall(COB.ConsoleDock.Refresh, COB.ConsoleDock)
+-  end
+-end
+-
+-local function bindSlashInputTarget()
+-  local Inputs = COB.Inputs
+-  if not (Inputs and Inputs.SetInputTarget) then return end
+-  if type(UnitName) ~= "function" then return end
+-  local target = UnitName("target")
+-  if type(target) == "string" and target ~= "" then
+-    pcall(Inputs.SetInputTarget, Inputs, target)
+-  end
+ end
+ 
+ local function paintInboundFavor(decoded, sender)
+@@ -371,7 +395,12 @@ function COB:InstallWire()
+ 
+   wrapAfter(COB.Runtime, "StartEvent", afterRuntime)
+   wrapAfter(COB.Runtime, "OpenRite", afterRuntime)
+-  wrapAfter(COB.Runtime, "CloseRite", sendState)
++  -- The fighter card is a sanction beat: it dies with the ruling beat, and
++  -- CloseRite (CONSEQUENCE) sweeps it if no verdict landed first.
++  wrapAfter(COB.Runtime, "CloseRite", function()
++    sendState()
++    hideFighterCard()
++  end)
+   wrapAfter(COB.Runtime, "Continue", afterRuntime)
+   wrapAfter(COB.Runtime, "EndEvent", afterEndEvent)
+   wrapAfter(COB.Gora, "RecordFavor", sendState)
+@@ -421,10 +450,14 @@ function COB:InstallWire()
+       if name then fields.name = name end
+     end
+     proclaim("verdict", fields)
++    hideFighterCard()
++    refreshHud()
+     sendState()
+   end)
+   wrapAfter(COB.Gora, "Void", function()
+     proclaim("verdict", { ruling = "void" })
++    hideFighterCard()
++    refreshHud()
+     sendState()
+   end)
+   wrapAfter(COB.Gora, "FreeRuling", function(_, result)
+@@ -433,6 +466,8 @@ function COB:InstallWire()
+       fields.text = result.text
+     end
+     proclaim("verdict", fields)
++    hideFighterCard()
++    refreshHud()
+     sendState()
+   end)
+   wrapAfter(COB.Gora, "CowardiceRecorded", function(_, result)
+@@ -442,12 +477,24 @@ function COB:InstallWire()
+       if name then fields.name = name end
+     end
+     proclaim("cowardice", fields)
++    hideFighterCard()
++    refreshHud()
+     sendState()
+   end)
+   wrapAfter(COB.Console, "SetCongregationFavorVisible", sendState)
+   wrapAfter(COB.Console, "PostDecree", function(_, result)
+     sendDecree({ line = result.line, flavor = result.flavor })
+   end)
++  -- A real Set (Pope post or inbound DECREE) shows the banner. wrapAfter
++  -- fires only on the non-nil copy; login restore goes through
++  -- Decree:Restore, never Set, so it does not double-show past the
++  -- once-per-login reveal in DecreeBanner:Init.
++  wrapAfter(COB.Decree, "Set", function()
++    local Banner = COB.DecreeBanner
++    if type(Banner) == "table" and type(Banner.Show) == "function" then
++      pcall(Banner.Show, Banner)
++    end
++  end)
+   wrapAlways(COB.Decree, "Clear", function()
+     local Banner = COB.DecreeBanner
+     if type(Banner) == "table" and type(Banner.Refresh) == "function" then
+@@ -465,12 +512,24 @@ function COB:InstallWire()
+         if ok then
+           paintInboundFavor(decoded, sender)
+           paintInboundInputs(sender)
+-          if type(decoded) == "table" and decoded.state == "QUIET" then
+-            hideFighterCard()
+-          else
+-            local fighters = decoded and decoded.subjects and decoded.subjects.fighters
+-            if type(fighters) == "table" and fighters[1] and fighters[2] then
+-              showFighterCard()
++          -- The card is a sanction beat: CONSEQUENCE means the ruling landed;
++          -- QUIET means the event ended. RITE with fighters still shows it.
++          -- Our own GUILD STATE echoes back, and the verdict STATE is RITE
++          -- carrying the lastPair overlay — without the self check the echo
++          -- re-showed the card one beat after the verdict wrap hid it. The
++          -- Pope's one show source is the Sanction wrap, so the card branch
++          -- skips self-echoes. Favor/inputs keep their self-echo paint.
++          local selfEcho = type(self.IsSelf) == "function"
++            and self:IsSelf(sender) == true
++          if not selfEcho then
++            if type(decoded) == "table"
++                and (decoded.state == "QUIET" or decoded.state == "CONSEQUENCE") then
++              hideFighterCard()
++            else
++              local fighters = decoded and decoded.subjects and decoded.subjects.fighters
++              if type(fighters) == "table" and fighters[1] and fighters[2] then
++                showFighterCard()
++              end
+             end
+           end
+         end
+@@ -498,6 +557,21 @@ function COB:InstallWire()
+   end
+ 
+   bindLocalCharacter()
++
++  -- A guildmate HELLO may be a late joiner: the Pope's client re-broadcasts
++  -- live state over the same send-state path the other glue wrappers use.
++  -- No-op on a congregation client or in QUIET. No UI refresh, toast, or
++  -- sound. Net pcalls this; missing pieces return quietly.
++  COB._OnPeerHello = function(sender)
++    if not (COB.Runtime and COB.Runtime.Snapshot) then return end
++    local snap = COB.Runtime:Snapshot()
++    if type(snap) ~= "table" then return end
++    if type(snap.state) ~= "string" or snap.state == "QUIET" then return end
++    if not (COB.Sender and type(COB.Sender.IsRegisteredPope) == "function") then return end
++    if type(UnitName) ~= "function" then return end
++    if COB.Sender:IsRegisteredPope(UnitName("player")) ~= true then return end
++    sendState()
++  end
+   return true
+ end
+ 
+@@ -518,10 +592,10 @@ end)
+ 
+ SLASH_CHURCHOFBEEF1 = "/beef"
+ -- Subcommands: minimap (restore the hideable button), console (player-opened
+--- Director Console — Bible §18 names the tool, not the slash; OPEN_QUESTIONS #11),
+--- petition / confess / catchup (Event congregation inputs; whisper target is
+--- UnitName("target") — no Pope-name lookup).
+--- Unrecognised arguments open the Records Book. No verbose/debug guild noise.
++-- Director Console — Bible §18 names the tool, not the slash; OPEN_QUESTIONS #11).
++-- Congregation inputs ride the Event Inputs strip and favor plates; the wire
++-- resolves the Pope destination itself, so no slash subcommand carries one.
++-- Unrecognised arguments open the player card. No verbose/debug guild noise.
+ SlashCmdList["CHURCHOFBEEF"] = function(msg)
+   local argument = type(msg) == "string" and string.lower((string.gsub(msg, "%s", ""))) or ""
+ 
+@@ -551,49 +625,21 @@ SlashCmdList["CHURCHOFBEEF"] = function(msg)
+     return
+   end
+ 
+-  if argument == "petition" then
+-    local inputs = COB.Inputs
+-    if not (inputs and inputs.Petition) then
+-      DEFAULT_CHAT_FRAME:AddMessage("|cffffaa00Church of Beef|r: inputs not ready yet.")
+-      return
+-    end
+-    bindSlashInputTarget()
+-    pcall(inputs.Petition, inputs)
+-    return
+-  end
+-
+-  if argument == "confess" then
+-    local inputs = COB.Inputs
+-    if not (inputs and inputs.Show) then
+-      DEFAULT_CHAT_FRAME:AddMessage("|cffffaa00Church of Beef|r: inputs not ready yet.")
+-      return
+-    end
+-    bindSlashInputTarget()
+-    pcall(inputs.Show, inputs)
+-    return
+-  end
+-
+-  if argument == "catchup" then
+-    local inputs = COB.Inputs
+-    if not (inputs and inputs.Catchup) then
+-      DEFAULT_CHAT_FRAME:AddMessage("|cffffaa00Church of Beef|r: inputs not ready yet.")
+-      return
+-    end
+-    bindSlashInputTarget()
+-    pcall(inputs.Catchup, inputs)
+-    return
+-  end
+-
+-  if COB.UI and COB.UI.Toggle then
+-    COB.UI:Toggle()
++  -- Bare /beef (and any unrecognised argument) toggles the player card —
++  -- who I am in the Church and when we gather (Bible §12.5, §14.2). The
++  -- Records Book opens from the card's one button, not from the slash.
++  local card = COB.PlayerCard
++  if card and card.Toggle then
++    card:Toggle()
+     return
+   end
+-  DEFAULT_CHAT_FRAME:AddMessage("|cffffaa00Church of Beef|r: UI not ready yet. (" .. COB.VERSION .. ")")
++  DEFAULT_CHAT_FRAME:AddMessage("|cffffaa00Church of Beef|r: player card not ready yet. (" .. COB.VERSION .. ")")
+ end
+ 
+--- Owner inspection only. Not a slash. Not #8. Does not write Store Gora
+--- rows. Sets a Decree (persists) and opens the built surfaces so they can
+--- be seen. Runtime is returned to QUIET. Rituals stay fail-closed.
++-- Owner inspection only. Not a slash. Does not write Store Gora rows.
++-- Sets a Decree (persists) and opens the built surfaces so they can be
++-- seen. Runtime is returned to QUIET. Rituals stay fail-closed unless
++-- the local character is listed (Data/Popes.lua or popeOverrides).
+ function COB:InspectProgress()
+   COB._inspecting = true
+   local ok, err = pcall(function()
+@@ -606,8 +652,8 @@ function COB:InspectProgress()
+     if COB.DecreeBanner and COB.DecreeBanner.Show then
+       COB.DecreeBanner:Show()
+     end
+-    if COB.RecordsBook and COB.RecordsBook.Show then
+-      COB.RecordsBook:Show()
++    if COB.PlayerCard and COB.PlayerCard.Show then
++      COB.PlayerCard:Show()
+     end
+     if COB.Console and COB.Console.Show then
+       COB.Console:Show()
+@@ -622,7 +668,17 @@ function COB:InspectProgress()
+       end
+     end
+     if DEFAULT_CHAT_FRAME and DEFAULT_CHAT_FRAME.AddMessage then
+-      DEFAULT_CHAT_FRAME:AddMessage("|cffffaa00Church of Beef|r: Records Book, Decree, and Director Console are open. Buttons still refuse — no registered Pope. Fight HUD needs a sanctioned pair.")
++      local me = type(UnitName) == "function" and UnitName("player") or nil
++      local listed = COB.Sender
++        and type(COB.Sender.IsRegisteredPope) == "function"
++        and COB.Sender:IsRegisteredPope(me) == true
++      local note
++      if listed then
++        note = "Player card, Decree, and Director Console are open. Rituals are live on this character. Fight HUD needs a sanctioned pair."
++      else
++        note = "Player card, Decree, and Director Console are open. Rituals refuse on this character — listed Pope is Thedave. Fight HUD needs a sanctioned pair."
++      end
++      DEFAULT_CHAT_FRAME:AddMessage("|cffffaa00Church of Beef|r: " .. note)
+     end
+   end)
+   COB._inspecting = false
+diff --git a/tests/test_hud.lua b/tests/test_hud.lua
+index a28c019..d979643 100644
+--- a/tests/test_hud.lua
++++ b/tests/test_hud.lua
+@@ -7,18 +7,23 @@
+ -- + B19-C lastPair does not paint during a non-Gora RITE
+ -- + B21-B lastPair does not paint during a non-Gora CONSEQUENCE
+ -- + B32-A non-Gora refuse forgets lastPair
+--- + B22-B fighter names use Theme:FontPath("display") at size ≥ 16
++-- + B22-B fighter names use Theme:FontPath("label") at size ≥ 16
+ -- + B25-D Refresh/paintShown re-applies applyNameFont
+ -- + B34-A paintShown re-tints names after applyNameFont
+ -- + B35-A defenseA / defenseB SetWidth(28)
+--- + B37-B Quiet forgetPersist also nils broadcastFavor). Isolated:
++-- + B37-B Quiet forgetPersist also nils broadcastFavor
++-- + U-Q glanceable 420×100 iron bar; names ≥16 serif; format no-wrap;
++--   charcoal identity halves; favor percents parchment on iron;
++--   leftover 6/10/14 → Theme.Space; caption ≥ 12). Isolated:
+ -- wow_ui_stub + Common + Theme + Ranks + Runtime + Store + Gora + Hud.
+ -- Event Mode only. No live health, favor economy, sound, or toasts.
+ -- Standalone wrap. Congregation never Sanctions; the star pair is
+ -- subjects.fighters. Congregation favor is broadcast-only. Pope stub
+ -- fills from Gora:GetFavorSplit; after the pair clears, the last split
+ -- is frozen. Plate picks: live GetSanctioned (isolated / Pope) or
+--- Runtime fighters only while RITE and riteType Gora (B16-C). Display
++-- Runtime fighters only while RITE and riteType Gora (B16-C). A blank
++-- favorTarget is not a refusal: Net resolves the default whisper
++-- destination, and SetFavorTarget stays an override (Lane W). Display
+ -- livePair runtime arm is the same Gora-RITE gate (B17-D). lastPair
+ -- does not paint during a non-Gora RITE (B19-C) or a non-Gora
+ -- CONSEQUENCE (B21-B). A non-Gora refuse forgets lastPair so Knighting
+@@ -26,8 +31,8 @@
+ -- applyNameFont (B34-A). Defense labels are SetWidth(28) (B35-A). Quiet
+ -- forget also drops leftover congregation favor (B37-B). Never lastPair
+ -- clicks. Dress is Theme HUD-B — no faction crests, no hardcoded Media
+--- or font paths. Thin frame_proclamation_center fields sit behind
+--- name+format. Defense count is Store:CountDefenses as a mute integer;
++-- or font paths. Dark charcoal fields sit behind name+format.
++-- Defense count is Store:CountDefenses as a mute integer;
+ -- zero or a missing method hides. Painted records are RomanPair.
+ -- Ranks is Data for Church titles. No TOC / bootstrap / run.lua edits.
+ package.path = package.path .. ";./tests/?.lua"
+@@ -210,6 +215,8 @@ assert_eq(src:find("NamePlate", 1, true), nil, "source does not scrape nameplate
+ assert_eq(src:find("C_NamePlate", 1, true), nil, "source does not call C_NamePlate")
+ assert_eq(src:find("PlaySound", 1, true), nil, "source does not play sound")
+ assert_true(src:find("StatusBar", 1, true) ~= nil, "source mints a stock StatusBar")
++assert_true(src:find('CreateFrame("Frame", FRAME_NAME, parent, "BackdropTemplate")', 1, true) ~= nil,
++  "Hud inherit string is BackdropTemplate until a live 20506 abort")
+ assert_true(src:find('Theme:Texture("bar_stainedglass_fill")', 1, true) ~= nil,
+   "mute rails resolve bar_stainedglass_fill through Theme")
+ assert_true(src:find('Theme:Texture("bar_favor_fill")', 1, true) ~= nil,
+@@ -218,10 +225,11 @@ assert_eq(src:find("UI-StatusBar", 1, true), nil, "source does not hardcode UI-S
+ assert_eq(src:find(".tga", 1, true), nil, "source does not load custom tga")
+ assert_eq(src:find(".blp", 1, true), nil, "source does not load custom blp")
+ do
+-  -- B22-B: Theme display font on fighter names. No hardcoded font paths.
++  -- B22-B: Theme label serif on fighter names (HUD-B, not blackletter).
+   -- B25-D: applyNameFont is called from paintShown, not only build().
+-  assert_true(src:find('Theme:FontPath("display")', 1, true) ~= nil,
+-    "names resolve through Theme display")
++  assert_true(src:find('FontPath("label")', 1, true) ~= nil
++    or src:find('applyFont(fs, "label"', 1, true) ~= nil,
++    "names resolve through Theme label")
+   assert_eq(src:find("Fonts\\\\MORPHEUS", 1, true), nil, "source does not hardcode Morpheus")
+   assert_eq(src:find("MORPHEUS.TTF", 1, true), nil, "name path is not uppercase TTF")
+   assert_eq(src:find("MORPHEUS_CYR", 1, true), nil, "source does not use GlueFonts MORPHEUS_CYR")
+@@ -301,6 +309,48 @@ assert_eq(src:find("defenses of", 1, true), nil, "source does not invent defense
+ assert_eq(src:find("of the realm", 1, true), nil, "source does not invent realm copy")
+ assert_eq(src:find("UI-EmptySlot-White", 1, true), nil, "crest is not the EmptySlot ring")
+ assert_eq(src:find("MiniMap-TrackingBorder", 1, true), nil, "crest is not TrackingBorder")
++do
++  -- U-Q: leftover 6/10/14 offsets become Theme.Space; format cannot
++  -- wrap onto the favor row; parchment slot stays a hidden drop target.
++  assert_true(src:find('space("xs"', 1, true) ~= nil, "HUD reads Theme.Space.xs")
++  assert_true(src:find('space("sm"', 1, true) ~= nil, "HUD reads Theme.Space.sm")
++  assert_true(src:find('space("md"', 1, true) ~= nil, "HUD reads Theme.Space.md")
++  assert_true(src:find('space("rule"', 1, true) ~= nil, "HUD reads Theme.Space.rule")
++  assert_true(src:find('space("footer"', 1, true) ~= nil, "HUD reads Theme.Space.footer")
++  assert_true(src:find('space("glyph"', 1, true) ~= nil, "HUD reads Theme.Space.glyph")
++  assert_eq(src:find(", 6, 0)", 1, true), nil, "no leftover 6px favor-bar gap")
++  assert_eq(src:find(", -10)", 1, true), nil, "no leftover 10px format drop")
++  assert_eq(src:find("SetSize(10, 10)", 1, true), nil, "no leftover 10px favor sigil")
++  assert_eq(src:find("BOTTOM\", 0, 22", 1, true), nil, "no leftover 22px head-to-head")
++  assert_eq(src:find("SetPoint(\"TOPLEFT\", widget, \"TOPLEFT\", 8, -6)", 1, true), nil,
++    "no leftover 6px pick plate")
++  assert_eq(src:find("tallyReserve", 1, true), nil,
++    "format no longer steals a 68px tally reserve")
++  assert_eq(src:find("space(\"xl\"", 1, true), nil,
++    "format no longer reserves Theme.Space.xl for W–L")
++  assert_true(src:find("SetWordWrap(false)", 1, true) ~= nil,
++    "format line disables wrap")
++  assert_true(src:find("SetMaxLines(1)", 1, true) ~= nil,
++    "format line is one line")
++  assert_true(src:find("parchment:Hide", 1, true) ~= nil,
++    "proclamation-center parchment slot is hidden")
++  assert_true(src:find('themeColorTable("parchment")', 1, true) ~= nil,
++    "favor percents resolve Theme parchment")
++  local paintFavorAt = src:find("function paintFavor", 1, true)
++  assert_true(paintFavorAt ~= nil, "paintFavor exists")
++  local paintFavorEnd = src:find("\nlocal function ", paintFavorAt + 1, true)
++  if not paintFavorEnd then
++    paintFavorEnd = src:find("\nfunction ", paintFavorAt + 1, true)
++  end
++  assert_true(paintFavorEnd ~= nil, "paintFavor body has a following function")
++  local favorBody = src:sub(paintFavorAt, paintFavorEnd - 1)
++  assert_true(favorBody:find('themeColorTable("parchment")', 1, true) ~= nil,
++    "paintFavor tints percents parchment")
++  assert_eq(favorBody:find('tint(frame.pctA, themeColorTable("silver")', 1, true), nil,
++    "paintFavor does not tint percent A silver")
++  assert_eq(favorBody:find('tint(frame.pctB, themeColorTable("silver")', 1, true), nil,
++    "paintFavor does not tint percent B silver")
++end
+ 
+ --------------------------------------------------------------------------------
+ -- Init: hidden, top-center, movable, clamped. No per-frame script at rest.
+@@ -315,6 +365,8 @@ assert_eq(Hud:IsShown(), false, "HUD starts hidden in Quiet")
+ assert_eq(frame:IsShown(), false, "the widget starts hidden")
+ assert_eq(frame._movable, true, "HUD is movable")
+ assert_eq(frame._clamped, true, "HUD is clamped to screen")
++assert_eq(frame:IsEventRegistered("DISPLAY_SIZE_CHANGED"), true,
++  "HUD re-clamps when the display changes")
+ assert_eq(frame:GetScript("OnUpdate"), nil, "a resting HUD runs nothing per frame")
+ assert_true(findStatusBar(frame) ~= nil, "Init mints a stock favor StatusBar")
+ assert_eq(countStatusBars(frame), 2, "only the two favor halves are StatusBars")
+@@ -327,10 +379,14 @@ assert_true(frame.nameFieldA ~= nil, "name field A sits behind name+format")
+ assert_true(frame.nameFieldB ~= nil, "name field B sits behind name+format")
+ assert_eq(frame.nameFieldA._type, "Texture", "name field A is a texture, not a StatusBar")
+ assert_eq(frame.nameFieldB._type, "Texture", "name field B is a texture, not a StatusBar")
+-assert_eq(frame.nameFieldA._cobTexture, Theme:Texture("frame_proclamation_center"),
+-  "name field A is Theme frame_proclamation_center")
+-assert_eq(frame.nameFieldB._cobTexture, Theme:Texture("frame_proclamation_center"),
+-  "name field B is Theme frame_proclamation_center")
++assert_eq(frame.nameFieldA._cobColor.r, select(1, Theme:Color("charcoal")),
++  "name field A is Theme charcoal")
++assert_eq(frame.nameFieldB._cobColor.r, select(1, Theme:Color("charcoal")),
++  "name field B is Theme charcoal")
++assert_eq(frame.nameFieldEdgeA._cobColor.r, select(1, Theme:Color("gold")),
++  "name field A hairline is Theme gold")
++assert_eq(frame.nameFieldEdgeB._cobColor.r, select(1, Theme:Color("gold")),
++  "name field B hairline is Theme gold")
+ assert_true(
+   frame.nameFieldA._layer == "BACKGROUND" or frame.nameFieldA._layer == "BORDER",
+   "name field A draws behind name+format"
+@@ -350,10 +406,10 @@ assert_eq(frame.barA._cobTexture, Theme:Texture("bar_favor_fill"),
+   "favor bar A is Theme bar_favor_fill")
+ assert_eq(frame.barB._cobTexture, Theme:Texture("bar_favor_fill"),
+   "favor bar B is Theme bar_favor_fill")
+-assert_eq(frame.nameA._cobFont, Theme:FontPath("display"),
+-  "name A font is Theme display")
+-assert_eq(frame.nameB._cobFont, Theme:FontPath("display"),
+-  "name B font is Theme display")
++assert_eq(frame.nameA._cobFont, Theme:FontPath("label"),
++  "name A font is Theme label")
++assert_eq(frame.nameB._cobFont, Theme:FontPath("label"),
++  "name B font is Theme label")
+ assert_true(type(frame.nameA._cobFontSize) == "number" and frame.nameA._cobFontSize >= 16,
+   "name A size is ≥ 16")
+ assert_true(type(frame.nameB._cobFontSize) == "number" and frame.nameB._cobFontSize >= 16,
+@@ -382,6 +438,27 @@ assert_eq(frame.recordA._template, "GameFontNormal", "record A stays GameFont")
+ assert_eq(frame.recordB._template, "GameFontNormal", "record B stays GameFont")
+ assert_eq(frame.vs._template, "GameFontNormal", "VS stays GameFont")
+ assert_eq(frame.favorLabel._template, "GameFontHighlightSmall", "FAVOR stays GameFont")
++assert_eq(frame.parchment:IsShown(), false, "proclamation-center parchment slot starts hidden")
++assert_eq(frame.titleA._wordWrap, false, "format A does not wrap onto the favor row")
++assert_eq(frame.titleB._wordWrap, false, "format B does not wrap onto the favor row")
++assert_eq(frame.titleA._maxLines, 1, "format A is one line")
++assert_eq(frame.titleB._maxLines, 1, "format B is one line")
++assert_eq(frame.railA:GetHeight(), Theme.Space.rule, "class rail A is Theme.Space.rule")
++assert_eq(frame.railB:GetHeight(), Theme.Space.rule, "class rail B is Theme.Space.rule")
++assert_eq(Theme.FontSize.caption, 12, "Theme caption floor is 12")
++assert_true(type(frame.vs._cobFontSize) == "number" and frame.vs._cobFontSize >= 12,
++  "VS caption is ≥ 12")
++assert_true(type(frame.headToHead._cobFontSize) == "number" and frame.headToHead._cobFontSize >= 12,
++  "head-to-head caption is ≥ 12")
++assert_true(type(frame.defenseA._cobFontSize) == "number" and frame.defenseA._cobFontSize >= 12,
++  "defense A caption is ≥ 12")
++assert_true(type(frame.defenseB._cobFontSize) == "number" and frame.defenseB._cobFontSize >= 12,
++  "defense B caption is ≥ 12")
++assert_true(frame.footerField ~= nil, "favor register exists")
++assert_eq(frame.footerField._cobColor.r, select(1, Theme:Color("iron")),
++  "favor register is Theme iron")
++assert_eq(frame.iron._cobColor.r, select(1, Theme:Color("iron")),
++  "chassis is Theme iron")
+ 
+ local point, relativeTo, relativePoint, x, y = frame:GetPoint(1)
+ assert_eq(point, "TOP", "default anchor is the top")
+@@ -448,11 +525,15 @@ assert_eq(frame.nameB:GetText(), "Tendermage", "name B is painted")
+ assert_eq(frame.levelA:GetText(), "70", "level A is painted")
+ assert_eq(frame.levelB:GetText(), "68", "level B is painted")
+ assert_eq(frame.titleA:GetText(),
+-  "Chuckroast" .. FORMAT_DOT .. "70" .. FORMAT_DOT .. "Warrior",
+-  "format A is Name · Level · Class")
++  "70" .. FORMAT_DOT .. "Warrior",
++  "format A is Level · Class")
+ assert_eq(frame.titleB:GetText(),
+-  "Tendermage" .. FORMAT_DOT .. "68" .. FORMAT_DOT .. "Mage",
+-  "format B is Name · Level · Class")
++  "68" .. FORMAT_DOT .. "Mage",
++  "format B is Level · Class")
++assert_eq(frame.parchment:IsShown(), false,
++  "shown HUD keeps the proclamation-center parchment slot hidden")
++assert_eq(frame.titleA._wordWrap, false, "shown format A still does not wrap")
++assert_eq(frame.titleB._wordWrap, false, "shown format B still does not wrap")
+ assert_eq(frame.recordA:GetText(), "N" .. EN_DASH .. "N", "record A is roman 0–0")
+ assert_eq(frame.recordB:GetText(), "N" .. EN_DASH .. "N", "record B is roman 0–0")
+ assert_eq(frame.headToHead:IsShown(), false, "head-to-head widget hides without history")
+@@ -480,6 +561,8 @@ assert_true(frame.nameA._cobColor ~= nil, "name A stores the applied tint")
+ assert_eq(frame.nameA._cobColor.r, warrior.r, "name A widget is class-tinted")
+ assert_eq(sameRgb(frame.levelA._cobColor, warrior), false, "level A is not class-colored")
+ assert_eq(sameRgb(frame.titleA._cobColor, warrior), false, "title A is not class-colored")
++assert_eq(frame.titleA._cobColor.r, select(1, Theme:Color("parchment")),
++  "format A is parchment on the charcoal identity half")
+ assert_eq(sameRgb(frame.recordA._cobColor, warrior), false, "record A is not class-colored")
+ assert_eq(sameRgb(frame.levelB._cobColor, mage), false, "level B is not class-colored")
+ assert_eq(sameRgb(frame.titleB._cobColor, mage), false, "title B is not class-colored")
+@@ -497,13 +580,33 @@ Store:SetRank(human.id, 3)
+ view = Hud:Refresh()
+ assert_eq(view.fighterA.title, "Beef Knight", "linked Knight title comes from Ranks")
+ assert_eq(frame.titleA:GetText(),
+-  "Chuckroast" .. FORMAT_DOT .. "70" .. FORMAT_DOT .. "Beef Knight" .. FORMAT_DOT .. "Warrior",
+-  "format A is Name · Level · Title · Class")
++  "70" .. FORMAT_DOT .. "Beef Knight" .. FORMAT_DOT .. "Warrior",
++  "format A is Level · Title · Class")
++do
++  -- P1 (critic d2ed74c0): titled format must keep Class. Identity half
++  -- minus seal notch and md gutters is ≥116px at Theme label 12.
++  local _, titleRel, titleRelPoint, titleX = frame.titleA:GetPoint(2)
++  assert_eq(titleRel, frame.nameFieldA, "format A still widths against name field A")
++  assert_eq(titleRelPoint, "RIGHT", "format A still uses field RIGHT")
++  assert_true(type(titleX) == "number" and titleX >= -Theme.Space.md,
++    "format A inner gutter is ≤ Theme.Space.md")
++  local fieldW = (420 / 2) - math.floor(Theme.Space.seal / 2) - 2
++  local avail = fieldW - Theme.Space.md - math.abs(titleX)
++  assert_true(avail >= 116, "format A has ≥116px for 70 · Beef Knight · Warrior")
++  local rp, rrel, rrp = frame.recordA:GetPoint(1)
++  assert_eq(rp, "TOPLEFT", "record A stacks under the format line")
++  assert_eq(rrel, frame.titleA, "record A still belongs to format A")
++  assert_eq(rrp, "BOTTOMLEFT", "record A sits below format A")
++  assert_eq(frame.titleA._wordWrap, false, "titled format still does not wrap")
++  assert_eq(frame.titleA._maxLines, 1, "titled format stays one line")
++  assert_eq(frame:GetWidth(), 420, "titled format does not grow the card")
++  assert_eq(frame:GetHeight(), 100, "titled format does not grow the card height")
++end
+ assert_eq(string.find(frame.titleA:GetText() or "", "Paladin", 1, true), nil,
+   "title is the Church title, not a class mash")
+ assert_eq(view.fighterB.title, nil, "unlinked opponent still has no title")
+ assert_eq(frame.titleB:GetText(),
+-  "Tendermage" .. FORMAT_DOT .. "68" .. FORMAT_DOT .. "Mage",
++  "68" .. FORMAT_DOT .. "Mage",
+   "unlinked format omits a title, not Fresh Beef")
+ 
+ --------------------------------------------------------------------------------
+@@ -792,6 +895,14 @@ assert_eq(view.favor.pctA, 66, "floor(100*2/3) is 66")
+ assert_eq(view.favor.pctB, 34, "remainder percent is 34")
+ assert_eq(frame.pctA:GetText(), "66%", "bar paints 66%")
+ assert_eq(frame.pctB:GetText(), "34%", "bar paints 34%")
++assert_eq(frame.pctA._cobColor.r, select(1, Theme:Color("parchment")),
++  "favor percent A is parchment on iron")
++assert_eq(frame.pctB._cobColor.r, select(1, Theme:Color("parchment")),
++  "favor percent B is parchment on iron")
++assert_eq(frame.pctA._cobColor.r == select(1, Theme:Color("silver")), false,
++  "favor percent A is not silver")
++assert_eq(frame.pctB._cobColor.r == select(1, Theme:Color("silver")), false,
++  "favor percent B is not silver")
+ assert_eq(sameRgb(frame.barA._cobColor, warrior), true, "bar A is fighter-tinted")
+ assert_eq(sameRgb(frame.barB._cobColor, mage), true, "bar B is fighter-tinted")
+ view.favor.a = 99
+@@ -829,7 +940,9 @@ assert_eq(view.favor.pctB, 0, "broadcast zeros are 0% B")
+ assert_eq(frame.favorLabel:IsShown(), true, "broadcast zeros still show the bar")
+ 
+ --------------------------------------------------------------------------------
+--- PickFavor stubs Net. Missing target / character. Plate click is gated.
++-- PickFavor stubs Net. Missing character is refused. A missing target is no
++-- longer refused: Net resolves the default destination (Lane W). Plate click
++-- still needs a live pair and a local character id.
+ --------------------------------------------------------------------------------
+ local sent = {}
+ COB.Net = {
+@@ -850,17 +963,19 @@ assert_eq(sent[1].fields.pick, a.id, "SendFavor carries pick")
+ assert_eq(sent[1].fields.pickId, nil, "fields use pick, not pickId")
+ 
+ ok, err = Hud:PickFavor(a.id, nil, picker.id)
+-assert_eq(ok, nil, "missing target is refused")
+-assert_eq(err, "no target", "missing target names the error")
++assert_eq(ok, true, "missing target sends through Net for the default destination")
++assert_eq(err, nil, "missing target has no refusal")
++assert_eq(sent[2].target, nil, "missing target passes nil so Net resolves the default")
+ ok, err = Hud:PickFavor(a.id, "", picker.id)
+-assert_eq(ok, nil, "empty target is refused")
+-assert_eq(err, "no target", "empty target is no target")
+-assert_eq(#sent, 1, "refused PickFavor does not send")
++assert_eq(ok, true, "empty target sends through Net for the default destination")
++assert_eq(err, nil, "empty target has no refusal")
++assert_eq(sent[3].target, "", "empty target passes through so Net resolves the default")
++assert_eq(#sent, 3, "default-dest PickFavor sends both")
+ 
+ ok, err = Hud:PickFavor(a.id, "Host", nil)
+ assert_eq(ok, nil, "missing character is refused")
+ assert_eq(err, "no character", "missing character names the error")
+-assert_eq(#sent, 1, "missing character does not send")
++assert_eq(#sent, 3, "missing character does not send")
+ 
+ sent = {}
+ Hud:SetFavorTarget(nil)
+@@ -885,10 +1000,24 @@ assert_eq(stub.fire(frame.pickB, "OnClick"), true, "plate B click with both set"
+ assert_eq(#sent, 1, "plate B sends favor")
+ assert_eq(sent[1].fields.pick, b.id, "plate B picks fighter B")
+ 
++sent = {}
++Hud:SetFavorTarget(nil)
++assert_eq(stub.fire(frame.pickA, "OnClick"), true, "plate A click with id and no bound target")
++assert_eq(#sent, 1, "plate click without a bound target still sends through Net")
++assert_eq(sent[1].target, nil, "plate click passes nil so Net resolves the default")
++assert_eq(sent[1].fields.characterId, picker.id, "default-dest plate click keeps the local id")
++assert_eq(sent[1].fields.pick, a.id, "default-dest plate A still picks fighter A")
++
++Hud:SetFavorTarget("Host")
++sent = {}
++assert_eq(stub.fire(frame.pickA, "OnClick"), true, "plate A click with an explicit target again")
++assert_eq(#sent, 1, "explicit target plate click sends")
++assert_eq(sent[1].target, "Host", "explicit SetFavorTarget still wins")
++
+ assert_eq(Hud:ResetForTests(), true, "ResetForTests clears favor glue")
+ sent = {}
+ assert_eq(stub.fire(frame.pickA, "OnClick"), true, "plate still has OnClick after reset")
+-assert_eq(#sent, 0, "ResetForTests clears target so click is a no-op")
++assert_eq(#sent, 0, "ResetForTests clears target and id so click is a no-op")
+ view = Hud:Refresh()
+ assert_eq(view.favor, nil, "ResetForTests clears broadcast favor")
+ 
+@@ -1080,7 +1209,7 @@ assert_eq(healthReads, 0, "subjects lane never scraped health")
+ -- Pick never lastPair. Pope / live GetSanctioned only. Congregation
+ -- Runtime subjects.fighters only while RITE and riteType Gora (B16-C).
+ -- CONSEQUENCE / Continue persist / QUIET do not SendFavor. PickFavor
+--- missing-target pins stay.
++-- missing-character pins stay; a missing target rides the Net default (Lane W).
+ --------------------------------------------------------------------------------
+ local pickSent = {}
+ COB.Net = {
+@@ -1213,12 +1342,13 @@ assert_eq(stub.fire(pickFrame.pickA, "OnClick"), true, "QUIET plate still clicks
+ assert_eq(#pickSent, 0, "QUIET plate does not SendFavor")
+ 
+ local pickOk, pickErr = Hud:PickFavor(riteA.id, nil, ritePicker.id)
+-assert_eq(pickOk, nil, "PickFavor missing-target pin stays")
+-assert_eq(pickErr, "no target", "PickFavor still names no target")
++assert_eq(pickOk, true, "PickFavor without a bound target sends through Net")
++assert_eq(pickErr, nil, "PickFavor without a bound target has no refusal")
++assert_eq(pickSent[1].target, nil, "PickFavor passes nil so Net resolves the default")
+ pickOk, pickErr = Hud:PickFavor(riteA.id, "Host", nil)
+ assert_eq(pickOk, nil, "PickFavor missing-character pin stays")
+ assert_eq(pickErr, "no character", "PickFavor still names no character")
+-assert_eq(#pickSent, 0, "PickFavor refusals still do not send")
++assert_eq(#pickSent, 1, "PickFavor missing-character refusal does not send")
+ 
+ COB.Net = nil
+ COB.Sender = nil
+@@ -1648,8 +1778,8 @@ assert_eq(frame.railA._cobTexture, Theme:Texture("bar_stainedglass_fill"),
+   "shown rail still uses Theme stainedglass")
+ assert_eq(frame.seal._cobTexture, Theme:Texture("sigil_gora"),
+   "shown crest still uses Theme sigil_gora")
+-assert_eq(frame.nameA._cobFont, Theme:FontPath("display"),
+-  "shown name still uses Theme display")
++assert_eq(frame.nameA._cobFont, Theme:FontPath("label"),
++  "shown name still uses Theme label")
+ 
+ Hud:SetBroadcastFavor({ a = 13, b = 12 })
+ view = Hud:Refresh()
+@@ -1662,8 +1792,8 @@ assert_eq(string.find(frame.pctA:GetText() or "", "LII", 1, true), nil,
+ Hud:SetBroadcastFavor(nil)
+ 
+ --------------------------------------------------------------------------------
+--- V-D height budget: ≤ 12% of UIParent when the parent height is known.
+--- Unknown parent stays the compact card (pinned at Init). Do not grow into a toast.
++-- V-D height budget: target 12% of UIParent, with the 92-unit legibility
++-- floor required by the four compact rows. Unknown parent stays at 100.
+ --------------------------------------------------------------------------------
+ UIParent:SetHeight(768)
+ dofile("addon/ChurchOfBeef/UI/Hud.lua")
+@@ -1690,6 +1820,11 @@ copy.health = { a = 1 }
+ assert_eq(Hud:GetView().shown, false, "GetView is still a copy after a rebuild")
+ assert_eq(Hud:GetView().health, nil, "rebuilt view still has no health")
+ 
++UIParent:SetHeight(600)
++stub.fire(budgeted, "OnEvent", "DISPLAY_SIZE_CHANGED")
++assert_eq(budgeted:GetHeight(), 92,
++  "compact screens preserve the legibility floor instead of crushing rows")
++
+ restore()
+ 
+ if standalone then
+diff --git a/tests/test_wire_glue.lua b/tests/test_wire_glue.lua
+index c21534e..3ecf009 100644
+--- a/tests/test_wire_glue.lua
++++ b/tests/test_wire_glue.lua
+@@ -2,7 +2,7 @@
+ -- B14-INT / B38-INT / B39-INT). Isolated: Common +
+ -- Ranks + Runtime + Store + Gora + Knighting + Sender + Decree + Codec +
+ -- Snapshot + BeefNet + Console + Hud + ChurchOfBeef.lua. FighterCard /
+--- Inputs / ConsoleDock / Markers are spies, not the UI modules. InstallWire
++-- Inputs / Markers are spies, not the UI modules. InstallWire
+ -- only — no Data/Popes.lua. Pope predicate is stubbed in-test and restored.
+ -- Standalone wrap.
+ package.path = package.path .. ";./tests/?.lua"
+@@ -68,11 +68,11 @@ local origKnight = ChurchOfBeef.Knighting.KnightThisBeef
+ local origElevate = ChurchOfBeef.Knighting.ElevateToLord
+ local origCard = ChurchOfBeef.FighterCard
+ local origInputs = ChurchOfBeef.Inputs
+-local origDock = ChurchOfBeef.ConsoleDock
+ local origMarkers = ChurchOfBeef.Markers
+ local origToggle = ChurchOfBeef.Console.SetCongregationFavorVisible
+ local origPost = ChurchOfBeef.Console.PostDecree
+ local origClear = ChurchOfBeef.Decree.Clear
++local origDecreeSet = ChurchOfBeef.Decree.Set
+ local origBanner = ChurchOfBeef.DecreeBanner
+ local origHandleState = ChurchOfBeef.Net._HandleState
+ local origHandleSnap = ChurchOfBeef.Net._HandleSnapshot
+@@ -102,6 +102,7 @@ local proclaimSpy = {}
+ local cardShowSpy = {}
+ local cardRefreshSpy = {}
+ local cardHideSpy = {}
++local hudRefreshSpy = {}
+ local inputRefreshSpy = {}
+ local inputHideSpy = {}
+ local inputTargetBindSpy = {}
+@@ -109,19 +110,19 @@ local inputLocalSpy = {}
+ local inputPetitionSpy = {}
+ local inputShowSpy = {}
+ local inputCatchupSpy = {}
+-local dockRefreshSpy = {}
+-local dockHideSpy = {}
+ local markerTargetSpy = {}
+ local markerCandidateSpy = {}
+ local markerFightersSpy = {}
+ local origSetFavor = Hud.SetBroadcastFavor
+ local origSetTarget = Hud.SetFavorTarget
+ local origSetLocal = Hud.SetLocalCharacterId
++local origHudRefresh = Hud.Refresh
+ 
+ local function hookHud()
+   favorSpy = {}
+   targetSpy = {}
+   localIdSpy = {}
++  hudRefreshSpy = {}
+   Hud.SetBroadcastFavor = function(self, favor)
+     favorSpy[#favorSpy + 1] = favor
+     return origSetFavor(self, favor)
+@@ -134,6 +135,10 @@ local function hookHud()
+     localIdSpy[#localIdSpy + 1] = characterId
+     return origSetLocal(self, characterId)
+   end
++  Hud.Refresh = function(self, ...)
++    hudRefreshSpy[#hudRefreshSpy + 1] = true
++    return origHudRefresh(self, ...)
++  end
+ end
+ 
+ local function hookProclaim()
+@@ -173,8 +178,6 @@ local function hookFurniture()
+   inputPetitionSpy = {}
+   inputShowSpy = {}
+   inputCatchupSpy = {}
+-  dockRefreshSpy = {}
+-  dockHideSpy = {}
+   COB.Inputs = {
+     SetInputTarget = function(_, name)
+       inputTargetBindSpy[#inputTargetBindSpy + 1] = name
+@@ -203,16 +206,6 @@ local function hookFurniture()
+       return true
+     end,
+   }
+-  COB.ConsoleDock = {
+-    Refresh = function()
+-      dockRefreshSpy[#dockRefreshSpy + 1] = true
+-      return {}
+-    end,
+-    Hide = function()
+-      dockHideSpy[#dockHideSpy + 1] = true
+-      return true
+-    end,
+-  }
+ end
+ 
+ local function hookMarkers()
+@@ -308,6 +301,7 @@ end
+ assert_true(COB.InstallWire ~= nil, "InstallWire exists")
+ assert_eq(type(COB.InstallWire), "function", "InstallWire is a function")
+ assert_eq(COB._wireInstalled, nil, "dofile does not install wraps")
++assert_eq(COB._OnPeerHello, nil, "dofile does not install the peer-HELLO callback")
+ assert_eq(Runtime.StartEvent, origStart, "StartEvent is unwrapped at load")
+ assert_eq(COB.Popes, nil, "no COB.Popes (#8 is not coded)")
+ assert_true(Knighting ~= nil, "isolated suite loads Knighting")
+@@ -329,11 +323,185 @@ end
+ assert_eq(UnitName("player"), "Beefina", "UnitName is stubbed to Beefina")
+ assert_eq(Sender:IsRegisteredPope("Beefina"), false, "unstubbed Beefina is not a Pope")
+ 
++--------------------------------------------------------------------------------
++-- Lane T fix wave: bootstrap initUi coverage. OnLogin Inits the eleven UI
++-- modules in the contract order, a throwing Console.Init does not prevent
++-- later modules (pcall shape), and InstallWire still runs. Every stubbed
++-- key is saved and restored.
++--------------------------------------------------------------------------------
++do
++  local order = {}
++  local function initSpy(name)
++    return function()
++      order[#order + 1] = name
++      return true
++    end
++  end
++  local savedMinimap = COB.Minimap
++  local savedRecordsBook = COB.RecordsBook
++  local savedPlayerCard = COB.PlayerCard
++  local savedHud = COB.Hud
++  local savedConsole = COB.Console
++  local savedToasts = COB.Toasts
++  local savedDecreeBanner = COB.DecreeBanner
++  local savedSound = COB.Sound
++  local savedFighterCard = COB.FighterCard
++  local savedInputs = COB.Inputs
++  local savedMarkers = COB.Markers
++  local savedNetInit = COB.Net.Init
++  local savedInstallWire = COB.InstallWire
++
++  COB.Minimap = { Init = initSpy("Minimap") }
++  COB.RecordsBook = { Init = initSpy("RecordsBook") }
++  COB.PlayerCard = { Init = initSpy("PlayerCard") }
++  COB.Hud = { Init = initSpy("Hud") }
++  COB.Console = { Init = initSpy("Console") }
++  COB.Toasts = { Init = initSpy("Toasts") }
++  COB.DecreeBanner = { Init = initSpy("DecreeBanner") }
++  COB.Sound = { Init = initSpy("Sound") }
++  COB.FighterCard = { Init = initSpy("FighterCard") }
++  COB.Inputs = { Init = initSpy("Inputs") }
++  COB.Markers = { Init = initSpy("Markers") }
++  local netInits = 0
++  COB.Net.Init = function()
++    netInits = netInits + 1
++    return true
++  end
++  local wireCalls = 0
++  COB.InstallWire = function()
++    wireCalls = wireCalls + 1
++    return true
++  end
++
++  local contractOrder = "Minimap,RecordsBook,PlayerCard,Hud,Console,Toasts,DecreeBanner,Sound,FighterCard,Inputs,Markers"
++  COB:OnLogin()
++  assert_eq(table.concat(order, ","), contractOrder,
++    "OnLogin Inits the eleven UI modules in the contract order")
++  assert_eq(netInits, 1, "OnLogin Inits Net once")
++  assert_eq(wireCalls, 1, "OnLogin still runs InstallWire")
++
++  order = {}
++  COB.Console.Init = function()
++    order[#order + 1] = "Console"
++    error("console boom")
++  end
++  COB:OnLogin()
++  assert_eq(table.concat(order, ","), contractOrder,
++    "a throwing Console.Init does not prevent later module Inits")
++  assert_eq(netInits, 2, "Net Init runs again on the second OnLogin")
++  assert_eq(wireCalls, 2, "InstallWire still runs after a throwing Console.Init")
++
++  order = {}
++  local chats = {}
++  local savedAdd = DEFAULT_CHAT_FRAME.AddMessage
++  DEFAULT_CHAT_FRAME.AddMessage = function(_, m)
++    chats[#chats + 1] = m
++  end
++  COB.Hud.Init = function()
++    order[#order + 1] = "Hud"
++    error("hud boom")
++  end
++  COB:OnLogin()
++  DEFAULT_CHAT_FRAME.AddMessage = savedAdd
++  assert_eq(table.concat(order, ","), contractOrder,
++    "a throwing Hud.Init does not prevent later module Inits")
++  assert_eq(netInits, 3, "Net Init still runs after a throwing Hud.Init")
++  assert_eq(wireCalls, 3, "InstallWire still runs after a throwing Hud.Init")
++  local sawHudFail = false
++  for i = 1, #chats do
++    local m = chats[i]
++    if type(m) == "string" and m:find("Hud failed to start.", 1, true) then
++      sawHudFail = true
++    end
++  end
++  assert_eq(sawHudFail, true, "Hud Init failure prints Church of Beef: Hud failed to start.")
++
++  COB.Minimap = savedMinimap
++  COB.RecordsBook = savedRecordsBook
++  COB.PlayerCard = savedPlayerCard
++  COB.Hud = savedHud
++  COB.Console = savedConsole
++  COB.Toasts = savedToasts
++  COB.DecreeBanner = savedDecreeBanner
++  COB.Sound = savedSound
++  COB.FighterCard = savedFighterCard
++  COB.Inputs = savedInputs
++  COB.Markers = savedMarkers
++  COB.Net.Init = savedNetInit
++  COB.InstallWire = savedInstallWire
++end
++
+ COB:InstallWire()
+ assert_eq(COB._wireInstalled, true, "InstallWire marks itself installed")
++assert_eq(type(COB._OnPeerHello), "function", "InstallWire installs the peer-HELLO callback")
+ COB:InstallWire()
+ assert_eq(COB._wireInstalled, true, "InstallWire is idempotent")
+ 
++--------------------------------------------------------------------------------
++-- Lane W: guildmate HELLO re-broadcast. _OnPeerHello sends STATE only when an
++-- event is live and the local player is a registered Pope. QUIET no-ops.
++-- A congregation client no-ops. Missing Runtime / Net are swallowed.
++--------------------------------------------------------------------------------
++do
++  reset()
++  stubPope()
++  assert_eq(Runtime:Snapshot().state, "QUIET", "fresh runtime is QUIET")
++  COB._OnPeerHello("Steakina")
++  assert_eq(countType("STATE"), 0, "QUIET peer HELLO does not send STATE")
++
++  assert_true(Runtime:StartEvent() ~= nil, "StartEvent for the HELLO re-broadcast")
++  local beforeHello = countType("STATE")
++  local inputRefreshes = #inputRefreshSpy
++  COB._OnPeerHello("Steakina")
++  assert_eq(countType("STATE"), beforeHello + 1,
++    "live event + registered Pope re-broadcasts STATE on a peer HELLO")
++  local helloState, helloFrame = lastOfType("STATE")
++  assert_true(helloState ~= nil, "the re-broadcast decodes")
++  assert_eq(helloState.state, "ASSEMBLY", "the re-broadcast carries the live state")
++  assert_eq(helloFrame.channel, "GUILD", "the re-broadcast stays on GUILD")
++  assert_eq(#inputRefreshSpy, inputRefreshes, "the re-broadcast does not refresh Inputs")
++  assert_eq(#proclaimSpy, 0, "the re-broadcast does not Proclaim")
++
++  local beforeWire = countType("STATE")
++  Net:HandleHello({ version = 1, fields = { "0.1.0" } }, "Steakina")
++  assert_eq(countType("STATE"), beforeWire + 1,
++    "an inbound HELLO off the wire fires the same re-broadcast")
++
++  assert_true(Runtime:EndEvent() ~= nil, "EndEvent back to QUIET")
++  local beforeQuiet = countType("STATE")
++  COB._OnPeerHello("Steakina")
++  assert_eq(countType("STATE"), beforeQuiet, "back in QUIET the callback no-ops")
++  Sender.IsRegisteredPope = origPope
++end
++
++do
++  reset()
++  assert_eq(Sender:IsRegisteredPope(Net:PlayerName()), false,
++    "local player is not a registered Pope")
++  assert_true(Runtime:StartEvent() ~= nil, "congregation StartEvent for the no-op pin")
++  local beforeCong = countType("STATE")
++  COB._OnPeerHello("Steakina")
++  assert_eq(countType("STATE"), beforeCong, "a congregation client never re-broadcasts")
++end
++
++do
++  reset()
++  stubPope()
++  local savedRuntime = COB.Runtime
++  COB.Runtime = nil
++  COB._OnPeerHello("Steakina")
++  assert_eq(countType("STATE"), 0, "missing Runtime is swallowed")
++  COB.Runtime = savedRuntime
++
++  assert_true(Runtime:StartEvent() ~= nil, "StartEvent before the missing-Net pin")
++  local savedNet = COB.Net
++  COB.Net = nil
++  COB._OnPeerHello("Steakina")
++  COB.Net = savedNet
++  assert_eq(countType("STATE"), 1, "missing Net is swallowed without a send")
++  Sender.IsRegisteredPope = origPope
++end
++
+ --------------------------------------------------------------------------------
+ -- Unstubbed Pope: StartEvent does not send.
+ --------------------------------------------------------------------------------
+@@ -366,7 +534,6 @@ assert_eq(stateMsg.sequence, started.sequence, "StartEvent STATE carries sequenc
+ assert_eq(stateMsg.favor, nil, "StartEvent STATE omits favor without a pair")
+ assert_eq(wire[1].channel, "GUILD", "STATE travels on GUILD")
+ assert_eq(#inputRefreshSpy, 1, "StartEvent refreshes Inputs")
+-assert_eq(#dockRefreshSpy, 1, "StartEvent refreshes ConsoleDock")
+ assert_eq(#cardHideSpy, 0, "StartEvent does not Hide the fighter card")
+ 
+ local ended = Runtime:EndEvent()
+@@ -376,14 +543,21 @@ stateMsg = decodeLast()
+ assert_eq(stateMsg.type, "STATE", "EndEvent sends STATE")
+ assert_eq(stateMsg.state, "QUIET", "EndEvent STATE is QUIET")
+ assert_eq(#inputRefreshSpy, 2, "EndEvent refreshes Inputs")
+-assert_eq(#dockRefreshSpy, 2, "EndEvent refreshes ConsoleDock")
+ assert_eq(#cardHideSpy, 1, "EndEvent Hides the fighter card")
+ 
+ --------------------------------------------------------------------------------
+--- PostDecree sends DECREE. InspectProgress does not.
++-- PostDecree sends DECREE. InspectProgress does not. Lane T: the Decree:Set
++-- wrap shows the banner on a real post (wrapAfter fires on the non-nil copy).
+ --------------------------------------------------------------------------------
+ reset()
+ stubPope()
++local bannerShows = 0
++COB.DecreeBanner = {
++  Show = function()
++    bannerShows = bannerShows + 1
++    return true
++  end,
++}
+ local posted = Console:PostDecree({
+   line = "Goldshire Inn — Sunday, 7:00 PM",
+   flavor = "The Gathering.",
+@@ -396,6 +570,38 @@ assert_true(decreeMsg ~= nil, "DECREE decodes")
+ assert_eq(decreeMsg.line, "Goldshire Inn — Sunday, 7:00 PM", "DECREE carries line")
+ assert_eq(decreeMsg.flavor, "The Gathering.", "DECREE carries flavor")
+ assert_eq(Decree:Get().line, "Goldshire Inn — Sunday, 7:00 PM", "PostDecree wrote Core")
++assert_eq(bannerShows, 1, "PostDecree shows the Decree banner via the Set wrap")
++
++--------------------------------------------------------------------------------
++-- Lane T: inbound DECREE (Pope sender) lands in Decree:Set, so the banner
++-- shows too. Login restore goes through Decree:Restore — never Set — so a
++-- stored Decree does not re-show the banner outside the once-per-login reveal.
++--------------------------------------------------------------------------------
++do
++  reset()
++  stubPope()
++  local inboundShows = 0
++  COB.DecreeBanner = {
++    Show = function()
++      inboundShows = inboundShows + 1
++      return true
++    end,
++  }
++  local accepted, acceptErr = Net:_HandleDecree(
++    { line = "Goldshire Inn — Sunday, 7:00 PM", flavor = "The Gathering." },
++    "GUILD",
++    "Beefina"
++  )
++  assert_true(accepted, "inbound DECREE from the registered Pope is accepted")
++  assert_eq(acceptErr, nil, "inbound DECREE has no error")
++  assert_eq(Decree:Get().line, "Goldshire Inn — Sunday, 7:00 PM", "inbound DECREE wrote Core")
++  assert_eq(inboundShows, 1, "inbound DECREE shows the banner via the Set wrap")
++
++  assert_true(Decree:Restore({ line = "Goldshire Inn — Sunday, 7:00 PM" }) ~= nil,
++    "Decree Restore succeeds")
++  assert_eq(inboundShows, 1, "login restore does not show the banner")
++  Sender.IsRegisteredPope = origPope
++end
+ 
+ --------------------------------------------------------------------------------
+ -- B28-INT: Decree:Clear always Refreshs the banner. Clear returns nil, so
+@@ -570,7 +776,6 @@ COB:InspectProgress()
+ assert_eq(countType("DECREE"), 0, "InspectProgress does not send DECREE")
+ assert_eq(countType("STATE"), 0, "InspectProgress does not send STATE")
+ assert_eq(#inputRefreshSpy, 0, "InspectProgress does not Refresh Inputs")
+-assert_eq(#dockRefreshSpy, 0, "InspectProgress does not Refresh ConsoleDock")
+ assert_eq(#cardHideSpy, 0, "InspectProgress does not Hide the fighter card")
+ assert_eq(COB._inspecting, false, "InspectProgress clears the inspect flag")
+ 
+@@ -627,13 +832,12 @@ assert_eq(favorSpy[1].b, 1, "broadcast favor b")
+ assert_eq(targetSpy[1], "Steakina", "accepted STATE sets favor target")
+ assert_eq(inputTargetBindSpy[1], "Steakina", "accepted STATE sets Inputs whisper target")
+ assert_eq(#inputRefreshSpy, 1, "accepted STATE refreshes Inputs")
+-assert_eq(#dockRefreshSpy, 1, "accepted STATE refreshes ConsoleDock")
+ assert_eq(#cardShowSpy, 1, "accepted STATE with fighters Shows the fighter card")
+ assert_eq(#cardRefreshSpy, 1, "accepted STATE with fighters Refreshes the fighter card")
+ Sender.Accept = savedAccept
+ 
+ --------------------------------------------------------------------------------
+--- Inbound STATE while inspecting hides Inputs/Dock and skips Refresh.
++-- Inbound STATE while inspecting hides Inputs and skips Refresh.
+ --------------------------------------------------------------------------------
+ reset()
+ savedAccept = Sender.Accept
+@@ -654,13 +858,102 @@ ok = Net:_HandleState(decoded, "GUILD", "Steakina")
+ assert_true(ok, "inspecting accepted STATE still Restores")
+ assert_eq(#inputTargetBindSpy, 0, "inspecting STATE does not bind Inputs target")
+ assert_eq(#inputRefreshSpy, 0, "inspecting STATE does not Refresh Inputs")
+-assert_eq(#dockRefreshSpy, 0, "inspecting STATE does not Refresh ConsoleDock")
+ assert_eq(#inputHideSpy, 1, "inspecting STATE Hides Inputs")
+-assert_eq(#dockHideSpy, 1, "inspecting STATE Hides ConsoleDock")
+ assert_eq(#cardShowSpy, 0, "inspecting STATE does not Show the fighter card")
+ COB._inspecting = false
+ Sender.Accept = savedAccept
+ 
++--------------------------------------------------------------------------------
++-- Lane T congregation side: inbound STATE CONSEQUENCE hides the sanction-beat
++-- card (the ruling landed); QUIET still hides it. RITE with fighters shows.
++--------------------------------------------------------------------------------
++reset()
++savedAccept = Sender.Accept
++Sender.Accept = function() return true end
++local riteInbound, riteInboundErr = Codec:EncodeState({
++  eventId = 1,
++  state = "RITE",
++  riteType = "Gora",
++  subjects = { fighters = { 1, 2 } },
++  sequence = 1,
++})
++assert_true(riteInbound ~= nil, "RITE STATE encodes")
++assert_eq(riteInboundErr, nil, "RITE STATE encode has no error")
++local riteDecoded = Codec:DecodeState(riteInbound)
++assert_true(Net:_HandleState(riteDecoded, "GUILD", "Steakina"), "RITE STATE Restores")
++assert_eq(#cardShowSpy, 1, "RITE with fighters Shows the fighter card")
++assert_eq(#cardHideSpy, 0, "RITE with fighters does not Hide the fighter card")
++
++local consequenceInbound, consequenceInboundErr = Codec:EncodeState({
++  eventId = 1,
++  state = "CONSEQUENCE",
++  riteType = "Gora",
++  subjects = { fighters = { 1, 2 } },
++  sequence = 2,
++})
++assert_true(consequenceInbound ~= nil, "CONSEQUENCE STATE encodes")
++assert_eq(consequenceInboundErr, nil, "CONSEQUENCE STATE encode has no error")
++local consequenceDecoded = Codec:DecodeState(consequenceInbound)
++assert_true(Net:_HandleState(consequenceDecoded, "GUILD", "Steakina"),
++  "CONSEQUENCE STATE Restores")
++assert_eq(#cardHideSpy, 1, "CONSEQUENCE STATE Hides the fighter card")
++assert_eq(#cardShowSpy, 1, "CONSEQUENCE STATE does not re-Show the fighter card")
++
++local quietInbound, quietInboundErr = Codec:EncodeState({
++  eventId = 1,
++  state = "QUIET",
++  sequence = 3,
++})
++assert_true(quietInbound ~= nil, "QUIET STATE encodes")
++assert_eq(quietInboundErr, nil, "QUIET STATE encode has no error")
++local quietDecoded = Codec:DecodeState(quietInbound)
++assert_true(Net:_HandleState(quietDecoded, "GUILD", "Steakina"), "QUIET STATE Restores")
++assert_eq(#cardHideSpy, 2, "QUIET STATE still Hides the fighter card")
++assert_eq(#cardShowSpy, 1, "QUIET STATE does not re-Show the fighter card")
++Sender.Accept = savedAccept
++
++--------------------------------------------------------------------------------
++-- Lane T fix wave (adjudicated defect): the Pope's own GUILD STATE echoes
++-- back to his client, and the verdict STATE is RITE carrying the lastPair
++-- overlay — the echo re-Showed the card one beat after the verdict wrap hid
++-- it. The card branch of the _HandleState glue now skips self-echoes (the
++-- Pope's one show source is the Sanction wrap); favor/inputs keep their
++-- self-echo paint. A different registered Pope's identical STATE still shows.
++--------------------------------------------------------------------------------
++do
++  reset()
++  Sender.IsRegisteredPope = function(_, sender)
++    local key = COB.Names.Key(sender)
++    return key == "beefina" or key == "steakina"
++  end
++  local echoInbound, echoErr = Codec:EncodeState({
++    eventId = 1,
++    state = "RITE",
++    riteType = "Gora",
++    subjects = { fighters = { 1, 2 } },
++    sequence = 1,
++    favor = { a = 2, b = 1 },
++  })
++  assert_true(echoInbound ~= nil, "self-echo RITE STATE encodes")
++  assert_eq(echoErr, nil, "self-echo RITE STATE encode has no error")
++  local echoDecoded = Codec:DecodeState(echoInbound)
++  assert_true(Net:_HandleState(echoDecoded, "GUILD", "Beefina"),
++    "the Pope's own echoed STATE is accepted and Restores")
++  assert_eq(#cardShowSpy, 0, "self-echo RITE with fighters does not Show the fighter card")
++  assert_eq(#cardHideSpy, 0, "self-echo RITE with fighters does not Hide the fighter card")
++  assert_eq(#favorSpy, 1, "self-echo STATE still paints inbound favor")
++  assert_eq(targetSpy[1], "Beefina", "self-echo STATE still sets the favor target")
++  assert_eq(#inputTargetBindSpy, 1, "self-echo STATE still binds the Inputs target")
++  assert_eq(#inputRefreshSpy, 1, "self-echo STATE still refreshes Inputs")
++
++  local otherDecoded = Codec:DecodeState(echoInbound)
++  assert_true(Net:_HandleState(otherDecoded, "GUILD", "Steakina"),
++    "the same STATE from another registered Pope Restores")
++  assert_eq(#cardShowSpy, 1, "another registered Pope's RITE with fighters still Shows the card")
++  assert_eq(#cardHideSpy, 0, "another registered Pope's RITE with fighters does not Hide the card")
++  Sender.IsRegisteredPope = origPope
++end
++
+ --------------------------------------------------------------------------------
+ -- Petition INPUT: GUILD stays unknown. WHISPER is live and Pope-gated.
+ --------------------------------------------------------------------------------
+@@ -691,7 +984,11 @@ assert_eq(inputLocalSpy[#inputLocalSpy], me.id, "Inputs local id matches the Bee
+ 
+ --------------------------------------------------------------------------------
+ -- Proclaim glue: successful Gora verbs. Names from Store. Inspect is silent.
++-- Lane T: every verdict wrap also Hides the sanction-beat fighter card and
++-- Refreshs the Pope's HUD (deterministic on the Pope client, not the echo).
+ --------------------------------------------------------------------------------
++local cardHidesAt = 0
++local hudRefreshesAt = 0
+ reset()
+ stubPope()
+ Runtime:StartEvent()
+@@ -709,11 +1006,15 @@ assert_eq(#markerFightersSpy, 1, "Sanction marks fighters once")
+ assert_eq(markerFightersSpy[1][1], "Chuckroast", "Sanction MarkFighters names A from Store")
+ assert_eq(markerFightersSpy[1][2], "Tendermage", "Sanction MarkFighters names B from Store")
+ 
++cardHidesAt = #cardHideSpy
++hudRefreshesAt = #hudRefreshSpy
+ local coward = Gora:CowardiceRecorded(proclaimA.id)
+ assert_true(coward ~= nil, "CowardiceRecorded succeeds")
+ assert_eq(#proclaimSpy, 2, "Cowardice Proclaims after Sanction")
+ assert_eq(proclaimSpy[2].kind, "cowardice", "Cowardice kind is clerical cowardice")
+ assert_eq(proclaimSpy[2].fields.name, "Chuckroast", "Cowardice names the fleer from Store")
++assert_eq(#cardHideSpy, cardHidesAt + 1, "CowardiceRecorded Hides the fighter card")
++assert_eq(#hudRefreshSpy, hudRefreshesAt + 1, "CowardiceRecorded Refreshs the Pope HUD")
+ 
+ reset()
+ stubPope()
+@@ -721,12 +1022,16 @@ Runtime:StartEvent()
+ local victorA, victorB = twoChars()
+ assert_true(Gora:Sanction(victorA.id, victorB.id) ~= nil, "victor pair is sanctioned")
+ proclaimSpy = {}
++cardHidesAt = #cardHideSpy
++hudRefreshesAt = #hudRefreshSpy
+ local declared = Gora:DeclareVictor(victorA.id)
+ assert_true(declared ~= nil, "DeclareVictor succeeds")
+ assert_eq(#proclaimSpy, 1, "DeclareVictor Proclaims once")
+ assert_eq(proclaimSpy[1].kind, "verdict", "DeclareVictor kind is verdict")
+ assert_eq(proclaimSpy[1].fields.ruling, "victor", "DeclareVictor ruling is victor")
+ assert_eq(proclaimSpy[1].fields.name, "Chuckroast", "DeclareVictor names the winner from Store")
++assert_eq(#cardHideSpy, cardHidesAt + 1, "DeclareVictor Hides the fighter card")
++assert_eq(#hudRefreshSpy, hudRefreshesAt + 1, "DeclareVictor Refreshs the Pope HUD")
+ 
+ reset()
+ stubPope()
+@@ -734,10 +1039,14 @@ Runtime:StartEvent()
+ local voidA, voidB = twoChars()
+ assert_true(Gora:Sanction(voidA.id, voidB.id) ~= nil, "void pair is sanctioned")
+ proclaimSpy = {}
++cardHidesAt = #cardHideSpy
++hudRefreshesAt = #hudRefreshSpy
+ assert_true(Gora:Void() ~= nil, "Void succeeds")
+ assert_eq(#proclaimSpy, 1, "Void Proclaims once")
+ assert_eq(proclaimSpy[1].kind, "verdict", "Void kind is verdict")
+ assert_eq(proclaimSpy[1].fields.ruling, "void", "Void ruling is void")
++assert_eq(#cardHideSpy, cardHidesAt + 1, "Void Hides the fighter card")
++assert_eq(#hudRefreshSpy, hudRefreshesAt + 1, "Void Refreshs the Pope HUD")
+ 
+ reset()
+ stubPope()
+@@ -745,12 +1054,48 @@ Runtime:StartEvent()
+ local freeA, freeB = twoChars()
+ assert_true(Gora:Sanction(freeA.id, freeB.id) ~= nil, "free pair is sanctioned")
+ proclaimSpy = {}
++cardHidesAt = #cardHideSpy
++hudRefreshesAt = #hudRefreshSpy
+ local freed = Gora:FreeRuling("The ring is closed.")
+ assert_true(freed ~= nil, "FreeRuling succeeds")
+ assert_eq(#proclaimSpy, 1, "FreeRuling Proclaims once")
+ assert_eq(proclaimSpy[1].kind, "verdict", "FreeRuling kind is verdict")
+ assert_eq(proclaimSpy[1].fields.ruling, "free", "FreeRuling ruling is free")
+ assert_eq(proclaimSpy[1].fields.text, "The ring is closed.", "FreeRuling carries the result text")
++assert_eq(#cardHideSpy, cardHidesAt + 1, "FreeRuling Hides the fighter card")
++assert_eq(#hudRefreshSpy, hudRefreshesAt + 1, "FreeRuling Refreshs the Pope HUD")
++
++--------------------------------------------------------------------------------
++-- Lane T: the card is a sanction beat — CloseRite hides it too (EndEvent
++-- already did). Inspecting stays silent for both.
++--------------------------------------------------------------------------------
++reset()
++stubPope()
++Runtime:StartEvent()
++local closeA, closeB = twoChars()
++assert_true(Gora:Sanction(closeA.id, closeB.id) ~= nil, "CloseRite pair is sanctioned")
++assert_true(Runtime:OpenRite("Gora", { fighters = { closeA.id, closeB.id } }) ~= nil,
++  "OpenRite for the CloseRite hide pin")
++cardHidesAt = #cardHideSpy
++assert_true(Runtime:CloseRite() ~= nil, "CloseRite succeeds")
++assert_eq(#cardHideSpy, cardHidesAt + 1, "CloseRite Hides the fighter card")
++cardHidesAt = #cardHideSpy
++assert_true(Runtime:EndEvent() ~= nil, "EndEvent after CloseRite")
++assert_eq(#cardHideSpy, cardHidesAt + 1, "EndEvent still Hides the fighter card")
++
++reset()
++stubPope()
++Runtime:StartEvent()
++local inspectCloseA, inspectCloseB = twoChars()
++assert_true(Gora:Sanction(inspectCloseA.id, inspectCloseB.id) ~= nil,
++  "inspecting Sanction still writes")
++assert_true(Runtime:OpenRite("Gora", { fighters = { inspectCloseA.id, inspectCloseB.id } }) ~= nil,
++  "inspecting OpenRite succeeds")
++COB._inspecting = true
++cardHidesAt = #cardHideSpy
++assert_true(Runtime:CloseRite() ~= nil, "inspecting CloseRite succeeds")
++assert_eq(#cardHideSpy, cardHidesAt, "inspecting CloseRite does not Hide the fighter card")
++COB._inspecting = false
+ 
+ reset()
+ stubPope()
+@@ -890,57 +1235,51 @@ assert_eq(muteKnightErr, nil, "missing Markers is a knighting no-op")
+ assert_eq(#proclaimSpy, 1, "missing Markers still Proclaims knighting")
+ 
+ --------------------------------------------------------------------------------
+--- OpenRite / Continue refresh furniture. Slash petition / confess bind target.
++-- OpenRite / Continue refresh furniture. Lane W: /beef petition / confess /
++-- catchup are gone — they fall through to the player card like any
++-- unrecognised argument, and never touch Inputs.
+ --------------------------------------------------------------------------------
+ reset()
+ stubPope()
+ assert_true(Runtime:StartEvent() ~= nil, "StartEvent for OpenRite furniture")
+ inputRefreshSpy = {}
+-dockRefreshSpy = {}
+ assert_true(Runtime:OpenRite("Gora") ~= nil, "OpenRite succeeds")
+ assert_eq(#inputRefreshSpy, 1, "OpenRite refreshes Inputs")
+-assert_eq(#dockRefreshSpy, 1, "OpenRite refreshes ConsoleDock")
+ assert_true(Runtime:CloseRite() ~= nil, "CloseRite succeeds")
+ inputRefreshSpy = {}
+-dockRefreshSpy = {}
+ assert_true(Runtime:Continue() ~= nil, "Continue succeeds")
+ assert_eq(#inputRefreshSpy, 1, "Continue refreshes Inputs")
+-assert_eq(#dockRefreshSpy, 1, "Continue refreshes ConsoleDock")
+ 
+ reset()
+-local savedUnitName = UnitName
+-UnitName = function(unit)
+-  if unit == "player" then return "Beefina" end
+-  if unit == "target" then return "Steakina" end
+-  return nil
+-end
+-SlashCmdList["CHURCHOFBEEF"]("petition")
+-assert_eq(inputTargetBindSpy[1], "Steakina", "/beef petition binds UnitName target")
+-assert_eq(#inputPetitionSpy, 1, "/beef petition calls Inputs:Petition")
+-assert_eq(#inputShowSpy, 0, "/beef petition does not Show Inputs")
+-SlashCmdList["CHURCHOFBEEF"]("confess")
+-assert_eq(inputTargetBindSpy[2], "Steakina", "/beef confess binds UnitName target")
+-assert_eq(#inputShowSpy, 1, "/beef confess Shows Inputs")
+-assert_eq(#inputPetitionSpy, 1, "/beef confess does not Petition again")
+-SlashCmdList["CHURCHOFBEEF"]("catchup")
+-assert_eq(inputTargetBindSpy[3], "Steakina", "/beef catchup binds UnitName target")
+-assert_eq(#inputCatchupSpy, 1, "/beef catchup calls Inputs:Catchup")
+-assert_eq(#inputPetitionSpy, 1, "/beef catchup does not Petition")
+-assert_eq(#inputShowSpy, 1, "/beef catchup does not Show Inputs")
+-UnitName = function(unit)
+-  if unit == "player" then return "Beefina" end
+-  return nil
+-end
+-inputTargetBindSpy = {}
+-inputPetitionSpy = {}
+-inputCatchupSpy = {}
++local cardToggles = 0
++local savedCard = COB.PlayerCard
++COB.PlayerCard = { Toggle = function() cardToggles = cardToggles + 1; return true end }
++SlashCmdList["CHURCHOFBEEF"]("")
++assert_eq(cardToggles, 1, "/beef toggles the player card")
++SlashCmdList["CHURCHOFBEEF"]("anything")
++assert_eq(cardToggles, 2, "unrecognised arguments toggle the player card")
+ SlashCmdList["CHURCHOFBEEF"]("petition")
+-assert_eq(#inputTargetBindSpy, 0, "/beef petition skips empty target")
+-assert_eq(#inputPetitionSpy, 1, "/beef petition still calls Petition without a target")
+-SlashCmdList["CHURCHOFBEEF"]("catchup")
+-assert_eq(#inputTargetBindSpy, 0, "/beef catchup skips empty target")
+-assert_eq(#inputCatchupSpy, 1, "/beef catchup still calls Catchup without a target")
+-UnitName = savedUnitName
++assert_eq(cardToggles, 3, "retired subcommands fall through to the card")
++COB.PlayerCard = savedCard
++assert_eq(#inputTargetBindSpy, 0, "no slash binds an input target anymore")
++assert_eq(#inputPetitionSpy, 0, "no slash calls Inputs:Petition anymore")
++assert_eq(#inputShowSpy, 0, "no slash Shows Inputs anymore")
++assert_eq(#inputCatchupSpy, 0, "no slash calls Inputs:Catchup anymore")
++
++-- The retired shell owned the "UI not ready" fallback; it now names the card.
++COB.PlayerCard = nil
++local chatNotes = {}
++local savedChat = DEFAULT_CHAT_FRAME
++DEFAULT_CHAT_FRAME = {
++  AddMessage = function(_, message) chatNotes[#chatNotes + 1] = message end,
++}
++SlashCmdList["CHURCHOFBEEF"]("")
++assert_eq(cardToggles, 3, "a missing player card does not toggle")
++assert_eq(#chatNotes, 1, "a missing player card prints the not-ready fallback")
++assert_true(chatNotes[1]:find("player card", 1, true) ~= nil,
++  "the not-ready fallback names the player card")
++DEFAULT_CHAT_FRAME = savedChat
++COB.PlayerCard = savedCard
+ 
+ --------------------------------------------------------------------------------
+ -- B10 / B11 / B12: live pair may ride ASSEMBLY STATE (Restore-safe after
+@@ -1153,19 +1492,21 @@ Knighting.KnightThisBeef = origKnight
+ Knighting.ElevateToLord = origElevate
+ COB.FighterCard = origCard
+ COB.Inputs = origInputs
+-COB.ConsoleDock = origDock
+ COB.Markers = origMarkers
+ Console.SetCongregationFavorVisible = origToggle
+ Console.PostDecree = origPost
+ Decree.Clear = origClear
++Decree.Set = origDecreeSet
+ COB.DecreeBanner = origBanner
+ Net._HandleState = origHandleState
+ Net._HandleSnapshot = origHandleSnap
+ Store.Restore = origStoreRestore
++Hud.Refresh = origHudRefresh
+ if COB.Toasts then
+   COB.Toasts.Proclaim = origProclaim
+ end
+ COB._wireInstalled = nil
++COB._OnPeerHello = nil
+ COB._inspecting = nil
+ 
+ assert_eq(Sender:IsRegisteredPope("Beefina"), false, "Pope stub is restored")
+@@ -1174,7 +1515,6 @@ assert_eq(Knighting.KnightThisBeef, origKnight, "KnightThisBeef wrap is restored
+ assert_eq(Knighting.ElevateToLord, origElevate, "ElevateToLord wrap is restored")
+ assert_eq(COB.FighterCard, origCard, "FighterCard spy is restored")
+ assert_eq(COB.Inputs, origInputs, "Inputs spy is restored")
+-assert_eq(COB.ConsoleDock, origDock, "ConsoleDock spy is restored")
+ assert_eq(COB.Markers, origMarkers, "Markers spy is restored")
+ 
+ if restoreUi then restoreUi() end

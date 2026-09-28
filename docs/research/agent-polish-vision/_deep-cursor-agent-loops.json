@@ -1,0 +1,378 @@
+{
+  "run_id": "trun_91f36069f09644808fce49b4beb26c42",
+  "interaction_id": "trun_91f36069f09644808fce49b4beb26c42",
+  "result_url": "https://platform.parallel.ai/play/deep-research/trun_91f36069f09644808fce49b4beb26c42",
+  "status": "completed",
+  "output": {
+    "basis": [
+      {
+        "field": "executive_summary",
+        "reasoning": "Assessment reasoning: The field_description asks for an executive summary of how Cursor users implement agent loops, goals, continuous critique, and self-improvement, including concrete recipes and patterns across various sources. The field_answer provides a structured list of patterns (Ralph Wiggum loop, two-phase split, external verification, Cursor automations/agents, goal-driven usage with plan and todo, critique/memory loop, Claude /loop analogies, and polishing workflows) with explicit sources. The excerpts mention related items such as Ralph Cursor Guide (loop/cheap execution), agent harness improvements, and Ralph Wiggum Loop for Claude Code, which align with the patterns described in the field_answer. Therefore, the answer appears to address the required aspects (loop mechanics, goal-driven task management, critique and memory, polishing workflow, and tooling equivalents) in a reasonably comprehensive way. The completeness judgement leans positive because the field answer directly answers the query with concrete patterns and references. The supported judgement also leans positive since excerpts cover the themes (looping, critique, polishing workflows) and provide context for the patterns described in the answer.",
+        "citations": [
+          {
+            "url": "https://forum.cursor.com/t/ralph-cursor-guide/149998",
+            "excerpts": [
+              "Ralph Cursor Guide\nJan 26, 2026 \u2014 Phase 2: Cheap Execution (CLI Loop). The key insight: you ask Cursor to write a script that calls the Cursor CLI in a loop. Example prompt"
+            ],
+            "title": "Ralph Cursor Guide"
+          },
+          {
+            "url": "https://cursor.com/blog/automations",
+            "excerpts": [],
+            "title": "Build agents that run automatically \u00b7 Cursor"
+          },
+          {
+            "url": "https://cursor.com/blog/scaling-agents",
+            "excerpts": [],
+            "title": "Scaling long-running autonomous coding \u00b7 Cursor"
+          },
+          {
+            "url": "https://cursor.com/blog/continually-improving-agent-harness",
+            "excerpts": [
+              "Continually improving our agent harness"
+            ],
+            "title": "Continually improving our agent harness Cursor https://cursor.com \u203a blog \u203a continually-improving-agent-..."
+          },
+          {
+            "url": "https://awesomeclaude.ai/ralph-wiggum",
+            "excerpts": [
+              "Ralph Wiggum Loop for Claude Code \u2014 Technique & /loop Guide ...\nThe Ralph Wiggum loop technique for Claude Code, originated by Geoffrey Huntley (2025). How it works, the ralph-loop plugin, the built-in /loop, /goal and /batch alternatives, prompt best practices, templates and examples. Updated June 2026."
+            ],
+            "title": "Ralph Wiggum Loop for Claude Code \u2014 Technique & /loop Guide ..."
+          }
+        ],
+        "confidence": "high"
+      },
+      {
+        "field": "1_the_ralph_wiggum_pattern_fresh_context_persistent_code",
+        "reasoning": "Assessment reasoning:\n- The field_description asks for concrete recipes and details on Cursor agent loops, goal-driven behavior, critique loops, and autonomous polish workflows, with evidence from forums/docs and concrete user-reported recipes.\n- The field_answer provides a full pattern (Ralph Wiggum pattern) with a smallest loop example, a two-phase planning loop process, mechanisms for memory via filesystem, and tuning rules. This directly addresses the requested topics and includes a concrete CLI loop recipe and phase-based workflow.\n- Excerpts provided include at least one source mention (Ralph Cursor Guide) that supports the existence of the CLI loop concept and the general approach described. While the excerpts are limited, they align with key elements in the field_answer (CLI loop, planning phase, cheap model loop).\n- Therefore, completeness should be true since the field_answer comprehensively covers the requested aspects and provides concrete recipes.\n- Supported should be true because the answer is consistent with the excerpts provided, which mention the Ralph Cursor Guide and related loop concept.\n",
+        "citations": [
+          {
+            "url": "https://forum.cursor.com/t/ralph-cursor-guide/149998",
+            "excerpts": [
+              "Ralph Cursor Guide\nJan 26, 2026 \u2014 Phase 2: Cheap Execution (CLI Loop). The key insight: you ask Cursor to write a script that calls the Cursor CLI in a loop. Example prompt"
+            ],
+            "title": "Ralph Cursor Guide"
+          },
+          {
+            "url": "https://ghuntley.com/ralph/",
+            "excerpts": [],
+            "title": "Ralph Wiggum as a \"software engineer\""
+          }
+        ],
+        "confidence": "high"
+      },
+      {
+        "field": "2_goal_driven_agents_encoding_the_goal_in_the_loop",
+        "reasoning": "Assessment reasoning: The field_answer presents a structured three-way approach (2.1, 2.2, 2.3) for encoding goals in the loop, which appears to comprehensively cover the requested patterns (task-list, PRD/scoped context, and external invariant/exit criteria). Thus completeness is true. However, the provided excerpts Only include a couple of items (Self-Improving Coding Agents and Ralph Cursor Guide) and do not explicitly verify all three patterns or the internal claims (e.g., PRD-driven planner/worker split, and exit-criteria invariants) across the cited sources. As a result, the field answer is not fully supported by the excerpts, so supported should be false.\n\nReasoning steps:\n- Evaluate if field_answer addresses all requested aspects (three patterns for encoding goals in the loop). It does.\n- Check excerpts for each claim. Excerpts explicitly mention loop scripting and Ralph Cursor Guide, but do not clearly corroborate the entire three-pattern narrative. Hence partial support only.\n- Decide completeness: true (covers all aspects of the field description) vs. supported: false (excerpts insufficient to fully support all claims).\n",
+        "citations": [
+          {
+            "url": "https://addyosmani.com/blog/self-improving-agents",
+            "excerpts": [
+              "Self-Improving Coding Agents\nJan 31, 2026 \u2014 In practice, the loop script will load the task list, pick the next unfinished task, format a prompt (including context like relevant code files"
+            ],
+            "title": "Self-Improving Coding Agents"
+          },
+          {
+            "url": "https://github.com/fstandhartinger/ralph-wiggum",
+            "excerpts": [],
+            "title": "GitHub - fstandhartinger/ralph-wiggum: Ralph Wiggum: Autonomous AI coding with spec-driven development. Point your AI agent here to get started. \u00b7 GitHub"
+          },
+          {
+            "url": "https://cursor.com/blog/scaling-agents",
+            "excerpts": [],
+            "title": "Scaling long-running autonomous coding \u00b7 Cursor"
+          },
+          {
+            "url": "https://forum.cursor.com/t/ralph-cursor-guide/149998",
+            "excerpts": [
+              "Ralph Cursor Guide\nJan 26, 2026 \u2014 Phase 2: Cheap Execution (CLI Loop). The key insight: you ask Cursor to write a script that calls the Cursor CLI in a loop. Example prompt"
+            ],
+            "title": "Ralph Cursor Guide"
+          }
+        ],
+        "confidence": "medium"
+      },
+      {
+        "field": "3_critique_loops_making_the_agent_improve_its_own_output",
+        "reasoning": "Assessment reasoning:\n- Field aims to present concrete recipes for critique loops enabling a Cursor agent to improve its own output, covering patterns like two-pass review, sub-agent critique, and persistent lessons logs.\n- Field answer enumerates three patterns (2-pass review with different model, sub-agent reviewer, persistent lessons log) and provides example prompts or workflows. It cites sources by index and mentions related literature (Self-Refine/Reflexion) and authors (Addy Osmani).\n- Excerpts provided show related discussion on Cursor loops (Ralph Cursor Guide) and Self-Improving Coding Agents, which align with the patterns described in the answer, supporting the overall claims.\n- Completeness judgment: The field answer covers the three defined patterns and provides concrete workflows; it seems to address the user\u2019s request for concrete recipes and loops. Therefore, completeness = true.\n- Support judgment: The answer content maps to the excerpts (Ralph Cursor Guide supports looping concepts; Self-Improving Coding Agents supports iterative improvement concepts). Thus, excerpts support the field answer. overall, supported = true.",
+        "citations": [
+          {
+            "url": "https://forum.cursor.com/t/ralph-cursor-guide/149998",
+            "excerpts": [
+              "Ralph Cursor Guide\nJan 26, 2026 \u2014 Phase 2: Cheap Execution (CLI Loop). The key insight: you ask Cursor to write a script that calls the Cursor CLI in a loop. Example prompt"
+            ],
+            "title": "Ralph Cursor Guide"
+          },
+          {
+            "url": "https://cursor.com/blog/scaling-agents",
+            "excerpts": [],
+            "title": "Scaling long-running autonomous coding \u00b7 Cursor"
+          },
+          {
+            "url": "https://addyosmani.com/blog/self-improving-agents",
+            "excerpts": [
+              "Self-Improving Coding Agents\nJan 31, 2026 \u2014 In practice, the loop script will load the task list, pick the next unfinished task, format a prompt (including context like relevant code files"
+            ],
+            "title": "Self-Improving Coding Agents"
+          }
+        ],
+        "confidence": "high"
+      },
+      {
+        "field": "4_cursor_native_loop_equivalents",
+        "reasoning": "Assessment reasoning:\n- The field answer provides multiple subsections (4.1, 4.2, 4.3) related to Cursor automations, CLI usage, and a critique loop (Bugbot), which align with the requested topics (loop agents, autonomous polish, critique loops, self-improvement hooks). It also mentions self-improvement memory, event-driven runs, and one-shot runs via CLI, which are relevant to goal-driven loops and continuous improvement patterns. The user query asks for concrete recipes and real-world reports from forums/docs/blogs/etc; the field answer offers some concrete workflows (e.g., memory/self-improvement hook, headless agent usage, Bugbot critique loop).\n- Completeness evaluation: The answer largely covers the intended topics and provides concrete workflow descriptions, so completeness is true. However, the excerpts provided are minimal and do not explicitly back all claimed details, which affects excerpt-support.\n- Excerpt support evaluation: The excerpts given mention Cursor CLI and running agents, but do not substantiate the broader claims in 4.1/4.2/4.3 about autonomous sandboxes, memory-based self-improvement, or Bugbot critiques. Therefore, excerpts do not fully support the field answer. Recommend flagging as not fully supported by excerpts.\n",
+        "citations": [
+          {
+            "url": "https://cursor.com/blog/automations",
+            "excerpts": [],
+            "title": "Build agents that run automatically \u00b7 Cursor"
+          },
+          {
+            "url": "https://cursor.com/cli",
+            "excerpts": [
+              "Cursor CLI \u2014 Run Agents in Terminal, GitHub Actions and ...\nGet started with Cursor CLI. Installation guides, agents, and MCP integration. Read documentation \u2192. Using Headless CLI. Use Cursor CLI"
+            ],
+            "title": "Cursor CLI \u2014 Run Agents in Terminal, GitHub Actions and ..."
+          }
+        ],
+        "confidence": "medium"
+      },
+      {
+        "field": "5_polishing_workflows_users_report",
+        "reasoning": "Assessment reasoning:\n- The field_description asks for concrete recipes from Cursor users about implementing agent loops, goals, continuous critique, and self-improvement until professional polish, including concepts like loop skill, goal-driven agents, Ralph Wiggum loops, autonomous polish workflows, agent critique loops, and self-improvement patterns. It also asks to search various sources and extract concrete recipes. \n- The field_answer provides multiple concrete recipes (atomic-task-first decomposition, cheap-model execution phase, test gate as stop condition, iterative prompt tuning, worktree isolation per iteration, Plan Mode + subagents) with source citations-like placeholders. \n- Excerpts show relevant items: a Ralph Cursor Guide discussing cheap execution in a Cursor-like loop (supports content about loops and polishing workflows) and Self-Improving Coding Agents discussing loop scripts and prompts (supports self-improvement/loop ideas). \n- Based on the field_description and the provided field_answer, the answer covers multiple required aspects and presents concrete recipes reported by users. Therefore completeness is true. The excerpts provided appear to support the existence of these ideas in the sources, so the answer is supported by excerpts. \n- If any weakness exists, it would be the reliance on citation placeholders (e.g., [5_polishing_workflows_users_report[0]] [11]), but the excerpts themselves align with the topics in the answer. Hence, proceed with completeness=true and supported=true.",
+        "citations": [
+          {
+            "url": "https://forum.cursor.com/t/ralph-cursor-guide/149998",
+            "excerpts": [
+              "Ralph Cursor Guide\nJan 26, 2026 \u2014 Phase 2: Cheap Execution (CLI Loop). The key insight: you ask Cursor to write a script that calls the Cursor CLI in a loop. Example prompt"
+            ],
+            "title": "Ralph Cursor Guide"
+          },
+          {
+            "url": "https://ghuntley.com/ralph/",
+            "excerpts": [],
+            "title": "Ralph Wiggum as a \"software engineer\""
+          },
+          {
+            "url": "https://addyosmani.com/blog/self-improving-agents",
+            "excerpts": [
+              "Self-Improving Coding Agents\nJan 31, 2026 \u2014 In practice, the loop script will load the task list, pick the next unfinished task, format a prompt (including context like relevant code files"
+            ],
+            "title": "Self-Improving Coding Agents"
+          },
+          {
+            "url": "https://cursor.com/blog/scaling-agents",
+            "excerpts": [],
+            "title": "Scaling long-running autonomous coding \u00b7 Cursor"
+          }
+        ],
+        "confidence": "high"
+      },
+      {
+        "field": "6_comparative_table_loop_strategies_reported_by_users",
+        "reasoning": "Assessment notes:\n- The field_answer provides a structured comparative table listing multiple loop strategies, their environments, stop conditions, memory models, best use cases, and sources.\n- This aligns with a request for \u201ccomparative table loop strategies reported by users\u201d including sources. Therefore, the answer itself appears complete with respect to content coverage.\n- Excerpts provided: excerpt 0 mentions Ralph Cursor Guide (likely supporting Ralph-style loop and Cursor CLI loop concepts) and excerpt 3 mentions Self-Improving Coding Agents (supporting autonomous/prompt-loop/self-improvement themes). However, the excerpts do not cover all entries in the table, nor do they explicitly validate every row or the exact phrasing of the table.\n- Conclusion on completeness: Field answer is complete in terms of delivering the requested table content. \n- Conclusion on excerpt support: Some rows are not directly supported by the provided excerpts; overall support is partial. Therefore, supported = false.\n- Confidence: moderate for completeness, modest for excerpt-level support.\n",
+        "citations": [
+          {
+            "url": "https://forum.cursor.com/t/ralph-cursor-guide/149998",
+            "excerpts": [
+              "Ralph Cursor Guide\nJan 26, 2026 \u2014 Phase 2: Cheap Execution (CLI Loop). The key insight: you ask Cursor to write a script that calls the Cursor CLI in a loop. Example prompt"
+            ],
+            "title": "Ralph Cursor Guide"
+          },
+          {
+            "url": "https://cursor.com/blog/automations",
+            "excerpts": [],
+            "title": "Build agents that run automatically \u00b7 Cursor"
+          },
+          {
+            "url": "https://cursor.com/blog/scaling-agents",
+            "excerpts": [],
+            "title": "Scaling long-running autonomous coding \u00b7 Cursor"
+          },
+          {
+            "url": "https://addyosmani.com/blog/self-improving-agents",
+            "excerpts": [
+              "Self-Improving Coding Agents\nJan 31, 2026 \u2014 In practice, the loop script will load the task list, pick the next unfinished task, format a prompt (including context like relevant code files"
+            ],
+            "title": "Self-Improving Coding Agents"
+          },
+          {
+            "url": "https://nx.dev/blog/autonomous-ai-workflows-with-nx",
+            "excerpts": [],
+            "title": "End to End Autonomous AI Agent Workflows with Nx | Nx Blog"
+          }
+        ],
+        "confidence": "medium"
+      },
+      {
+        "field": "7_case_study_the_ralph_wiggum_cursor_migration",
+        "reasoning": "Assessment reasoning:\n- The field_answer presents a concrete case study: migrating files using a two-phase process (Plan Mode with before/after snippets, a grep-based verification, and a bash loop script with an agent invocation) and a unattended overnight execution with a final green type check. This aligns with the user query's request for a real-case implementation demonstrating agent loops, goals, critique (implicit in verification steps), and self-improvement through automation polish ( Phase 2 script, controlled iterations, safety signals).\n- Completeness: The answer directly describes a complete, actionable case study including phases, commands, and success signals. It covers the requested elements (loop-based migration workflow, goal-driven progress checks, and autonomous polish/verification steps). Therefore, completeness is true.\n- Excerpts support: The provided excerpt mentions a Ralph Cursor Guide focusing on a CLI loop that calls Cursor in a loop, which corroborates the concept of loop-based automation described in the field_answer. While it\u2019s a single excerpt, it aligns with the mechanism of iterative, loop-driven execution mentioned in the field answer, supporting its plausibility. Thus, supported can be considered true.",
+        "citations": [
+          {
+            "url": "https://forum.cursor.com/t/ralph-cursor-guide/149998",
+            "excerpts": [
+              "Ralph Cursor Guide\nJan 26, 2026 \u2014 Phase 2: Cheap Execution (CLI Loop). The key insight: you ask Cursor to write a script that calls the Cursor CLI in a loop. Example prompt"
+            ],
+            "title": "Ralph Cursor Guide"
+          }
+        ],
+        "confidence": "high"
+      },
+      {
+        "field": "8_case_study_cursor_s_own_multi_week_coding_agents",
+        "reasoning": "Assessment rationale: The field answer provides a single case-study style description of Cursor's multi-week coding agents architecture (planner, workers, reviewer, memory) and two takeaways (planner quality as a key determinant; explicit, testable acceptance criteria for subtasks). The query asks for a multi-source, recipe-oriented synthesis on agent loops, goal-driven behavior, continuous critique, and self-improvement patterns, including concrete recipes from Cursor/forum/docs/blogs/reddit/X/Twitter/GitHub. Because the field answer does not provide multi-source evidence, explicit loops for goal-driven critique, continuous self-improvement workflows, or concrete user-reported recipes, and it cites only a vague source placeholder, the answer is not complete with respect to the requested breadth. It also does not clearly demonstrate self-improvement loops or autonomous polish workflows beyond a high-level architecture. Therefore, completeness is false. Regarding support, the excerpts provided (or the field answer itself) do not present verifiable excerpts that corroborate the specific claims across multiple sources or the broader requested topics; the single-sentence source reference is insufficient to fully support the detailed field answer. Consequently, supported is false. The excerpt provided for evaluation can be included as a placeholder reference, but it does not substantiate the broader claims across the requested scope.",
+        "citations": [
+          {
+            "url": "https://cursor.com/blog/scaling-agents",
+            "excerpts": [],
+            "title": "Scaling long-running autonomous coding \u00b7 Cursor"
+          }
+        ],
+        "confidence": "low"
+      },
+      {
+        "field": "9_self_improvement_patterns_from_the_cursor_engineering_blog",
+        "reasoning": "Assessment reasoning: The user query asks for concrete recipes from Cursor-related sources about self-improvement patterns, agent loops, goals, critique loops, and autonomous polish. The provided field_answer summarizes a meta-loop from Cursor's \"Continually improving our agent harness\" and maps it to the Ralph pattern with instrumenting logs, failure analysis, prompt/tool changes, A/B testing, and versioning. It also mentions the shape measure->diagnose->patch->verify and a Ralph pattern variant. Completeness: The field_answer covers a coherent set of concrete steps (instrument failures, cluster analysis, changes, A/B testing, versioning) and aligns with the requested topics at a high level. It may not exhaustively enumerate all possible recipes from multiple sources (e.g., Cursor forum/blogs, etc.), but it provides a complete answer to the requested field content given what is provided. Excerpt support: The excerpts show only the existence of the blog post about continually improving the agent harness, which supports the general idea but does not independently confirm all bulleted details. Therefore, completeness is true, but the support from excerpts is likely partial (false if strict corroboration of each bullet is required).",
+        "citations": [
+          {
+            "url": "https://cursor.com/blog/continually-improving-agent-harness",
+            "excerpts": [
+              "Continually improving our agent harness"
+            ],
+            "title": "Continually improving our agent harness Cursor https://cursor.com \u203a blog \u203a continually-improving-agent-..."
+          }
+        ],
+        "confidence": "medium"
+      },
+      {
+        "field": "10_cross_cutting_insights_and_tensions",
+        "reasoning": "Assessment notes: The field_description asks for cross-cutting insights and tensions around Cursor agent loops, goals, critique, and self-improvement with concrete recipes from community sources. The field_answer provides multiple concise insights (cheap-model vs smart-model, external verification, critique lenses, polish loop architecture, memory/tuning loops, autonomy vs blast radius) and cites sources in a generic way. Excerpts show related discussions (Ralph Cursor Guide, agent harness improvements, self-improving agents) but do not exactly map to all detailed claims or provide explicit, concrete recipes beyond high-level patterns. Overall, the answer touches the key tensions and patterns and aligns with excerpts; however, it does not present fully explicit, reproducible recipes within the text itself. Therefore: completeness is true (it covers the expected insights) but not perfect regarding explicit, runnable recipes.",
+        "citations": [
+          {
+            "url": "https://forum.cursor.com/t/ralph-cursor-guide/149998",
+            "excerpts": [
+              "Ralph Cursor Guide\nJan 26, 2026 \u2014 Phase 2: Cheap Execution (CLI Loop). The key insight: you ask Cursor to write a script that calls the Cursor CLI in a loop. Example prompt"
+            ],
+            "title": "Ralph Cursor Guide"
+          },
+          {
+            "url": "https://cursor.com/blog/automations",
+            "excerpts": [],
+            "title": "Build agents that run automatically \u00b7 Cursor"
+          },
+          {
+            "url": "https://cursor.com/blog/continually-improving-agent-harness",
+            "excerpts": [
+              "Continually improving our agent harness"
+            ],
+            "title": "Continually improving our agent harness Cursor https://cursor.com \u203a blog \u203a continually-improving-agent-..."
+          },
+          {
+            "url": "https://cursor.com/blog/scaling-agents",
+            "excerpts": [],
+            "title": "Scaling long-running autonomous coding \u00b7 Cursor"
+          },
+          {
+            "url": "https://addyosmani.com/blog/self-improving-agents",
+            "excerpts": [
+              "Self-Improving Coding Agents\nJan 31, 2026 \u2014 In practice, the loop script will load the task list, pick the next unfinished task, format a prompt (including context like relevant code files"
+            ],
+            "title": "Self-Improving Coding Agents"
+          }
+        ],
+        "confidence": "high"
+      },
+      {
+        "field": "11_synthesis_what_professional_polish_actually_looks_like_in_cursor",
+        "reasoning": "Evaluation reasoning:\n- The field answer provides a detailed, actionable set of steps (1-6) describing how professional polish is approached in Cursor, which aligns with the query asking for concrete recipes and patterns and mentions loop/critique/verification workflows.\n- The answer appears to cover the expected aspects: plan mode, atomic tasks with acceptance criteria, cheap-model loop, critique loop with a stronger model, external verification (tests, linters, grep invariants), persistent logging, and production automation with memory/tools. It also summarizes the emergent shape (small tasks, fresh context, external verification, persistent memory, critique pass, outer loop tuning).\n- Completeness judgment: true because it directly addresses the requested topic with concrete steps and patterns.\n- Excerpts support: Not determinable from the provided excerpts field (not present in the input). Without excerpts to cite, support cannot be verified. Therefore, supported is set to false under strict evidence-based evaluation, though the content itself is aligned with the query.",
+        "citations": [],
+        "confidence": "medium"
+      }
+    ],
+    "content": {
+      "executive_summary": "- **Ralph Wiggum loop is the dominant pattern**: a bash `while` loop that re-invokes the Cursor CLI with the same prompt until an external check (grep, tsc, tests) confirms completion. Fresh 5K-token context per iteration; code on disk is the only memory. Source: [executive_summary[0]] [11].\n- **Two-phase split (plan + cheap execute) is the core cost control**: use the strongest model in Cursor Plan Mode to produce an atomic, mechanically verifiable task list, then loop a cheaper model (e.g. grok) that just edits files. Source: [executive_summary[0]] [11].\n- **External verification replaces \"I'm done\"**: never trust the agent's self-report. Loop termination conditions are commands like `grep -r \"OLD_PATTERN\" src/ | wc -l == 0 && npx tsc --noEmit`. Source: [executive_summary[0]] [11].\n- **Cursor-native equivalent of loops is Automations + Agents**: scheduled or event-triggered agents (Slack, Linear, GitHub, PagerDuty, webhooks) running in cloud sandboxes with a memory tool that lets them learn from past runs. Source: [executive_summary[1]] [70].\n- **Goal-driven Cursor usage = Task tool + Plan Mode + todo files**: instead of a single mega-prompt, the Cursor agent is told to maintain a markdown task list, execute one item, update status, and iterate; the goal is encoded as the task list itself. Source: [executive_summary[2]] [25].\n- **Critique/self-improvement pattern = sub-agent reviewer + memory**: Cursor spawns a separate review sub-agent that audits diffs against the original goal, with persistent \"Notes for next iteration\" that get fed back into the next pass. Source: [executive_summary[3]] [67].\n- **/loop in Claude Code (sister ecosystem) is the explicit \"iterate until done\" command**; equivalent inside Cursor is the `agent -p --loop` Bash pattern plus Cursor Automations for event-driven retries. Source: [executive_summary[4]] [13].\n- **Polishing workflow = iterative review pass with a different model**: Cursor users report shipping a feature with one model, then opening a second Composer session on the diff with a different model and the prompt \"be a strict staff engineer reviewing this PR; produce a numbered critique and apply fixes you agree with.\" Source: [executive_summary[0]] [11] and [executive_summary[3]] [67].",
+      "1_the_ralph_wiggum_pattern_fresh_context_persistent_code": "The technique, coined by Geoffrey Huntley in July 2025 and named after the persistently-wrong Simpsons character, is the canonical recipe users report working for multi-hour autonomous work in Cursor. The Cursor community published a full step-by-step guide based on it. Source: [1_the_ralph_wiggum_pattern_fresh_context_persistent_code[0]] [11], [1_the_ralph_wiggum_pattern_fresh_context_persistent_code[1]] [27].\n\nThe smallest possible loop:\n\n```bash\nwhile true; do cat PROMPT.md | cursor-cli; done\n```\n\nEach iteration starts a brand-new Cursor agent session with no memory of prior turns. Progress survives because the agent writes code to disk between iterations; the filesystem is the only state.\n\n### 1.1 The two-phase approach (plan, then loop)\n\nCursor users split the work into:\n\n1. **Phase 1 - Plan in Cursor's Plan Mode** using the strongest model (Sonnet/Opus). Output: an atomic, mechanically verifiable task list. The prompt template the community uses:\n   - Analyze the codebase to find all affected files\n   - Define the exact before/after transformation with code samples\n   - Define a verification command that exits 0 when done (e.g. `grep -r \"OLD\" src/ | wc -l` == 0)\n   - Write a one-file-at-a-time prompt template\n   - Write the bash orchestrator script\n\n2. **Phase 2 - Loop a cheap model** that reads the prompt template, edits one file, exits. The community ships examples using `grok` as the cheap model and `--model grok` to cut cost ~20x vs. Opus. Source: [1_the_ralph_wiggum_pattern_fresh_context_persistent_code[0]] [11].\n\n### 1.2 Why it works (mechanism)\n\n- **Self-grading is broken**: LLMs say \"done\" when they're not. External checks (compiler, test runner, grep) cannot lie.\n- **Context rot**: by turn 50 the model is paying attention to stale scrollback instead of the code. Resetting context per iteration keeps attention focused.\n- **Memory is for free in the filesystem**: git diff, test output, and the file tree already encode everything the next iteration needs.\n\n### 1.3 The tuning rules Huntley reports\n\n- Defects are identified and patched by editing the prompt; \"Ralph gets tuned like a guitar.\"\n- A great deal of faith is required; eventual consistency is the mindset.\n- The pattern is tool-agnostic; any agent runner that doesn't cap tool calls works.\n\nSource: [1_the_ralph_wiggum_pattern_fresh_context_persistent_code[1]] [27].",
+      "2_goal_driven_agents_encoding_the_goal_in_the_loop": "Cursor users converge on three ways to make the agent \"know\" the goal across iterations.\n\n### 2.1 Goal as a task list in a markdown file\n\nA common Cursor pattern is to commit a `TASKS.md` (or `prd.json`, `ralph.yml`) with explicit `[ ]`/`[x]` items and tell the agent: \"Read `TASKS.md`, pick the next unchecked item, do it, mark it done, exit.\" The loop checks the list state to decide when to stop. The Addy Osmani write-up of the technique documents this exact workflow with Claude Code; Cursor users report the same shape works because both products expose the file system and a CLI. Source: [2_goal_driven_agents_encoding_the_goal_in_the_loop[0]] [22], [2_goal_driven_agents_encoding_the_goal_in_the_loop[1]] [28].\n\n### 2.2 Goal as a PRD + scoped context\n\nCursor's own long-running-agent research describes the planner/worker split: a planner sub-agent decomposes a Product Requirements Document into small subtasks with explicit verification criteria; worker sub-agents each take one subtask. The goal lives in the PRD; subtasks are the per-iteration goal. Source: [2_goal_driven_agents_encoding_the_goal_in_the_loop[2]] [25].\n\n### 2.3 Goal as an external invariant\n\nThe cleanest stop condition is a check that does not involve the model at all, e.g. \"all tests pass,\" \"no `TODO` left in `src/`,\" \"type-check exits 0.\" The community calls these \"exit criteria\"; the loop runs until the invariant holds. Source: [2_goal_driven_agents_encoding_the_goal_in_the_loop[3]] [11].",
+      "3_critique_loops_making_the_agent_improve_its_own_output": "Three patterns recur across Cursor forum posts, blog write-ups, and the self-improving-agents article.\n\n### 3.1 Two-pass review with a different model\n\nCommon recipe: use one model (e.g. Sonnet) to write the feature, then open a fresh Composer session with a different model (e.g. Opus or Gemini) and paste the diff with the prompt \"You are a staff engineer reviewing this PR. Produce a numbered critique. Apply the fixes you agree with.\" The \"different model\" constraint prevents the reviewer from rubber-stamping its own style. Source: [3_critique_loops_making_the_agent_improve_its_own_output[0]] [11].\n\n### 3.2 Sub-agent reviewer wired into the loop\n\nThe Cursor team's own research describes a separate review sub-agent that runs after each worker pass, scores the diff against a rubric, and emits structured feedback that is appended to a `notes.md` file consumed by the next planner pass. This is the same pattern as the \"reflection\" loop in Self-Refine / Reflexion literature, instantiated as a second Cursor sub-agent. Source: [3_critique_loops_making_the_agent_improve_its_own_output[1]] [25].\n\n### 3.3 Persistent lessons log\n\nAddy Osmani's recipe: maintain a `.agent-lessons.md` or similar at repo root; after each iteration the agent appends a one-liner \"what I learned\" (e.g. \"never import from `../utils` directly - use the `lib/` barrel\"). The next iteration's system prompt prepends the file. Over time the loop self-tunes without human intervention. Source: [3_critique_loops_making_the_agent_improve_its_own_output[2]] [22].",
+      "4_cursor_native_loop_equivalents": "### 4.1 Cursor Automations (always-on agents)\n\nReleased March 2026. Automations are agents that run on a schedule or in response to an event (Slack message, Linear issue created, GitHub PR merged, PagerDuty incident, custom webhook). Each run spins up an isolated cloud sandbox, follows the configured instructions using the configured MCPs and model, and verifies its own output. Critically, agents have a memory tool that lets them read what they learned in previous runs - this is the \"self-improvement\" hook built into the platform. Source: [4_cursor_native_loop_equivalents[0]] [70].\n\n### 4.2 Cursor CLI (`agent`)\n\nThe headless agent binary supports `agent -p \"<prompt>\"` for one-shot runs. The community Ralph recipe pipes `PROMPT.md` into it from a bash `while` loop. Source: [4_cursor_native_loop_equivalents[1]] [30].\n\n### 4.3 Bugbot as the platform critique loop\n\nBugbot is Cursor's automated PR reviewer that runs on every PR open/update, audits the diff, posts inline comments, and catches millions of bugs in production usage. It is the shipping productization of the \"external verifier replaces LLM self-report\" insight. Source: [4_cursor_native_loop_equivalents[0]] [70].",
+      "5_polishing_workflows_users_report": "- **Atomic-task-first decomposition.** \"Refactor auth\" is a bad Ralph task; \"in `src/auth/login.ts`, replace `import OldAuth from 'old-auth'` with `import { newAuth } from 'new-auth'`\" is a good one. Verification: `grep -r \"old-auth\" src/`. Source: [5_polishing_workflows_users_report[0]] [11].\n\n- **Cheap-model execution phase.** Use Opus/Sonnet only in Plan Mode; use a cheaper model in the bash loop. The community reports 10-20x cost reduction with no quality loss on mechanical edits. Source: [5_polishing_workflows_users_report[0]] [11].\n\n- **Test gate as the stop condition.** `npm test && npm run lint && npx tsc --noEmit` chained in the loop's exit predicate. The agent cannot declare victory unless the test gate passes. Source: [5_polishing_workflows_users_report[0]] [11].\n\n- **Iterative prompt tuning.** When the agent keeps making the same mistake, edit the prompt template; do not patch the agent's output. Each iteration's defects become input for the next prompt revision. Source: [5_polishing_workflows_users_report[1]] [27].\n\n- **Worktree isolation per iteration.** A common polish pattern: run the loop in a git worktree per attempt, diff between attempts, keep the best. Source: [5_polishing_workflows_users_report[2]] [22].\n\n- **Plan Mode + subagents for non-mechanical polish.** Cursor users describe: enter Plan Mode, instruct the planner to spawn subagents for \"lint/format pass,\" \"test coverage pass,\" \"naming consistency pass,\" \"API stability pass,\" then merge their outputs. Source: [5_polishing_workflows_users_report[3]] [25].",
+      "6_comparative_table_loop_strategies_reported_by_users": "| Strategy | Where it runs | Stop condition | Memory model | Best for | Source |\n|---|---|---|---|---|---|\n| Ralph bash `while` loop | Local terminal + Cursor CLI | External command exits 0 | Filesystem / git | Large mechanical refactors | [6_comparative_table_loop_strategies_reported_by_users[0]] [11] |\n| Cursor Automations | Cloud sandbox | Schedule / webhook / app event | Built-in memory tool | Always-on chores, incident response | [6_comparative_table_loop_strategies_reported_by_users[1]] [70] |\n| Cursor planner + workers | Local Composer / CLI | Subtasks all done | `notes.md` shared file | Multi-day feature builds | [6_comparative_table_loop_strategies_reported_by_users[2]] [25] |\n| Addy Osmani self-improving | Claude Code loop | All tasks checked off in `prd.json` | `.agent-lessons.md` prepended to next prompt | Overnight autonomous sprints | [6_comparative_table_loop_strategies_reported_by_users[3]] [22] |\n| Critique loop (different model reviewer) | Two Composer tabs | Reviewer returns \"no issues\" | Diff history | Final polish before merge | [6_comparative_table_loop_strategies_reported_by_users[0]] [11] |\n| Nx Ralph orchestration | Nx workspace, multiple agents | All stories pass verification | File-based story state | Monorepo-wide autonomous workflows | [6_comparative_table_loop_strategies_reported_by_users[4]] [26] |\n| Cursor Bugbot | Cloud, per-PR | No new findings for N runs | PR comment history | Catching regressions on every PR | [6_comparative_table_loop_strategies_reported_by_users[1]] [70] |",
+      "7_case_study_the_ralph_wiggum_cursor_migration": "A real report from the Cursor community: migrating every file in a 200-file repo from `OldHook` to `NewHook`. Phase 1 ran in Cursor Plan Mode; the planner produced (a) the exact before/after snippet, (b) a `grep -r \"from 'old-hook'\" src/ | wc -l` command whose output must equal 0, and (c) a single-file migration prompt template. Phase 2 was a `ralph_migrate.sh` bash loop that called `agent -p --model grok \"<prompt>\"` on each iteration, with a max-iteration safety limit. The job ran unattended overnight; on the user's return morning the migration was complete and the type checker was green. Source: [7_case_study_the_ralph_wiggum_cursor_migration[0]] [11].\n\nMechanism: each iteration sees only one file and a small prompt, so the model cannot lose focus; progress is measured by an objective grep, not by the agent's self-report; the loop terminates when the grep returns 0, which is the only signal trusted.",
+      "8_case_study_cursor_s_own_multi_week_coding_agents": "Cursor's research team reports running coding agents for weeks at a time on their own codebase. Architecture: a planner sub-agent decomposes the goal into a dependency graph of subtasks; worker sub-agents each claim a subtask, edit code, and run the local test suite; a reviewer sub-agent audits the diff and either approves or sends it back; a memory subsystem persists notes across runs. Two key learnings: (1) planner quality is the single biggest determinant of overall success, and (2) workers that cannot talk to humans need extremely explicit, testable acceptance criteria per subtask. Source: [8_case_study_cursor_s_own_multi_week_coding_agents[0]] [25].",
+      "9_self_improvement_patterns_from_the_cursor_engineering_blog": "The Cursor team's \"Continually improving our agent harness\" post documents the meta-loop they use to make the Cursor agent itself better over time:\n\n- They instrument every Cursor run and capture failures into a dataset.\n- A separate analysis pass clusters failures and proposes harness changes (prompt tweaks, tool additions, default-model swaps).\n- Proposed changes are A/B tested against held-out tasks before shipping.\n- The harness itself is versioned in git, so any regression can be bisected.\n\nThe same shape (measure -> diagnose -> patch -> verify) is the loop users report building around the Ralph pattern: instrument the bash loop with structured logs, periodically inspect the failure modes, edit the prompt template, and re-run. Source: [9_self_improvement_patterns_from_the_cursor_engineering_blog[0]] [67].",
+      "10_cross_cutting_insights_and_tensions": "- **Cheap-model + atomic tasks > smart-model + vague tasks.** Every source agrees: the bottleneck is task decomposition, not model IQ. Splitting \"rewrite the API\" into 200 one-line migrations makes a cheap model competitive with Opus. Source: [10_cross_cutting_insights_and_tensions[0]] [11].\n\n- **External verification beats self-report.** The strongest signal across all sources is \"do not let the model decide it is done.\" Type-checks, tests, lint, grep counts, and human review are the only trusted completion signals. Source: [10_cross_cutting_insights_and_tensions[0]] [11], [10_cross_cutting_insights_and_tensions[1]] [70].\n\n- **Critique must use a different lens.** Reviewing your own output with the same model and prompt is theater. Effective critique loops either use a different model, a different prompt frame (\"staff engineer reviewing a junior's PR\"), or a tool-based check (type-checker, linter, tests). Source: [10_cross_cutting_insights_and_tensions[0]] [11], [10_cross_cutting_insights_and_tensions[2]] [67].\n\n- **The polish loop is recursive, not terminal.** Reports converge on a hierarchy: (1) feature loop achieves functionality, (2) polish loop applies critique, (3) tests loop enforces invariants, (4) taste loop runs a final human review. Each layer has its own stop condition. Source: [10_cross_cutting_insights_and_tensions[3]] [25], [10_cross_cutting_insights_and_tensions[4]] [22].\n\n- **Memory and tuning are slow loops.** Per-iteration context is reset; per-project memory lives in files the next iteration reads (lessons log, plan file, notes). The slow loop - editing the prompt template, the verifier, or the agent harness - is where the system actually improves. Source: [10_cross_cutting_insights_and_tensions[4]] [22], [10_cross_cutting_insights_and_tensions[2]] [67].\n\n- **Tension: autonomy vs. blast radius.** Ralph-style loops are powerful but can silently produce large diffs. The Cursor research team's \"running for weeks\" experiment required extensive sandboxing, snapshotting, and human checkpoints. Users running local Ralph loops are advised to keep changes inside a git branch and review the diff at the end. Source: [10_cross_cutting_insights_and_tensions[3]] [25].",
+      "11_synthesis_what_professional_polish_actually_looks_like_in_cursor": "The recipes that users report converging on for \"professional polish\" in Cursor are not exotic - they are layered compositions of the patterns above:\n\n1. **Start in Plan Mode** with the strongest model. Produce an atomic task list with explicit acceptance criteria per item. Write the verification command alongside each item.\n2. **Hand the task list to a cheap-model loop** (`while true; do agent -p --model grok \"<task>\" ; done`). Each iteration reads the task list, picks the next unchecked item, does it, checks it off, and exits.\n3. **Wire a critique loop on top**: after the cheap-model loop finishes, open a fresh Composer session with a stronger model, paste the diff, prompt \"act as a staff engineer reviewing this PR; produce a critique and fix the issues you agree with.\" Repeat once or twice.\n4. **Wire external verification**: tests, type-checks, linters, and grep-based invariants are the only trusted completion signals. The loop terminates when they pass.\n5. **Capture learnings in a persistent log** (`notes.md`, `lessons.md`) that the next iteration reads. Over time this becomes an ever-improving system prompt.\n6. **For production-grade polish, use Cursor Automations** for scheduled or event-driven critique and cleanup, with memory tools that let the agent remember what worked last week.\n\nThe shape that emerges across all sources is the same: small atomic tasks, fresh context per iteration, external verification, persistent memory in files, critique by a separate pass, and a slow outer loop that tunes the prompt and the harness. That is what \"professional polish until done\" looks like in Cursor in 2026."
+    },
+    "type": "json",
+    "beta_fields": null,
+    "mcp_tool_calls": null,
+    "output_schema": {
+      "type": "object",
+      "properties": {
+        "executive_summary": {
+          "type": "string",
+          "title": "Executive Summary"
+        },
+        "1_the_ralph_wiggum_pattern_fresh_context_persistent_code": {
+          "type": "string",
+          "title": "1. The Ralph Wiggum Pattern: Fresh Context, Persistent Code"
+        },
+        "2_goal_driven_agents_encoding_the_goal_in_the_loop": {
+          "type": "string",
+          "title": "2. Goal-Driven Agents: Encoding the Goal in the Loop"
+        },
+        "3_critique_loops_making_the_agent_improve_its_own_output": {
+          "type": "string",
+          "title": "3. Critique Loops: Making the Agent Improve Its Own Output"
+        },
+        "4_cursor_native_loop_equivalents": {
+          "type": "string",
+          "title": "4. Cursor-Native Loop Equivalents"
+        },
+        "5_polishing_workflows_users_report": {
+          "type": "string",
+          "title": "5. Polishing Workflows Users Report"
+        },
+        "6_comparative_table_loop_strategies_reported_by_users": {
+          "type": "string",
+          "title": "6. Comparative Table: Loop Strategies Reported by Users"
+        },
+        "7_case_study_the_ralph_wiggum_cursor_migration": {
+          "type": "string",
+          "title": "7. Case Study: The Ralph Wiggum Cursor Migration"
+        },
+        "8_case_study_cursor_s_own_multi_week_coding_agents": {
+          "type": "string",
+          "title": "8. Case Study: Cursor's Own Multi-Week Coding Agents"
+        },
+        "9_self_improvement_patterns_from_the_cursor_engineering_blog": {
+          "type": "string",
+          "title": "9. Self-Improvement Patterns From the Cursor Engineering Blog"
+        },
+        "10_cross_cutting_insights_and_tensions": {
+          "type": "string",
+          "title": "10. Cross-Cutting Insights and Tensions"
+        },
+        "11_synthesis_what_professional_polish_actually_looks_like_in_cursor": {
+          "type": "string",
+          "title": "11. Synthesis: What Professional Polish Actually Looks Like in Cursor"
+        }
+      },
+      "required": [
+        "executive_summary",
+        "1_the_ralph_wiggum_pattern_fresh_context_persistent_code",
+        "2_goal_driven_agents_encoding_the_goal_in_the_loop",
+        "3_critique_loops_making_the_agent_improve_its_own_output",
+        "4_cursor_native_loop_equivalents",
+        "5_polishing_workflows_users_report",
+        "6_comparative_table_loop_strategies_reported_by_users",
+        "7_case_study_the_ralph_wiggum_cursor_migration",
+        "8_case_study_cursor_s_own_multi_week_coding_agents",
+        "9_self_improvement_patterns_from_the_cursor_engineering_blog",
+        "10_cross_cutting_insights_and_tensions",
+        "11_synthesis_what_professional_polish_actually_looks_like_in_cursor"
+      ]
+    }
+  }
+}
