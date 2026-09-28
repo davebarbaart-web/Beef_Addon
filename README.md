@@ -27,7 +27,7 @@ Church history is never deleted. Identity is account-level: **rank belongs to th
 
 ## Quiet Mode
 
-Outside events the add-on is at most a **minimap presence** and the active **Decree**. The Decree is forthcoming; it does not ship today. No feeds, toasts, pips, or ambient surfaces in Quiet Mode.
+Outside events the add-on is at most a **minimap presence** and the active **Decree**. The Decree ships as that Quiet Mode parchment — once per login, replayable from the minimap, posted from the Console, broadcast as DECREE. No feeds, toasts, pips, or ambient surfaces in Quiet Mode.
 
 ## Install
 
@@ -48,8 +48,9 @@ Reload (`/reload`) and confirm **Church of Beef** appears in the AddOns list.
 
 ## Usage
 
-- `/beef` — toggle the main frame. The minimap button toggles the same frame.
-- `/beef minimap` — show or hide the minimap button (the existing restore path if the button is hidden). Unrecognized arguments open the frame.
+- `/beef` — your player card: Church rank, sanctioned Gora record, rivalries, distinctions, the next Gathering. **CHURCH RECORDS** on the card opens the Records Book. The minimap roundel toggles the same card.
+- `/beef console` — the Director Console (listed Pope characters only).
+- `/beef minimap` — show or hide the minimap roundel. Unrecognized arguments open the card.
 
 ## Hard safety rules
 

@@ -6,8 +6,8 @@ local COB = ChurchOfBeef
 -- This file encodes and Restores. It does not send, whisper, or route.
 -- BuildResponse may overlay Gora live / last pair (and toggle-gated favor)
 -- and a Knighting line-head candidate onto the encoded SNAPSHOT only.
--- Runtime is not mutated. ApplyResponse Restores Bible fields only;
--- favor stays off Restore.
+-- Runtime is not mutated. ApplyResponse Restores Bible fields only
+-- (same latest-wins rule as Runtime:Restore); favor stays off Restore.
 local Snapshot = {}
 COB.Snapshot = Snapshot
 
@@ -54,6 +54,31 @@ end
 local function overlayCandidate(subjects, candidate)
   local fighters = type(subjects) == "table" and subjects.fighters or nil
   return { candidate = candidate, fighters = fighters }
+end
+
+local function displayForId(id)
+  if type(id) ~= "number" then return nil end
+  local Store = COB.Store
+  if not (Store and Store.GetCharacter) then return nil end
+  local ch = Store:GetCharacter(id)
+  if type(ch) ~= "table" or type(ch.name) ~= "string" then return nil end
+  if COB.Names and COB.Names.Display then
+    return COB.Names.Display(ch.name)
+  end
+  return ch.name
+end
+
+local function overlayNames(fields)
+  local names = { candidate = nil, fighterA = nil, fighterB = nil }
+  local subjects = fields.subjects
+  if type(subjects) == "table" then
+    names.candidate = displayForId(subjects.candidate)
+    if type(subjects.fighters) == "table" then
+      names.fighterA = displayForId(subjects.fighters[1])
+      names.fighterB = displayForId(subjects.fighters[2])
+    end
+  end
+  fields.names = names
 end
 
 local function lineHeadHumanId()
@@ -128,6 +153,7 @@ function Snapshot:BuildResponse()
       fields.favor = gora:GetLastFavorSplit()
     end
   end
+  overlayNames(fields)
   fields.role = "response"
   return COB.Codec:EncodeSnapshot(fields)
 end
@@ -136,6 +162,7 @@ function Snapshot:ApplyResponse(blob)
   local msg, err = COB.Codec:DecodeSnapshot(blob)
   if not msg then return nil, err end
   if not COB.Codec:IsCompatible(msg.version) then
+    COB.Runtime:DropToQuietForVersion()
     return nil, "protocol mismatch"
   end
   if msg.role ~= "response" then

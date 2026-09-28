@@ -13,6 +13,9 @@
 
 # Project-scoped MCP server config — must be shared, not caught by /*.json above.
 !/.mcp.json
+# Generated offline UI previews (regenerate: lua tests/preview_dump.lua && python3 scripts/render-preview.py)
+docs/design/renders/preview/
+
 # Research scrape dumps (not product law)
 docs/research/**/.raw/
 docs/research/**/.raw-deepen/
@@ -23,3 +26,8 @@ docs/research/**/_extract-*.json
 docs/research/**/_wave-*.md
 .DS_Store
 _to_delete/
+
+# Generated install zip (packaging: cd addon && zip -r ../ChurchOfBeef.zip ChurchOfBeef).
+# The 2026-08-20 copy still has retired MainFrame/Status/ConsoleDock and no PlayerCard.
+/ChurchOfBeef.zip
+/addon/ChurchOfBeef.zip

@@ -20,7 +20,7 @@ This item does not invent live HUD health (item 1), favor, or a SUMMON protocol.
 
 If programmatic raid markers fail (no raid, not leader/assist, API refused), the console still targets the current candidate/fighter where the API allows (item 6). That fallback is named. Do not invent a third marking scheme.
 
-Absence of `SetRaidTarget` in addon Lua today is leftover, not a pass of this item.
+`UI/Markers.lua` now calls capability-guarded `SetRaidTarget` and `TargetUnit`. **That is not a pass of this item.** David still walks the live method. Desk-visible refuse when marks fail may still be leftover. Do not invent SecureActionButton.
 
 ## Live-client method (Anniversary TBC, Interface 20506)
 
@@ -44,6 +44,6 @@ Do not change addon Lua from this sheet.
 
 ## Leftovers
 
-- `SetRaidTarget` on the Pope console when the congregation is raid-grouped (later UI, only if this Result says the API permits)
+- Desk-visible refuse when marks fail (no raid, not leader/assist, API refused)
 - Which marker index is used for candidate vs fighters (do not invent)
 - Item 6 must still be walked for the named fallback

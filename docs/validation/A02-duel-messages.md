@@ -45,3 +45,7 @@ Those are the fallback, not item 2.
 - Auto-propose from chat is not coded and is not invented here
 - VOID / free ruling stay Pope judgment (§10.8); this item does not invent extra outcome enums
 - Locale coverage beyond the clients David actually has
+- Raid/party 1 HP proposer may ship (David 2026-09-14): raw UnitHealth == 1
+  on one sanctioned fighter, partner > 1, Gora:Propose only. Not this item.
+  This sheet remains system-message formats / range / locale.
+- “I lost” INPUT and CHAT_MSG_SYSTEM parser stay parked.

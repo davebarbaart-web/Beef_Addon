@@ -1,9 +1,10 @@
 ChurchOfBeef = ChurchOfBeef or {}
 local COB = ChurchOfBeef
 
--- Live guild roster snapshot. Guild rankIndex is public display only (Bible §5).
--- ChurchRankIdForGuildIndex is a nil stub this phase — members are still kept
--- so the Quiet shell can leave roster_wait. Church rank is not invented here.
+-- Live guild roster snapshot. Guild rankIndex and guildRankName are public
+-- display only (Bible §5). ChurchRankIdForGuildIndex is a nil stub — members
+-- are still kept so Presence can leave roster_wait. Church rank is not
+-- invented here. A matching rank name is display in UI via Ranks.IdForTitle.
 --
 -- Prefers LibGuildRoster-1.0 when present (common with FastGuildInvite /
 -- GuildRoster installs), otherwise walks GetGuildRosterInfo directly. Always
@@ -15,7 +16,7 @@ local Roster = {
   -- complete means "a full guild walk answered", which is the only state where
   -- "this name is not in the guild" is a safe conclusion.
   complete = false,
-  members = {}, -- key → { name, guildRankIndex, churchRankId, classFile? }
+  members = {}, -- key → { name, guildRankIndex, guildRankName, churchRankId, classFile? }
   generation = 0,
   _libWired = false,
   _onChanged = nil,
@@ -83,9 +84,10 @@ local function seedLocalPlayer(members, officerCache, seen)
   if not key or not shown then return seen end
   if members[key] then return seen end
 
-  local guildName, _, rankIndex = GetGuildInfo("player")
+  local guildName, rankName, rankIndex = GetGuildInfo("player")
   rankIndex = tonumber(rankIndex)
   if type(guildName) ~= "string" or guildName == "" or not rankIndex then return seen end
+  if type(rankName) ~= "string" or rankName == "" then rankName = nil end
 
   local ranks = COB.Ranks
   local churchRankId = ranks and ranks.ChurchRankIdForGuildIndex and ranks.ChurchRankIdForGuildIndex(rankIndex) or nil
@@ -93,6 +95,7 @@ local function seedLocalPlayer(members, officerCache, seen)
   members[key] = {
     name = shown,
     guildRankIndex = rankIndex,
+    guildRankName = rankName,
     churchRankId = churchRankId,
   }
   officerCache[key] = rankIndex
@@ -118,9 +121,12 @@ local function buildFromLib(lib)
         local churchRankId = ranks and ranks.ChurchRankIdForGuildIndex and ranks.ChurchRankIdForGuildIndex(rankIndex) or nil
         local classFile = member.classFile or member.class
         if type(classFile) ~= "string" then classFile = nil end
+        local rankName = member.rankName or member.rank
+        if type(rankName) ~= "string" or rankName == "" then rankName = nil end
         members[key] = {
           name = shown,
           guildRankIndex = rankIndex,
+          guildRankName = rankName,
           churchRankId = churchRankId,
           classFile = classFile,
         }
@@ -143,16 +149,18 @@ local function buildFromApi()
   local ranks = COB.Ranks
   local members, officerCache, seen = {}, {}, 0
   for i = 1, count do
-    local rosterName, _, rankIndex, _, _, _, _, _, _, _, classFile = GetGuildRosterInfo(i)
+    local rosterName, rankName, rankIndex, _, _, _, _, _, _, _, classFile = GetGuildRosterInfo(i)
     rankIndex = tonumber(rankIndex)
     local key = rosterKey(rosterName)
     local shown = displayName(rosterName)
     if key and shown and rankIndex then
       local churchRankId = ranks and ranks.ChurchRankIdForGuildIndex and ranks.ChurchRankIdForGuildIndex(rankIndex) or nil
       if type(classFile) ~= "string" then classFile = nil end
+      if type(rankName) ~= "string" or rankName == "" then rankName = nil end
       members[key] = {
         name = shown,
         guildRankIndex = rankIndex,
+        guildRankName = rankName,
         churchRankId = churchRankId,
         classFile = classFile,
       }
@@ -201,6 +209,13 @@ function Roster:GetGuildRankIndex(name)
   if not key or not self.ready then return nil end
   local entry = self.members[key]
   return entry and entry.guildRankIndex or nil
+end
+
+function Roster:GetGuildRankName(name)
+  local key = rosterKey(name)
+  if not key or not self.ready then return nil end
+  local entry = self.members[key]
+  return entry and entry.guildRankName or nil
 end
 
 function Roster:HasMember(name)

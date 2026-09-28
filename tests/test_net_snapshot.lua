@@ -98,15 +98,40 @@ local function assert_unchanged(before, after, msg)
   assert_bible(after, before, (msg or "state") .. " unchanged")
 end
 
+local function overlay_test_names(fields)
+  local Store = COB.Store
+  local names = { candidate = nil, fighterA = nil, fighterB = nil }
+  local subjects = fields.subjects
+  if type(subjects) == "table" and Store and Store.GetCharacter then
+    local function displayFor(id)
+      if type(id) ~= "number" then return nil end
+      local ch = Store:GetCharacter(id)
+      if type(ch) ~= "table" or type(ch.name) ~= "string" then return nil end
+      if COB.Names and COB.Names.Display then
+        return COB.Names.Display(ch.name)
+      end
+      return ch.name
+    end
+    names.candidate = displayFor(subjects.candidate)
+    if type(subjects.fighters) == "table" then
+      names.fighterA = displayFor(subjects.fighters[1])
+      names.fighterB = displayFor(subjects.fighters[2])
+    end
+  end
+  fields.names = names
+end
+
 local function encode_expected(snap)
-  return Codec:EncodeSnapshot({
+  local fields = {
     role = "response",
     eventId = snap.eventId,
     state = snap.state,
     riteType = snap.riteType,
     subjects = snap.subjects,
     sequence = snap.sequence,
-  })
+  }
+  overlay_test_names(fields)
+  return Codec:EncodeSnapshot(fields)
 end
 
 --------------------------------------------------------------------------------
@@ -165,7 +190,7 @@ sent = 0
 local req, reqErr = Snapshot:Request()
 assert_true(req ~= nil, "Request encodes")
 assert_eq(reqErr, nil, "Request has no error")
-assert_eq(req, "1:SNAPSHOT:request", "Request wire is role only")
+assert_eq(req, "2:SNAPSHOT:request", "Request wire is role only")
 assert_eq(req, Codec:EncodeSnapshot({ role = "request" }), "Request is Codec EncodeSnapshot request")
 assert_unchanged(cold, Runtime:Snapshot(), "Request from QUIET")
 assert_eq(sent, 0, "Request does not SendAddonMessage")
@@ -184,11 +209,11 @@ Runtime:StartEvent()
 Runtime:OpenRite("Gora", { fighters = { 3, 4 } })
 local midRite = Runtime:Snapshot()
 local reqMid = Snapshot:Request()
-assert_eq(reqMid, "1:SNAPSHOT:request", "Request mid-rite is still role only")
+assert_eq(reqMid, "2:SNAPSHOT:request", "Request mid-rite is still role only")
 assert_unchanged(midRite, Runtime:Snapshot(), "Request does not change a live event")
 
 local reqExtra = Snapshot:Request({ pope = true }, "whisper")
-assert_eq(reqExtra, "1:SNAPSHOT:request", "Request ignores leftover args")
+assert_eq(reqExtra, "2:SNAPSHOT:request", "Request ignores leftover args")
 assert_unchanged(midRite, Runtime:Snapshot(), "Request leftover args do not change Runtime")
 
 --------------------------------------------------------------------------------
@@ -228,7 +253,7 @@ assert_eq(Runtime:Snapshot().sequence, assembly.sequence, "BuildResponse does no
 local assemblyMsg = Codec:DecodeSnapshot(assemblyWire)
 assert_eq(assemblyMsg.type, "SNAPSHOT", "ASSEMBLY response is SNAPSHOT")
 assert_eq(assemblyMsg.role, "response", "ASSEMBLY response role")
-assert_eq(assemblyMsg.version, 1, "ASSEMBLY response carries protocol 1")
+assert_eq(assemblyMsg.version, 2, "ASSEMBLY response carries protocol 2")
 assert_eq(assemblyMsg.eventId, assembly.eventId, "ASSEMBLY response event id")
 assert_eq(assemblyMsg.state, "ASSEMBLY", "ASSEMBLY response state")
 assert_eq(assemblyMsg.riteType, nil, "ASSEMBLY response has no rite type")
@@ -373,7 +398,7 @@ assert_unchanged(live, Runtime:Snapshot(), "refused request leaves Runtime")
 
 reset()
 local coldAgain = Runtime:Snapshot()
-local fromWireReq, fromWireReqErr = Snapshot:ApplyResponse("1:SNAPSHOT:request")
+local fromWireReq, fromWireReqErr = Snapshot:ApplyResponse("2:SNAPSHOT:request")
 assert_eq(fromWireReq, nil, "ApplyResponse refuses a request wire")
 assert_eq(fromWireReqErr, "invalid role", "request wire is not response")
 assert_unchanged(coldAgain, Runtime:Snapshot(), "refused request wire leaves QUIET")
@@ -384,15 +409,19 @@ assert_unchanged(coldAgain, Runtime:Snapshot(), "refused request wire leaves QUI
 reset()
 Runtime:StartEvent()
 local beforeForeign = Runtime:Snapshot()
-local foreign = "2:SNAPSHOT:response:1:ASSEMBLY::::1"
+assert_eq(beforeForeign.state, "ASSEMBLY", "foreign Apply starts from a live event")
+local foreign = "1:SNAPSHOT:response:1:ASSEMBLY::::1"
 local foreignMsg, foreignDecErr = Codec:DecodeSnapshot(foreign)
 assert_true(foreignMsg ~= nil, "foreign major still decodes")
 assert_eq(foreignDecErr, nil, "foreign major is versioned, not garbage")
-assert_eq(Codec:IsCompatible(foreignMsg.version), false, "protocol 2 is incompatible")
+assert_eq(Codec:IsCompatible(foreignMsg.version), false, "protocol 1 is incompatible")
 local foreignApply, foreignErr = Snapshot:ApplyResponse(foreign)
 assert_eq(foreignApply, nil, "ApplyResponse refuses an incompatible version")
 assert_eq(foreignErr, "protocol mismatch", "incompatible version fails closed")
-assert_unchanged(beforeForeign, Runtime:Snapshot(), "incompatible version does not Restore")
+local afterForeign = Runtime:Snapshot()
+assert_eq(afterForeign.state, "QUIET", "incompatible version drops to Quiet")
+assert_eq(afterForeign.eventId, nil, "incompatible version does not Restore")
+assert_eq(afterForeign.sequence, 0, "incompatible version Restores clean QUIET")
 
 reset()
 local beforeZero = Runtime:Snapshot()
@@ -420,18 +449,18 @@ refuse_apply(nil, "empty payload", "nil blob")
 refuse_apply("", "empty payload", "empty blob")
 refuse_apply("not-a-snapshot", "no protocol version", "garbage blob")
 refuse_apply("SNAPSHOT:response:1:ASSEMBLY::::1", "no protocol version", "version-less SNAPSHOT")
-refuse_apply("1:SNAPSHOT:ask", "invalid role", "ask is not a role")
-refuse_apply("1:SNAPSHOT:REQUEST", "invalid role", "REQUEST is not a role")
-refuse_apply("1:SNAPSHOT:reply", "invalid role", "reply is not a role")
-refuse_apply("1:SNAPSHOT:response", "invalid event id", "response missing STATE fields")
-refuse_apply("1:SNAPSHOT:request:1", "unknown field", "request extra wire field")
+refuse_apply("2:SNAPSHOT:ask", "invalid role", "ask is not a role")
+refuse_apply("2:SNAPSHOT:REQUEST", "invalid role", "REQUEST is not a role")
+refuse_apply("2:SNAPSHOT:reply", "invalid role", "reply is not a role")
+refuse_apply("2:SNAPSHOT:response", "invalid event id", "response missing STATE fields")
+refuse_apply("2:SNAPSHOT:request:1", "unknown field", "request extra wire field")
 
 refuse_apply("1:SUGGESTION:foo", "unknown message type", "SUGGESTION is not applied")
 refuse_apply("1:SYNC_STATE:1:ASSEMBLY::::1", "unknown message type", "SYNC_STATE is not applied")
 refuse_apply("1:SYNC_REQUEST", "unknown message type", "SYNC_REQUEST is not applied")
 refuse_apply("1:RANK_COMMIT:1:2", "unknown message type", "RANK_COMMIT is not applied")
-refuse_apply("1:HELLO", "unknown message type", "HELLO is not applied")
-refuse_apply("1:INPUT:petition:3", "unknown message type", "INPUT is not a snapshot")
+refuse_apply("2:HELLO", "unknown message type", "HELLO is not applied")
+refuse_apply("2:INPUT:petition:3", "unknown message type", "INPUT is not a snapshot")
 refuse_apply(Codec:EncodeState({
   eventId = 1,
   state = "ASSEMBLY",
@@ -442,15 +471,15 @@ refuse_apply(Codec:EncodeState({
 -- ApplyResponse fail closed: Codec-valid body that Runtime Restore refuses.
 -- Do not invent a third schema; Restore is the Bible-field gate.
 --------------------------------------------------------------------------------
-refuse_apply("1:SNAPSHOT:response:1:CONSEQUENCE::::1", "rite type required",
+refuse_apply("2:SNAPSHOT:response:1:CONSEQUENCE::::1", "rite type required",
   "CONSEQUENCE without a rite type is not restored")
-refuse_apply("1:SNAPSHOT:response:1:ASSEMBLY:Gora:::1", "invalid rite type",
+refuse_apply("2:SNAPSHOT:response:1:ASSEMBLY:Gora:::1", "invalid rite type",
   "ASSEMBLY with a rite type is not restored")
-refuse_apply("1:SNAPSHOT:response:1:QUIET::5::0", "invalid subjects",
+refuse_apply("2:SNAPSHOT:response:1:QUIET::5::0", "invalid subjects",
   "QUIET with a candidate is not restored")
-refuse_apply("1:SNAPSHOT:response:1:RITE:Builder:::1", "invalid rite type",
+refuse_apply("2:SNAPSHOT:response:1:RITE:Builder:::1", "invalid rite type",
   "free-text rite type is not restored")
-refuse_apply("1:SNAPSHOT:response:1:AWAITING_POPE::::1", "invalid state",
+refuse_apply("2:SNAPSHOT:response:1:AWAITING_POPE::::1", "invalid state",
   "sixth state is not restored")
 
 --------------------------------------------------------------------------------
@@ -467,6 +496,39 @@ assert_eq(appliedExtra, true, "ApplyResponse ignores leftover args")
 assert_bible(Runtime:Snapshot(), srcProc, "leftover args still Restore Bible fields")
 
 --------------------------------------------------------------------------------
+-- Latest-wins: ApplyResponse uses the same Restore rule. Older does not
+-- rewind. Equal sequence does not apply ceremony. Favor stays off Restore.
+--------------------------------------------------------------------------------
+reset()
+Runtime:StartEvent()
+local earlySnap = Runtime:Snapshot()
+local earlyWire = Snapshot:BuildResponse()
+assert_eq(earlySnap.sequence, 1, "early ASSEMBLY sequence is 1")
+Runtime:OpenRite("Gora", { fighters = { 8, 9 } })
+Runtime:CloseRite()
+local laterSnap = Runtime:Snapshot()
+assert_eq(laterSnap.sequence, 3, "later CONSEQUENCE sequence is 3")
+assert_eq(laterSnap.state, "CONSEQUENCE", "later state is CONSEQUENCE")
+assert_eq(laterSnap.riteType, "Gora", "later rite is Gora")
+
+local replayed, replayErr = Snapshot:ApplyResponse(earlyWire)
+assert_eq(replayed, nil, "older Apply does not rewind")
+assert_eq(replayErr, "stale sequence", "older Apply is stale sequence")
+assert_bible(Runtime:Snapshot(), laterSnap, "older Apply leaves later ceremony")
+
+local hijackWire = encode_expected({
+  eventId = laterSnap.eventId,
+  state = laterSnap.state,
+  riteType = laterSnap.riteType,
+  subjects = { candidate = laterSnap.subjects.candidate, fighters = { 1, 2 } },
+  sequence = laterSnap.sequence,
+})
+assert_eq(Snapshot:ApplyResponse(hijackWire), true, "equal-sequence Apply returns ok")
+assert_eq(Runtime:Snapshot().subjects.fighters[1], 8, "equal sequence does not replace fighters")
+assert_bible(Runtime:Snapshot(), laterSnap, "equal-sequence Apply does not move ceremony")
+assert_eq(Runtime:Snapshot().favor, nil, "Apply does not Restore favor")
+
+--------------------------------------------------------------------------------
 -- No SendAddonMessage, no frames, no SV write, no peer SYNC on any path.
 --------------------------------------------------------------------------------
 reset()
@@ -480,7 +542,7 @@ local cycle = Snapshot:BuildResponse()
 Snapshot:Request()
 reset()
 Snapshot:ApplyResponse(cycle)
-Snapshot:ApplyResponse("1:SNAPSHOT:request")
+Snapshot:ApplyResponse("2:SNAPSHOT:request")
 Snapshot:ApplyResponse("1:SYNC_STATE:1:RITE:Gora::21,22:2")
 Snapshot:ApplyResponse("1:SUGGESTION:x")
 assert_eq(sent, 0, "Request / BuildResponse / ApplyResponse never send or CreateFrame")
@@ -524,11 +586,12 @@ local function encode_overlay(snap, fighters, favor)
   if favor ~= nil then
     fields.favor = favor
   end
+  overlay_test_names(fields)
   return Codec:EncodeSnapshot(fields)
 end
 
 local function encode_candidate(snap, candidate, fighters)
-  return Codec:EncodeSnapshot({
+  local fields = {
     role = "response",
     eventId = snap.eventId,
     state = snap.state,
@@ -538,7 +601,9 @@ local function encode_candidate(snap, candidate, fighters)
       fighters = fighters,
     },
     sequence = snap.sequence,
-  })
+  }
+  overlay_test_names(fields)
+  return Codec:EncodeSnapshot(fields)
 end
 
 local function stubLineHead(humanId)
@@ -1094,6 +1159,31 @@ assert_eq(knightLastMsg.favor, nil, "Knighting CONSEQUENCE does not invent last 
 clearPairStubs()
 
 clearPairStubs()
+
+--------------------------------------------------------------------------------
+-- Packed names ride SNAPSHOT response. ApplyResponse Restores Bible fields only.
+-- Land from QUIET (different eventId) so latest-wins still applies ceremony.
+--------------------------------------------------------------------------------
+reset()
+local namedWire = Codec:EncodeSnapshot({
+  role = "response",
+  eventId = 1,
+  state = "ASSEMBLY",
+  sequence = 1,
+  subjects = { fighters = { 8, 9 } },
+  names = { fighterA = "Chuckroast", fighterB = "Beefina" },
+})
+assert_true(namedWire ~= nil, "SNAPSHOT response with names encodes")
+local namedMsg = Codec:DecodeSnapshot(namedWire)
+assert_eq(namedMsg.names.fighterA, "Chuckroast", "SNAPSHOT decode keeps fighter A name")
+assert_eq(namedMsg.names.fighterB, "Beefina", "SNAPSHOT decode keeps fighter B name")
+assert_true(Snapshot:ApplyResponse(namedWire), "ApplyResponse accepts a named response")
+local afterNamed = Runtime:Snapshot()
+assert_eq(afterNamed.names, nil, "ApplyResponse does not Restore names onto Runtime")
+assert_eq(afterNamed.subjects.fighters[1], 8, "ApplyResponse still Restores fighter A")
+assert_eq(afterNamed.subjects.fighters[2], 9, "ApplyResponse still Restores fighter B")
+assert_snap_shape(afterNamed, "named Apply")
+
 if standalone then
   assert_eq(COB.Net, nil, "isolation wrap stays: no BeefNet")
   assert_eq(COB.Store, nil, "isolation wrap stays: no Store")

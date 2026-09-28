@@ -1,5 +1,5 @@
 ---
-description: Quiet vs Event contract; Decree bound; every feature declares a mode.
+description: Quiet vs Event contract; Nights board bound; every feature declares a mode.
 globs:
   - "**/addon/**/UI/**/*.lua"
   - "**/addon/**/UI/**/*.xml"
@@ -15,21 +15,21 @@ Exactly **two** presentation states. Every UI feature **must declare** Quiet Mod
 
 ## Quiet Mode (normal WoW)
 
-Render **at most** a minimap presence and the active Decree. Contractual, not aspirational.
+Render **at most** a hideable minimap. The Nights board is player-opened. The one licensed unbidden cue is a faint glow when the board changed since the player last opened `/beef` or the Nights parchment. Contractual, not aspirational.
 
 **Banned ambient surfaces:** feeds, dashboards, toasts, pips, sound, “now playing,” activity panels, bars, standing tabs, points-history, grant/suggestion toasts during normal play, minimap pips on grants (Audit V9). **“Just a small always-visible panel” is rejected** (§4.8, §19.1).
 
 Quiet Mode is **silent, absolutely** — no ambient audio, UI clicks-and-whooshes, or notification sounds (§19.4).
 
-**Unbidden Quiet chrome** is only minimap presence + the active Decree. **Player-opened Quiet** is only identity/history (profile / records) per §14.2 — not a Standing tab, points history, Ladder, Officer desk, grant pip, petition pip, or always-on chip. Minimap click reaches the Decree and may open that identity/history. That is not a license for always-visible chrome or a feed. Do not add extra Quiet Mode surfaces “for usability.” Do not invent Director Console UX here (§18).
+**Unbidden Quiet chrome** is only the hideable minimap (plus the licensed unseen-change glow). **Player-opened Quiet** is identity/history (profile / records) per §14.2 and the Nights board per §14.1 — not a Standing tab, points history, Ladder, Officer desk, grant pip, petition pip, or always-on chip. Minimap left-click opens the player card; right-click opens the Nights parchment. That is not a license for always-visible chrome or a feed. Do not add extra Quiet Mode surfaces “for usability.” Do not invent Director Console UX here (§18).
 
-A Tuesday login sees **almost nothing, plus the Decree.** Do not “fix” the quiet (§14.2).
+A Tuesday login sees **almost nothing.** The week of posted nights is on `/beef`. Do not “fix” the quiet with a feed (§14.2).
 
-## The Decree (the one Quiet Mode feature beyond presence)
+## The Nights board (the one Quiet Mode feature beyond presence)
 
-One **single** active proclamation. Shown **once per login** as a parchment banner; thereafter reachable from the minimap. That is the entire feature (§14.1).
+Church nights (Gathering, Knighting night, Gora night) are Pope-posted weekly series; skip/move a week is allowed. Discord raid/PvP stubs are notices with “Sign up on Discord” — no in-addon Going. Congregation Going on Church nights is a public count; names stay on the Pope desk. No login banner. Glow only when the board revision is newer than last view (§14.1).
 
-**Hard bound:** no calendar, RSVP, reminders, recurring events, or attendance tracking. Do not invent Decree deputy UX.
+**Hard bound:** no Discord API, role signup, reminders, toasts, auto-start, or attendance ledger. Do not invent Council designation UX beyond `Data/Council.lua` + `ui.councilOverrides`.
 
 ## Event Mode (ceremonies and Goras)
 

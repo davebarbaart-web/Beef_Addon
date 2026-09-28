@@ -12,9 +12,13 @@ local COB = ChurchOfBeef
 -- INPUT (favor, petition, confession) is live on whisper-to-Pope. A petition
 -- may carry an opponent name. GUILD INPUT stays unknown. Outbound STATE /
 -- SNAPSHOT / DECREE send only if the local player is a registered Pope
--- (always false until the #8 list — do not code it).
+-- (gated on the listed Pope: Data/Popes.lua + ChurchOfBeefDB.ui.popeOverrides).
 -- SendFavor, SendPetition, SendConfession, and RequestSnapshot are congregation
--- whisper and are not Pope-gated.
+-- whisper and are not Pope-gated. A missing or blank whisper target resolves a
+-- default destination before refusing: the last sender whose STATE passed
+-- sender auth this session (Net._lastStateSender), then the first listed Pope
+-- (COB.Popes.List, guarded). No roster lookup, no SavedVariables; a self dest
+-- is legal and is not skipped.
 --
 -- Classic+ port notes: the client APIs read here are behind type() guards and listed
 -- below, so a host that renames one degrades to "cannot send" instead of erroring on
@@ -22,9 +26,10 @@ local COB = ChurchOfBeef
 --   C_ChatInfo, SendAddonMessage, RegisterAddonMessagePrefix, C_GuildInfo, GuildRoster,
 --   IsInGuild, UnitName, C_Timer, GetTime, CreateFrame
 local Net = {
-  -- Major protocol number. A mismatch is a soft warning plus a discard: an older
-  -- client's field order is not something we can guess our way through.
-  PROTOCOL = 1,
+  -- Major protocol number. A mismatch is a once-per-session Quiet notice
+  -- plus a drop to Quiet presentation: an older client's field order is
+  -- not something we can guess our way through.
+  PROTOCOL = 2,
   Prefix = "COB",
   -- GUILD always. The client default is PARTY, and custom CHANNEL addon chat is
   -- forbidden on Classic, so this is passed explicitly on every send.
@@ -56,6 +61,7 @@ local FIELD = ":"
 local MAX_BODY = 240
 -- The client ignores a GuildRoster() request made less than ten seconds after the last.
 local ROSTER_REQUEST_INTERVAL = 10
+local STUB_REBROADCAST_INTERVAL = 30
 
 local TYPES = {
   HELLO = true,
@@ -88,6 +94,33 @@ local function destName(target)
     return COB.Names.Trim(target)
   end
   return trim(target)
+end
+
+-- Default whisper destination when the caller supplies none: the last sender
+-- whose STATE passed sender auth this session, else the first listed Pope
+-- (COB.Popes.List, guarded for absence). No guild-roster lookup, no
+-- SavedVariables. A self dest is legal. destName trims whichever source wins.
+local function defaultDest()
+  local last = destName(Net._lastStateSender)
+  if last then return last end
+  local popes = COB.Popes
+  local list = type(popes) == "table" and popes.List or nil
+  if type(list) == "table" then
+    return destName(list[1])
+  end
+  return nil
+end
+
+-- An explicit caller target always wins over the default.
+local function resolveDest(target)
+  return destName(target) or defaultDest()
+end
+
+-- Same helper SendPetition / RequestSnapshot use when the caller supplies
+-- no dest. Inputs paints the recipient line from this so the face cannot
+-- say List[1] while the whisper goes to _lastStateSender.
+function Net:DefaultDest()
+  return defaultDest()
 end
 
 -- Rejects NaN and infinity as well as non-numbers: tonumber("nan") succeeds on some
@@ -385,9 +418,115 @@ function Net:SendDecree(fields, nowSeconds)
   return self:Send(payload, nowSeconds)
 end
 
--- Congregation → Pope. Not Pope-gated. Favor+pick only.
+function Net:SendNights(nowSeconds)
+  if not self:_LocalPope() then
+    return false, "not a registered pope"
+  end
+  if not (COB.Nights and COB.Nights.BroadcastSnapshot) then
+    return false, "nights is not available"
+  end
+  if not (COB.Codec and COB.Codec.EncodeNights) then
+    return false, "no codec"
+  end
+  local payload, err = COB.Codec:EncodeNights(COB.Nights:BroadcastSnapshot())
+  if not payload then
+    return false, err
+  end
+  return self:Send(payload, nowSeconds)
+end
+
+function Net:SendStub(fields, nowSeconds)
+  local name
+  if COB.Group and COB.Group.PlayerName then
+    name = COB.Group.PlayerName()
+  end
+  if not (COB.Sender and COB.Sender.CanWriteStub and COB.Sender:CanWriteStub(name)) then
+    return false, "not accepted"
+  end
+  if not (COB.Codec and COB.Codec.EncodeStub) then
+    return false, "no codec"
+  end
+  local payload, err = COB.Codec:EncodeStub(fields)
+  if not payload then
+    return false, err
+  end
+  return self:Send(payload, nowSeconds)
+end
+
+function Net:SendStubWithdraw(fields, nowSeconds)
+  local name
+  if COB.Group and COB.Group.PlayerName then
+    name = COB.Group.PlayerName()
+  end
+  if not (COB.Sender and COB.Sender.CanWriteStub and COB.Sender:CanWriteStub(name)) then
+    return false, "not accepted"
+  end
+  if not (COB.Codec and COB.Codec.EncodeStubWithdraw) then
+    return false, "no codec"
+  end
+  local payload, err = COB.Codec:EncodeStubWithdraw(fields)
+  if not payload then
+    return false, err
+  end
+  return self:Send(payload, nowSeconds)
+end
+
+function Net:SendGoing(fields, target, nowSeconds)
+  target = resolveDest(target)
+  if not target then
+    return false, "no target"
+  end
+  if not (COB.Codec and COB.Codec.EncodeInput) then
+    return false, "no codec"
+  end
+  local body = type(fields) == "table" and {
+    kind = "going",
+    occurrence = fields.occurrence,
+  } or { kind = "going" }
+  local payload, err = COB.Codec:EncodeInput(body)
+  if not payload then
+    return false, err
+  end
+  return self:_TransmitWhisper(payload, target)
+end
+
+function Net:RebroadcastStubs(nowSeconds)
+  local t = now(self, nowSeconds)
+  if type(self.stubsRebroadcastAt) == "number"
+      and (t - self.stubsRebroadcastAt) < STUB_REBROADCAST_INTERVAL then
+    return false, "throttled"
+  end
+  local name
+  if COB.Group and COB.Group.PlayerName then
+    name = COB.Group.PlayerName()
+  end
+  local canStub = COB.Sender and COB.Sender.CanWriteStub and COB.Sender:CanWriteStub(name)
+  local isPope = self:_LocalPope()
+  if not canStub and not isPope then
+    return false, "not accepted"
+  end
+  if not (COB.Nights and COB.Nights.Snapshot) then
+    return false, "nights is not available"
+  end
+  local snap = COB.Nights:Snapshot()
+  if type(snap) ~= "table" or type(snap.stubs) ~= "table" then
+    return true
+  end
+  self.stubsRebroadcastAt = t
+  for i = 1, #snap.stubs do
+    local row = snap.stubs[i]
+    if type(row) == "table" then
+      row.boardRevision = snap.boardRevision
+      self:SendStub(row, nowSeconds)
+    end
+  end
+  return true
+end
+
+-- Congregation → Pope. Not Pope-gated. Favor+pick only. Explicit dest wins;
+-- blank falls back to the default destination (resolveDest).
 function Net:SendFavor(fields, target, nowSeconds)
-  target = destName(target)
+  target = resolveDest(target)
   if not target then
     return false, "no target"
   end
@@ -407,10 +546,10 @@ function Net:SendFavor(fields, target, nowSeconds)
 end
 
 -- Congregation → Pope. Not Pope-gated. Petition id, optional opponent name.
--- Do not copy namedOpponentId onto the wire. Caller supplies the whisper
--- target. Do not look up a Pope name.
+-- Do not copy namedOpponentId onto the wire. Explicit dest wins; blank falls
+-- back to the default destination (resolveDest).
 function Net:SendPetition(fields, target, nowSeconds)
-  target = destName(target)
+  target = resolveDest(target)
   if not target then
     return false, "no target"
   end
@@ -434,10 +573,10 @@ end
 
 -- Congregation → Pope. Not Pope-gated. Confession text is optional.
 -- Trim text (Names.Trim or local trim). Empty after trim omits
--- body.text and still sends. Caller supplies the whisper target.
--- Do not look up a Pope name.
+-- body.text and still sends. Explicit dest wins; blank falls back to
+-- the default destination (resolveDest).
 function Net:SendConfession(fields, target, nowSeconds)
-  target = destName(target)
+  target = resolveDest(target)
   if not target then
     return false, "no target"
   end
@@ -470,10 +609,10 @@ function Net:SendConfession(fields, target, nowSeconds)
   return self:_TransmitWhisper(payload, target)
 end
 
--- Congregation → Pope. Not Pope-gated. Caller supplies the whisper target.
--- Do not look up a Pope name.
+-- Congregation → Pope. Not Pope-gated. Explicit dest wins; blank falls back
+-- to the default destination (resolveDest).
 function Net:RequestSnapshot(target, nowSeconds)
-  target = destName(target)
+  target = resolveDest(target)
   if not target then
     return false, "no target"
   end
@@ -498,10 +637,15 @@ end
 function Net:_WarnVersion(version)
   if self.warnedVersion then return false end
   self.warnedVersion = true
-  chat(string.format(
-    "a guildmate is running BeefNet v%s; this client speaks v%d. Update for matching addon messages.",
-    tostring(version), self.PROTOCOL))
+  chat("the Church's software has advanced; update the addon.")
   return true
+end
+
+local function dropToQuietForVersion()
+  local runtime = COB.Runtime
+  if type(runtime) == "table" and type(runtime.DropToQuietForVersion) == "function" then
+    runtime:DropToQuietForVersion()
+  end
 end
 
 --------------------------------------------------------------------------------
@@ -542,6 +686,7 @@ end
 function Net:HandleHello(message, sender)
   if not self:IsCompatible(message.version) then
     self:_WarnVersion(message.version)
+    dropToQuietForVersion()
     return false
   end
   -- Our own HELLO comes back to us off the guild channel. Counting it would make a
@@ -551,6 +696,12 @@ function Net:HandleHello(message, sender)
   self.peers = self.peers or {}
   local key = nameKey(sender)
   if key then self.peers[key] = message.fields[1] or "?" end
+  -- A guildmate's HELLO may be a late joiner: the bootstrap installs
+  -- COB._OnPeerHello so the Pope's client re-broadcasts live state. Errors
+  -- are swallowed; a missing callback is a no-op.
+  if type(COB._OnPeerHello) == "function" then
+    pcall(COB._OnPeerHello, sender)
+  end
   return true
 end
 
@@ -582,6 +733,7 @@ function Net:OnAddonMessage(prefix, payload, channel, sender, nowSeconds)
     if channel ~= self.Channel then return false end
     if not self:IsCompatible(message.version) then
       self:_WarnVersion(message.version)
+      dropToQuietForVersion()
       return false, "protocol mismatch"
     end
     if message.type == "HELLO" then
@@ -603,7 +755,8 @@ function Net:_HandleV2(payload, channel, sender)
   end
   local msgType = decoded.type
   if msgType ~= "STATE" and msgType ~= "SNAPSHOT"
-      and msgType ~= "DECREE" and msgType ~= "INPUT" then
+      and msgType ~= "DECREE" and msgType ~= "INPUT"
+      and msgType ~= "NIGHTS" and msgType ~= "STUB" and msgType ~= "STUB_WITHDRAW" then
     return false, "unknown message type"
   end
   -- GUILD INPUT stays unknown — not a live channel.
@@ -612,9 +765,15 @@ function Net:_HandleV2(payload, channel, sender)
   end
   if not COB.Codec:IsCompatible(decoded.version) then
     self:_WarnVersion(decoded.version)
+    dropToQuietForVersion()
     return false, "protocol mismatch"
   end
   if msgType == "STATE" then
+    -- The last sender whose STATE passed sender auth is the default whisper
+    -- destination for congregation inputs. Store the raw sender string.
+    if COB.Sender and COB.Sender.Accept and COB.Sender:Accept(sender, "STATE") then
+      self._lastStateSender = sender
+    end
     return self:_HandleState(decoded, channel, sender)
   end
   if msgType == "SNAPSHOT" then
@@ -622,6 +781,15 @@ function Net:_HandleV2(payload, channel, sender)
   end
   if msgType == "DECREE" then
     return self:_HandleDecree(decoded, channel, sender)
+  end
+  if msgType == "NIGHTS" then
+    return self:_HandleNights(decoded, channel, sender)
+  end
+  if msgType == "STUB" then
+    return self:_HandleStub(decoded, channel, sender)
+  end
+  if msgType == "STUB_WITHDRAW" then
+    return self:_HandleStubWithdraw(decoded, channel, sender)
   end
   if decoded.kind == "favor" then
     return self:_HandleFavor(decoded, channel, sender)
@@ -631,6 +799,9 @@ function Net:_HandleV2(payload, channel, sender)
   end
   if decoded.kind == "confession" then
     return self:_HandleConfession(decoded, channel, sender)
+  end
+  if decoded.kind == "going" then
+    return self:_HandleGoing(decoded, channel, sender)
   end
   return false, "unknown message type"
 end
@@ -649,6 +820,8 @@ function Net:_HandleState(decoded, channel, sender)
     return false
   end
   -- Bible fields only. Do not encode or Restore awaitingPope.
+  -- Restore's return is the favor-overlay gate: ok on equal sequence
+  -- (glue still paints), not-ok on an older sequence (no rewind).
   return COB.Runtime:Restore({
     eventId = decoded.eventId,
     state = decoded.state,
@@ -686,7 +859,11 @@ function Net:_HandleSnapshot(decoded, channel, sender, payload)
     if not blob then
       return false
     end
-    return self:_TransmitWhisper(blob, sender)
+    local ok = self:_TransmitWhisper(blob, sender)
+    if ok and self.SendNights then
+      pcall(self.SendNights, self)
+    end
+    return ok
   end
   return false
 end
@@ -711,6 +888,85 @@ function Net:_HandleDecree(decoded, channel, sender)
       return false, err
     end
   end
+  if COB.Nights and COB.Nights.ImportDecree then
+    COB.Nights:ImportDecree(decoded.line, decoded.flavor)
+  end
+  return true
+end
+
+function Net:_HandleNights(decoded, channel, sender)
+  if channel ~= self.Channel then
+    return false
+  end
+  if not (COB.Sender and COB.Sender.Accept and COB.Sender:Accept(sender, "NIGHTS")) then
+    return false, "not accepted"
+  end
+  if not (COB.Nights and COB.Nights.ApplyBroadcast) then
+    return false
+  end
+  return COB.Nights:ApplyBroadcast({
+    series = decoded.series,
+    stubs = decoded.stubs,
+    stubTombstones = decoded.stubTombstones,
+    goingCounts = decoded.goingCounts,
+    boardRevision = decoded.boardRevision,
+  })
+end
+
+function Net:_HandleStub(decoded, channel, sender)
+  if channel ~= self.Channel then
+    return false
+  end
+  if not (COB.Sender and COB.Sender.Accept and COB.Sender:Accept(sender, "STUB")) then
+    return false, "not accepted"
+  end
+  if not (COB.Nights and COB.Nights.ApplyStub) then
+    return false
+  end
+  return COB.Nights:ApplyStub({
+    id = decoded.id,
+    kind = decoded.kind,
+    title = decoded.title,
+    timeLine = decoded.timeLine,
+    place = decoded.place,
+    date = decoded.date,
+    createdBy = decoded.createdBy or sender,
+    updatedAt = decoded.updatedAt,
+    boardRevision = decoded.boardRevision,
+  })
+end
+
+function Net:_HandleStubWithdraw(decoded, channel, sender)
+  if channel ~= self.Channel then
+    return false
+  end
+  if not (COB.Sender and COB.Sender.Accept and COB.Sender:Accept(sender, "STUB_WITHDRAW")) then
+    return false, "not accepted"
+  end
+  if not (COB.Nights and COB.Nights.ApplyTombstone) then
+    return false
+  end
+  return COB.Nights:ApplyTombstone(decoded.id, decoded.boardRevision)
+end
+
+function Net:_HandleGoing(decoded, channel, sender)
+  if channel ~= "WHISPER" or decoded.kind ~= "going" then
+    return false, "unknown message type"
+  end
+  if not self:_LocalPope() then
+    return false, "not a registered pope"
+  end
+  if not (COB.Nights and COB.Nights.SetGoing) then
+    return false
+  end
+  local already = COB.Nights.IsGoing and COB.Nights:IsGoing(decoded.occurrence, sender)
+  local ok, err = COB.Nights:SetGoing(decoded.occurrence, sender, already ~= true)
+  if not ok then
+    return false, err
+  end
+  if self.SendNights then
+    pcall(self.SendNights, self)
+  end
   return true
 end
 
@@ -725,10 +981,11 @@ function Net:_HandleFavor(decoded, channel, sender)
   if pick == nil then
     return false
   end
-  if not (COB.Gora and COB.Gora.RecordFavor) then
+  if not (COB.Gora and COB.Gora.RecordFavorFromSender) then
     return false
   end
-  local ok, err = COB.Gora:RecordFavor(decoded.characterId, pick)
+  -- Ignore payload characterId. Key by the server-provided sender.
+  local ok, err = COB.Gora:RecordFavorFromSender(sender, pick)
   if not ok then
     return false, err
   end
@@ -736,7 +993,7 @@ function Net:_HandleFavor(decoded, channel, sender)
 end
 
 -- Name → store id. First match on Snapshot().characters via Names.Key / Same.
--- Missing Store, missing list, or no match → nil (caller refuses; do not Petition).
+-- Missing Store, missing list, or no match → nil (caller ignores the opponent).
 local function resolveOpponentId(opponentName)
   if not (COB.Store and type(COB.Store.Snapshot) == "function") then
     return nil
@@ -765,18 +1022,16 @@ function Net:_HandlePetition(decoded, channel, sender)
   if not self:_LocalPope() then
     return false, "not a registered pope"
   end
-  if not (COB.Gora and COB.Gora.Petition) then
+  if not (COB.Gora and COB.Gora.PetitionFromSender) then
     return false
   end
   local opponent = type(decoded.opponent) == "string" and trim(decoded.opponent) or nil
   local namedOpponentId
   if opponent then
     namedOpponentId = resolveOpponentId(opponent)
-    if namedOpponentId == nil then
-      return false, "unknown opponent"
-    end
   end
-  local ok, err = COB.Gora:Petition(decoded.characterId, namedOpponentId)
+  -- Ignore payload characterId. Unknown opponent is dropped, not refused.
+  local ok, err = COB.Gora:PetitionFromSender(sender, namedOpponentId)
   if not ok then
     return false, err
   end
@@ -790,10 +1045,11 @@ function Net:_HandleConfession(decoded, channel, sender)
   if not self:_LocalPope() then
     return false, "not a registered pope"
   end
-  if not (COB.Confession and COB.Confession.Receive) then
+  if not (COB.Confession and COB.Confession.ReceiveFromSender) then
     return false
   end
-  local ok, err = COB.Confession:Receive(decoded.characterId, decoded.text)
+  -- Ignore payload characterId. Key by the server-provided sender.
+  local ok, err = COB.Confession:ReceiveFromSender(sender, decoded.text)
   if not ok then
     return false, err
   end
@@ -812,14 +1068,7 @@ function Net:OnRosterUpdate()
   if not ready then
     self:RequestRoster(nil, true)
   end
-  self:NotifyStatus()
   return ready
-end
-
--- Roster readiness and peer presence are the only mesh facts this addon has; the
--- status chip is a view of them. Presentation lives in UI/Status.lua.
-function Net:NotifyStatus()
-  if COB.UI and COB.UI.OnStatusChanged then COB.UI:OnStatusChanged() end
 end
 
 -- Classic often answers the first GuildRoster() with an empty snapshot. Blizzard
@@ -833,7 +1082,6 @@ function Net:_ScheduleRosterRetries()
       if COB.Roster and COB.Roster.IsReady and COB.Roster:IsReady() then return end
       if COB.Roster and COB.Roster.Refresh then COB.Roster:Refresh() end
       if COB.Roster and COB.Roster.IsReady and COB.Roster:IsReady() then
-        Net:NotifyStatus()
         return
       end
       Net:RequestRoster(nil, true)
@@ -873,9 +1121,6 @@ function Net:Init()
   -- Prefer any already-cached roster before kicking a server query.
   if COB.Roster then
     if COB.Roster.AttachLibrary then COB.Roster:AttachLibrary() end
-    if COB.Roster.SetOnChanged then
-      COB.Roster:SetOnChanged(function() Net:NotifyStatus() end)
-    end
     if COB.Roster.Refresh then COB.Roster:Refresh() end
   end
   self:RequestRoster(nil, true)
@@ -897,6 +1142,8 @@ function Net:ResetForTests()
   self.armed = nil
   self.warnedVersion = nil
   self.rosterRequestedAt = nil
+  self.stubsRebroadcastAt = nil
+  self._lastStateSender = nil
   self.clock = nil
   self.transmit = nil
   self.initialized = nil

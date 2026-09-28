@@ -291,6 +291,11 @@ function widgetMethods:IsEventRegistered(event) return self._events[event] == tr
 
 function widgetMethods:SetText(text) self._text = text end
 function widgetMethods:GetText() return self._text end
+function widgetMethods:GetStringWidth()
+  local t = self._text
+  if type(t) ~= "string" or t == "" then return 0 end
+  return #t * 7
+end
 function widgetMethods:SetFormattedText(fmt, ...) self._text = fmt:format(...) end
 
 function widgetMethods:SetWidth(w) self._width = w end
@@ -333,6 +338,141 @@ function widgetMethods:UnlockHighlight() self._highlighted = false end
 
 function widgetMethods:GetFontString() return self._fontString end
 function widgetMethods:SetFontString(fs) self._fontString = fs end
+
+-- Preview dump recording -------------------------------------------------------
+-- Record-only. Setters keep the same return value they had as silent no-ops
+-- (nil). Getters return a recorded value only after a setter ran; an unset
+-- field still answers nil, which is what the previous no-op did. Do not make
+-- SetFont return true — several dress helpers treat a truthy second pcall
+-- result as "the client accepted the path" and skip the GameFont fallback.
+
+function widgetMethods:SetAlpha(a) self._alpha = a end
+function widgetMethods:GetAlpha() return self._alpha end
+function widgetMethods:SetIgnoreParentAlpha(flag)
+  self._ignoreParentAlpha = flag and true or false
+end
+
+function widgetMethods:SetDrawLayer(layer, sub)
+  self._layer = layer
+  self._subLayer = sub
+end
+function widgetMethods:GetDrawLayer() return self._layer, self._subLayer end
+
+function widgetMethods:SetVertexColor(r, g, b, a)
+  self._vertexColor = { r = r, g = g, b = b, a = a }
+end
+function widgetMethods:GetVertexColor()
+  local c = self._vertexColor
+  if not c then return nil end
+  return c.r, c.g, c.b, c.a
+end
+
+function widgetMethods:SetTexture(path)
+  self._texture = path
+  self._colorTexture = nil
+end
+function widgetMethods:GetTexture() return self._texture end
+
+function widgetMethods:SetColorTexture(r, g, b, a)
+  self._colorTexture = { r = r, g = g, b = b, a = a }
+  self._texture = nil
+end
+
+function widgetMethods:SetTexCoord(...)
+  self._texCoord = { ... }
+end
+function widgetMethods:GetTexCoord()
+  local c = self._texCoord
+  if not c then return nil end
+  return unpack(c)
+end
+
+function widgetMethods:SetBlendMode(mode) self._blendMode = mode end
+
+function widgetMethods:SetHorizTile(flag) self._horizTile = flag and true or false end
+function widgetMethods:SetVertTile(flag) self._vertTile = flag and true or false end
+
+function widgetMethods:SetGradient(orientation, r1, g1, b1, r2, g2, b2)
+  self._gradient = { orientation = orientation, r1 = r1, g1 = g1, b1 = b1, r2 = r2, g2 = g2, b2 = b2 }
+end
+function widgetMethods:SetGradientAlpha(orientation, r1, g1, b1, a1, r2, g2, b2, a2)
+  self._gradient = {
+    orientation = orientation,
+    r1 = r1, g1 = g1, b1 = b1, a1 = a1,
+    r2 = r2, g2 = g2, b2 = b2, a2 = a2,
+  }
+end
+
+function widgetMethods:SetFont(path, size, flags)
+  self._fontPath = path
+  self._fontSize = size
+  self._fontFlags = flags
+end
+function widgetMethods:GetFont()
+  if self._fontPath == nil and self._fontSize == nil then return nil end
+  return self._fontPath, self._fontSize, self._fontFlags
+end
+
+function widgetMethods:SetFontObject(font) self._fontObject = font end
+function widgetMethods:GetFontObject() return self._fontObject end
+
+function widgetMethods:SetTextColor(r, g, b, a)
+  self._textColor = { r = r, g = g, b = b, a = a }
+end
+function widgetMethods:GetTextColor()
+  local c = self._textColor
+  if not c then return nil end
+  return c.r, c.g, c.b, c.a
+end
+
+function widgetMethods:SetJustifyH(h) self._justifyH = h end
+function widgetMethods:GetJustifyH() return self._justifyH end
+function widgetMethods:SetJustifyV(v) self._justifyV = v end
+function widgetMethods:GetJustifyV() return self._justifyV end
+function widgetMethods:SetWordWrap(flag) self._wordWrap = flag and true or false end
+function widgetMethods:SetNonSpaceWrap(flag) self._nonSpaceWrap = flag and true or false end
+function widgetMethods:SetMaxLines(n) self._maxLines = n end
+
+function widgetMethods:SetShadowColor(r, g, b, a)
+  self._shadowColor = { r = r, g = g, b = b, a = a }
+end
+function widgetMethods:SetShadowOffset(x, y) self._shadowOffset = { x = x, y = y } end
+
+function widgetMethods:SetFrameStrata(strata) self._strata = strata end
+function widgetMethods:GetFrameStrata() return self._strata end
+function widgetMethods:SetFrameLevel(level) self._frameLevel = level end
+function widgetMethods:GetFrameLevel() return self._frameLevel end
+
+function widgetMethods:SetStatusBarTexture(path)
+  self._statusBarTexture = path
+end
+function widgetMethods:GetStatusBarTexture() return self._statusBarTexture end
+function widgetMethods:SetStatusBarColor(r, g, b, a)
+  self._statusBarColor = { r = r, g = g, b = b, a = a }
+end
+function widgetMethods:SetOrientation(o) self._orientation = o end
+function widgetMethods:GetOrientation() return self._orientation end
+
+function widgetMethods:SetNormalTexture(path) self._normalTexture = path end
+function widgetMethods:GetNormalTexture() return self._normalTexture end
+function widgetMethods:SetPushedTexture(path) self._pushedTexture = path end
+function widgetMethods:GetPushedTexture() return self._pushedTexture end
+function widgetMethods:SetHighlightTexture(path) self._highlightTexture = path end
+function widgetMethods:GetHighlightTexture() return self._highlightTexture end
+function widgetMethods:SetDisabledTexture(path) self._disabledTexture = path end
+function widgetMethods:SetCheckedTexture(path) self._checkedTexture = path end
+function widgetMethods:GetCheckedTexture() return self._checkedTexture end
+function widgetMethods:SetThumbTexture(path) self._thumbTexture = path end
+function widgetMethods:GetThumbTexture() return self._thumbTexture end
+
+function widgetMethods:SetScrollChild(child) self._scrollChild = child end
+function widgetMethods:GetScrollChild() return self._scrollChild end
+function widgetMethods:SetVerticalScroll(offset) self._verticalScroll = offset end
+function widgetMethods:GetVerticalScroll() return self._verticalScroll end
+function widgetMethods:SetHorizontalScroll(offset) self._horizontalScroll = offset end
+function widgetMethods:GetHorizontalScroll() return self._horizontalScroll end
+
+function widgetMethods:SetClipsChildren(flag) self._clipsChildren = flag and true or false end
 
 -- CheckButton state. The client flips this before OnClick runs, so tests that
 -- drive a checkbox should SetChecked first and then fire the script.
@@ -472,6 +612,7 @@ function M.install()
   M.timers = {}
   M.timerSeq = 0
   M.guildRankIndex = nil
+  M.guildRankName = "Beefling"
   M.playerName = "Beefina"
   M.inGuild = true
   M.chat = {}
@@ -526,9 +667,15 @@ function M.install()
       -- Backdrops moved onto a template in the 9.x UI 2.5.x is built from, so the
       -- methods exist only where the template was asked for.
       if template:find("Backdrop", 1, true) then
-        widget.SetBackdrop = function() end
-        widget.SetBackdropColor = function() end
-        widget.SetBackdropBorderColor = function() end
+        -- GetBackdrop stays nil: suites and the client-template pin treat
+        -- the stub as having the methods without a live backdrop table.
+        widget.SetBackdrop = function(self, info) self._backdrop = info end
+        widget.SetBackdropColor = function(self, r, g, b, a)
+          self._backdropColor = { r = r, g = g, b = b, a = a }
+        end
+        widget.SetBackdropBorderColor = function(self, r, g, b, a)
+          self._backdropBorderColor = { r = r, g = g, b = b, a = a }
+        end
         widget.GetBackdrop = function() return nil end
       end
       -- UIPanelButtonTemplate and PanelTabButtonTemplate ship a label, which is
@@ -591,25 +738,28 @@ function M.install()
 
   GetGuildInfo = function(_unit)
     if M.guildRankIndex == nil then return nil end
-    return "Church of Beef", "Beefling", M.guildRankIndex
+    return "Church of Beef", M.guildRankName or "Beefling", M.guildRankIndex
   end
 
   GetNumGuildMembers = function() return #M.guildRoster end
 
   -- Entries may be a plain name string, or { name = "...", rankIndex = N,
-  -- classFile = "MAGE" }. Per-member rankIndex drives the roster-backed Church
-  -- title map; the 11th return is the classFile the Ladder tints names with.
+  -- rankName = "...", classFile = "MAGE" }. Rank name is public display;
+  -- rankIndex never maps to a Church id.
   GetGuildRosterInfo = function(index)
     local entry = M.guildRoster[index]
     if not entry then return nil end
+    local fallbackName = M.guildRankName or "Beefling"
     if type(entry) == "table" then
       local name = entry.name or entry[1]
       local rankIndex = tonumber(entry.rankIndex or entry[2])
       if not rankIndex then rankIndex = M.guildRankIndex or 6 end
-      return name, "Beefling", rankIndex, 70, "Mage", "Zone", "", "",
+      local rankName = entry.rankName or entry.rank
+      if type(rankName) ~= "string" then rankName = fallbackName end
+      return name, rankName, rankIndex, 70, "Mage", "Zone", "", "",
         true, 0, entry.classFile
     end
-    return entry, "Beefling", M.guildRankIndex or 6, 70, "Mage", "Zone", "", "",
+    return entry, fallbackName, M.guildRankIndex or 6, 70, "Mage", "Zone", "", "",
       true, 0, nil
   end
 

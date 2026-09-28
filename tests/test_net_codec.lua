@@ -69,7 +69,7 @@ assert_eq(type(Codec.DecodeState), "function", "DecodeState exists")
 assert_eq(type(Codec.DecodeSnapshot), "function", "DecodeSnapshot exists")
 assert_eq(type(Codec.DecodeInput), "function", "DecodeInput exists")
 assert_eq(type(Codec.IsCompatible), "function", "IsCompatible exists")
-assert_eq(Codec.PROTOCOL, 1, "protocol major stays 1; v2 is the vocabulary")
+assert_eq(Codec.PROTOCOL, 2, "protocol major is 2")
 
 assert_eq(Codec.Send, nil, "no Send")
 assert_eq(Codec.SendAddonMessage, nil, "no SendAddonMessage")
@@ -104,7 +104,7 @@ assert_eq(Codec.TYPES.RANK_COMMIT, nil, "RANK_COMMIT is not a type")
 
 local typeCount = 0
 for _ in pairs(Codec.TYPES) do typeCount = typeCount + 1 end
-assert_eq(typeCount, 4, "exactly four wire types")
+assert_eq(typeCount, 7, "exactly seven wire types")
 
 assert_eq(Codec.STATES.QUIET, true, "QUIET is a named state")
 assert_eq(Codec.STATES.ASSEMBLY, true, "ASSEMBLY is a named state")
@@ -121,6 +121,13 @@ assert_eq(Codec.RITE_TYPES.birthday, nil, "free-text rite kinds are not types")
 assert_eq(Codec.INPUT_KINDS.petition, true, "petition is a named input")
 assert_eq(Codec.INPUT_KINDS.favor, true, "favor is a named input")
 assert_eq(Codec.INPUT_KINDS.confession, true, "confession is a named input")
+assert_eq(Codec.INPUT_KINDS.going, true, "going is a named input")
+assert_eq(type(Codec.EncodeNights), "function", "EncodeNights exists")
+assert_eq(type(Codec.EncodeStub), "function", "EncodeStub exists")
+assert_eq(type(Codec.EncodeStubWithdraw), "function", "EncodeStubWithdraw exists")
+assert_eq(Codec.TYPES.NIGHTS, true, "NIGHTS is a closed type")
+assert_eq(Codec.TYPES.STUB, true, "STUB is a closed type")
+assert_eq(Codec.TYPES.STUB_WITHDRAW, true, "STUB_WITHDRAW is a closed type")
 assert_eq(Codec.SNAPSHOT_ROLES.request, true, "snapshot role request")
 assert_eq(Codec.SNAPSHOT_ROLES.response, true, "snapshot role response")
 
@@ -136,11 +143,11 @@ local quietWire, quietErr = Codec:EncodeState(quiet)
 assert_true(quietWire ~= nil, "QUIET state encodes")
 assert_eq(quietErr, nil, "QUIET encode has no error")
 assert_eq(quiet.type, nil, "EncodeState does not stamp type onto the caller")
-assert_eq(string.sub(quietWire, 1, 8), "1:STATE:", "STATE wire starts with version and type")
+assert_eq(string.sub(quietWire, 1, 8), "2:STATE:", "STATE wire starts with version and type")
 
 local quietMsg = Codec:Decode(quietWire)
 assert_eq(quietMsg.type, "STATE", "QUIET decodes as STATE")
-assert_eq(quietMsg.version, 1, "every message carries a protocol version")
+assert_eq(quietMsg.version, 2, "every message carries a protocol version")
 assert_eq(quietMsg.eventId, 1, "event id round-trips")
 assert_eq(quietMsg.state, "QUIET", "state round-trips")
 assert_eq(quietMsg.riteType, nil, "QUIET has no rite type")
@@ -230,11 +237,11 @@ assert_eq(Codec:Decode(viaEncode).type, "STATE", "unified Encode accepts type ST
 --------------------------------------------------------------------------------
 local reqWire = Codec:EncodeSnapshot({ role = "request" })
 assert_true(reqWire ~= nil, "snapshot request encodes")
-assert_eq(string.sub(reqWire, 1, 11), "1:SNAPSHOT:", "SNAPSHOT wire starts with version and type")
+assert_eq(string.sub(reqWire, 1, 11), "2:SNAPSHOT:", "SNAPSHOT wire starts with version and type")
 
 local req = Codec:Decode(reqWire)
 assert_eq(req.type, "SNAPSHOT", "request decodes as SNAPSHOT")
-assert_eq(req.version, 1, "request carries a protocol version")
+assert_eq(req.version, 2, "request carries a protocol version")
 assert_eq(req.role, "request", "request role")
 assert_eq(req.eventId, nil, "request does not invent an event id")
 assert_eq(req.state, nil, "request does not invent a state")
@@ -285,7 +292,7 @@ assert_eq(Codec:DecodeSnapshot(resWire).role, "response", "DecodeSnapshot accept
 --------------------------------------------------------------------------------
 local petition = Codec:Decode(Codec:EncodeInput({ kind = "petition", characterId = 3 }))
 assert_eq(petition.type, "INPUT", "petition is INPUT")
-assert_eq(petition.version, 1, "petition carries a protocol version")
+assert_eq(petition.version, 2, "petition carries a protocol version")
 assert_eq(petition.kind, "petition", "petition kind")
 assert_eq(petition.characterId, 3, "petition character id")
 assert_eq(petition.text, nil, "petition carries no text")
@@ -297,12 +304,12 @@ assert_eq(petition.sequence, nil, "petition has no sequence")
 assert_eq(petition.subjects, nil, "petition has no subjects")
 assert_eq(petition.side, nil, "favor side is not invented on petition")
 assert_eq(petition.pick, nil, "petition has no pick")
-assert_eq(Codec:EncodeInput({ kind = "petition", characterId = 3 }), "1:INPUT:petition:3",
+assert_eq(Codec:EncodeInput({ kind = "petition", characterId = 3 }), "2:INPUT:petition:3",
   "petition still has four wire parts")
 
 local favorWire = Codec:EncodeInput({ kind = "favor", characterId = 8, pick = 9 })
 assert_true(favorWire ~= nil, "favor with pick encodes")
-assert_eq(favorWire, "1:INPUT:favor:8:9", "favor wire is kind, picker, pick")
+assert_eq(favorWire, "2:INPUT:favor:8:9", "favor wire is kind, picker, pick")
 local favor = favorWire and Codec:Decode(favorWire) or {}
 assert_eq(favor.kind, "favor", "favor kind")
 assert_eq(favor.characterId, 8, "favor character id is the member who picked")
@@ -336,7 +343,7 @@ assert_eq(Codec:DecodeInput(Codec:EncodeInput({ kind = "petition", characterId =
 
 do
   local namedWire = Codec:EncodeInput({ kind = "petition", characterId = 3, opponent = "Chuckroast" })
-  assert_eq(namedWire, "1:INPUT:petition:3:Chuckroast", "named petition is five wire parts")
+  assert_eq(namedWire, "2:INPUT:petition:3:Chuckroast", "named petition is five wire parts")
   local named = namedWire and Codec:Decode(namedWire) or {}
   assert_eq(named.kind, "petition", "named petition kind")
   assert_eq(named.characterId, 3, "named petition character id")
@@ -349,31 +356,31 @@ do
     kind = "petition",
     characterId = 3,
     opponent = "Chuckroast",
-  }), "1:INPUT:petition:3:Chuckroast", "unified Encode accepts petition opponent")
-  local viaDecodeInput = Codec:DecodeInput("1:INPUT:petition:3:Chuckroast")
+  }), "2:INPUT:petition:3:Chuckroast", "unified Encode accepts petition opponent")
+  local viaDecodeInput = Codec:DecodeInput("2:INPUT:petition:3:Chuckroast")
   assert_eq(viaDecodeInput and viaDecodeInput.opponent, "Chuckroast",
     "DecodeInput accepts petition opponent")
 
   local srcOpp = { kind = "petition", characterId = 3, opponent = "  Chuckroast  " }
-  assert_eq(Codec:EncodeInput(srcOpp), "1:INPUT:petition:3:Chuckroast", "opponent is trimmed on encode")
+  assert_eq(Codec:EncodeInput(srcOpp), "2:INPUT:petition:3:Chuckroast", "opponent is trimmed on encode")
   assert_eq(srcOpp.opponent, "  Chuckroast  ", "encode does not trim onto the caller")
   assert_eq(srcOpp.type, nil, "encode does not stamp type onto the caller")
-  local paddedWire = Codec:Decode("1:INPUT:petition:3: Chuckroast ")
+  local paddedWire = Codec:Decode("2:INPUT:petition:3: Chuckroast ")
   assert_eq(paddedWire and paddedWire.opponent, "Chuckroast", "opponent is trimmed on decode")
   assert_eq(Codec:EncodeInput({ kind = "petition", characterId = 3, opponent = "" }),
-    "1:INPUT:petition:3", "empty opponent is omitted")
+    "2:INPUT:petition:3", "empty opponent is omitted")
   assert_eq(Codec:EncodeInput({ kind = "petition", characterId = 3, opponent = "   " }),
-    "1:INPUT:petition:3", "whitespace opponent is omitted")
-  local emptyFifth, emptyFifthErr = Codec:Decode("1:INPUT:petition:3:")
+    "2:INPUT:petition:3", "whitespace opponent is omitted")
+  local emptyFifth, emptyFifthErr = Codec:Decode("2:INPUT:petition:3:")
   assert_eq(emptyFifth ~= nil, true, "empty fifth part still decodes")
   assert_eq(emptyFifthErr, nil, "empty fifth part has no error")
   assert_eq(emptyFifth and emptyFifth.opponent, nil, "empty fifth part omits opponent")
-  local whiteFifth, whiteFifthErr = Codec:Decode("1:INPUT:petition:3:   ")
+  local whiteFifth, whiteFifthErr = Codec:Decode("2:INPUT:petition:3:   ")
   assert_eq(whiteFifth ~= nil, true, "whitespace fifth part still decodes")
   assert_eq(whiteFifthErr, nil, "whitespace fifth part has no error")
   assert_eq(whiteFifth and whiteFifth.opponent, nil, "whitespace fifth part omits opponent")
 
-  local please = Codec:Decode("1:INPUT:petition:1:please")
+  local please = Codec:Decode("2:INPUT:petition:1:please")
   assert_eq(please ~= nil, true, "fifth petition part is a legal opponent")
   assert_eq(please and please.kind, "petition", "please-wire kind")
   assert_eq(please and please.characterId, 1, "please-wire character id")
@@ -411,7 +418,7 @@ do
     characterId = 1,
     opponent = "Chuckroast",
   }) end, "opponent not allowed", "confession opponent")
-  refuse(function() return Codec:Decode("1:INPUT:petition:1:please:extra") end,
+  refuse(function() return Codec:Decode("2:INPUT:petition:1:please:extra") end,
     "text not allowed", "petition sixth part")
 end
 
@@ -419,10 +426,10 @@ end
 -- DECREE: line required; optional flavor after the first newline. Colon in line is legal.
 --------------------------------------------------------------------------------
 local lineOnly = Codec:EncodeDecree({ line = "Gather at the Pit" })
-assert_eq(lineOnly, "1:DECREE:Gather at the Pit", "decree line-only wire")
+assert_eq(lineOnly, "2:DECREE:Gather at the Pit", "decree line-only wire")
 local lineOnlyMsg = Codec:Decode(lineOnly)
 assert_eq(lineOnlyMsg.type, "DECREE", "decree decodes as DECREE")
-assert_eq(lineOnlyMsg.version, 1, "decree carries a protocol version")
+assert_eq(lineOnlyMsg.version, 2, "decree carries a protocol version")
 assert_eq(lineOnlyMsg.line, "Gather at the Pit", "decree line round-trips")
 assert_eq(lineOnlyMsg.flavor, nil, "decree without flavor omits flavor")
 assert_eq(lineOnlyMsg.header, nil, "header copy is not on the wire")
@@ -432,13 +439,13 @@ local flavored = Codec:Encode({
   line = "Tonight we gather",
   flavor = "bring your own steak",
 })
-assert_eq(flavored, "1:DECREE:Tonight we gather\nbring your own steak", "flavor follows a newline")
+assert_eq(flavored, "2:DECREE:Tonight we gather\nbring your own steak", "flavor follows a newline")
 local flavoredMsg = Codec:Decode(flavored)
 assert_eq(flavoredMsg.line, "Tonight we gather", "flavored decree line")
 assert_eq(flavoredMsg.flavor, "bring your own steak", "flavored decree flavor")
 
 local colonLine = Codec:EncodeDecree({ line = "7:00 PM at the Pit" })
-assert_eq(colonLine, "1:DECREE:7:00 PM at the Pit", "colon in the line stays in the body")
+assert_eq(colonLine, "2:DECREE:7:00 PM at the Pit", "colon in the line stays in the body")
 assert_eq(Codec:Decode(colonLine).line, "7:00 PM at the Pit", "colon in the line round-trips")
 
 local trimmed = Codec:Decode(Codec:EncodeDecree({ line = "  kneel  ", flavor = "  now  " }))
@@ -448,8 +455,8 @@ assert_eq(trimmed.flavor, "now", "decree flavor is trimmed")
 refuse(function() return Codec:EncodeDecree({ line = "" }) end, "line is required", "empty decree line")
 refuse(function() return Codec:EncodeDecree({ line = "   " }) end, "line is required", "whitespace decree line")
 refuse(function() return Codec:EncodeDecree({}) end, "line is required", "missing decree line")
-refuse(function() return Codec:Decode("1:DECREE:") end, "line is required", "wire empty decree line")
-refuse(function() return Codec:Decode("1:DECREE:   ") end, "line is required", "wire whitespace decree line")
+refuse(function() return Codec:Decode("2:DECREE:") end, "line is required", "wire empty decree line")
+refuse(function() return Codec:Decode("2:DECREE:   ") end, "line is required", "wire whitespace decree line")
 refuse(function() return Codec:EncodeDecree({ line = "x", header = "A GATHERING HAS BEEN DECREED" }) end,
   "unknown field", "decree header is not a field")
 refuse(function() return Codec:EncodeDecree({ line = "x", flavor = 1 }) end, "invalid flavor", "flavor must be a string")
@@ -516,15 +523,16 @@ refuse(function() return Codec:Decode("INPUT:petition:1") end, "no protocol vers
 refuse(function() return Codec:Decode(":STATE:1:QUIET:::0") end, "no protocol version", "empty version field")
 refuse(function() return Codec:Decode("nan:STATE:1:QUIET:::0") end, "no protocol version", "NaN version")
 
-local foreign = Codec:Decode("2:STATE:1:QUIET::::0")
+local foreign = Codec:Decode("1:STATE:1:QUIET::::0")
 assert_true(foreign ~= nil, "a versioned foreign major still decodes")
-assert_eq(foreign.version, 2, "foreign version is visible")
+assert_eq(foreign.version, 1, "foreign version is visible")
 assert_eq(Codec:IsCompatible(foreign.version), false, "foreign major is not compatible")
-assert_eq(Codec:IsCompatible(1), true, "this protocol is compatible")
+assert_eq(Codec:IsCompatible(2), true, "this protocol is compatible")
+assert_eq(Codec:IsCompatible(1), false, "protocol 1 is incompatible")
 assert_eq(Codec:IsCompatible(nil), false, "missing version is not compatible")
 
 refuse(function() return Codec:EncodeState({
-  version = 2,
+  version = 1,
   eventId = 1,
   state = "QUIET",
   sequence = 0,
@@ -537,15 +545,15 @@ refuse(function() return Codec:EncodeSnapshot({ role = "ask" }) end, "invalid ro
 refuse(function() return Codec:EncodeSnapshot({ role = "REQUEST" }) end, "invalid role", "role is case-sensitive")
 refuse(function() return Codec:EncodeSnapshot({ role = "reply" }) end, "invalid role", "reply is not a role")
 refuse(function() return Codec:EncodeSnapshot({}) end, "invalid role", "snapshot without role")
-refuse(function() return Codec:Decode("1:SNAPSHOT:ask") end, "invalid role", "wire ask")
-refuse(function() return Codec:Decode("1:SNAPSHOT:REQUEST") end, "invalid role", "wire REQUEST")
+refuse(function() return Codec:Decode("2:SNAPSHOT:ask") end, "invalid role", "wire ask")
+refuse(function() return Codec:Decode("2:SNAPSHOT:REQUEST") end, "invalid role", "wire REQUEST")
 
 refuse(function() return Codec:EncodeInput({ kind = "Petition", characterId = 1 }) end, "invalid kind", "Petition case")
 refuse(function() return Codec:EncodeInput({ kind = "note", characterId = 1 }) end, "invalid kind", "note is not a kind")
 refuse(function() return Codec:EncodeInput({ kind = "theater", characterId = 1 }) end, "invalid kind", "theater is not a kind")
 refuse(function() return Codec:EncodeInput({ characterId = 1 }) end, "invalid kind", "INPUT without kind")
-refuse(function() return Codec:Decode("1:INPUT:Petition:1") end, "invalid kind", "wire Petition")
-refuse(function() return Codec:Decode("1:INPUT:theater:1") end, "invalid kind", "wire theater")
+refuse(function() return Codec:Decode("2:INPUT:Petition:1") end, "invalid kind", "wire Petition")
+refuse(function() return Codec:Decode("2:INPUT:theater:1") end, "invalid kind", "wire theater")
 
 --------------------------------------------------------------------------------
 -- Fail closed: Grant / standing / points keys
@@ -592,15 +600,15 @@ refuse(function() return Codec:EncodeState({
   riteType = "Custom",
   sequence = 0,
 }) end, "invalid rite type", "free-text rite is refused even in QUIET")
-refuse(function() return Codec:Decode("1:STATE:1:RITE:birthday:::1") end, "invalid rite type", "wire birthday")
-refuse(function() return Codec:Decode("1:STATE:1:RITE:Knighting Extra:::1") end, "invalid rite type", "wire free-text rite")
+refuse(function() return Codec:Decode("2:STATE:1:RITE:birthday:::1") end, "invalid rite type", "wire birthday")
+refuse(function() return Codec:Decode("2:STATE:1:RITE:Knighting Extra:::1") end, "invalid rite type", "wire free-text rite")
 
 refuse(function() return Codec:EncodeState({
   eventId = 1,
   state = "RITE",
   sequence = 1,
 }) end, "rite type required", "RITE without a type")
-refuse(function() return Codec:Decode("1:STATE:1:RITE::::1") end, "rite type required", "wire RITE without a type")
+refuse(function() return Codec:Decode("2:STATE:1:RITE::::1") end, "rite type required", "wire RITE without a type")
 
 refuse(function() return Codec:EncodeState({
   eventId = 1,
@@ -613,7 +621,7 @@ refuse(function() return Codec:EncodeState({
   sequence = 0,
 }) end, "invalid state", "awaiting the Pope is not a state")
 refuse(function() return Codec:EncodeState({ eventId = 1, sequence = 0 }) end, "invalid state", "STATE without state")
-refuse(function() return Codec:Decode("1:STATE:1:LIVE::::0") end, "invalid state", "wire LIVE")
+refuse(function() return Codec:Decode("2:STATE:1:LIVE::::0") end, "invalid state", "wire LIVE")
 
 refuse(function() return Codec:EncodeState({ state = "QUIET", sequence = 0 }) end, "invalid event id", "missing event id")
 refuse(function() return Codec:EncodeState({ eventId = 0, state = "QUIET", sequence = 0 }) end, "invalid event id", "event id 0")
@@ -654,14 +662,14 @@ refuse(function() return Codec:EncodeState({
   sequence = 0,
   subjects = { extra = 1 },
 }) end, "invalid subjects", "unknown subjects key")
-refuse(function() return Codec:Decode("1:STATE:1:QUIET::Beefina::0") end, "invalid subjects", "wire name candidate")
-refuse(function() return Codec:Decode("1:STATE:1:RITE:Gora::4,x:1") end, "invalid subjects", "wire bad fighter")
+refuse(function() return Codec:Decode("2:STATE:1:QUIET::Beefina::0") end, "invalid subjects", "wire name candidate")
+refuse(function() return Codec:Decode("2:STATE:1:RITE:Gora::4,x:1") end, "invalid subjects", "wire bad fighter")
 
 refuse(function() return Codec:EncodeInput({ kind = "petition" }) end, "invalid character id", "INPUT without character id")
 refuse(function() return Codec:EncodeInput({ kind = "petition", characterId = 0 }) end, "invalid character id", "character id 0")
 refuse(function() return Codec:EncodeInput({ kind = "petition", characterId = "Beefina" }) end,
   "invalid character id", "name is not a character id")
-refuse(function() return Codec:Decode("1:INPUT:petition:Beefina") end, "invalid character id", "wire name character")
+refuse(function() return Codec:Decode("2:INPUT:petition:Beefina") end, "invalid character id", "wire name character")
 
 --------------------------------------------------------------------------------
 -- Fail closed: INPUT never encodes theater; petition/favor never encode text
@@ -677,9 +685,9 @@ refuse(function() return Codec:EncodeInput({
   text = "red",
 }) end, "text not allowed", "favor text")
 refuse(function() return Codec:EncodeInput({ kind = "favor", characterId = 8 }) end, "pick required", "favor without pick")
-refuse(function() return Codec:Decode("1:INPUT:favor:8") end, "pick required", "wire favor without pick")
-refuse(function() return Codec:Decode("1:INPUT:favor:1:red") end, "invalid pick", "wire favor non-id pick")
-refuse(function() return Codec:Decode("1:INPUT:favor:1:2:red") end, "text not allowed", "wire favor text after pick")
+refuse(function() return Codec:Decode("2:INPUT:favor:8") end, "pick required", "wire favor without pick")
+refuse(function() return Codec:Decode("2:INPUT:favor:1:red") end, "invalid pick", "wire favor non-id pick")
+refuse(function() return Codec:Decode("2:INPUT:favor:1:2:red") end, "text not allowed", "wire favor text after pick")
 refuse(function() return Codec:EncodeInput({ kind = "petition", characterId = 1, pick = 2 }) end,
   "pick not allowed", "petition pick")
 refuse(function() return Codec:EncodeInput({ kind = "confession", characterId = 1, pick = 2 }) end,
@@ -749,10 +757,35 @@ refuse(function() return Codec:EncodeState({
 
 refuse(function() return Codec:EncodeSnapshot({ role = "response", state = "ASSEMBLY", sequence = 1 }) end,
   "invalid event id", "response missing event id")
-refuse(function() return Codec:Decode("1:SNAPSHOT:response:1:ASSEMBLY::::0:extra") end,
-  "unknown field", "response extra wire field")
-refuse(function() return Codec:Decode("1:STATE:1:QUIET::::0:extra") end, "unknown field", "STATE extra wire field")
-refuse(function() return Codec:Decode("1:SNAPSHOT:request:1") end, "unknown field", "request extra wire field")
+-- I-04 invert: the allowlisted packed names field is not "unknown field".
+-- Junk / kind / text / beat still fail-closed. Request extra stays closed.
+local namedQuiet = Codec:Decode("2:STATE:1:QUIET::::0:extra")
+assert_true(namedQuiet ~= nil, "STATE names field is allowlisted")
+assert_eq(namedQuiet.names.candidate, "extra", "single names token is the candidate slot")
+assert_eq(namedQuiet.names.fighterA, nil, "single names token has no fighter A")
+assert_eq(namedQuiet.names.fighterB, nil, "single names token has no fighter B")
+
+local namedRes = Codec:Decode("2:SNAPSHOT:response:1:ASSEMBLY::::0:,Chuck,Beef")
+assert_true(namedRes ~= nil, "response names field is allowlisted")
+assert_eq(namedRes.names.candidate, nil, "leading comma keeps candidate empty")
+assert_eq(namedRes.names.fighterA, "Chuck", "response names fighter A")
+assert_eq(namedRes.names.fighterB, "Beef", "response names fighter B")
+
+refuse(function() return Codec:Decode("2:STATE:1:QUIET::::0:extra:junk") end,
+  "unknown field", "STATE junk after names is still unknown")
+refuse(function() return Codec:Decode("2:SNAPSHOT:response:1:ASSEMBLY::::0:extra:junk") end,
+  "unknown field", "response junk after names is still unknown")
+refuse(function() return Codec:Decode("2:SNAPSHOT:request:1") end, "unknown field", "request extra wire field")
+refuse(function() return Codec:EncodeState({
+  eventId = 1,
+  state = "QUIET",
+  sequence = 0,
+  beat = "clerical",
+}) end, "unknown field", "STATE does not carry a clerical beat")
+refuse(function() return Codec:EncodeSnapshot({
+  role = "request",
+  names = { fighterA = "Chuck" },
+}) end, "unknown field", "request cannot carry names")
 
 --------------------------------------------------------------------------------
 -- Optional STATE / SNAPSHOT-response favor split (toggle-off = omitted)
@@ -771,7 +804,7 @@ assert_eq(Codec:EncodeState({
   riteType = "Gora",
   sequence = 3,
   subjects = { fighters = { 8, 9 } },
-}), "1:STATE:4:RITE:Gora::8,9:3", "STATE without favor stays eight fields")
+}), "2:STATE:4:RITE:Gora::8,9:3:", "STATE without favor still emits the names field")
 
 local favorStateWire = Codec:EncodeState({
   eventId = 4,
@@ -781,7 +814,7 @@ local favorStateWire = Codec:EncodeState({
   subjects = { fighters = { 8, 9 } },
   favor = { a = 2, b = 1 },
 })
-assert_eq(favorStateWire, "1:STATE:4:RITE:Gora::8,9:3:2,1", "STATE favor is countA,countB after sequence")
+assert_eq(favorStateWire, "2:STATE:4:RITE:Gora::8,9:3:2,1:", "STATE favor is countA,countB then names")
 local favorState = Codec:Decode(favorStateWire)
 assert_eq(favorState.favor.a, 2, "STATE favor a")
 assert_eq(favorState.favor.b, 1, "STATE favor b")
@@ -792,6 +825,8 @@ local favorCopyA = Codec:Decode(favorStateWire)
 local favorCopyB = Codec:Decode(favorStateWire)
 favorCopyA.favor.a = 99
 assert_eq(favorCopyB.favor.a, 2, "Decode returns a copy of favor")
+favorCopyA.names.fighterA = "mutated"
+assert_eq(favorCopyB.names.fighterA, nil, "Decode returns a copy of names")
 
 local snapFavor = Codec:Decode(Codec:EncodeSnapshot({
   role = "response",
@@ -832,6 +867,123 @@ refuse(function() return Codec:EncodeState({
 }) end, "invalid favor", "favor a must be an integer")
 
 --------------------------------------------------------------------------------
+-- Packed display names (fighters / candidate). A-06 fail-closed on ":" / \n.
+--------------------------------------------------------------------------------
+assert_eq(Codec:EncodeState({
+  eventId = 4,
+  state = "RITE",
+  riteType = "Gora",
+  sequence = 3,
+  subjects = { fighters = { 8, 9 } },
+  names = { fighterA = "Chuckroast", fighterB = "Beefina" },
+}), "2:STATE:4:RITE:Gora::8,9:3:,Chuckroast,Beefina",
+  "empty candidate is a leading comma")
+
+local namedGora = Codec:Decode("2:STATE:4:RITE:Gora::8,9:3:,Chuckroast,Beefina")
+assert_eq(namedGora.names.candidate, nil, "Gora names keep candidate empty")
+assert_eq(namedGora.names.fighterA, "Chuckroast", "Gora names fighter A")
+assert_eq(namedGora.names.fighterB, "Beefina", "Gora names fighter B")
+assert_eq(namedGora.subjects.fighters[1], 8, "names do not replace fighter ids")
+
+local threeNames = Codec:Decode(Codec:EncodeState({
+  eventId = 6,
+  state = "RITE",
+  riteType = "Gora",
+  sequence = 5,
+  subjects = { candidate = 1, fighters = { 2, 3 } },
+  names = {
+    candidate = "CCCCCCCCCCCC",
+    fighterA = "AAAAAAAAAAAA",
+    fighterB = "BBBBBBBBBBBB",
+  },
+}))
+assert_eq(threeNames.names.candidate, "CCCCCCCCCCCC", "candidate display round-trips")
+assert_eq(threeNames.names.fighterA, "AAAAAAAAAAAA", "fighter A display round-trips")
+assert_eq(threeNames.names.fighterB, "BBBBBBBBBBBB", "fighter B display round-trips")
+
+assert_eq(Codec:EncodeState({
+  eventId = 5,
+  state = "RITE",
+  riteType = "Knighting",
+  sequence = 2,
+  subjects = { candidate = 7 },
+  names = { candidate = "Beefina-Whitemane" },
+}), "2:STATE:5:RITE:Knighting:7::2:Beefina,,",
+  "Names.Display strips the realm suffix")
+
+refuse(function() return Codec:EncodeState({
+  eventId = 4,
+  state = "RITE",
+  riteType = "Gora",
+  sequence = 3,
+  subjects = { fighters = { 8, 9 } },
+  names = { fighterA = "Chuck:roast", fighterB = "Beefina" },
+}) end, "invalid names", "colon in a display name refuses encode")
+refuse(function() return Codec:EncodeState({
+  eventId = 4,
+  state = "RITE",
+  riteType = "Gora",
+  sequence = 3,
+  subjects = { fighters = { 8, 9 } },
+  names = { fighterA = "Chuck\nroast", fighterB = "Beefina" },
+}) end, "invalid names", "newline in a display name refuses encode")
+refuse(function() return Codec:EncodeState({
+  eventId = 4,
+  state = "RITE",
+  riteType = "Gora",
+  sequence = 3,
+  subjects = { fighters = { 8, 9 } },
+  names = "Chuck:roast,Beefina",
+}) end, "invalid names", "packed string with a colon refuses encode")
+
+local firstNight = Codec:EncodeState({
+  eventId = 1,
+  state = "RITE",
+  riteType = "Gora",
+  sequence = 3,
+  subjects = { fighters = { 8, 9 } },
+  favor = { a = 2, b = 1 },
+  names = { fighterA = "AAAAAAAAAAAA", fighterB = "BBBBBBBBBBBB" },
+})
+assert_eq(firstNight, "2:STATE:1:RITE:Gora::8,9:3:2,1:,AAAAAAAAAAAA,BBBBBBBBBBBB",
+  "first-night 12-letter pair + favor is the budget pin")
+assert_eq(#firstNight, 57, "first-night Gora is 57 bytes")
+assert_true(#firstNight <= 240, "first-night Gora fits MAX_BODY")
+
+local fatState = Codec:EncodeState({
+  eventId = 123456,
+  state = "CONSEQUENCE",
+  riteType = "Proclamation",
+  subjects = { candidate = 123456, fighters = { 234567, 345678 } },
+  sequence = 1234,
+  favor = { a = 999, b = 999 },
+  names = {
+    candidate = "CCCCCCCCCCCC",
+    fighterA = "AAAAAAAAAAAA",
+    fighterB = "BBBBBBBBBBBB",
+  },
+})
+assert_eq(#fatState, 112, "codec-legal fat STATE is 112 bytes")
+assert_true(#fatState <= 240, "fat STATE fits MAX_BODY")
+
+local fatSnap = Codec:EncodeSnapshot({
+  role = "response",
+  eventId = 123456,
+  state = "CONSEQUENCE",
+  riteType = "Proclamation",
+  subjects = { candidate = 123456, fighters = { 234567, 345678 } },
+  sequence = 1234,
+  favor = { a = 999, b = 999 },
+  names = {
+    candidate = "CCCCCCCCCCCC",
+    fighterA = "AAAAAAAAAAAA",
+    fighterB = "BBBBBBBBBBBB",
+  },
+})
+assert_eq(#fatSnap, 124, "fat SNAPSHOT response is 124 bytes")
+assert_true(#fatSnap <= 240, "fat SNAPSHOT fits MAX_BODY")
+
+--------------------------------------------------------------------------------
 -- Codec never sends and never builds frames
 --------------------------------------------------------------------------------
 sent = 0
@@ -840,10 +992,73 @@ Codec:EncodeSnapshot({ role = "request" })
 Codec:EncodeInput({ kind = "petition", characterId = 1 })
 Codec:EncodeInput({ kind = "favor", characterId = 1, pick = 2 })
 Codec:EncodeDecree({ line = "Gather" })
-Codec:Decode("1:STATE:1:QUIET::::0")
-Codec:Decode("1:SNAPSHOT:request")
-Codec:Decode("1:INPUT:confession:1:hello")
-Codec:Decode("1:DECREE:Gather")
+local goingWire = Codec:EncodeInput({ kind = "going", occurrence = "1/2026-01-01" })
+assert_eq(goingWire, "2:INPUT:going:1/2026-01-01", "going wire is kind plus occurrence")
+local goingMsg = Codec:Decode(goingWire)
+assert_eq(goingMsg.kind, "going", "going decodes")
+assert_eq(goingMsg.occurrence, "1/2026-01-01", "going occurrence")
+refuse(function()
+  return Codec:EncodeInput({ kind = "going", occurrence = "1/2026-01-01", characterId = 3 })
+end, "character id not allowed", "going does not carry a character id")
+
+local nightsWire = Codec:EncodeNights({
+  boardRevision = 4,
+  series = { {
+    id = 1,
+    kind = "gathering",
+    weekday = 5,
+    timeLine = "7:00 PM",
+    place = "Goldshire Inn",
+    skip = { ["2026-01-01"] = true },
+    move = { ["2026-01-08"] = { timeLine = "8:00 PM", place = "Trade District" } },
+  } },
+  stubs = { {
+    id = "beefina:1",
+    kind = "raid",
+    title = "Kara Thursday",
+    timeLine = "8:00 PM",
+    place = "Karazhan",
+    date = "2026-01-08",
+    createdBy = "beefina",
+  } },
+  stubTombstones = { "old:1" },
+  goingCounts = { ["1/2026-01-15"] = 2 },
+})
+assert_true(type(nightsWire) == "string", "EncodeNights encodes")
+local nightsMsg = Codec:Decode(nightsWire)
+assert_eq(nightsMsg.type, "NIGHTS", "NIGHTS decodes")
+assert_eq(nightsMsg.boardRevision, 4, "NIGHTS revision")
+assert_eq(nightsMsg.series[1].skip["2026-01-01"], true, "NIGHTS skip survives the wire")
+assert_eq(nightsMsg.series[1].move["2026-01-08"].place, "Trade District", "NIGHTS move survives the wire")
+assert_eq(nightsMsg.stubs[1].title, "Kara Thursday", "NIGHTS stub title")
+assert_eq(nightsMsg.stubTombstones[1], "old:1", "NIGHTS tombstone")
+assert_eq(nightsMsg.goingCounts["1/2026-01-15"], 2, "NIGHTS going count")
+assert_eq(nightsMsg.goingNames, nil, "NIGHTS wire has no name list")
+
+local stubWire = Codec:EncodeStub({
+  id = "beefina:1",
+  kind = "raid",
+  title = "Kara Thursday",
+  timeLine = "8:00 PM",
+  place = "Karazhan",
+  date = "2026-01-08",
+  createdBy = "beefina",
+  boardRevision = 5,
+})
+local stubMsg = Codec:Decode(stubWire)
+assert_eq(stubMsg.type, "STUB", "STUB decodes")
+assert_eq(stubMsg.id, "beefina:1", "STUB id")
+assert_eq(stubMsg.date, "2026-01-08", "STUB date")
+
+local tombWire = Codec:EncodeStubWithdraw({ id = "beefina:1", boardRevision = 6 })
+local tombMsg = Codec:Decode(tombWire)
+assert_eq(tombMsg.type, "STUB_WITHDRAW", "STUB_WITHDRAW decodes")
+assert_eq(tombMsg.id, "beefina:1", "STUB_WITHDRAW id")
+
+Codec:Decode("2:STATE:1:QUIET::::0")
+Codec:Decode("2:SNAPSHOT:request")
+Codec:Decode("2:INPUT:confession:1:hello")
+Codec:Decode("2:DECREE:Gather")
 assert_eq(sent, 0, "encode/decode never SendAddonMessage or CreateFrame")
 
 if standalone then

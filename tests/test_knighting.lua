@@ -31,6 +31,8 @@ local COB = ChurchOfBeef
 local Store = COB.Store
 local Ranks = COB.Ranks
 local Knighting = COB.Knighting
+local savedRuntimeForIsolation = COB.Runtime
+COB.Runtime = nil
 
 local promoteCalls = 0
 local frameCalls = 0
@@ -128,6 +130,7 @@ assert_eq(Store:GetCeremonyLog()[1].at, 2000, "knighting log uses the verb now")
 assert_eq(Store:GetCeremonyLog()[1].text, nil, "knighting log has no text")
 assert_eq(Store:GetCeremonyLog()[1].scripture, nil, "knighting log has no scripture")
 assert_eq(Store:GetCeremonyLog()[1].narration, nil, "knighting log has no narration")
+assert_eq(Store:GetCeremonyLog()[1].eventId, nil, "knighting without a live event stores no event id")
 assert_eq(#Store:GetHuman(steve.id).honorifics, 0, "knighting does not invent an honorific")
 assert_eq(Store:GetHuman(steve.id).council, false, "knighting does not set Council")
 assert_eq(promoteCalls, 0, "KnightThisBeef does not call GuildPromote or SetGuildRank")
@@ -793,6 +796,8 @@ assert_eq(knightDuring.rankId, 3, "KnightThisBeef during an event still writes K
 assert_eq(#Knighting:GetLine(), 1, "KnightThisBeef removes only that human")
 assert_eq(Knighting:GetLine()[1].humanId, snapHuman.id, "the other human stays on the event line")
 assert_eq(opened, 0, "KnightThisBeef does not OpenRite")
+local duringLog = Store:GetCeremonyLog()
+assert_eq(duringLog[#duringLog].eventId, 4, "KnightThisBeef stamps the live Gathering on the sitting")
 
 COB.Runtime = savedRuntime
 assert_eq(COB.Runtime, nil, "event stub is removed after expire tests")
@@ -840,6 +845,8 @@ assert_eq(src:find("function Knighting:OpenRite", 1, true), nil, "source does no
 assert_eq(src:find("function Knighting:AdvanceQueue", 1, true), nil, "source does not define AdvanceQueue")
 assert_eq(src:find("function Knighting:NextCandidate", 1, true), nil, "source does not define NextCandidate")
 assert_true(src:find("already elevated", 1, true) ~= nil, "source names already elevated")
+
+COB.Runtime = savedRuntimeForIsolation
 
 if standalone then
   print(string.format("Tests finished: %d passed, %d failed", passed, failed))

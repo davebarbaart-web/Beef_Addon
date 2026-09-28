@@ -18,7 +18,9 @@ HUD without live health (§10.7): the HUD still renders everything except live h
 
 §22.1 item 2 names the Live Fight HUD *with* this defined no-live-health fallback.
 
-The coded no-health HUD (`UI/Hud.lua`, `health` always nil) is that fallback shipped as a surface. **It is not a validation pass of this item.** OPEN_QUESTIONS #2: Appendix A item 1 result decides HUD final form. Do not treat the fallback as the answer.
+The HUD still ships the no-health fallback for fighters who are **not** in the local party or raid (`UI/Hud.lua`, mute rails, `health` nil). **That is not a validation pass of this item.** OPEN_QUESTIONS #2: Appendix A item 1 result decides HUD final form for non-group units. Do not treat the fallback as the answer.
+
+**Ship-first (David, 2026-09-14):** raid/party `UnitHealth` on `player` / `raid1`–`raid40` / `party1`–`4` is ordinary group API, not this item. Make that viable for a 40-man before treating out-of-party reads as a commit gate. This sheet stays about non-group units. Result stays NOT RUN until David writes PASS / FAIL / PARTIAL.
 
 ## Live-client method (Anniversary TBC, Interface 20506)
 
@@ -35,13 +37,14 @@ Do not change addon Lua from this sheet. Do not edit OPEN_QUESTIONS.md.
 ## Not a pass
 
 - Harness green on `test_hud`
-- `GetView().health == nil` in `UI/Hud.lua`
-- Cards / records / favor rendering without bars
+- `GetView().health == nil` when the fighter is not a local group unit
+- Cards / records / favor rendering without bars for unbound fighters
 
 Those are the fallback, not item 1.
 
 ## Leftovers
 
-- OPEN_QUESTIONS #2 stays open until David writes a Result
+- OPEN_QUESTIONS #2 stays open until David writes a Result for non-group units
+- Raid/party bars may ship while this Result is still NOT RUN
 - Favor split is a later INPUT surface; this item does not invent it
 - Raid markers are Appendix A item 5 (sheet later)

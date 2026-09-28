@@ -389,7 +389,7 @@ local quietSnap = {
   state = "QUIET",
   riteType = nil,
   subjects = { candidate = nil, fighters = nil },
-  sequence = 13,
+  sequence = 14,
 }
 assert_eq(Runtime:Restore(quietSnap), true, "Restore accepts a QUIET event object")
 local nextEv = Runtime:StartEvent()
@@ -420,6 +420,8 @@ extras.holdTimeout = 30
 extras.holdSeconds = 5
 extras.narration = "Behold the Beef"
 extras.attendance = { 1, 2 }
+extras.favor = { a = 2, b = 1 }
+extras.sequence = extras.sequence + 1
 assert_eq(Runtime:Restore(extras), true, "Restore ignores extra fields")
 local cleaned = Runtime:Snapshot()
 assert_eq(cleaned.holdTimeout, nil, "Restore does not keep holdTimeout")
@@ -427,6 +429,7 @@ assert_eq(cleaned.holdSeconds, nil, "Restore does not keep holdSeconds")
 assert_eq(cleaned.awaitingPope, nil, "Restore does not invent awaitingPope")
 assert_eq(cleaned.narration, nil, "Restore does not keep narration")
 assert_eq(cleaned.attendance, nil, "Restore does not keep attendance")
+assert_eq(cleaned.favor, nil, "Restore does not keep favor")
 assert_snap_shape(cleaned, "cleaned snapshot")
 
 --------------------------------------------------------------------------------
@@ -496,6 +499,65 @@ refuse("Restore", {
     sequence = 1,
   },
 }, "Restore rejects ASSEMBLY with a rite type")
+
+--------------------------------------------------------------------------------
+-- Latest-wins: ceremony applies on a new eventId or a greater sequence.
+-- Equal sequence returns ok without moving Bible fields. Older is not-ok.
+--------------------------------------------------------------------------------
+reset()
+Runtime:StartEvent()
+Runtime:OpenRite("Gora", { fighters = { 8, 9 } })
+Runtime:CloseRite()
+local later = Runtime:Snapshot()
+assert_eq(later.sequence, 3, "later CONSEQUENCE sequence is 3")
+assert_eq(later.state, "CONSEQUENCE", "later state is CONSEQUENCE")
+assert_eq(later.riteType, "Gora", "later rite is Gora")
+
+local olderOk, olderErr = Runtime:Restore({
+  eventId = later.eventId,
+  state = "ASSEMBLY",
+  riteType = nil,
+  subjects = { candidate = nil, fighters = nil },
+  sequence = 1,
+})
+assert_eq(olderOk, nil, "older Restore does not rewind")
+assert_eq(olderErr, "stale sequence", "older Restore names stale sequence")
+assert_unchanged(later, Runtime:Snapshot(), "older Restore leaves later ceremony")
+
+local equalFighters = {
+  eventId = later.eventId,
+  state = "CONSEQUENCE",
+  riteType = "Gora",
+  subjects = { candidate = nil, fighters = { 1, 2 } },
+  sequence = later.sequence,
+}
+assert_eq(Runtime:Restore(equalFighters), true, "equal-sequence Restore returns ok")
+assert_unchanged(later, Runtime:Snapshot(), "equal sequence does not replace fighters")
+
+local newer = {
+  eventId = later.eventId,
+  state = "ASSEMBLY",
+  riteType = nil,
+  subjects = { candidate = nil, fighters = nil },
+  sequence = later.sequence + 1,
+}
+assert_eq(Runtime:Restore(newer), true, "greater sequence applies ceremony")
+assert_eq(Runtime:Snapshot().state, "ASSEMBLY", "greater sequence lands ASSEMBLY")
+assert_eq(Runtime:Snapshot().sequence, 4, "greater sequence lands the new sequence")
+assert_eq(Runtime:Snapshot().riteType, nil, "greater sequence clears the rite")
+
+local otherEvent = {
+  eventId = (later.eventId or 1) + 1,
+  state = "RITE",
+  riteType = "Knighting",
+  subjects = { candidate = 7, fighters = nil },
+  sequence = 1,
+}
+assert_eq(Runtime:Restore(otherEvent), true, "different eventId still applies")
+assert_eq(Runtime:Snapshot().eventId, otherEvent.eventId, "different eventId lands")
+assert_eq(Runtime:Snapshot().state, "RITE", "different eventId applies ceremony")
+assert_eq(Runtime:Snapshot().sequence, 1, "new event keeps its own sequence")
+assert_eq(Runtime:Snapshot().riteType, "Knighting", "different eventId lands the rite")
 
 --------------------------------------------------------------------------------
 -- Pope-disconnect degrade: awaitingPope flag. Not a sixth state. No holdSeconds.
@@ -615,7 +677,7 @@ local quietLost = {
   state = "QUIET",
   riteType = nil,
   subjects = { candidate = nil, fighters = nil },
-  sequence = 21,
+  sequence = 22,
   awaitingPope = true,
 }
 assert_eq(Runtime:Restore(quietLost), true, "Restore accepts QUIET even if awaitingPope is present")
@@ -630,7 +692,7 @@ local noFlag = {
   state = "ASSEMBLY",
   riteType = nil,
   subjects = { candidate = nil, fighters = nil },
-  sequence = 1,
+  sequence = 2,
 }
 assert_eq(Runtime:Restore(noFlag), true, "Restore without awaitingPope succeeds")
 assert_eq(Runtime:Snapshot().awaitingPope, nil, "Restore without awaitingPope clears the flag")
@@ -640,7 +702,7 @@ local junkFlag = {
   state = "ASSEMBLY",
   riteType = nil,
   subjects = { candidate = nil, fighters = nil },
-  sequence = 1,
+  sequence = 3,
   awaitingPope = "yes",
 }
 assert_eq(Runtime:Restore(junkFlag), true, "Restore ignores a non-boolean awaitingPope")
@@ -714,6 +776,27 @@ assert_eq(ChurchOfBeefDB.sentinel, 1, "Runtime does not write ChurchOfBeefDB")
 assert_eq(ChurchOfBeefDB.runtime, nil, "Runtime does not persist the event object into SV")
 assert_eq(framed, 0, "Runtime does not CreateFrame")
 assert_eq(netCalls, 0, "Runtime does not call Net")
+
+--------------------------------------------------------------------------------
+-- Task 7 follow-up: version drop is Quiet, not EndEvent, and keeps the
+-- event-id allocator so a later StartEvent does not reuse 1.
+--------------------------------------------------------------------------------
+do
+  Runtime:ResetForTests()
+  local first = Runtime:StartEvent()
+  assert_eq(first.eventId, 1, "first StartEvent is event 1")
+  assert_true(Runtime:OpenRite("Gora") ~= nil, "OpenRite from ASSEMBLY")
+  assert_eq(Runtime:Snapshot().state, "RITE", "live rite before the version drop")
+  assert_eq(type(Runtime.DropToQuietForVersion), "function",
+    "DropToQuietForVersion is the §13.4 helper")
+  assert_eq(Runtime:DropToQuietForVersion(), true, "version drop Restores QUIET")
+  local afterDrop = Runtime:Snapshot()
+  assert_eq(afterDrop.state, "QUIET", "version drop paints Quiet")
+  assert_eq(afterDrop.riteType, nil, "version drop clears the rite")
+  assert_eq(afterDrop.eventId, nil, "version drop is a clean Quiet object")
+  local second = Runtime:StartEvent()
+  assert_eq(second.eventId, 2, "version drop does not reset nextEventId to 1")
+end
 
 assert_eq(Runtime.Grant, nil, "no Grant")
 assert_eq(Runtime.GrantCeremony, nil, "no GrantCeremony")

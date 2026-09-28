@@ -1,36 +1,17 @@
 ChurchOfBeef = ChurchOfBeef or {}
 local COB = ChurchOfBeef
 
--- Event Mode toast engine + theatrical proclamation/verdict beats (Law 6).
--- Quiet Mode does not drive this file. Grant-driven kinds are gone.
--- Promote / rite copy builders and those KINDS are gone.
--- Engine: system / debug via Push; sanction / verdict / cowardice /
--- knighting / elevation via Proclaim.
+-- Event Mode theatrical proclamation/verdict beats (Law 6) — the one toast
+-- engine. Quiet Mode does not drive this file. Grant-driven kinds are gone.
+-- Promote / rite copy builders and those KINDS are gone. The small-toast
+-- engine (Show / Push / Celebrate and its queue and frame) is retired: it
+-- had zero callers. Proclaim is the only entry: sanction / verdict /
+-- cowardice / knighting / elevation.
 -- Clerical copy only. Never generate oratory. Never SendChatMessage.
--- Theatrical dress (color, font, texture) resolves only through COB.Theme.
--- Small system/debug toasts stay unornamented; they also take Theme tokens
+-- Theatrical dress (color, font, texture) resolves only through COB.Theme,
 -- so this file holds no color or path literals.
-local Toasts = {}
+local Toasts = { MODE = "Event" }
 COB.Toasts = Toasts
-
-local MAX_QUEUE = 5
-local DEDUPE_WINDOW = 10
-local SLIDE_PX = 16
-local ENTER_DUR = 0.25
-local EXIT_DUR = 0.18
-local INTERRUPT_DUR = 0.08
-local ANCHOR_Y = -160
-
--- Kind defaults: priority, hold (s), may it interrupt a lower toast.
---
--- Combat soft-defer is deliberately not here. It was carried as a per-kind flag that
--- no code read, which is worse than not having it: the table looked like policy while
--- toasts popped mid-pull regardless. The hook point is documented at its call site in
--- Push, and the flag comes back with the code that honours it.
-local KINDS = {
-  system  = { priority = 30, hold = 3.5, interrupt = false },
-  debug   = { priority = 10, hold = 2.0, interrupt = false },
-}
 
 local THEATER_KINDS = {
   sanction = true,
@@ -44,27 +25,14 @@ local THEATER_HOLD = 5
 local PROCLAIM_NAME = "ChurchOfBeefProclaim"
 local DIM_ALPHA = 0.45
 local PANEL_FALLBACK_W = 420
-local SLICE_CORNER = 18
-local SLICE_PIN = 12
-local SEAL_SIZE = 56
+-- Locked parchment inset. Not Theme.Space (4/8/16…); the frame art is cut for 12.
+local PROCLAIM_INSET = 12
+-- Full-surface masters retain the production pack's 12% transparent safety
+-- margin. Crop that margin at render time instead of shipping edge-touching
+-- source art.
+local SURFACE_U0, SURFACE_U1 = 0.12, 0.88
 
-local pending = {}
-local recentKeys = {}
-local gen = 0
-local arrivalSeq = 0
 local theaterGen = 0
-
-local function now()
-  if type(GetTime) == "function" then
-    local t = GetTime()
-    if type(t) == "number" then return t end
-  end
-  if type(time) == "function" then
-    local t = time()
-    if type(t) == "number" then return t end
-  end
-  return 0
-end
 
 local function after(seconds, fn)
   if C_Timer and C_Timer.After then
@@ -81,24 +49,6 @@ local function after(seconds, fn)
       fn()
     end
   end)
-end
-
-local function bumpGen()
-  gen = gen + 1
-  return gen
-end
-
-local function clampPriority(p)
-  if type(p) ~= "number" then return nil end
-  if p < 0 then return 0 end
-  if p > 100 then return 100 end
-  return p
-end
-
-local function truncate(text)
-  if type(text) ~= "string" then return text end
-  if #text <= 120 then return text end
-  return text:sub(1, 117) .. "..."
 end
 
 local function themeColor(role)
@@ -140,6 +90,15 @@ local function themeFontSize(key)
   return n
 end
 
+local function space(key, fallback)
+  local Theme = COB.Theme
+  local sizes = type(Theme) == "table" and Theme.Space or nil
+  if type(sizes) == "table" and type(sizes[key]) == "number" then
+    return sizes[key]
+  end
+  return fallback
+end
+
 local function applySlot(tex, name)
   if not tex then return nil end
   local path = themeTexture(name)
@@ -147,6 +106,9 @@ local function applySlot(tex, name)
   tex._cobPath = path
   if path and tex.SetTexture then
     pcall(tex.SetTexture, tex, path)
+  end
+  if name == "frame_proclamation_center" and tex.SetTexCoord then
+    pcall(tex.SetTexCoord, tex, SURFACE_U0, SURFACE_U1, SURFACE_U0, SURFACE_U1)
   end
   return path
 end
@@ -186,340 +148,8 @@ local function applyTextColor(fs, role)
   local r, g, b = themeColor(role)
   if type(r) ~= "number" or not fs or not fs.SetTextColor then return end
   pcall(fs.SetTextColor, fs, r, g, b, 1)
-end
-
-local function tryBackdrop(frame)
-  if frame.SetBackdrop then
-    -- Functional scrim only — Theme tokens, no theatrical ornament.
-    frame:SetBackdrop({
-      bgFile = themeTexture("bar_stainedglass_fill"),
-      edgeFile = themeTexture("frame_proclamation_edge_top"),
-      tile = true,
-      tileSize = 16,
-      edgeSize = 12,
-      insets = { left = 3, right = 3, top = 3, bottom = 3 },
-    })
-    local r, g, b = themeColor("charcoal")
-    if frame.SetBackdropColor and r then
-      frame:SetBackdropColor(r, g, b, 1)
-    end
-    local ir, ig, ib = themeColor("iron")
-    if frame.SetBackdropBorderColor and ir then
-      frame:SetBackdropBorderColor(ir, ig, ib, 1)
-    end
-    return true
-  end
-  return false
-end
-
-local function resetAnchor(frame)
-  if not frame then return end
-  if frame.ClearAllPoints then frame:ClearAllPoints() end
-  frame:SetPoint("TOP", UIParent, "TOP", 0, ANCHOR_Y)
-end
-
-local function probeAlpha(anim, fromA, toA)
-  if anim.SetFromAlpha and anim.SetToAlpha then
-    anim:SetFromAlpha(fromA)
-    anim:SetToAlpha(toA)
-  elseif anim.SetChange then
-    anim:SetChange(toA - fromA)
-  end
-end
-
--- Motion groups are stored on the frame itself, so read them back with rawget: an
--- inherited key would not be one of ours.
-local function animGroup(frame, key)
-  local g = rawget(frame, key)
-  if type(g) == "table" then return g end
-  return nil
-end
-
--- Every probe below is a real portability check, not a test accommodation: a client
--- without AnimationGroup support has to fall through to the stepped C_Timer fade
--- rather than error, and the toast still has to appear.
-local function ensureMotion(frame)
-  if rawget(frame, "_cobMotionReady") then return end
-  -- Mark ready first so a failed probe does not re-enter.
-  rawset(frame, "_cobMotionReady", true)
-
-  local create = frame.CreateAnimationGroup
-  if type(create) ~= "function" then return end
-  local gin = create(frame)
-  if type(gin) ~= "table" then return end
-  local ain = gin.CreateAnimation and gin:CreateAnimation("Alpha")
-  if type(ain) ~= "table" then return end
-
-  gin:SetLooping("NONE")
-  ain:SetDuration(ENTER_DUR)
-  ain:SetSmoothing("OUT")
-  ain:SetOrder(1)
-  probeAlpha(ain, 0, 1)
-  local tin = gin:CreateAnimation("Translation")
-  if type(tin) == "table" then
-    tin:SetOffset(0, -SLIDE_PX)
-    tin:SetDuration(ENTER_DUR)
-    tin:SetSmoothing("OUT")
-    tin:SetOrder(1)
-  end
-  gin:SetScript("OnFinished", function()
-    resetAnchor(frame)
-    if frame.SetAlpha then frame:SetAlpha(1) end
-  end)
-  rawset(frame, "cobFadeIn", gin)
-
-  local gout = frame:CreateAnimationGroup()
-  if type(gout) ~= "table" then return end
-  gout:SetLooping("NONE")
-  local aout = gout:CreateAnimation("Alpha")
-  if type(aout) ~= "table" then return end
-  aout:SetDuration(EXIT_DUR)
-  aout:SetSmoothing("IN")
-  aout:SetOrder(1)
-  probeAlpha(aout, 1, 0)
-  local tout = gout:CreateAnimation("Translation")
-  if type(tout) == "table" then
-    tout:SetOffset(0, SLIDE_PX)
-    tout:SetDuration(EXIT_DUR)
-    tout:SetSmoothing("IN")
-    tout:SetOrder(1)
-  end
-  rawset(frame, "cobFadeOut", gout)
-
-  local gsnap = frame:CreateAnimationGroup()
-  if type(gsnap) ~= "table" then return end
-  gsnap:SetLooping("NONE")
-  local asnap = gsnap:CreateAnimation("Alpha")
-  if type(asnap) ~= "table" then return end
-  asnap:SetDuration(INTERRUPT_DUR)
-  asnap:SetSmoothing("IN")
-  probeAlpha(asnap, 1, 0)
-  rawset(frame, "cobSnapOut", gsnap)
-end
-
-local function stopMotion(frame)
-  if not frame then return end
-  local gin = animGroup(frame, "cobFadeIn")
-  if gin and type(gin.Stop) == "function" then gin:Stop() end
-  local gout = animGroup(frame, "cobFadeOut")
-  if gout and type(gout.Stop) == "function" then gout:Stop() end
-  local gsnap = animGroup(frame, "cobSnapOut")
-  if gsnap and type(gsnap.Stop) == "function" then gsnap:Stop() end
-end
-
-local function kindDefaults(kind)
-  return KINDS[kind] or KINDS.system
-end
-
-local function normalize(envelope)
-  if type(envelope) == "string" then
-    envelope = { kind = "system", text = envelope }
-  end
-  if type(envelope) ~= "table" then return nil end
-
-  local text = envelope.text
-  if type(text) ~= "string" or text == "" then return nil end
-
-  local kind = envelope.kind
-  if type(kind) ~= "string" or not KINDS[kind] then kind = "system" end
-  local def = kindDefaults(kind)
-
-  local priority = clampPriority(envelope.priority) or def.priority
-  local hold = envelope.hold
-  if type(hold) ~= "number" or hold <= 0 then hold = def.hold end
-
-  local interrupt = envelope.interrupt
-  if interrupt == nil then interrupt = def.interrupt end
-
-  local motion = envelope.motion
-  if COB._IN_TEST then motion = "snap" end
-  if type(motion) ~= "string" then motion = "edge" end
-
-  arrivalSeq = arrivalSeq + 1
-  return {
-    kind = kind,
-    priority = priority,
-    text = truncate(text),
-    dedupeKey = type(envelope.dedupeKey) == "string" and envelope.dedupeKey or nil,
-    hold = hold,
-    interrupt = interrupt and true or false,
-    motion = motion,
-    _arrival = arrivalSeq,
-  }
-end
-
-local function pruneRecent(at)
-  local cutoff = at - DEDUPE_WINDOW
-  for key, seen in pairs(recentKeys) do
-    if seen < cutoff then recentKeys[key] = nil end
-  end
-end
-
-local function findPendingKey(key)
-  for i = 1, #pending do
-    if pending[i].dedupeKey == key then return i end
-  end
-  return nil
-end
-
-local function insertPending(e)
-  local i = 1
-  while i <= #pending do
-    if e.priority > pending[i].priority then break end
-    i = i + 1
-  end
-  table.insert(pending, i, e)
-end
-
-local function lowestPendingIndex()
-  if #pending == 0 then return nil end
-  local worst = 1
-  for i = 2, #pending do
-    local a, b = pending[i], pending[worst]
-    if a.priority < b.priority
-      or (a.priority == b.priority and a._arrival < b._arrival) then
-      worst = i
-    end
-  end
-  return worst
-end
-
-local function clearPending()
-  for i = #pending, 1, -1 do pending[i] = nil end
-end
-
---------------------------------------------------------------------------------
--- Presenter
---------------------------------------------------------------------------------
-
-local pump -- forward decl
-
-local function fadeOutThen(self, envelope, done, snap)
-  local frame = self.frame
-  local myGen = gen
-  local finish = function()
-    if gen ~= myGen then return end
-    if frame then
-      stopMotion(frame)
-      resetAnchor(frame)
-      if frame.SetAlpha then frame:SetAlpha(1) end
-      frame:Hide()
-    end
-    done()
-  end
-
-  if envelope.motion == "snap" or COB._IN_TEST or not (frame and frame.SetAlpha) then
-    finish()
-    return
-  end
-
-  ensureMotion(frame)
-  local group = snap and animGroup(frame, "cobSnapOut") or animGroup(frame, "cobFadeOut")
-  if group and type(group.Play) == "function" then
-    group:SetScript("OnFinished", finish)
-    if frame.SetAlpha then frame:SetAlpha(1) end
-    group:Play()
-    return
-  end
-
-  -- Stepped C_Timer alpha fallback (no AnimationGroup).
-  local dur = snap and INTERRUPT_DUR or EXIT_DUR
-  local steps = snap and 2 or 4
-  local i = 0
-  local function step()
-    if gen ~= myGen then return end
-    i = i + 1
-    frame:SetAlpha(1 - (i / steps))
-    if i < steps then
-      after(dur / steps, step)
-    else
-      finish()
-    end
-  end
-  step()
-end
-
-local function fadeIn(self, envelope)
-  local frame = self.frame
-  if envelope.motion == "snap" or COB._IN_TEST or not (frame and frame.SetAlpha) then
-    if frame.SetAlpha then frame:SetAlpha(1) end
-    return
-  end
-
-  ensureMotion(frame)
-  local gin = animGroup(frame, "cobFadeIn")
-  if gin and type(gin.Play) == "function" then
-    stopMotion(frame)
-    resetAnchor(frame)
-    if frame.SetPoint then
-      frame:ClearAllPoints()
-      frame:SetPoint("TOP", UIParent, "TOP", 0, ANCHOR_Y + SLIDE_PX)
-    end
-    frame:SetAlpha(0)
-    gin:Play()
-    return
-  end
-
-  frame:SetAlpha(0)
-  local steps = 3
-  local i = 0
-  local myGen = gen
-  local function step()
-    if gen ~= myGen then return end
-    i = i + 1
-    frame:SetAlpha(i / steps)
-    if i < steps then after(ENTER_DUR / steps, step) end
-  end
-  step()
-end
-
-local function present(self, envelope)
-  self.showing = envelope
-  local frame = self.frame
-  frame.text:SetText(envelope.text)
-  resetAnchor(frame)
-  if frame.SetAlpha then frame:SetAlpha(1) end
-  frame:Show()
-  fadeIn(self, envelope)
-
-  local myGen = gen
-  after(envelope.hold, function()
-    if gen ~= myGen then return end
-    if self.showing ~= envelope then return end
-    fadeOutThen(self, envelope, function()
-      if gen ~= myGen then return end
-      self.showing = nil
-      pump(self)
-    end, false)
-  end)
-end
-
-pump = function(self)
-  local nextEnv = table.remove(pending, 1)
-  if not nextEnv then
-    -- Hide-from-empty-pump re-enters OnHide; do not loop.
-    if not self.showing and #pending == 0 then
-      return
-    end
-    self.showing = nil
-    if self.frame then self.frame:Hide() end
-    return
-  end
-  present(self, nextEnv)
-end
-
-local function interruptShowing(self)
-  local cur = self.showing
-  if not cur then return end
-  bumpGen()
-  stopMotion(self.frame)
-  -- Discard the interrupted toast; never re-queue.
-  self.showing = nil
-  if self.frame then
-    if self.frame.SetAlpha then self.frame:SetAlpha(1) end
-    resetAnchor(self.frame)
-    self.frame:Hide()
-  end
+  fs._cobRole = role
+  fs._cobR, fs._cobG, fs._cobB, fs._cobA = r, g, b, 1
 end
 
 --------------------------------------------------------------------------------
@@ -539,10 +169,10 @@ local function theaterAllowed()
   return true
 end
 
-local function applyHeadlineFont(fs, theater)
+local function applyHeadlineFont(fs, theater, overrideSize)
   if not fs then return end
   local path = themeFontPath("display")
-  local size = themeFontSize("headline")
+  local size = overrideSize or themeFontSize("headline")
   if type(size) ~= "number" or size < 16 then size = 22 end
   local used = false
   if path and fs.SetFont then
@@ -586,10 +216,8 @@ local function clericalCopy(kind, fields)
     if type(a) ~= "string" or a == "" or type(b) ~= "string" or b == "" then
       return nil
     end
-    local parts = { a, "VS", b }
-    if type(fields.stipulation) == "string" and fields.stipulation ~= "" then
-      parts[#parts + 1] = fields.stipulation
-    end
+    -- Pomp headline stays. One plain gloss line under it (Task 13).
+    local parts = { "A sanctioned duel.", a, "VS", b }
     local head = "A Beef Gora is Sanctioned"
     local body = table.concat(parts, "\n")
     return head, body, head .. "\n" .. body
@@ -598,7 +226,7 @@ local function clericalCopy(kind, fields)
   if kind == "cowardice" then
     local name = fields.name
     if type(name) ~= "string" or name == "" then return nil end
-    local line = "Cowardice recorded: " .. name .. ". So ruled by the Beef Pope."
+    local line = "Cowardice recorded: " .. name .. " fled. So ruled by the Beef Pope."
     return line, "", line
   end
 
@@ -611,7 +239,7 @@ local function clericalCopy(kind, fields)
       return "VICTOR DECLARED", name .. ". So ruled by the Beef Pope.", chat
     end
     if ruling == "void" then
-      return "Void.", "", "Void."
+      return "This fight does not count.", "", "This fight does not count."
     end
     if ruling == "free" then
       local text = fields.text
@@ -693,10 +321,18 @@ end
 
 local function wireProclaimEsc(self, root)
   if not root then return end
+  if type(root.EnableMouse) == "function" then
+    root:EnableMouse(true)
+  end
   if type(root.SetScript) == "function" then
     local existing = type(root.GetScript) == "function" and root:GetScript("OnHide")
     if not existing then
       root:SetScript("OnHide", function()
+        hideTheater(self)
+      end)
+    end
+    if not (type(root.GetScript) == "function" and root:GetScript("OnMouseUp")) then
+      root:SetScript("OnMouseUp", function()
         hideTheater(self)
       end)
     end
@@ -717,16 +353,153 @@ local function placeBox(tex, point, rel, relPoint, x, y, w, h)
   if h then tex:SetHeight(h) end
 end
 
-local function layoutTheaterDress(t, w, h)
+local function isBannered(kind)
+  return kind == "knighting" or kind == "elevation"
+end
+
+local function headlinePx()
+  local size = themeFontSize("headline")
+  if type(size) ~= "number" or size < 16 then return 22 end
+  return size
+end
+
+-- The center-third sheet is intentionally narrow. Keep blackletter at a
+-- stream-readable floor, but step down long fixed clerical lines before
+-- wrapping so their capitals do not scrape the parchment edge.
+local function responsiveHeadlinePx(text)
+  local size = headlinePx()
+  local chars = type(text) == "string" and #text or 0
+  if chars > 22 then
+    return math.max(18, size - 4)
+  end
+  if chars > 16 then
+    return math.max(20, size - 2)
+  end
+  return size
+end
+
+local function bodyLeadPx()
+  local size = themeFontSize("body")
+  if type(size) ~= "number" then size = 12 end
+  return size + space("xs", 4)
+end
+
+local function stampPx()
+  return space("seal", 28)
+end
+
+local function bannerPx()
+  -- Top ribbon on the sheet — not a second parchment fill.
+  return space("band", 48)
+end
+
+local function theaterFloor()
+  -- Four bands keep the four-line sanction body inside its parchment at the
+  -- 1024x768 stream target. Short verdicts use the same steady silhouette
+  -- rather than visibly collapsing between ceremony beats.
+  return space("band", 48) * 4
+end
+
+-- Blackletter advance is ~1em. The old 0.7em char-split clipped long
+-- clerical headlines (cowardice / free ruling) on the center-third sheet.
+local function wrappedLines(text, px, innerW)
+  if type(text) ~= "string" or text == "" then return 0 end
+  if type(px) ~= "number" or px <= 0 then
+    px = themeFontSize("body") or 12
+  end
+  if type(innerW) ~= "number" or innerW <= 0 then
+    innerW = PANEL_FALLBACK_W - PROCLAIM_INSET * 2
+  end
+  local per = math.floor(innerW / px)
+  if per < 1 then per = 1 end
+  local total = 0
+  for line in string.gmatch(text .. "\n", "(.-)\n") do
+    if line == "" then
+      total = total + 1
+    else
+      local rows = 1
+      local used = 0
+      for word in string.gmatch(line, "%S+") do
+        local wlen = #word
+        if used == 0 then
+          if wlen <= per then
+            used = wlen
+          else
+            rows = rows + math.ceil(wlen / per) - 1
+            used = wlen % per
+          end
+        elseif used + 1 + wlen <= per then
+          used = used + 1 + wlen
+        else
+          rows = rows + 1
+          if wlen <= per then
+            used = wlen
+          else
+            rows = rows + math.ceil(wlen / per) - 1
+            used = wlen % per
+          end
+        end
+      end
+      total = total + rows
+    end
+  end
+  return math.max(1, total)
+end
+
+local function headlineLines(headline, width)
+  local innerW = (type(width) == "number" and width or PANEL_FALLBACK_W) - PROCLAIM_INSET * 2
+  local lines = wrappedLines(headline, headlinePx(), innerW)
+  if lines < 1 then lines = 1 end
+  -- Grenze Gotisch overshoots a tight wrap; one slack row when wrapping.
+  if lines > 1 then lines = lines + 1 end
+  return lines
+end
+
+local function headlineBlockH(headline, width)
+  return headlineLines(headline, width) * (headlinePx() + space("xs", 4))
+end
+
+local function headBlock(kind, headline, width)
+  local topBlock = isBannered(kind) and bannerPx() or stampPx()
+  return topBlock + space("sm", 8) + headlineBlockH(headline, width)
+end
+
+local function composeHeight(kind, headline, body, width)
+  local inset = PROCLAIM_INSET
+  local sm = space("sm", 8)
+  local rule = space("rule", 2)
+  -- Hairline accent is always reserved so charcoal wrap is not clipped by it.
+  local h = inset + headBlock(kind, headline, width) + sm + rule
+  if type(body) == "string" and body ~= "" then
+    local innerW = (type(width) == "number" and width or PANEL_FALLBACK_W) - inset * 2
+    local bodyPx = themeFontSize("body")
+    if type(bodyPx) ~= "number" then bodyPx = 12 end
+    local lines = wrappedLines(body, bodyPx, innerW)
+    if lines < 1 then lines = 1 end
+    h = h + sm + lines * bodyLeadPx() + sm
+  end
+  return math.max(theaterFloor(), h + inset + sm)
+end
+
+local function layoutTheaterDress(t, w, h, kind, hasBody, headline)
   if not t or not t.panel then return end
   local panel = t.panel
-  local inset = 6
+  local inset = PROCLAIM_INSET
+  local xs = space("xs", 4)
+  local sm = space("sm", 8)
+  local md = space("md", 16)
+  local c = space("md", 16)
+  local pin = space("sm", 8)
+  local rule = space("rule", 2)
+  local stamp = stampPx()
+  local bannerH = bannerPx()
+  local bannered = isBannered(kind)
+
   if t.center then
     if t.center.ClearAllPoints then t.center:ClearAllPoints() end
     t.center:SetPoint("TOPLEFT", panel, "TOPLEFT", inset, -inset)
     t.center:SetPoint("BOTTOMRIGHT", panel, "BOTTOMRIGHT", -inset, inset)
   end
-  local c = SLICE_CORNER
   placeBox(t.cornerTL, "TOPLEFT", panel, "TOPLEFT", 0, 0, c, c)
   placeBox(t.cornerTR, "TOPRIGHT", panel, "TOPRIGHT", 0, 0, c, c)
   placeBox(t.cornerBL, "BOTTOMLEFT", panel, "BOTTOMLEFT", 0, 0, c, c)
@@ -755,35 +528,76 @@ local function layoutTheaterDress(t, w, h)
     t.edgeRight:SetPoint("BOTTOMRIGHT", t.cornerBR, "TOPRIGHT", 0, 0)
     t.edgeRight:SetWidth(c)
   end
-  local p = SLICE_PIN
-  placeBox(t.pinTL, "TOPLEFT", panel, "TOPLEFT", 4, -4, p, p)
-  placeBox(t.pinTR, "TOPRIGHT", panel, "TOPRIGHT", -4, -4, p, p)
-  placeBox(t.pinBL, "BOTTOMLEFT", panel, "BOTTOMLEFT", 4, 4, p, p)
-  placeBox(t.pinBR, "BOTTOMRIGHT", panel, "BOTTOMRIGHT", -4, 4, p, p)
-  placeBox(t.seal, "TOP", panel, "TOP", 0, 16, SEAL_SIZE, SEAL_SIZE)
+  placeBox(t.pinTL, "TOPLEFT", panel, "TOPLEFT", xs, -xs, pin, pin)
+  placeBox(t.pinTR, "TOPRIGHT", panel, "TOPRIGHT", -xs, -xs, pin, pin)
+  placeBox(t.pinBL, "BOTTOMLEFT", panel, "BOTTOMLEFT", xs, xs, pin, pin)
+  placeBox(t.pinBR, "BOTTOMRIGHT", panel, "BOTTOMRIGHT", -xs, xs, pin, pin)
+
+  local topBlock = bannered and bannerH or stamp
+  local stack = headBlock(kind, headline, w)
+  local inner = (type(h) == "number" and h or theaterFloor()) - inset * 2
+  local top = inset
+  if (not hasBody) and inner > stack then
+    top = inset + math.floor((inner - stack) / 2)
+  end
+
   if t.banner then
     if t.banner.ClearAllPoints then t.banner:ClearAllPoints() end
+    -- Ribbon hangs from the sheet top. Never stretch it as a second fill.
     t.banner:SetPoint("TOPLEFT", panel, "TOPLEFT", inset, -inset)
-    t.banner:SetPoint("BOTTOMRIGHT", panel, "BOTTOMRIGHT", -inset, inset)
+    t.banner:SetPoint("TOPRIGHT", panel, "TOPRIGHT", -inset, -inset)
+    t.banner:SetHeight(bannerH)
+  end
+
+  -- Seal stays on the parchment (ribbon medallion, or top of the field).
+  if bannered then
+    placeBox(t.seal, "CENTER", t.banner or panel, "CENTER", 0, 0, stamp, stamp)
+  else
+    placeBox(t.seal, "TOP", panel, "TOP", 0, -top, stamp, stamp)
+  end
+
+  -- Halo around the seal only — not a root-scale panel pulse.
+  if t.rays then
+    local ray = stamp + md * 2
+    placeBox(t.rays, "CENTER", t.seal or panel, "CENTER", 0, 0, ray, ray)
+  end
+
+  local textTop = top + topBlock + sm
+  if t.headline then
+    if t.headline.ClearAllPoints then t.headline:ClearAllPoints() end
+    t.headline:SetPoint("TOPLEFT", panel, "TOPLEFT", inset, -textTop)
+    t.headline:SetPoint("TOPRIGHT", panel, "TOPRIGHT", -inset, -textTop)
+    if t.headline.SetHeight then
+      t.headline:SetHeight(headlineBlockH(headline, w))
+    end
   end
   if t.tint then
     if t.tint.ClearAllPoints then t.tint:ClearAllPoints() end
-    t.tint:SetPoint("BOTTOMLEFT", panel, "BOTTOMLEFT", 10, 10)
-    t.tint:SetPoint("BOTTOMRIGHT", panel, "BOTTOMRIGHT", -10, 10)
-    t.tint:SetHeight(6)
+    if t.headline then
+      t.tint:SetPoint("TOPLEFT", t.headline, "BOTTOMLEFT", md, -sm)
+      t.tint:SetPoint("TOPRIGHT", t.headline, "BOTTOMRIGHT", -md, -sm)
+    else
+      t.tint:SetPoint("BOTTOMLEFT", panel, "BOTTOMLEFT", inset, inset)
+      t.tint:SetPoint("BOTTOMRIGHT", panel, "BOTTOMRIGHT", -inset, inset)
+    end
+    t.tint:SetHeight(rule)
   end
-  if t.rays then
-    if t.rays.ClearAllPoints then t.rays:ClearAllPoints() end
-    t.rays:SetPoint("CENTER", panel, "CENTER", 0, 0)
-    t.rays:SetWidth(math.floor((w or PANEL_FALLBACK_W) * 1.4))
-    t.rays:SetHeight(math.max(180, math.floor((h or 140) * 1.6)))
+  if t.copy then
+    if t.copy.ClearAllPoints then t.copy:ClearAllPoints() end
+    if t.headline then
+      t.copy:SetPoint("TOPLEFT", t.headline, "BOTTOMLEFT", 0, -(sm + rule + sm))
+      t.copy:SetPoint("BOTTOMRIGHT", panel, "BOTTOMRIGHT", -inset, inset)
+    else
+      t.copy:SetPoint("TOPLEFT", panel, "TOPLEFT", inset, -textTop)
+      t.copy:SetPoint("BOTTOMRIGHT", panel, "BOTTOMRIGHT", -inset, inset)
+    end
   end
 end
 
 local function dressTheater(t, kind, fields)
   if not t then return end
   fields = type(fields) == "table" and fields or {}
-  local bannered = (kind == "knighting" or kind == "elevation")
+  local bannered = isBannered(kind)
   local sealName = sealNameFor(kind, fields)
   local role = accentRole(kind, fields)
 
@@ -849,7 +663,7 @@ function Toasts:InitTheater()
 
   local root = CreateFrame("Frame", PROCLAIM_NAME, UIParent)
   root:SetFrameStrata("FULLSCREEN_DIALOG")
-  if root.EnableMouse then root:EnableMouse(false) end
+  if root.EnableMouse then root:EnableMouse(true) end
   if root.SetAllPoints then
     root:SetAllPoints(UIParent)
   else
@@ -862,17 +676,13 @@ function Toasts:InitTheater()
   dim:SetAllPoints(root)
   applyFill(dim, "charcoal", DIM_ALPHA)
 
-  -- Additive sunburst sits on the root so the panel/banner paints in front.
-  local rays = mintTex(root, "BACKGROUND")
-  if rays and rays.SetBlendMode then
-    pcall(rays.SetBlendMode, rays, "ADD")
-  end
-  if rays then rays._blend = "ADD" end
-  applySlot(rays, "rays_sunburst")
-  if rays then rays:Hide() end
-
   local panel = CreateFrame("Frame", "ChurchOfBeefProclaimPanel", root)
-  if panel.EnableMouse then panel:EnableMouse(false) end
+  if panel.EnableMouse then panel:EnableMouse(true) end
+  if panel.SetScript then
+    panel:SetScript("OnMouseUp", function()
+      hideTheater(self)
+    end)
+  end
 
   local center = mintTex(panel, "BACKGROUND")
   applySlot(center, "frame_proclamation_center")
@@ -891,24 +701,34 @@ function Toasts:InitTheater()
   local banner = mintTex(panel, "ARTWORK")
   applySlot(banner, "banner_knighting")
   if banner then banner:Hide() end
+  -- Additive halo behind the seal, on the sheet — not a root-scale pulse.
+  local rays = mintTex(panel, "OVERLAY")
+  if rays and rays.SetBlendMode then
+    pcall(rays.SetBlendMode, rays, "ADD")
+  end
+  if rays then rays._blend = "ADD" end
+  applySlot(rays, "rays_sunburst")
+  if rays then rays:Hide() end
   local seal = mintTex(panel, "OVERLAY")
   applySlot(seal, "seal_papal")
   local tint = mintTex(panel, "OVERLAY")
 
   local headline = panel:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
-  headline:SetPoint("TOPLEFT", panel, "TOPLEFT", 16, -36)
-  headline:SetPoint("TOPRIGHT", panel, "TOPRIGHT", -16, -36)
+  headline:SetPoint("TOPLEFT", panel, "TOPLEFT", PROCLAIM_INSET, -PROCLAIM_INSET)
+  headline:SetPoint("TOPRIGHT", panel, "TOPRIGHT", -PROCLAIM_INSET, -PROCLAIM_INSET)
   headline:SetJustifyH("CENTER")
   headline:SetJustifyV("TOP")
   if headline.SetWordWrap then headline:SetWordWrap(true) end
+  if headline.SetMaxLines then headline:SetMaxLines(6) end
   applyHeadlineFont(headline)
 
   local copy = panel:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-  copy:SetPoint("TOPLEFT", headline, "BOTTOMLEFT", 0, -8)
-  copy:SetPoint("BOTTOMRIGHT", panel, "BOTTOMRIGHT", -16, 20)
+  copy:SetPoint("TOPLEFT", headline, "BOTTOMLEFT", 0, -space("sm", 8))
+  copy:SetPoint("BOTTOMRIGHT", panel, "BOTTOMRIGHT", -PROCLAIM_INSET, PROCLAIM_INSET)
   copy:SetJustifyH("CENTER")
-  copy:SetJustifyV("MIDDLE")
+  copy:SetJustifyV("TOP")
   if copy.SetWordWrap then copy:SetWordWrap(true) end
+  if copy.SetMaxLines then copy:SetMaxLines(4) end
   applyBodyFont(copy)
 
   self.theater = {
@@ -942,7 +762,7 @@ function Toasts:InitTheater()
 end
 
 --- Event Mode proclamation / verdict / cowardice / knighting / elevation.
---- Clerical copy only. fields: { fighterA, fighterB, name, ruling, text, stipulation }
+--- Clerical copy only. fields: { fighterA, fighterB, name, ruling, text }
 --- @return ok boolean, reason string|nil
 function Toasts:Proclaim(kind, fields)
   if type(kind) ~= "string" or not THEATER_KINDS[kind] then
@@ -970,24 +790,21 @@ function Toasts:Proclaim(kind, fields)
   if not theater then return false, "invalid" end
 
   local w = panelWidth()
-  local joined = headline
-  if body ~= "" then joined = headline .. "\n" .. body end
-  local lines = 1
-  for _ in joined:gmatch("\n") do lines = lines + 1 end
-  local h = math.max(160, 64 + lines * 24)
+  local h = composeHeight(kind, headline, body, w)
   theater.panel:SetWidth(w)
   theater.panel:SetHeight(h)
   if theater.panel.ClearAllPoints then theater.panel:ClearAllPoints() end
   theater.panel:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
-  layoutTheaterDress(theater, w, h)
   dressTheater(theater, kind, fields)
+  layoutTheaterDress(theater, w, h, kind, body ~= "", headline)
 
   theater.headline:SetText(headline)
-  applyHeadlineFont(theater.headline, theater)
+  applyHeadlineFont(theater.headline, theater, responsiveHeadlinePx(headline))
   applyTextColor(theater.headline, "charcoal")
   theater.copy:SetText(body)
   applyBodyFont(theater.copy, theater)
   applyTextColor(theater.copy, "charcoal")
+  theater.inkRole = "charcoal"
   if body ~= "" then
     theater.copy:Show()
   else
@@ -1019,207 +836,17 @@ end
 -- Public API
 --------------------------------------------------------------------------------
 
-local function wireSmallOnHide(self, frame)
-  if not frame then return end
-  if type(frame.SetScript) == "function" then
-    local existing = type(frame.GetScript) == "function" and frame:GetScript("OnHide")
-    if not existing then
-      frame:SetScript("OnHide", function()
-        -- interruptShowing / empty-pump Hide: showing already nil; do not pump.
-        if not self.showing then return end
-        bumpGen()
-        self.showing = nil
-        pump(self)
-      end)
-    end
-  end
-end
-
 function Toasts:Init()
-  if self.frame then
-    rememberSpecial("ChurchOfBeefToast")
-    rememberSpecial(PROCLAIM_NAME)
-    wireSmallOnHide(self, self.frame)
-    return self.frame
-  end
-  if type(CreateFrame) ~= "function" then return nil end
-
-  local frame = CreateFrame("Frame", "ChurchOfBeefToast", UIParent, "BackdropTemplate")
-  if not frame then
-    frame = CreateFrame("Frame", "ChurchOfBeefToast", UIParent)
-  end
-  -- Rubric/toast-sizing: ~280–360 × 64–96; grow copy down before width.
-  frame:SetWidth(360)
-  frame:SetHeight(72)
-  frame:SetPoint("TOP", UIParent, "TOP", 0, ANCHOR_Y)
-  frame:SetFrameStrata("HIGH")
-  -- Classic AG Translation paints offset while mouse hit-test stays at the
-  -- pre-anim anchor (research 56). Toast is display-only — no buttons; keep
-  -- mouse off for the whole envelope while slide polish remains.
-  if frame.EnableMouse then frame:EnableMouse(false) end
-  frame:Hide()
-  if frame.SetAlpha then frame:SetAlpha(1) end
-
-  if not tryBackdrop(frame) then
-    local bg = frame:CreateTexture(nil, "BACKGROUND")
-    bg:SetAllPoints(frame)
-    applyFill(bg, "charcoal", 1)
-  end
-
-  local text = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-  text:SetPoint("TOPLEFT", frame, "TOPLEFT", 10, -10)
-  text:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -10, 10)
-  text:SetJustifyH("CENTER")
-  text:SetJustifyV("MIDDLE")
-  if text.SetWordWrap then text:SetWordWrap(true) end
-  frame.text = text
-
-  -- Re-clamp after monitor / scale changes (track 43); guest on player uiScale.
-  if frame.RegisterEvent then
-    frame:RegisterEvent("DISPLAY_SIZE_CHANGED")
-    frame:RegisterEvent("UI_SCALE_CHANGED")
-    frame:SetScript("OnEvent", function()
-      resetAnchor(frame)
-    end)
-  end
-
-  self.frame = frame
-  self.showing = nil
-  -- After the initial Hide so create does not fire OnHide teardown.
-  wireSmallOnHide(self, frame)
-  rememberSpecial("ChurchOfBeefToast")
-  return frame
-end
-
---- Preferred structured entry. string → Show; table → envelope.
---- @return ok boolean, reason string|nil
-function Toasts:Push(envelope)
-  local e = normalize(envelope)
-  if not e then return false, "invalid" end
-  if not self:Init() then return false, "invalid" end
-
-  local at = now()
-  pruneRecent(at)
-
-  if e.dedupeKey then
-    local idx = findPendingKey(e.dedupeKey)
-    if idx then
-      return false, "deduped"
-    end
-    if self.showing and self.showing.dedupeKey == e.dedupeKey then
-      return false, "deduped"
-    end
-    local seen = recentKeys[e.dedupeKey]
-    if seen and (at - seen) < DEDUPE_WINDOW then
-      return false, "deduped"
-    end
-  end
-
-  -- Soft-defer while in combat is intentionally OFF. Hook point: enqueue to a
-  -- deferList here and drain it on PLAYER_REGEN_ENABLED.
-
-  if self.showing and e.interrupt and e.priority > self.showing.priority then
-    interruptShowing(self)
-  end
-
-  if #pending >= MAX_QUEUE then
-    local worst = lowestPendingIndex()
-    if worst and e.priority > pending[worst].priority then
-      table.remove(pending, worst)
-    else
-      return false, "overflow"
-    end
-  end
-
-  if e.dedupeKey then recentKeys[e.dedupeKey] = at end
-  insertPending(e)
-
-  if not self.showing then
-    pump(self)
-  end
-  return true
-end
-
---- Back-compat. Equivalent to Push({ kind = "system", text = text }).
-function Toasts:Show(text)
-  local ok = self:Push({ kind = "system", text = text })
-  return ok and true or false
-end
-
---- Convenience entry. Builds UI-owned copy; never touches Core.
---- Forms:
----   Celebrate(text)                         → system
----   Celebrate(kind, fieldsTable)            → system / debug, or Proclaim
---- fields: { detail?, text?, dedupeKey?, hold?, priority?,
----           fighterA?, fighterB?, name?, ruling?, stipulation? }
---- Theater kinds (sanction / verdict / cowardice / knighting / elevation) go to Proclaim.
---- Unknown / excised kinds (promote, rite, grant family) do not mint copy.
-function Toasts:Celebrate(kind, fields)
-  -- Plain string → system toast (back-compat for early call sites).
-  -- Theater kind names are not copy; they must go through Proclaim.
-  if type(kind) == "string" and fields == nil then
-    if THEATER_KINDS[kind] then
-      return self:Proclaim(kind, {})
-    end
-    if not KINDS[kind] then
-      return self:Push({ kind = "system", text = kind })
-    end
-    return false, "invalid"
-  end
-
-  fields = type(fields) == "table" and fields or {}
-  if type(kind) == "string" and THEATER_KINDS[kind] then
-    return self:Proclaim(kind, fields)
-  end
-  if type(kind) ~= "string" or not KINDS[kind] then kind = "system" end
-
-  local text = fields.text
-  if type(text) ~= "string" or text == "" then
-    if kind == "system" or kind == "debug" then
-      text = fields.detail
-    end
-  end
-
-  if type(text) ~= "string" or text == "" then return false, "invalid" end
-
-  return self:Push({
-    kind = kind,
-    text = text,
-    dedupeKey = fields.dedupeKey,
-    hold = fields.hold,
-    priority = fields.priority,
-    interrupt = fields.interrupt,
-    motion = fields.motion,
-  })
+  return self:InitTheater()
 end
 
 function Toasts:HideAll()
-  gen = gen + 1
   hideTheater(self)
-  clearPending()
-  stopMotion(self.frame)
-  self.showing = nil
-  if self.frame then
-    resetAnchor(self.frame)
-    if self.frame.SetAlpha then self.frame:SetAlpha(1) end
-    self.frame:Hide()
-  end
-  rememberSpecial("ChurchOfBeefToast")
   rememberSpecial(PROCLAIM_NAME)
 end
 
 function Toasts:ResetForTests()
   if not COB._IN_TEST then return false end
   self:HideAll()
-  for k in pairs(recentKeys) do recentKeys[k] = nil end
-  arrivalSeq = 0
   return true
-end
-
-function Toasts:PendingCount()
-  return #pending
-end
-
-function Toasts:ShowingKind()
-  return self.showing and self.showing.kind or nil
 end

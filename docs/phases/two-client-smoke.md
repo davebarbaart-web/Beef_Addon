@@ -23,24 +23,24 @@ The deleted product (standing, SUGGESTION fan-out, Officer queue, claimed-vs-ver
 |------|-----------------------------|
 | **HELLO** | Live. `Net:SendHello()` on `Init`. GUILD. Presence / protocol version only. Not authority. |
 | **STATE** | Live. Bootstrap `InstallWire` sends `Net:SendState` after a successful Runtime `StartEvent` / `OpenRite` / `CloseRite` / `Continue` / `EndEvent`, and after successful `Gora:RecordFavor` or `Console:SetCongregationFavorVisible`. Still **GUILD** only if `Sender:IsRegisteredPope` of the local player. Else `false, "not a registered pope"`. Inbound Restore only if `Sender:Accept(sender, "STATE")`. Optional `favor` is on the payload only when the Pope's congregation toggle is on and a sanctioned pair exists. |
-| **SNAPSHOT** | Live codec. `Net:SendSnapshot(fields, target)` encodes and whispers to `target` only if the local player is a registered Pope. Else the same refuse. `Net:RequestSnapshot(target)` is live congregation whisper: not Pope-gated; still needs a caller-supplied target; this file does not invent a Pope name. `Inputs:Catchup()` is the Event congregation control and calls that send on the injected whisper target only (`/beef catchup` binds `UnitName("target")` when it is a non-empty string). Missing target → Catchup refuses `"no target"`. Inbound **response** Restores only if `Accept(sender, "SNAPSHOT")`. Inbound **request** is answered only if the local player is a registered Pope. Channel must be **WHISPER**. No GUILD fan-out. C does not answer. |
-| **DECREE** | Live. `Console:PostDecree` → `Net:SendDecree({ line, flavor })` after Core `Set`. Inbound `_HandleDecree` Sets when `Sender:IsRegisteredPope(sender)`. `InspectProgress` / direct `Decree:Set` do not broadcast. |
-| **INPUT** | Favor, petition, and confession are live as **whisper-to-Pope** (`Net:SendFavor` / `SendPetition` / `SendConfession`). Each send still needs a caller-supplied target. This file does not invent a Pope name. GUILD INPUT stays unknown. Confession **fan-out** is leftover (never public theater). |
+| **SNAPSHOT** | Live codec. `Net:SendSnapshot(fields, target)` encodes and whispers to `target` only if the local player is a registered Pope. Else the same refuse. `Net:RequestSnapshot(target)` is live congregation whisper: not Pope-gated; a blank target now defaults to the last accepted STATE sender, else the first listed Pope in `Data/Popes.lua`. There is no Catch-up button and no `/beef catchup` — the Pope's client re-broadcasts STATE when a guildmate HELLOs during a live event, so a late joiner or `/reload` needs no action. Inbound **response** Restores only if `Accept(sender, "SNAPSHOT")`. Inbound **request** is answered only if the local player is a registered Pope. Channel must be **WHISPER**. No GUILD fan-out. C does not answer. |
+| **DECREE** | Live. `Console:PostDecree` → `Net:SendDecree({ line, flavor })` after Core `Set`. Inbound `_HandleDecree` Sets when `Sender:IsRegisteredPope(sender)`. A successful `Decree:Set` (either path) also shows the banner once for that decree. `InspectProgress` does not broadcast. |
+| **INPUT** | Favor, petition, and confession are live as **whisper-to-Pope** (`Net:SendFavor` / `SendPetition` / `SendConfession`). A blank target defaults to the last accepted STATE sender, else the listed Pope. GUILD INPUT stays unknown. Confession **fan-out** is leftover (never public theater). |
 | **SUGGESTION / SYNC_REQUEST / SYNC_STATE / RANK_COMMIT** | Retired. Named so they die quietly. Discarded unread. Never answered. |
 
 `Net:Send` (raw GUILD enqueue) is **not** Pope-gated. A congregation client can put bytes on GUILD. That is not becoming a writer. Theater is `Accept` / Restore, not "a message existed on the wire."
 
-`Snapshot:Request()` only encodes `1:SNAPSHOT:request`. `Net:RequestSnapshot(target)` is the live congregation send: whisper that body to the given target. It is not Pope-gated. `Inputs:Catchup` / `RequestSnapshot(target)` still need a caller-supplied target — this file does not invent a Pope name. `SendSnapshot` remains Pope-gated even for `role = "request"`. C asks with `RequestSnapshot`, not `SendSnapshot`. Walk step 5 may still forge the same whisper. Do not invent an opcode.
+`Snapshot:Request()` only encodes `1:SNAPSHOT:request`. `Net:RequestSnapshot(target)` is the live congregation send: whisper that body to the given target, or to the default destination (last STATE sender, else the listed Pope) when target is blank. It is not Pope-gated. `SendSnapshot` remains Pope-gated even for `role = "request"`. C asks with `RequestSnapshot`, not `SendSnapshot`. Walk step 5 may still forge the same whisper. Do not invent an opcode.
 
 **Listed Pope.** Send and Accept are fail-closed unless the Pope character is listed in `Data/Popes.lua` or `ChurchOfBeefDB.ui.popeOverrides`. Shipped name: **Thedave**. This file does not invent extra characters, a settings panel, or a `/run` stub of `IsRegisteredPope`. Agents do not edit `WTF/`. If the installed client still refuses on Thedave, step 4 is not a pass — the list is not live on that install.
 
-**Observable.** Hosted rite theater (Fight HUD, mute cards) is leftover and needs a sanctioned pair besides Runtime. Do not `/run` a fake Gora so a HUD appears. The star observable is `Runtime:Snapshot()` plus the send refuse string. Missing HUD is not a star fail.
+**Observable.** Hosted rite theater (Fight HUD, fighter-card beat) needs a sanctioned pair besides Runtime. Do not `/run` a fake Gora so a HUD appears. The star observable is `Runtime:Snapshot()` plus the send refuse string. Missing HUD is not a star fail.
 
 **Version notice.** Bible §13.4 names a gentle Quiet drop ("the Church's software has advanced"). The shipped function is `Net:_WarnVersion`. It prints **one** chat line per session, then sets `warnedVersion` and stays silent:
 
 `Church of Beef: a guildmate is running BeefNet v<version>; this client speaks v1. Update for matching addon messages.`
 
-That is the copy. Do not look for the Bible sentence in chat. `_WarnVersion` does not toast and does not itself refresh the status chip. `UI/Status.lua` may later show `BeefNet version mismatch` if the chip refreshes after `Net.warnedVersion` is set. The chip never says "syncing" or "synced."
+That is the copy. Do not look for the Bible sentence in chat. `_WarnVersion` does not toast. There is no status chip — the shell and `UI/Status.lua` are retired; the chat line is the whole notice.
 
 ---
 
@@ -96,8 +96,9 @@ Replace `<congregation character>` with C's name when you whisper. Do not invent
 ### 1. Both load
 
 - [ ] Neither client shows a script error on login or `/reload`
-- [ ] `/beef` opens without a Lua error on both
-- [ ] The status chip (if the shell is open) does **not** say "syncing" or "synced". Ready is empty. Waiting is `Reading the guild roster…`. Unguilded is `Not in a guild`. A version word, if any, is `BeefNet version mismatch` only
+- [ ] `/beef` opens the Church card without a Lua error on both
+- [ ] No "syncing" / "synced" chrome anywhere — there is no status chip.
+      The only version word is the one chat line from step 2
 - [ ] No standing chip, Officer queue, or promote toast. That product is gone
 
 ### 2. HELLO / version (one Quiet notice)
@@ -155,7 +156,7 @@ On **P**:
 
 ### 5. SNAPSHOT is whisper-to-Pope only
 
-`SendSnapshot` whispers. It does not look up a Pope name. `BuildResponse` returns nothing while Runtime is `QUIET` (`no event`). Step 4's STATE echo is what makes P able to answer a request.
+`SendSnapshot` whispers. A blank target on the congregation sends defaults to the last accepted STATE sender, else the listed Pope. `BuildResponse` returns nothing while Runtime is `QUIET` (`no event`). Step 4's STATE echo is what makes P able to answer a request. Separately from this step: while an event is live, a guildmate HELLO (login / `/reload`) makes P re-broadcast STATE — the late joiner lands in the theater without asking.
 
 On **C**, put a request on **GUILD** (wrong channel):
 
@@ -218,7 +219,7 @@ A guildmate without the addon may be online. Nothing waits on them. That is §13
 
 Do not add boxes for these, and do not invent a path so they look walked:
 
-- Favor
+- Favor split display (coded; needs a live sanctioned Gora — not this star walk)
 - Confession fan-out (whisper INPUT is live; never public theater)
 - SUMMON THE FAITHFUL
 - Live HUD health (Appendix A item 1)

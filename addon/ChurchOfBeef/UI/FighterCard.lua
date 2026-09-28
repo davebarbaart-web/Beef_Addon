@@ -5,8 +5,10 @@ local COB = ChurchOfBeef
 -- tape. The card shows; the Pope tells. Remember the last sanctioned pair
 -- and stay painted after GetSanctioned() is nil while Runtime is not QUIET.
 -- Congregation pair may arrive as Runtime subjects.fighters when Gora has
--- no live pair. Hide on QUIET / Hide() / EndEvent. ESC Hide()s the named
--- frame via UISpecialFrames (deduped). Init remounts rememberSpecial.
+-- no live pair. The card is a sanction beat: the wire glue hides it when a
+-- Gora verdict is recorded, on inbound CONSEQUENCE, on QUIET, and on
+-- EndEvent. ESC Hide()s the named frame via UISpecialFrames (deduped).
+-- Init remounts rememberSpecial.
 -- Hide remounts rememberSpecial when the frame already exists, then
 -- remounts a missing OnHide. Show / Refresh remount rememberSpecial
 -- when the frame already exists and keep wireCardOnHide. OnHide
@@ -14,23 +16,28 @@ local COB = ChurchOfBeef
 -- Refresh / Hide remount a missing OnHide; never replace an
 -- existing script. lastPair remains until QUIET.
 -- A new Sanction replaces the remembered pair.
--- Dress (U-F): bull-horn header, blackletter names, serif ledger,
--- papal seal, iron+parchment frame — all via Theme. Roman numerals
--- on Record / Defenses / Head-to-head. No close furniture.
+-- Dress: stacked A-over-B tape (R3 is one fighter; both sit in one
+-- left-third card). Dark name bands with class-tinted blackletter,
+-- serif ledger in charcoal on parchment, papal seal, iron+parchment
+-- frame — all via Theme. Arabic W/L on Record / Head-to-head;
+-- Arabic on Defenses. No bag-slot chrome. No close furniture.
 -- Honorifics are Pope text from Store human. Empty honorifics hide.
+-- Long honorifics wrap inside the plate and stay above the footer.
 -- Defenses are a mute CountDefenses integer. Zero or a missing
 -- method hides the line. No live health. No sound. No generated flavor.
+-- Type: Theme.FontSize (name ≥ 16, headline 22, label/body/caption 12).
+-- Rhythm: Theme.Space — no leftover 6/10/14.
 local FighterCard = {
   MODE = "Event",
 }
 COB.FighterCard = FighterCard
 
 local FRAME_NAME = "ChurchOfBeefFighterCard"
-local FALLBACK_W, FALLBACK_H = 420, 220
--- U+2013; same join as Common.RomanPair. Common.RomanNumeral refuses 0,
--- so a fresh or one-sided record composes with theatrical nulla ("N").
+local FALLBACK_W, FALLBACK_H = 420, 360
+local TAPE_MIN_H = 280
+-- U+2013 W–L join. Record sides are Arabic, including 0.
 local EN_DASH = "\226\128\147"
-local ROMAN_ZERO = "N"
+local SURFACE_U0, SURFACE_U1 = 0.12, 0.88
 
 local frame = nil
 local lastView = nil
@@ -95,8 +102,19 @@ local function themeFont(role)
   return path
 end
 
-local function themeFontSize(key, fallback)
+local function themeFontSize(key, floor)
   local sizes = COB.Theme and COB.Theme.FontSize
+  local n = type(sizes) == "table" and sizes[key] or nil
+  if type(n) == "number" then
+    if type(floor) == "number" and n < floor then return floor end
+    return n
+  end
+  if type(floor) == "number" then return floor end
+  return 12
+end
+
+local function space(key, fallback)
+  local sizes = COB.Theme and COB.Theme.Space
   if type(sizes) == "table" and type(sizes[key]) == "number" then
     return sizes[key]
   end
@@ -113,10 +131,23 @@ local function applyTexture(tex, path)
   return false
 end
 
+local function isBagSlotPath(path)
+  if type(path) ~= "string" then return false end
+  if path:find("EmptySlot", 1, true) then return true end
+  if path:find("Quickslot", 1, true) then return true end
+  return false
+end
+
 local function applyThemeTexture(tex, name)
   local path = themeTexture(name)
-  if not path then return false end
+  if not path or isBagSlotPath(path) then return false end
   return applyTexture(tex, path)
+end
+
+local function cropSurface(tex)
+  if tex and tex.SetTexCoord then
+    pcall(tex.SetTexCoord, tex, SURFACE_U0, SURFACE_U1, SURFACE_U0, SURFACE_U1)
+  end
 end
 
 local function fill(tex, r, g, b, a)
@@ -138,7 +169,10 @@ end
 
 local function applyParchment(tex)
   if not tex then return end
-  if applyThemeTexture(tex, "frame_proclamation_center") then return end
+  if applyThemeTexture(tex, "frame_proclamation_center") then
+    cropSurface(tex)
+    return
+  end
   fillRole(tex, "parchment")
 end
 
@@ -255,7 +289,6 @@ local function rememberPair(pair)
   lastPair = {
     fighterA = pair.fighterA,
     fighterB = pair.fighterB,
-    stipulation = pair.stipulation,
   }
 end
 
@@ -300,12 +333,36 @@ local function headToHeadFor(character, opponentId)
   return nil
 end
 
+local function stashedName(id)
+  local stash = COB._lastCastNames
+  if type(stash) ~= "table" then return nil end
+  if type(stash.byId) == "table" and type(stash.byId[id]) == "string" then
+    return stash.byId[id]
+  end
+  if not COB.Runtime or not COB.Runtime.Snapshot then return nil end
+  local snap = COB.Runtime:Snapshot()
+  local subjects = type(snap) == "table" and snap.subjects or nil
+  if type(subjects) ~= "table" then return nil end
+  if subjects.candidate == id and type(stash.candidate) == "string" then
+    return stash.candidate
+  end
+  if type(subjects.fighters) == "table" then
+    if subjects.fighters[1] == id and type(stash.fighterA) == "string" then
+      return stash.fighterA
+    end
+    if subjects.fighters[2] == id and type(stash.fighterB) == "string" then
+      return stash.fighterB
+    end
+  end
+  return nil
+end
+
 local function fighterFrom(id)
   local ch = COB.Store and COB.Store.GetCharacter and COB.Store:GetCharacter(id) or nil
   if type(ch) ~= "table" then
     return {
       id = id,
-      name = "",
+      name = stashedName(id) or "",
       level = nil,
       title = nil,
       honorific = nil,
@@ -330,37 +387,20 @@ local function fighterFrom(id)
   }
 end
 
--- Theatrical zero: Common.RomanNumeral is 1–3999. Report the Common gap.
-local function romanGlyph(n)
-  if type(n) ~= "number" then return nil end
-  n = math.floor(n)
-  if n == 0 then return ROMAN_ZERO end
-  if not (COB.Common and COB.Common.RomanNumeral) then return nil end
-  local glyph = COB.Common.RomanNumeral(n)
-  if type(glyph) == "string" then return glyph end
-  return nil
+local function arabicCount(n)
+  local whole = 0
+  if type(n) == "number" then whole = math.floor(n) end
+  if whole < 0 then whole = 0 end
+  return tostring(whole)
 end
 
 local function recordText(fighter)
-  local wins = fighter.wins or 0
-  local losses = fighter.losses or 0
-  if COB.Common and COB.Common.RomanPair then
-    local pair = COB.Common.RomanPair(wins, losses)
-    if type(pair) == "string" then return pair end
-  end
-  local left = romanGlyph(wins)
-  local right = romanGlyph(losses)
-  if not left or not right then return "" end
-  return left .. EN_DASH .. right
+  return arabicCount(fighter.wins or 0) .. EN_DASH .. arabicCount(fighter.losses or 0)
 end
 
 local function defensesText(count)
   if type(count) ~= "number" or count < 1 then return nil end
-  if COB.Common and COB.Common.RomanNumeral then
-    local glyph = COB.Common.RomanNumeral(count)
-    if type(glyph) == "string" then return glyph end
-  end
-  return nil
+  return arabicCount(count)
 end
 
 local function levelText(fighter)
@@ -368,11 +408,40 @@ local function levelText(fighter)
   return tostring(fighter.level)
 end
 
-local function popeLine(pair)
-  if type(pair) ~= "table" then return nil end
-  local line = pair.stipulation
-  if type(line) ~= "string" or line == "" then return nil end
-  return line
+local function honorificWidth(plate)
+  local sm = space("sm", 8)
+  local w = plate and plate.GetWidth and plate:GetWidth()
+  if type(w) == "number" and w > sm * 2 then
+    return w - sm * 2
+  end
+  w = FALLBACK_W - sm * 4
+  local band = space("band", 48)
+  if w < band then w = band end
+  return w
+end
+
+-- Honorifics wrap inside the plate. Plate A reserves the VS line;
+-- plate B stays above the shared H2H footer.
+local function layoutHonorific(plate, relative)
+  if not plate or not plate.honorific then return end
+  local fs = plate.honorific
+  local sm = space("sm", 8)
+  local gap = space("xs", 4)
+  local reserve = plate._honorificReserve
+  if type(reserve) ~= "number" then reserve = 0 end
+  local anchor = relative or plate.record
+  if fs.ClearAllPoints then fs:ClearAllPoints() end
+  if anchor then
+    fs:SetPoint("TOPLEFT", anchor, "BOTTOMLEFT", 0, -gap)
+  else
+    fs:SetPoint("TOPLEFT", plate, "TOPLEFT", sm, -gap)
+  end
+  fs:SetPoint("RIGHT", plate, "RIGHT", -sm, 0)
+  fs:SetPoint("BOTTOM", plate, "BOTTOM", 0, reserve)
+  if fs.SetWidth then fs:SetWidth(honorificWidth(plate)) end
+  if fs.SetJustifyV then fs:SetJustifyV("TOP") end
+  if fs.SetWordWrap then fs:SetWordWrap(true) end
+  if fs.SetMaxLines then fs:SetMaxLines(2) end
 end
 
 local function paintHonorific(fs, text)
@@ -383,7 +452,7 @@ local function paintHonorific(fs, text)
     fs:SetText("")
     if fs.Hide then fs:Hide() end
   end
-  tintRole(fs, "silver")
+  tintRole(fs, "charcoal")
 end
 
 local function paintDefenses(plate, count)
@@ -399,16 +468,9 @@ local function paintDefenses(plate, count)
     setShown(plate.defensesLabel, false)
     setShown(plate.defensesGlyph, false)
   end
-  tintRole(plate.defenses, "parchment")
+  tintRole(plate.defenses, "charcoal")
   local relative = text and plate.defenses or plate.record
-  if plate.honorific and plate.honorific.ClearAllPoints then
-    plate.honorific:ClearAllPoints()
-  end
-  if plate._justify == "RIGHT" then
-    plate.honorific:SetPoint("TOPRIGHT", relative, "BOTTOMRIGHT", 0, -4)
-  else
-    plate.honorific:SetPoint("TOPLEFT", relative, "BOTTOMLEFT", 0, -4)
-  end
+  layoutHonorific(plate, relative)
 end
 
 local function paintFighter(plate, fighter)
@@ -419,10 +481,10 @@ local function paintFighter(plate, fighter)
   paintDefenses(plate, fighter.defenses)
   paintHonorific(plate.honorific, fighter.honorific)
   tint(plate.name, fighter.nameColor or roleColor("parchment"))
-  tintRole(plate.level, "silver")
-  tintRole(plate.title, "parchment")
-  tintRole(plate.record, "parchment")
-  tintRole(plate.recordLabel, "gold")
+  tintRole(plate.level, "charcoal")
+  tintRole(plate.title, "charcoal")
+  tintRole(plate.record, "charcoal")
+  tintRole(plate.recordLabel, "charcoal")
 end
 
 local function paintHidden()
@@ -454,10 +516,6 @@ local function paintHidden()
   setShown(frame.headToHead, false)
   setShown(frame.headToHeadLabel, false)
   setShown(frame.headToHeadGlyph, false)
-  frame.stipulation:SetText("")
-  setShown(frame.stipulation, false)
-  setShown(frame.stipulationLabel, false)
-  setShown(frame.stipulationGlyph, false)
   frame:Hide()
   hiding = false
   return lastView
@@ -485,15 +543,11 @@ local function paintShown(pair)
     local chA = COB.Store:GetCharacter(pair.fighterA)
     h2h = headToHeadFor(chA, pair.fighterB)
   end
-  local stipulation = popeLine(pair)
-
   paintFighter(frame.plateA, fighterA)
   paintFighter(frame.plateB, fighterB)
   local h2hText = h2h and recordText(h2h) or nil
   paintLedgerPair(frame.headToHead, frame.headToHeadLabel, frame.headToHeadGlyph, h2hText)
-  if h2hText then tintRole(frame.headToHead, "parchment") end
-  paintLedgerPair(frame.stipulation, frame.stipulationLabel, frame.stipulationGlyph, stipulation)
-  if stipulation then tintRole(frame.stipulation, "parchment") end
+  if h2hText then tintRole(frame.headToHead, "charcoal") end
 
   lastView = {
     shown = true,
@@ -501,7 +555,7 @@ local function paintShown(pair)
     fighterA = fighterA,
     fighterB = fighterB,
     headToHead = h2h,
-    stipulation = stipulation,
+    stipulation = nil,
     health = nil,
   }
   frame:Show()
@@ -521,9 +575,10 @@ local function cardHeight()
   local parent = UIParent
   local h = parent and parent.GetHeight and parent:GetHeight()
   if type(h) == "number" and h > 0 then
-    local third = math.floor(h / 3)
-    if third < FALLBACK_H then return third end
-    return FALLBACK_H
+    local budget = math.floor(h * 0.48 + 0.5)
+    if budget < TAPE_MIN_H then return TAPE_MIN_H end
+    if budget > FALLBACK_H then return FALLBACK_H end
+    return budget
   end
   return FALLBACK_H
 end
@@ -537,7 +592,9 @@ end
 local function applyFont(fs, role, sizeKey)
   if not fs then return end
   local path = themeFont(role)
-  local px = themeFontSize(sizeKey, 12)
+  local floor = 12
+  if role == "display" then floor = 16 end
+  local px = themeFontSize(sizeKey, floor)
   if role == "display" and px < 16 then px = 16 end
   local used = false
   if type(path) == "string" and fs.SetFont then
@@ -556,33 +613,60 @@ end
 
 local function makeGlyph(parent, name)
   local tex = parent:CreateTexture(nil, "ARTWORK")
-  tex:SetSize(14, 14)
+  local g = space("glyph", 14)
+  tex:SetSize(g, g)
   applyThemeTexture(tex, name)
   tintTexRole(tex, "gold")
   return tex
 end
 
+local function layoutHeader(plate)
+  if not plate or not plate.header then return end
+  if plate.header.ClearAllPoints then plate.header:ClearAllPoints() end
+  plate.header:SetPoint("TOPLEFT", plate, "TOPLEFT", 0, 0)
+  plate.header:SetPoint("TOPRIGHT", plate, "TOPRIGHT", 0, 0)
+  if plate.header.SetHeight then plate.header:SetHeight(space("lg", 24) + space("sm", 8)) end
+  fillRole(plate.header, "charcoal")
+  if plate.headerEdge then
+    if plate.headerEdge.ClearAllPoints then plate.headerEdge:ClearAllPoints() end
+    plate.headerEdge:SetPoint("BOTTOMLEFT", plate.header, "BOTTOMLEFT", 0, 0)
+    plate.headerEdge:SetPoint("BOTTOMRIGHT", plate.header, "BOTTOMRIGHT", 0, 0)
+    if plate.headerEdge.SetHeight then plate.headerEdge:SetHeight(space("rule", 2)) end
+    fillRole(plate.headerEdge, "gold")
+  end
+end
+
 local function buildPlate(parent, justify)
   local plate = CreateFrame("Frame", nil, parent)
   plate._justify = justify
+  plate.header = plate:CreateTexture(nil, "ARTWORK")
+  plate.headerEdge = plate:CreateTexture(nil, "OVERLAY")
+  fillRole(plate.header, "charcoal")
+  fillRole(plate.headerEdge, "gold")
   plate.name = makeLabel(plate, "GameFontHighlight", justify)
   applyFont(plate.name, "display", "name")
+  if plate.name.SetWordWrap then plate.name:SetWordWrap(false) end
+  if plate.name.SetMaxLines then plate.name:SetMaxLines(1) end
+  if plate.name.SetJustifyV then plate.name:SetJustifyV("MIDDLE") end
   plate.title = makeLabel(plate, "GameFontNormal", justify)
   applyFont(plate.title, "label", "label")
+  if plate.title.SetWordWrap then plate.title:SetWordWrap(false) end
+  if plate.title.SetMaxLines then plate.title:SetMaxLines(1) end
+  if plate.title.SetHeight then plate.title:SetHeight(themeFontSize("label")) end
   plate.level = makeLabel(plate, "GameFontNormal", justify)
   applyFont(plate.level, "body", "caption")
   plate.recordGlyph = makeGlyph(plate, "glyph_record")
   plate.recordLabel = makeLabel(plate, "GameFontNormal", justify)
   applyFont(plate.recordLabel, "label", "label")
   plate.recordLabel:SetText("Record")
-  tintRole(plate.recordLabel, "gold")
+  tintRole(plate.recordLabel, "charcoal")
   plate.record = makeLabel(plate, "GameFontNormal", justify)
   applyFont(plate.record, "body", "body")
   plate.defensesGlyph = makeGlyph(plate, "glyph_defenses")
   plate.defensesLabel = makeLabel(plate, "GameFontNormal", justify)
   applyFont(plate.defensesLabel, "label", "label")
   plate.defensesLabel:SetText("Defenses")
-  tintRole(plate.defensesLabel, "gold")
+  tintRole(plate.defensesLabel, "charcoal")
   plate.defenses = makeLabel(plate, "GameFontNormal", justify)
   applyFont(plate.defenses, "body", "body")
   setShown(plate.defenses, false)
@@ -590,6 +674,9 @@ local function buildPlate(parent, justify)
   setShown(plate.defensesGlyph, false)
   plate.honorific = makeLabel(plate, "GameFontNormal", justify)
   applyFont(plate.honorific, "body", "body")
+  if plate.honorific.SetJustifyV then plate.honorific:SetJustifyV("TOP") end
+  if plate.honorific.SetWordWrap then plate.honorific:SetWordWrap(true) end
+  if plate.honorific.SetMaxLines then plate.honorific:SetMaxLines(2) end
   setShown(plate.honorific, false)
   return plate
 end
@@ -612,133 +699,137 @@ end
 local function build()
   local parent = UIParent
   local width, height = cardWidth(), cardHeight()
-  local widget = CreateFrame("Frame", FRAME_NAME, parent, "BackdropTemplate")
+  local widget = CreateFrame("Frame", FRAME_NAME, parent)
   widget:SetSize(width, height)
   widget:SetClampedToScreen(true)
   if widget.EnableMouse then widget:EnableMouse(false) end
   if widget.SetFrameStrata then widget:SetFrameStrata("DIALOG") end
   widget:SetPoint("LEFT", parent, "LEFT", 0, 0)
-  local framePath = themeTexture("frame_fightercard")
-  local edgePath = themeTexture("frame_proclamation_edge_top")
-  if widget.SetBackdrop and framePath then
-    widget:SetBackdrop({
-      bgFile = framePath,
-      edgeFile = edgePath,
-      tile = true,
-      tileSize = 8,
-      edgeSize = 12,
-      insets = { left = 3, right = 3, top = 3, bottom = 3 },
-    })
-    local cr, cg, cb = themeRGB("charcoal")
-    if cr and widget.SetBackdropColor then
-      widget:SetBackdropColor(cr, cg, cb, 1)
-    end
-    local gr, gg, gb = themeRGB("gold")
-    if gr and widget.SetBackdropBorderColor then
-      widget:SetBackdropBorderColor(gr, gg, gb, 1)
-    end
-  end
+  local sm = space("sm", 8)
+  local md = space("md", 16)
+  local xs = space("xs", 4)
+  local rule = space("rule", 2)
+  local sealPx = space("seal", 28)
 
   widget.iron = widget:CreateTexture(nil, "BACKGROUND")
   if widget.iron.SetAllPoints then widget.iron:SetAllPoints(widget) end
   if not applyThemeTexture(widget.iron, "frame_fightercard") then
     fillRole(widget.iron, "charcoal")
   else
+    cropSurface(widget.iron)
     tintTexRole(widget.iron, "iron")
   end
 
   widget.parchment = widget:CreateTexture(nil, "BACKGROUND")
   if widget.parchment.ClearAllPoints then widget.parchment:ClearAllPoints() end
-  widget.parchment:SetPoint("TOPLEFT", widget, "TOPLEFT", 5, -5)
-  widget.parchment:SetPoint("BOTTOMRIGHT", widget, "BOTTOMRIGHT", -5, 5)
+  widget.parchment:SetPoint("TOPLEFT", widget, "TOPLEFT", sm, -sm)
+  widget.parchment:SetPoint("BOTTOMRIGHT", widget, "BOTTOMRIGHT", -sm, sm)
   applyParchment(widget.parchment)
 
   widget.bullhorn = widget:CreateTexture(nil, "ARTWORK")
-  widget.bullhorn:SetSize(48, 24)
-  widget.bullhorn:SetPoint("TOP", widget, "TOP", 0, -2)
-  applyThemeTexture(widget.bullhorn, "ornament_bullhorn")
-  tintTexRole(widget.bullhorn, "gold")
+  widget.bullhorn:SetSize(space("xl", 32) * 3, space("lg", 24))
+  widget.bullhorn:SetPoint("TOP", widget, "TOP", 0, -xs)
+  if not applyThemeTexture(widget.bullhorn, "ornament_bullhorn") then
+    fillRole(widget.bullhorn, "gold")
+  else
+    tintTexRole(widget.bullhorn, "gold")
+  end
 
   widget.goldRule = widget:CreateTexture(nil, "ARTWORK")
-  widget.goldRule:SetPoint("TOPLEFT", widget, "TOPLEFT", 8, -28)
-  widget.goldRule:SetPoint("TOPRIGHT", widget, "TOPRIGHT", -8, -28)
-  if widget.goldRule.SetHeight then widget.goldRule:SetHeight(1) end
+  widget.goldRule:SetPoint("TOPLEFT", widget, "TOPLEFT", md, -(space("lg", 24) + sm))
+  widget.goldRule:SetPoint("TOPRIGHT", widget, "TOPRIGHT", -md, -(space("lg", 24) + sm))
+  if widget.goldRule.SetHeight then widget.goldRule:SetHeight(rule) end
   fillRole(widget.goldRule, "gold")
 
   widget.seal = widget:CreateTexture(nil, "ARTWORK")
-  widget.seal:SetSize(28, 28)
-  widget.seal:SetPoint("BOTTOM", widget, "BOTTOM", 0, 4)
+  widget.seal:SetSize(sealPx, sealPx)
+  widget.seal:SetPoint("BOTTOMRIGHT", widget.parchment, "BOTTOMRIGHT", -sm, sm)
   tintSeal(widget.seal)
 
-  local plateW = math.floor((width - 56) / 2)
-  local plateH = height - 88
+  -- Stacked tale-of-the-tape (R3 is one fighter; both sit in one left-third
+  -- ledger). Shared H2H sits in the footer above the seal.
+  local plateMin = space("band", 48) + space("lg", 24)
+  local plateH = math.floor((height - space("band", 48) - space("footer", 40) - sm) / 2)
+  if plateH < plateMin then plateH = plateMin end
+  local plateW = width - sm * 4
   widget.plateA = buildPlate(widget, "LEFT")
-  widget.plateB = buildPlate(widget, "RIGHT")
-  widget.plateA:SetSize(plateW, plateH)
-  widget.plateB:SetSize(plateW, plateH)
-  widget.plateA:SetPoint("LEFT", widget, "LEFT", 12, 8)
-  widget.plateB:SetPoint("RIGHT", widget, "RIGHT", -12, 8)
+  widget.plateB = buildPlate(widget, "LEFT")
+  widget.plateA:SetWidth(plateW)
+  widget.plateB:SetWidth(plateW)
+  widget.plateA:SetHeight(plateH)
+  widget.plateB:SetHeight(plateH)
+  widget.plateA:SetPoint("TOPLEFT", widget.parchment, "TOPLEFT", sm, -(space("lg", 24) + xs))
+  widget.plateA:SetPoint("TOPRIGHT", widget.parchment, "TOPRIGHT", -sm, -(space("lg", 24) + xs))
+  widget.plateB:SetPoint("TOPLEFT", widget.plateA, "BOTTOMLEFT", 0, -xs)
+  widget.plateB:SetPoint("TOPRIGHT", widget.plateA, "BOTTOMRIGHT", 0, -xs)
+  layoutHeader(widget.plateA)
+  layoutHeader(widget.plateB)
+  widget.plateA._honorificReserve = space("lg", 24)
+  widget.plateB._honorificReserve = space("xs", 4)
 
-  widget.plateA.name:SetPoint("TOPLEFT", widget.plateA, "TOPLEFT", 8, -4)
-  widget.plateB.name:SetPoint("TOPRIGHT", widget.plateB, "TOPRIGHT", -8, -4)
-  widget.plateA.title:SetPoint("TOPLEFT", widget.plateA.name, "BOTTOMLEFT", 0, -2)
-  widget.plateB.title:SetPoint("TOPRIGHT", widget.plateB.name, "BOTTOMRIGHT", 0, -2)
-  widget.plateA.level:SetPoint("TOPLEFT", widget.plateA.title, "BOTTOMLEFT", 0, -2)
-  widget.plateB.level:SetPoint("TOPRIGHT", widget.plateB.title, "BOTTOMRIGHT", 0, -2)
+  widget.plateA.name:SetPoint("TOPLEFT", widget.plateA.header, "TOPLEFT", sm, 0)
+  widget.plateA.name:SetPoint("BOTTOMRIGHT", widget.plateA.header, "BOTTOMRIGHT", -sm, 0)
+  widget.plateB.name:SetPoint("TOPLEFT", widget.plateB.header, "TOPLEFT", sm, 0)
+  widget.plateB.name:SetPoint("BOTTOMRIGHT", widget.plateB.header, "BOTTOMRIGHT", -sm, 0)
+  widget.plateA.title:SetPoint("TOPLEFT", widget.plateA.header, "BOTTOMLEFT", sm, -xs)
+  widget.plateB.title:SetPoint("TOPLEFT", widget.plateB.header, "BOTTOMLEFT", sm, -xs)
+  widget.plateA.level:SetPoint("LEFT", widget.plateA.title, "RIGHT", sm, 0)
+  widget.plateB.level:SetPoint("LEFT", widget.plateB.title, "RIGHT", sm, 0)
 
-  widget.plateA.recordGlyph:SetPoint("TOPLEFT", widget.plateA.level, "BOTTOMLEFT", 0, -6)
-  widget.plateA.recordLabel:SetPoint("LEFT", widget.plateA.recordGlyph, "RIGHT", 4, 0)
-  widget.plateA.record:SetPoint("LEFT", widget.plateA.recordLabel, "RIGHT", 6, 0)
-  widget.plateB.recordGlyph:SetPoint("TOPRIGHT", widget.plateB.level, "BOTTOMRIGHT", 0, -6)
-  widget.plateB.recordLabel:SetPoint("RIGHT", widget.plateB.recordGlyph, "LEFT", -4, 0)
-  widget.plateB.record:SetPoint("RIGHT", widget.plateB.recordLabel, "LEFT", -6, 0)
+  widget.plateA.recordGlyph:SetPoint("TOPLEFT", widget.plateA.title, "BOTTOMLEFT", 0, -sm)
+  widget.plateA.recordLabel:SetPoint("LEFT", widget.plateA.recordGlyph, "RIGHT", xs, 0)
+  widget.plateA.record:SetPoint("LEFT", widget.plateA.recordLabel, "RIGHT", sm, 0)
+  widget.plateB.recordGlyph:SetPoint("TOPLEFT", widget.plateB.title, "BOTTOMLEFT", 0, -sm)
+  widget.plateB.recordLabel:SetPoint("LEFT", widget.plateB.recordGlyph, "RIGHT", xs, 0)
+  widget.plateB.record:SetPoint("LEFT", widget.plateB.recordLabel, "RIGHT", sm, 0)
 
-  widget.plateA.defensesGlyph:SetPoint("TOPLEFT", widget.plateA.record, "BOTTOMLEFT", 0, -4)
-  widget.plateA.defensesLabel:SetPoint("LEFT", widget.plateA.defensesGlyph, "RIGHT", 4, 0)
-  widget.plateA.defenses:SetPoint("LEFT", widget.plateA.defensesLabel, "RIGHT", 6, 0)
-  widget.plateB.defensesGlyph:SetPoint("TOPRIGHT", widget.plateB.record, "BOTTOMRIGHT", 0, -4)
-  widget.plateB.defensesLabel:SetPoint("RIGHT", widget.plateB.defensesGlyph, "LEFT", -4, 0)
-  widget.plateB.defenses:SetPoint("RIGHT", widget.plateB.defensesLabel, "LEFT", -6, 0)
+  widget.plateA.defensesGlyph:SetPoint("TOPLEFT", widget.plateA.recordGlyph, "BOTTOMLEFT", 0, -xs)
+  widget.plateA.defensesLabel:SetPoint("LEFT", widget.plateA.defensesGlyph, "RIGHT", xs, 0)
+  widget.plateA.defenses:SetPoint("LEFT", widget.plateA.defensesLabel, "RIGHT", sm, 0)
+  widget.plateB.defensesGlyph:SetPoint("TOPLEFT", widget.plateB.recordGlyph, "BOTTOMLEFT", 0, -xs)
+  widget.plateB.defensesLabel:SetPoint("LEFT", widget.plateB.defensesGlyph, "RIGHT", xs, 0)
+  widget.plateB.defenses:SetPoint("LEFT", widget.plateB.defensesLabel, "RIGHT", sm, 0)
 
-  widget.plateA.honorific:SetPoint("TOPLEFT", widget.plateA.record, "BOTTOMLEFT", 0, -4)
-  widget.plateB.honorific:SetPoint("TOPRIGHT", widget.plateB.record, "BOTTOMRIGHT", 0, -4)
+  layoutHonorific(widget.plateA, widget.plateA.record)
+  layoutHonorific(widget.plateB, widget.plateB.record)
 
   widget.vs = makeLabel(widget, "GameFontNormal", "CENTER")
   applyFont(widget.vs, "label", "label")
-  widget.vs:SetPoint("CENTER", widget, "CENTER", 0, 16)
+  widget.vs:SetPoint("BOTTOM", widget.plateA, "BOTTOM", 0, 0)
   widget.vs:SetText("VS")
-  tintRole(widget.vs, "silver")
+  tintRole(widget.vs, "charcoal")
 
   widget.headToHeadGlyph = makeGlyph(widget, "glyph_headtohead")
-  widget.headToHeadLabel = makeLabel(widget, "GameFontNormal", "CENTER")
+  widget.headToHeadLabel = makeLabel(widget, "GameFontNormal", "LEFT")
   applyFont(widget.headToHeadLabel, "label", "label")
   widget.headToHeadLabel:SetText("Head-to-head")
-  tintRole(widget.headToHeadLabel, "gold")
-  widget.headToHead = makeLabel(widget, "GameFontNormal", "CENTER")
+  tintRole(widget.headToHeadLabel, "charcoal")
+  widget.headToHead = makeLabel(widget, "GameFontNormal", "LEFT")
   applyFont(widget.headToHead, "body", "body")
-  widget.headToHeadLabel:SetPoint("BOTTOM", widget, "BOTTOM", 0, 56)
-  widget.headToHeadGlyph:SetPoint("RIGHT", widget.headToHeadLabel, "LEFT", -4, 0)
-  widget.headToHead:SetPoint("LEFT", widget.headToHeadLabel, "RIGHT", 6, 0)
+  widget.headToHeadLabel:SetPoint(
+    "BOTTOMLEFT",
+    widget.parchment,
+    "BOTTOMLEFT",
+    sm + space("glyph", 14) + xs,
+    space("footer", 40)
+  )
+  widget.headToHeadGlyph:SetPoint("RIGHT", widget.headToHeadLabel, "LEFT", -xs, 0)
+  widget.headToHead:SetPoint("LEFT", widget.headToHeadLabel, "RIGHT", sm, 0)
   setShown(widget.headToHead, false)
   setShown(widget.headToHeadLabel, false)
   setShown(widget.headToHeadGlyph, false)
 
-  widget.stipulationGlyph = makeGlyph(widget, "glyph_stipulation")
-  widget.stipulationLabel = makeLabel(widget, "GameFontNormal", "CENTER")
-  applyFont(widget.stipulationLabel, "label", "label")
-  widget.stipulationLabel:SetText("Stipulation")
-  tintRole(widget.stipulationLabel, "gold")
-  widget.stipulation = makeLabel(widget, "GameFontNormal", "CENTER")
-  applyFont(widget.stipulation, "body", "body")
-  widget.stipulationLabel:SetPoint("BOTTOM", widget, "BOTTOM", 0, 36)
-  widget.stipulationGlyph:SetPoint("RIGHT", widget.stipulationLabel, "LEFT", -4, 0)
-  widget.stipulation:SetPoint("LEFT", widget.stipulationLabel, "RIGHT", 6, 0)
-  setShown(widget.stipulation, false)
-  setShown(widget.stipulationLabel, false)
-  setShown(widget.stipulationGlyph, false)
-
   widget:Hide()
   wireCardOnHide(widget)
+  if type(widget.RegisterEvent) == "function" then
+    widget:RegisterEvent("DISPLAY_SIZE_CHANGED")
+    widget:RegisterEvent("UI_SCALE_CHANGED")
+    if type(widget.SetScript) == "function" then
+      widget:SetScript("OnEvent", function()
+        widget:SetSize(cardWidth(), cardHeight())
+      end)
+    end
+  end
   return widget
 end
 

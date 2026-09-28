@@ -35,7 +35,7 @@ State broadcasts one-way on the guild addon channel with sequence numbers. Theat
 
 ## Ceremony runtime (Bible §20)
 
-States, named only: **QUIET → ASSEMBLY → RITE (typed) → CONSEQUENCE → ASSEMBLY or QUIET**. The Pope's client owns every transition. Event Mode theater (Gora, fight HUD, Knighting) hangs on this skeleton. The Director Console starts events from QUIET (§20.2). The Decree is Quiet Mode (§14.1). Records Book is player-opened identity/history (§14.2). Detail: `ceremony-runtime.mdc`.
+States, named only: **QUIET → ASSEMBLY → RITE (typed) → CONSEQUENCE → ASSEMBLY or QUIET**. The Pope's client owns every transition. Event Mode theater (Gora, fight HUD, Knighting) hangs on this skeleton. The Director Console starts events from QUIET (§20.2). The Nights board is Quiet Mode, player-opened (§14.1). Records Book is player-opened identity/history (§14.2). Detail: `ceremony-runtime.mdc`.
 
 ## Repo map
 
@@ -44,7 +44,7 @@ addon/ChurchOfBeef/                 # this workspace → Interface/AddOns/Church
   Data/                             # machine-readable tables (consumed by Core)
   Core/                             # Common, Roster, DB keepers; Pope's store is authoritative
   Net/                              # BeefNet transport keeper
-  UI/                               # UI shell keeper
+  UI/                               # surface keepers (RecordsBook, Console, Hud, …)
   ChurchOfBeef.toc                  # load order = dependency graph
   ChurchOfBeef.lua                  # bootstrap: events, /beef, Init
 tests/                              # desktop Lua Core harness
@@ -61,14 +61,14 @@ Keep the Cursor workspace on **Beef_Addon** so `.cursor/rules` apply.
 | Phase | Runs |
 |-------|------|
 | `ADDON_LOADED` (`ChurchOfBeef`) | `COB.DB:Init()` |
-| `PLAYER_LOGIN` | `COB.UI:Init()`, `COB.Net:Init()` |
-| `/beef` | `COB.UI:Toggle()` |
+| `PLAYER_LOGIN` | bootstrap `initUi()` (per-module Init), `COB.Net:Init()`, `InstallWire()` |
+| `/beef` | `COB.PlayerCard:Toggle()` (`/beef console` → `COB.Console:Show()`) |
 
 SV direction: account-level `ChurchOfBeefDB` (no server = per-client persistence, §13.1; store scope is account-wide, §12 / Audit §6.3). BeefNet prefix `COB` / channel `GUILD`.
 
 ## Edit preferences
 
-- Extend existing keepers (`Core/Common.lua`, `Core/Roster.lua`, `Core/DB.lua`, `Net/BeefNet.lua`, UI shell) over new top-level files
+- Extend existing keepers (`Core/Common.lua`, `Core/Roster.lua`, `Core/DB.lua`, `Net/BeefNet.lua`, the UI surface modules) over new top-level files
 - Expand TOC only when the file exists; never list missing files
 - Keep `ChurchOfBeef*.lua` casing consistent (case-sensitive packaging)
 - Prefer `docs/design/` over inventing policy from `docs/research/` or `docs/archive/pre-reformation/`

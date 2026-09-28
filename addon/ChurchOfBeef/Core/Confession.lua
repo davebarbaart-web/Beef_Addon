@@ -31,6 +31,35 @@ local function knownCharacter(id)
   return true
 end
 
+local function nameKey(name)
+  return COB.Names and COB.Names.Key(name) or nil
+end
+
+local function displayName(name)
+  return COB.Names and COB.Names.Display(name) or nil
+end
+
+local function sameName(a, b)
+  return COB.Names and COB.Names.Same(a, b) or false
+end
+
+-- Name → store id. Look up only. Never Ensure / CreateHuman / LinkCharacter.
+local function lookupCharacterId(name)
+  if not (COB.Store and type(COB.Store.Snapshot) == "function") then
+    return nil
+  end
+  local snap = COB.Store:Snapshot()
+  local chars = type(snap) == "table" and snap.characters or nil
+  if type(chars) ~= "table" then return nil end
+  for i = 1, #chars do
+    local row = chars[i]
+    if type(row) == "table" and sameName(row.name, name) then
+      return row.id
+    end
+  end
+  return nil
+end
+
 local function parseText(text)
   if text == nil then return nil end
   if type(text) ~= "string" then return nil, "invalid text" end
@@ -42,11 +71,20 @@ local function parseText(text)
 end
 
 local function copyRow(entry)
-  return {
-    characterId = entry.characterId,
+  local out = {
     text = entry.text,
     called = entry.called == true,
   }
+  if entry.characterId ~= nil then
+    out.characterId = entry.characterId
+  end
+  if entry.senderKey ~= nil then
+    out.senderKey = entry.senderKey
+  end
+  if entry.name ~= nil then
+    out.name = entry.name
+  end
+  return out
 end
 
 function Confession:_Expire()
@@ -96,6 +134,42 @@ function Confession:Receive(characterId, text)
   return copyRow(entry)
 end
 
+-- INPUT apply. Ignore payload character ids. Known sender names resolve to a
+-- store id; unknown senders sit as a name-key inbox row. Never CreateHuman.
+function Confession:ReceiveFromSender(sender, text)
+  self:_Expire()
+  local eventId = liveEventId()
+  if not eventId then return nil, "no event" end
+  local key = nameKey(sender)
+  if not key then return nil, "invalid sender" end
+  local characterId = lookupCharacterId(sender)
+  if characterId then
+    return self:Receive(characterId, text)
+  end
+  local line, textErr = parseText(text)
+  if textErr then return nil, textErr end
+
+  local existing = inbox[key]
+  if existing then
+    existing.text = line
+    existing.eventId = eventId
+    existing.called = false
+    return copyRow(existing)
+  end
+
+  local entry = {
+    senderKey = key,
+    name = displayName(sender),
+    eventId = eventId,
+    seq = nextSeq,
+    text = line,
+    called = false,
+  }
+  nextSeq = nextSeq + 1
+  inbox[key] = entry
+  return copyRow(entry)
+end
+
 function Confession:GetQueue()
   self:_Expire()
   local rows = {}
@@ -104,7 +178,13 @@ function Confession:GetQueue()
   end
   table.sort(rows, function(a, b)
     if a.seq ~= b.seq then return a.seq < b.seq end
-    return a.characterId < b.characterId
+    local aId, bId = a.characterId, b.characterId
+    if type(aId) == "number" and type(bId) == "number" then return aId < bId end
+    if type(aId) == "number" then return true end
+    if type(bId) == "number" then return false end
+    local aKey = a.senderKey or a.name or ""
+    local bKey = b.senderKey or b.name or ""
+    return aKey < bKey
   end)
   local out = {}
   for i = 1, #rows do

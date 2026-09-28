@@ -38,14 +38,14 @@ reset()
 --------------------------------------------------------------------------------
 assert_eq(N.Prefix, "COB", "the prefix is COB")
 assert_eq(N.Channel, "GUILD", "addon messages travel on GUILD, never PARTY")
-assert_eq(N.PROTOCOL, 1, "this cut does not invent a v2 protocol number")
+assert_eq(N.PROTOCOL, 2, "this cut speaks protocol 2")
 
 local encoded = helloPayload("0.1.0")
-assert_eq(encoded, "1:HELLO:0.1.0", "payload is version, type, then fields")
+assert_eq(encoded, "2:HELLO:0.1.0", "payload is version, type, then fields")
 assert_true(#encoded < 240, "a HELLO fits well inside the 255-byte body limit")
 
 local message = N:Decode(encoded)
-assert_eq(message.version, 1, "the version is read back")
+assert_eq(message.version, 2, "the version is read back")
 assert_eq(message.type, "HELLO", "the type is read back")
 assert_eq(message.fields[1], "0.1.0", "the first field is the addon version")
 
@@ -91,12 +91,12 @@ assert_eq(N:OnAddonMessage(N.Prefix, helloPayload(), "RAID", "Steakina"), false,
   "HELLO is not accepted off the guild channel")
 assert_eq(N:PeerCount(), 0, "none of those counted as peers")
 
-_, why = deliver("2:HELLO:9.9.9", "Steakina")
+_, why = deliver("1:HELLO:9.9.9", "Steakina")
 assert_eq(why, "protocol mismatch", "another protocol major is discarded, not guessed at")
 assert_eq(N.warnedVersion, true, "the first mismatch is the Quiet version notice")
 assert_eq(N:PeerCount(), 0, "and a mismatched HELLO is not a peer")
 
-local warnedAgain = N:_WarnVersion(2)
+local warnedAgain = N:_WarnVersion(1)
 assert_eq(warnedAgain, false, "the version notice fires once")
 
 --------------------------------------------------------------------------------

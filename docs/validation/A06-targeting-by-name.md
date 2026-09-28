@@ -20,7 +20,7 @@ Appendix A item 6 names **no** standalone fallback. The Appendix A closer applie
 
 Do not invent a fallback here. Item 5's fallback is "target-assist only" — that assumes this assist exists; it is not a substitute if this item FAILs.
 
-`TargetUnit` / secure-template buttons are not in the addon today. That absence is leftover, not a pass.
+Markers exist. `Markers:Target` calls `TargetUnit`. That coded assist is not a pass of this item. Combat lockdown skip of `TargetUnit` is leftover. Do not invent SecureActionButton product.
 
 ## Live-client method (Anniversary TBC, Interface 20506)
 
@@ -43,6 +43,6 @@ Do not change addon Lua from this sheet.
 
 ## Leftovers
 
-- Console click-to-target on the current candidate/fighter (later UI, only where this Result says the API allows)
-- Whether a secure button is required in combat (design decision after the Result — do not invent the widget here)
-- OPEN_QUESTIONS #8 stays uncoded
+- Console queue-row click does not name-target. `Markers:Target` already calls `TargetUnit`. This Result still decides what the client permits.
+- Combat lockdown skip of `TargetUnit` (`Markers:Target` does not skip). Whether a secure button is required stays a design decision after the Result — do not invent SecureActionButton product.
+- OPEN_QUESTIONS #8 designated-Council remainder and override UX (no settings panel). `Data/Popes.lua` ships Thedave plus `ChurchOfBeefDB.ui.popeOverrides`. Not an uncoded Pope list.

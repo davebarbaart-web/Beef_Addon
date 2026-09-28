@@ -1,0 +1,1 @@
+Built-in ImageGen, 2026-08-20. Victor's bull seal derived from the canonical papal seal: antique-gold bull relief with deeper charcoal shadows, same round silhouette and heraldic rim; orthographic, no text or faction marks, transparent alpha. Background extraction pass produced true transparency.

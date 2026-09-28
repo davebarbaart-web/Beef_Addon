@@ -2,15 +2,15 @@ ChurchOfBeef = ChurchOfBeef or {}
 local COB = ChurchOfBeef
 
 -- BeefNet v2 codecs (Bible §13.1, §13.4, §20.2–20.3). Encode/decode only.
--- Closed TYPEs: STATE, SNAPSHOT, INPUT, DECREE. HELLO stays on the transport.
+-- Closed TYPEs: STATE, SNAPSHOT, INPUT, DECREE, NIGHTS, STUB, STUB_WITHDRAW.
 -- No SendAddonMessage. No snapshot schema beyond STATE fields. No whisper,
 -- registered-Pope file, or hold timer.
 local Codec = {
-  PROTOCOL = 1,
-  TYPES = { STATE = true, SNAPSHOT = true, INPUT = true, DECREE = true },
+  PROTOCOL = 2,
+  TYPES = { STATE = true, SNAPSHOT = true, INPUT = true, DECREE = true, NIGHTS = true, STUB = true, STUB_WITHDRAW = true },
   STATES = { QUIET = true, ASSEMBLY = true, RITE = true, CONSEQUENCE = true },
   RITE_TYPES = { Knighting = true, Gora = true, Confession = true, Proclamation = true },
-  INPUT_KINDS = { petition = true, favor = true, confession = true },
+  INPUT_KINDS = { petition = true, favor = true, confession = true, going = true },
   SNAPSHOT_ROLES = { request = true, response = true },
 }
 COB.Codec = Codec
@@ -33,6 +33,7 @@ local STATE_KEYS = {
   subjects = true,
   sequence = true,
   favor = true,
+  names = true,
 }
 
 local SNAPSHOT_REQ_KEYS = {
@@ -51,6 +52,7 @@ local SNAPSHOT_RES_KEYS = {
   subjects = true,
   sequence = true,
   favor = true,
+  names = true,
 }
 
 local INPUT_KEYS = {
@@ -61,6 +63,7 @@ local INPUT_KEYS = {
   text = true,
   pick = true,
   opponent = true,
+  occurrence = true,
 }
 
 local DECREE_KEYS = {
@@ -68,6 +71,37 @@ local DECREE_KEYS = {
   version = true,
   line = true,
   flavor = true,
+}
+
+local NIGHTS_KEYS = {
+  type = true,
+  version = true,
+  boardRevision = true,
+  series = true,
+  stubs = true,
+  stubTombstones = true,
+  goingCounts = true,
+}
+
+local STUB_KEYS = {
+  type = true,
+  version = true,
+  id = true,
+  kind = true,
+  title = true,
+  timeLine = true,
+  place = true,
+  date = true,
+  createdBy = true,
+  updatedAt = true,
+  boardRevision = true,
+}
+
+local STUB_WITHDRAW_KEYS = {
+  type = true,
+  version = true,
+  id = true,
+  boardRevision = true,
 }
 
 --------------------------------------------------------------------------------
@@ -179,6 +213,98 @@ local function copyFavor(favor)
   return { a = favor.a, b = favor.b }
 end
 
+local function copyNames(names)
+  if type(names) ~= "table" then
+    return { candidate = nil, fighterA = nil, fighterB = nil }
+  end
+  return {
+    candidate = names.candidate,
+    fighterA = names.fighterA,
+    fighterB = names.fighterB,
+  }
+end
+
+local function displayName(raw)
+  if type(raw) ~= "string" then return nil end
+  if COB.Names and COB.Names.Display then
+    return COB.Names.Display(raw)
+  end
+  return trim(raw)
+end
+
+local function nameIllegal(text)
+  if type(text) ~= "string" or text == "" then return false end
+  return text:find(FIELD, 1, true) ~= nil or text:find("\n", 1, true) ~= nil
+end
+
+-- Subjects-mirror: candidateDisplay,fighterA,fighterB. Empty candidate is a
+-- leading comma. Always emit the field (empty when no subjects) so 9 = names
+-- and 10 = favor + names. Fail-closed on ":" or newline — do not escape.
+local function encodeNames(names)
+  if names == nil then return "" end
+  local cand, a, b = "", "", ""
+  if type(names) == "string" then
+    if nameIllegal(names) then return nil, "invalid names" end
+    local bits = split(names, ",")
+    if #bits > 3 then return nil, "invalid names" end
+    cand = displayName(bits[1]) or ""
+    a = displayName(bits[2]) or ""
+    b = displayName(bits[3]) or ""
+  elseif type(names) == "table" then
+    for k, _ in pairs(names) do
+      if k ~= "candidate" and k ~= "fighterA" and k ~= "fighterB" then
+        return nil, "invalid names"
+      end
+    end
+    local function slot(value)
+      if value == nil then return "", nil end
+      if type(value) ~= "string" then return nil, "invalid names" end
+      local shown = displayName(value)
+      if not shown then return "", nil end
+      return shown, nil
+    end
+    local e
+    cand, e = slot(names.candidate)
+    if e then return nil, e end
+    a, e = slot(names.fighterA)
+    if e then return nil, e end
+    b, e = slot(names.fighterB)
+    if e then return nil, e end
+  else
+    return nil, "invalid names"
+  end
+  if nameIllegal(cand) or nameIllegal(a) or nameIllegal(b) then
+    return nil, "invalid names"
+  end
+  if cand == "" and a == "" and b == "" then return "" end
+  return cand .. "," .. a .. "," .. b
+end
+
+local function parseNamesField(text)
+  if type(text) ~= "string" then return nil, "invalid names" end
+  if text:find("\n", 1, true) then return nil, "invalid names" end
+  if text == "" then
+    return { candidate = nil, fighterA = nil, fighterB = nil }
+  end
+  local bits = split(text, ",")
+  if #bits > 3 then return nil, "invalid names" end
+  local function slot(raw)
+    local shown = displayName(raw)
+    if not shown then return nil end
+    if nameIllegal(shown) then return nil, "invalid names" end
+    return shown
+  end
+  local cand, e = slot(bits[1])
+  if e then return nil, e end
+  local a
+  a, e = slot(bits[2])
+  if e then return nil, e end
+  local b
+  b, e = slot(bits[3])
+  if e then return nil, e end
+  return { candidate = cand, fighterA = a, fighterB = b }
+end
+
 local function fighterCount(subjects)
   if type(subjects) ~= "table" or type(subjects.fighters) ~= "table" then return 0 end
   return #subjects.fighters
@@ -286,6 +412,9 @@ local function validateStateFields(fields)
     if not fav then return nil, favErr end
     body.favor = fav
   end
+  local packed, packErr = encodeNames(fields.names)
+  if not packed then return nil, packErr end
+  body.names = packed
   return body
 end
 
@@ -301,12 +430,15 @@ local function encodeStateWire(msgType, role, body)
   if body.favor then
     parts[#parts + 1] = fmtId(body.favor.a) .. "," .. fmtId(body.favor.b)
   end
+  parts[#parts + 1] = body.names or ""
   return table.concat(parts, FIELD)
 end
 
 local function decodeStateFields(parts, start)
   local expected = start + 5
-  if #parts > expected + 1 then return nil, "unknown field" end
+  -- 8 = Bible fields (legacy Task 7). 9 = names, or legacy favor-only.
+  -- 10 = favor + names. Anything past that is an unknown colon part.
+  if #parts > expected + 2 then return nil, "unknown field" end
   local eventId = parseId(parts[start])
   if not eventId then return nil, "invalid event id" end
   local state = trim(parts[start + 1])
@@ -319,11 +451,27 @@ local function decodeStateFields(parts, start)
   local sequence = parseSeq(parts[start + 5])
   if sequence == nil then return nil, "invalid sequence" end
   local favor = nil
-  if #parts == expected + 1 then
+  local names = { candidate = nil, fighterA = nil, fighterB = nil }
+  if #parts == expected + 2 then
     local fav, favErr = parseFavorField(parts[expected + 1])
     if not fav then return nil, favErr end
     if fighterCount(subjects) ~= 2 then return nil, "invalid favor" end
     favor = fav
+    local nm, nmErr = parseNamesField(parts[expected + 2])
+    if not nm then return nil, nmErr end
+    names = nm
+  elseif #parts == expected + 1 then
+    local extra = parts[expected + 1]
+    if type(extra) == "string" and extra:match("^%d+,%d+$") then
+      local fav, favErr = parseFavorField(extra)
+      if not fav then return nil, favErr end
+      if fighterCount(subjects) ~= 2 then return nil, "invalid favor" end
+      favor = fav
+    else
+      local nm, nmErr = parseNamesField(extra)
+      if not nm then return nil, nmErr end
+      names = nm
+    end
   end
   return {
     eventId = eventId,
@@ -332,6 +480,7 @@ local function decodeStateFields(parts, start)
     subjects = subjects,
     sequence = sequence,
     favor = favor,
+    names = names,
   }
 end
 
@@ -343,6 +492,154 @@ local function checkVersion(fields)
   if fields.version == nil then return true end
   if finite(fields.version) ~= PROTOCOL then return nil, "protocol mismatch" end
   return true
+end
+
+local function cleanCell(text, errName)
+  text = trim(text)
+  if not text then return nil end
+  if text:find("\n", 1, true) or text:find("\t", 1, true) then
+    return nil, "invalid " .. errName
+  end
+  return text
+end
+
+local function encodeNightsMessage(fields)
+  local rev = fields.boardRevision
+  if rev ~= nil and not isSeq(rev) then return nil, "invalid revision" end
+  local lines = { tostring(rev or 0) }
+  local list = fields.series
+  if type(list) == "table" then
+    for i = 1, #list do
+      local row = list[i]
+      if type(row) == "table" then
+        local timeLine, timeErr = cleanCell(row.timeLine, "timeLine")
+        if not timeLine then return nil, timeErr or "timeLine is required" end
+        local place, placeErr = cleanCell(row.place, "place")
+        if not place then return nil, placeErr or "place is required" end
+        local flavor = ""
+        if row.flavor ~= nil then
+          local f, fErr = cleanCell(row.flavor, "flavor")
+          if not f then return nil, fErr end
+          flavor = f
+        end
+        local weekday = type(row.weekday) == "number" and tostring(row.weekday) or ""
+        local oneshot = type(row.oneshotDate) == "string" and row.oneshotDate or ""
+        lines[#lines + 1] = table.concat({
+          "S",
+          tostring(row.id or ""),
+          tostring(row.kind or ""),
+          weekday,
+          timeLine,
+          place,
+          flavor,
+          row.withdrawn and "1" or "",
+          oneshot,
+        }, "\t")
+        if type(row.skip) == "table" then
+          for date, flag in pairs(row.skip) do
+            if flag == true and type(date) == "string" then
+              if date:find("\n", 1, true) or date:find("\t", 1, true) then
+                return nil, "invalid date"
+              end
+              lines[#lines + 1] = table.concat({ "K", tostring(row.id or ""), date }, "\t")
+            end
+          end
+        end
+        if type(row.move) == "table" then
+          for date, moved in pairs(row.move) do
+            if type(date) == "string" and type(moved) == "table" then
+              if date:find("\n", 1, true) or date:find("\t", 1, true) then
+                return nil, "invalid date"
+              end
+              local movedTime, movedTimeErr = cleanCell(moved.timeLine, "timeLine")
+              local movedPlace, movedPlaceErr = cleanCell(moved.place, "place")
+              if not movedTime then return nil, movedTimeErr or "timeLine is required" end
+              if not movedPlace then return nil, movedPlaceErr or "place is required" end
+              lines[#lines + 1] = table.concat({
+                "M", tostring(row.id or ""), date, movedTime, movedPlace,
+              }, "\t")
+            end
+          end
+        end
+      end
+    end
+  end
+  list = fields.stubs
+  if type(list) == "table" then
+    for i = 1, #list do
+      local row = list[i]
+      if type(row) == "table" then
+        local title, titleErr = cleanCell(row.title, "title")
+        if not title then return nil, titleErr or "title is required" end
+        local timeLine, timeErr = cleanCell(row.timeLine, "timeLine")
+        if not timeLine then return nil, timeErr end
+        local place, placeErr = cleanCell(row.place, "place")
+        if not place then return nil, placeErr end
+        local date, dateErr = cleanCell(row.date, "date")
+        if not date then return nil, dateErr or "date is required" end
+        lines[#lines + 1] = table.concat({
+          "U",
+          tostring(row.id or ""),
+          tostring(row.kind or ""),
+          title,
+          timeLine,
+          place,
+          date,
+          tostring(row.createdBy or ""),
+          tostring(row.updatedAt or ""),
+        }, "\t")
+      end
+    end
+  end
+  list = fields.stubTombstones
+  if type(list) == "table" then
+    for i = 1, #list do
+      local id = trim(list[i])
+      if id then
+        if id:find("\n", 1, true) or id:find("\t", 1, true) then
+          return nil, "invalid id"
+        end
+        lines[#lines + 1] = "T\t" .. id
+      end
+    end
+  end
+  local counts = fields.goingCounts
+  if type(counts) == "table" then
+    for key, n in pairs(counts) do
+      if type(key) == "string" and type(n) == "number" then
+        if key:find("\n", 1, true) or key:find("\t", 1, true) then
+          return nil, "invalid occurrence"
+        end
+        lines[#lines + 1] = "G\t" .. key .. "\t" .. tostring(n)
+      end
+    end
+  end
+  return tostring(PROTOCOL) .. ":NIGHTS:\n" .. table.concat(lines, "\n")
+end
+
+local function encodeStubMessage(fields)
+  local id, idErr = cleanCell(fields.id, "id")
+  if not id then return nil, idErr or "id is required" end
+  local title, titleErr = cleanCell(fields.title, "title")
+  if not title then return nil, titleErr or "title is required" end
+  local timeLine, timeErr = cleanCell(fields.timeLine, "timeLine")
+  if not timeLine then return nil, timeErr or "timeLine is required" end
+  local place, placeErr = cleanCell(fields.place, "place")
+  if not place then return nil, placeErr or "place is required" end
+  local date, dateErr = cleanCell(fields.date, "date")
+  if not date then return nil, dateErr or "date is required" end
+  local kind = trim(fields.kind)
+  if kind ~= "raid" and kind ~= "pvp" then return nil, "unknown kind" end
+  local createdBy = trim(fields.createdBy) or ""
+  if createdBy:find("\t", 1, true) or createdBy:find("\n", 1, true) then
+    return nil, "invalid createdBy"
+  end
+  local rev = fields.boardRevision
+  if rev ~= nil and not isSeq(rev) then return nil, "invalid revision" end
+  local body = table.concat({
+    id, kind, title, timeLine, place, date, createdBy, tostring(fields.updatedAt or ""), tostring(rev or ""),
+  }, "\t")
+  return tostring(PROTOCOL) .. ":STUB:\n" .. body
 end
 
 local function encodeTyped(msgType, fields)
@@ -380,6 +677,18 @@ local function encodeTyped(msgType, fields)
     if firstUnknown(fields, INPUT_KEYS) then return nil, "unknown field" end
     local kind = trim(fields.kind)
     if not kind or not INPUT_KINDS[kind] then return nil, "invalid kind" end
+    if kind == "going" then
+      local occurrence = trim(fields.occurrence)
+      if not occurrence then return nil, "occurrence is required" end
+      if occurrence:find(FIELD, 1, true) or occurrence:find("\n", 1, true) then
+        return nil, "invalid occurrence"
+      end
+      if fields.characterId ~= nil then return nil, "character id not allowed" end
+      if fields.text ~= nil then return nil, "text not allowed" end
+      if fields.pick ~= nil then return nil, "pick not allowed" end
+      if fields.opponent ~= nil then return nil, "opponent not allowed" end
+      return table.concat({ tostring(PROTOCOL), "INPUT", "going", occurrence }, FIELD)
+    end
     if not isId(fields.characterId) then return nil, "invalid character id" end
     if fields.text ~= nil then
       if kind ~= "confession" or type(fields.text) ~= "string" then
@@ -429,6 +738,30 @@ local function encodeTyped(msgType, fields)
     return wire
   end
 
+  if msgType == "NIGHTS" then
+    if firstUnknown(fields, NIGHTS_KEYS) then return nil, "unknown field" end
+    return encodeNightsMessage(fields)
+  end
+
+  if msgType == "STUB" then
+    if firstUnknown(fields, STUB_KEYS) then return nil, "unknown field" end
+    return encodeStubMessage(fields)
+  end
+
+  if msgType == "STUB_WITHDRAW" then
+    if firstUnknown(fields, STUB_WITHDRAW_KEYS) then return nil, "unknown field" end
+    local id = trim(fields.id)
+    if not id then return nil, "id is required" end
+    if id:find("\n", 1, true) or id:find("\t", 1, true) then return nil, "invalid id" end
+    local rev = fields.boardRevision
+    if rev ~= nil and not isSeq(rev) then return nil, "invalid revision" end
+    local wire = table.concat({ tostring(PROTOCOL), "STUB_WITHDRAW", id }, FIELD)
+    if type(rev) == "number" then
+      wire = wire .. "\n" .. tostring(rev)
+    end
+    return wire
+  end
+
   return nil, "unknown message type"
 end
 
@@ -455,6 +788,18 @@ function Codec:EncodeDecree(fields)
   return encodeTyped("DECREE", fields)
 end
 
+function Codec:EncodeNights(fields)
+  return encodeTyped("NIGHTS", fields)
+end
+
+function Codec:EncodeStub(fields)
+  return encodeTyped("STUB", fields)
+end
+
+function Codec:EncodeStubWithdraw(fields)
+  return encodeTyped("STUB_WITHDRAW", fields)
+end
+
 --------------------------------------------------------------------------------
 -- Decode
 --------------------------------------------------------------------------------
@@ -474,6 +819,7 @@ local function decodeStateMessage(version, parts)
     },
     sequence = body.sequence,
     favor = copyFavor(body.favor),
+    names = copyNames(body.names),
   }
 end
 
@@ -499,6 +845,7 @@ local function decodeSnapshotMessage(version, parts)
     },
     sequence = body.sequence,
     favor = copyFavor(body.favor),
+    names = copyNames(body.names),
   }
 end
 
@@ -528,9 +875,149 @@ local function decodeDecreeMessage(version, payload)
   }
 end
 
+local function payloadBody(payload)
+  local first = payload:find(FIELD, 1, true)
+  if not first then return "" end
+  local second = payload:find(FIELD, first + 1, true)
+  if not second then return "" end
+  local body = payload:sub(second + 1)
+  if body:sub(1, 1) == "\n" then
+    body = body:sub(2)
+  end
+  return body
+end
+
+local function decodeNightsMessage(version, payload)
+  local body = payloadBody(payload)
+  local lines = {}
+  for line in string.gmatch(body .. "\n", "([^\n]*)\n") do
+    lines[#lines + 1] = line
+  end
+  local rev = tonumber(lines[1])
+  local series, stubs, tombs, counts = {}, {}, {}, {}
+  for i = 2, #lines do
+    local line = lines[i]
+    if line ~= "" then
+      local cols = split(line, "\t")
+      local tag = cols[1]
+      if tag == "S" then
+        series[#series + 1] = {
+          id = tonumber(cols[2]),
+          kind = cols[3],
+          weekday = tonumber(cols[4]),
+          timeLine = cols[5],
+          place = cols[6],
+          flavor = cols[7] ~= "" and cols[7] or nil,
+          withdrawn = cols[8] == "1",
+          oneshotDate = cols[9] ~= "" and cols[9] or nil,
+          skip = {},
+          move = {},
+        }
+      elseif tag == "K" then
+        local sid = tonumber(cols[2])
+        local date = cols[3]
+        if sid and date then
+          for si = 1, #series do
+            if series[si].id == sid then
+              series[si].skip[date] = true
+            end
+          end
+        end
+      elseif tag == "M" then
+        local sid = tonumber(cols[2])
+        local date = cols[3]
+        if sid and date then
+          for si = 1, #series do
+            if series[si].id == sid then
+              series[si].move[date] = { timeLine = cols[4], place = cols[5] }
+            end
+          end
+        end
+      elseif tag == "U" then
+        stubs[#stubs + 1] = {
+          id = cols[2],
+          kind = cols[3],
+          title = cols[4],
+          timeLine = cols[5],
+          place = cols[6],
+          date = cols[7],
+          createdBy = cols[8] ~= "" and cols[8] or nil,
+          updatedAt = tonumber(cols[9]),
+        }
+      elseif tag == "T" then
+        tombs[#tombs + 1] = cols[2]
+      elseif tag == "G" then
+        counts[cols[2]] = tonumber(cols[3]) or 0
+      end
+    end
+  end
+  return {
+    type = "NIGHTS",
+    version = version,
+    boardRevision = rev,
+    series = series,
+    stubs = stubs,
+    stubTombstones = tombs,
+    goingCounts = counts,
+  }
+end
+
+local function decodeStubMessage(version, payload)
+  local body = payloadBody(payload)
+  local cols = split(body, "\t")
+  if #cols < 6 then return nil, "stub is required" end
+  return {
+    type = "STUB",
+    version = version,
+    id = cols[1],
+    kind = cols[2],
+    title = cols[3],
+    timeLine = cols[4],
+    place = cols[5],
+    date = cols[6],
+    createdBy = cols[7] ~= "" and cols[7] or nil,
+    updatedAt = tonumber(cols[8]),
+    boardRevision = tonumber(cols[9]),
+  }
+end
+
+local function decodeStubWithdrawMessage(version, payload)
+  local first = payload:find(FIELD, 1, true)
+  if not first then return nil, "id is required" end
+  local second = payload:find(FIELD, first + 1, true)
+  if not second then return nil, "id is required" end
+  local rest = payload:sub(second + 1)
+  local nl = rest:find("\n", 1, true)
+  local id, rev
+  if nl then
+    id = trim(rest:sub(1, nl - 1))
+    rev = tonumber(rest:sub(nl + 1))
+  else
+    id = trim(rest)
+  end
+  if not id then return nil, "id is required" end
+  return {
+    type = "STUB_WITHDRAW",
+    version = version,
+    id = id,
+    boardRevision = rev,
+  }
+end
+
 local function decodeInputMessage(version, parts)
   local kind = trim(parts[3])
   if not kind or not INPUT_KINDS[kind] then return nil, "invalid kind" end
+  if kind == "going" then
+    if #parts ~= 4 then return nil, "invalid going" end
+    local occurrence = trim(parts[4])
+    if not occurrence then return nil, "occurrence is required" end
+    return {
+      type = "INPUT",
+      version = version,
+      kind = "going",
+      occurrence = occurrence,
+    }
+  end
   local characterId = parseId(parts[4])
   if not characterId then return nil, "invalid character id" end
   if kind == "favor" then
@@ -562,6 +1049,17 @@ local function decodeInputMessage(version, parts)
       kind = "petition",
       characterId = characterId,
       opponent = opponent,
+    }
+  end
+  if kind == "going" then
+    if #parts ~= 4 then return nil, "invalid going" end
+    local occurrence = trim(parts[4])
+    if not occurrence then return nil, "occurrence is required" end
+    return {
+      type = "INPUT",
+      version = version,
+      kind = "going",
+      occurrence = occurrence,
     }
   end
   if kind ~= "confession" then
@@ -600,6 +1098,9 @@ function Codec:Decode(payload)
   if msgType == "SNAPSHOT" then return decodeSnapshotMessage(version, parts) end
   if msgType == "INPUT" then return decodeInputMessage(version, parts) end
   if msgType == "DECREE" then return decodeDecreeMessage(version, payload) end
+  if msgType == "NIGHTS" then return decodeNightsMessage(version, payload) end
+  if msgType == "STUB" then return decodeStubMessage(version, payload) end
+  if msgType == "STUB_WITHDRAW" then return decodeStubWithdrawMessage(version, payload) end
   return nil, "unknown message type"
 end
 

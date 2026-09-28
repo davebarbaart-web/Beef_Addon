@@ -1,7 +1,9 @@
--- SavedVariables DB: { version, ui, store, event, decree }. Schema 7 adds decree.
+-- SavedVariables DB: { version, ui, store, event, gora, decree, nights }. Schema 8.
 -- No-Decree path: decree stays {}. With Decree: Save writes Snapshot;
--- Init Restores only when decree.line is a string. Leftover demo keys
--- survive (Law 7) and are not imported into store, event, or decree.
+-- Init Restores only when decree.line is a string. Gora: Init Restores
+-- after event when eventId is a number. Ceremony Save (event + gora) is
+-- Pope-only. Leftover demo keys survive (Law 7) and are not imported
+-- into store, event, gora, or decree.
 ChurchOfBeef = ChurchOfBeef or {}
 ChurchOfBeef._IN_TEST = true
 
@@ -81,6 +83,29 @@ local function decreeField(decree, key)
   return decree[key]
 end
 
+local function goraKeys(gora)
+  local keys = {}
+  if type(gora) ~= "table" then return "" end
+  for key in pairs(gora) do
+    keys[#keys + 1] = key
+  end
+  table.sort(keys)
+  return table.concat(keys, ",")
+end
+
+local function goraField(gora, key)
+  if type(gora) ~= "table" then return nil end
+  return gora[key]
+end
+
+local function stubWriterPope(isPope)
+  ChurchOfBeef.Sender = {
+    IsRegisteredPope = function()
+      return isPope == true
+    end,
+  }
+end
+
 local function eventSubjects(event)
   local subjects = eventField(event, "subjects")
   if type(subjects) ~= "table" then return {} end
@@ -110,26 +135,31 @@ local function saveOk(label)
 end
 
 --------------------------------------------------------------------------------
--- First run creates the schema stamp, ui defaults, empty store + event + decree
+-- First run creates the schema stamp, ui defaults, empty store + event + gora + decree
 --------------------------------------------------------------------------------
 ChurchOfBeefDB = nil
 local db = DB:Init()
 assert_true(db ~= nil, "Init returns the SV table")
 assert_true(db == ChurchOfBeefDB, "Init returns the global SV")
-assert_eq(ChurchOfBeefDB.version, 7, "schema version is 7")
+assert_eq(ChurchOfBeefDB.version, 8, "schema version is 8")
 assert_eq(type(ChurchOfBeefDB.ui), "table", "ui table exists")
 assert_eq(ChurchOfBeefDB.ui.announce, true, "announce defaults on")
 assert_eq(ChurchOfBeefDB.ui.shown, false, "frame starts hidden")
 assert_eq(ChurchOfBeefDB.ui.point, nil, "no saved point yet")
+assert_eq(ChurchOfBeefDB.ui.welcomeSeen, false, "welcomeSeen defaults false")
 assert_eq(type(ChurchOfBeefDB.store), "table", "store table exists")
 assert_eq(storeKeys(ChurchOfBeefDB.store), "", "fresh store is empty")
 assert_eq(type(ChurchOfBeefDB.event), "table", "event hook exists")
 assert_eq(eventKeys(ChurchOfBeefDB.event), "", "fresh event is empty")
 assert_eq(eventField(ChurchOfBeefDB.event, "state"), nil, "Init does not invent a Runtime snapshot")
+assert_eq(type(ChurchOfBeefDB.gora), "table", "gora hook exists")
+assert_eq(goraKeys(ChurchOfBeefDB.gora), "", "fresh gora is empty")
+assert_eq(goraField(ChurchOfBeefDB.gora, "eventId"), nil, "Init does not invent a Gora snapshot")
 assert_eq(type(ChurchOfBeefDB.decree), "table", "decree hook exists")
 assert_eq(decreeKeys(ChurchOfBeefDB.decree), "", "fresh decree is empty")
 assert_eq(decreeField(ChurchOfBeefDB.decree, "line"), nil, "Init does not invent a Decree snapshot")
-assert_eq(rootKeys(ChurchOfBeefDB), "decree,event,store,ui,version", "fresh SV is { version, ui, store, event, decree }")
+assert_eq(type(ChurchOfBeefDB.nights), "table", "nights hook exists")
+assert_eq(rootKeys(ChurchOfBeefDB), "decree,event,gora,nights,store,ui,version", "fresh SV is { version, ui, store, event, gora, decree }")
 assert_eq(ChurchOfBeefDB.ladder, nil, "Init does not invent standing schema")
 assert_eq(ChurchOfBeefDB.scoring, nil, "Init does not invent scoring schema")
 assert_eq(ChurchOfBeefDB.suggestions, nil, "Init does not invent suggestions")
@@ -169,6 +199,9 @@ assert_eq(storeKeys(ChurchOfBeefDB.store), "", "Save does not invent store rows"
 assert_eq(type(ChurchOfBeefDB.event), "table", "Save keeps the event hook")
 assert_eq(eventKeys(ChurchOfBeefDB.event), "", "Save without Runtime does not invent an event snapshot")
 assert_eq(eventField(ChurchOfBeefDB.event, "state"), nil, "Save without Runtime does not invent state")
+assert_eq(type(ChurchOfBeefDB.gora), "table", "Save keeps the gora hook")
+assert_eq(goraKeys(ChurchOfBeefDB.gora), "", "Save without Gora does not invent a gora snapshot")
+assert_eq(goraField(ChurchOfBeefDB.gora, "eventId"), nil, "Save without Gora does not invent eventId")
 assert_eq(type(ChurchOfBeefDB.decree), "table", "Save keeps the decree hook")
 assert_eq(decreeKeys(ChurchOfBeefDB.decree), "", "Save without Decree does not invent a decree snapshot")
 assert_eq(decreeField(ChurchOfBeefDB.decree, "line"), nil, "Save without Decree does not invent line")
@@ -180,6 +213,8 @@ assert_eq(ChurchOfBeefDB.ui.announce, false, "re-Init keeps announce")
 assert_eq(type(ChurchOfBeefDB.store), "table", "re-Init keeps the store hook")
 assert_eq(type(ChurchOfBeefDB.event), "table", "re-Init keeps the event hook")
 assert_eq(eventKeys(ChurchOfBeefDB.event), "", "re-Init without Runtime leaves event empty")
+assert_eq(type(ChurchOfBeefDB.gora), "table", "re-Init keeps the gora hook")
+assert_eq(goraKeys(ChurchOfBeefDB.gora), "", "re-Init without Gora leaves gora empty")
 assert_eq(type(ChurchOfBeefDB.decree), "table", "re-Init keeps the decree hook")
 assert_eq(decreeKeys(ChurchOfBeefDB.decree), "", "re-Init without Decree leaves decree empty")
 assert_eq(ChurchOfBeefDB.ladder, nil, "re-Init still does not invent standing")
@@ -193,42 +228,50 @@ assert_eq(type(ChurchOfBeefDB.store), "table", "Save fills missing store")
 assert_eq(storeKeys(ChurchOfBeefDB.store), "", "Save store hook is empty")
 assert_eq(type(ChurchOfBeefDB.event), "table", "Save fills missing event")
 assert_eq(eventKeys(ChurchOfBeefDB.event), "", "Save event hook is empty")
+assert_eq(type(ChurchOfBeefDB.gora), "table", "Save fills missing gora")
+assert_eq(goraKeys(ChurchOfBeefDB.gora), "", "Save gora hook is empty")
 assert_eq(type(ChurchOfBeefDB.decree), "table", "Save fills missing decree")
 assert_eq(decreeKeys(ChurchOfBeefDB.decree), "", "Save decree hook is empty")
-assert_eq(ChurchOfBeefDB.version, 7, "Save stamps schema 7 on a schema-6 table")
+assert_eq(ChurchOfBeefDB.version, 8, "Save stamps schema 8 on a schema-6 table")
 
 ChurchOfBeefDB = nil
 assert_eq(DB:Save(), false, "Save without an SV table returns false")
 
 --------------------------------------------------------------------------------
--- store / event / decree = {} if missing; existing contents are not wiped
+-- store / event / gora / decree = {} if missing; existing contents are not wiped
 --------------------------------------------------------------------------------
 ChurchOfBeefDB = { version = 6, ui = { announce = true, shown = false }, store = {}, event = {} }
 DB:Init()
-assert_eq(ChurchOfBeefDB.version, 7, "stamps schema 7 when adding the decree hook")
+assert_eq(ChurchOfBeefDB.version, 8, "stamps schema 8 when adding the decree hook")
 assert_eq(type(ChurchOfBeefDB.store), "table", "missing store becomes a table")
 assert_eq(storeKeys(ChurchOfBeefDB.store), "", "missing store becomes {}")
 assert_eq(type(ChurchOfBeefDB.event), "table", "missing event becomes a table")
 assert_eq(eventKeys(ChurchOfBeefDB.event), "", "missing event becomes {}")
+assert_eq(type(ChurchOfBeefDB.gora), "table", "missing gora becomes a table")
+assert_eq(goraKeys(ChurchOfBeefDB.gora), "", "missing gora becomes {}")
 assert_eq(type(ChurchOfBeefDB.decree), "table", "missing decree becomes a table")
 assert_eq(decreeKeys(ChurchOfBeefDB.decree), "", "missing decree becomes {}")
 
-ChurchOfBeefDB = { version = 6, ui = { shown = true }, store = { future = true }, event = { future = true }, decree = { future = true } }
+ChurchOfBeefDB = { version = 6, ui = { shown = true }, store = { future = true }, event = { future = true }, gora = { future = true }, decree = { future = true } }
 DB:Init()
 assert_eq(ChurchOfBeefDB.store.future, true, "unknown store key survives Init")
 assert_eq(eventField(ChurchOfBeefDB.event, "future"), true, "unknown event key survives Init")
+assert_eq(goraField(ChurchOfBeefDB.gora, "future"), true, "unknown gora key survives Init")
 assert_eq(decreeField(ChurchOfBeefDB.decree, "future"), true, "unknown decree key survives Init")
 assert_true(DB:Save(), "Save keeps unknown store keys")
 assert_eq(ChurchOfBeefDB.store.future, true, "unknown store key survives Save")
 assert_eq(eventField(ChurchOfBeefDB.event, "future"), true, "unknown event key survives Save without Runtime")
+assert_eq(goraField(ChurchOfBeefDB.gora, "future"), true, "unknown gora key survives Save without Gora")
 assert_eq(decreeField(ChurchOfBeefDB.decree, "future"), true, "unknown decree key survives Save without Decree")
 
-ChurchOfBeefDB = { version = 6, ui = {}, store = "not-a-table", event = "not-a-table", decree = "not-a-table" }
+ChurchOfBeefDB = { version = 6, ui = {}, store = "not-a-table", event = "not-a-table", gora = "not-a-table", decree = "not-a-table" }
 DB:Init()
 assert_eq(type(ChurchOfBeefDB.store), "table", "non-table store is replaced")
 assert_eq(storeKeys(ChurchOfBeefDB.store), "", "replaced store is {}")
 assert_eq(type(ChurchOfBeefDB.event), "table", "non-table event is replaced")
 assert_eq(eventKeys(ChurchOfBeefDB.event), "", "replaced event is {}")
+assert_eq(type(ChurchOfBeefDB.gora), "table", "non-table gora is replaced")
+assert_eq(goraKeys(ChurchOfBeefDB.gora), "", "replaced gora is {}")
 assert_eq(type(ChurchOfBeefDB.decree), "table", "non-table decree is replaced")
 assert_eq(decreeKeys(ChurchOfBeefDB.decree), "", "replaced decree is {}")
 
@@ -243,7 +286,7 @@ ChurchOfBeefDB = {
   suggestions = { leftover = true },
 }
 DB:Init()
-assert_eq(ChurchOfBeefDB.version, 7, "stamps schema 7 on an old table")
+assert_eq(ChurchOfBeefDB.version, 8, "stamps schema 8 on an old table")
 assert_eq(type(ChurchOfBeefDB.ladder), "table", "leftover ladder key is not wiped")
 assert_eq(type(ChurchOfBeefDB.scoring), "table", "leftover scoring key is not wiped")
 assert_eq(type(ChurchOfBeefDB.suggestions), "table", "leftover suggestions key is not wiped")
@@ -278,7 +321,7 @@ assert_eq(decreeKeys(ChurchOfBeefDB.decree), "", "Save still does not import lef
 
 ChurchOfBeefDB = { version = 1, ui = { announce = true, shown = false } }
 DB:Init()
-assert_eq(ChurchOfBeefDB.version, 7, "v1 without leftovers stamps schema 7")
+assert_eq(ChurchOfBeefDB.version, 8, "v1 without leftovers stamps schema 8")
 assert_eq(ChurchOfBeefDB.ladder, nil, "missing leftover keys are not created")
 assert_eq(ChurchOfBeefDB.scoring, nil, "missing scoring is not created")
 assert_eq(ChurchOfBeefDB.suggestions, nil, "missing suggestions are not created")
@@ -295,7 +338,7 @@ assert_eq(decreeKeys(ChurchOfBeefDB.decree), "", "v1 decree hook is empty")
 ChurchOfBeefDB = {}
 initOk("empty table")
 saveOk("empty table")
-assert_eq(ChurchOfBeefDB.version, 7, "empty table gets schema 7")
+assert_eq(ChurchOfBeefDB.version, 8, "empty table gets schema 8")
 assert_eq(type(ChurchOfBeefDB.ui), "table", "empty table gets ui")
 assert_eq(type(ChurchOfBeefDB.store), "table", "empty table gets store")
 assert_eq(type(ChurchOfBeefDB.event), "table", "empty table gets event")
@@ -306,7 +349,7 @@ assert_eq(decreeKeys(ChurchOfBeefDB.decree), "", "empty table decree hook is emp
 ChurchOfBeefDB = { version = "3", ui = "broken", ladder = true, scoring = 1 }
 initOk("typed-wrong leftovers")
 saveOk("typed-wrong leftovers")
-assert_eq(ChurchOfBeefDB.version, 7, "string version is stamped to 7")
+assert_eq(ChurchOfBeefDB.version, 8, "string version is stamped to 7")
 assert_eq(type(ChurchOfBeefDB.ui), "table", "non-table ui is replaced")
 assert_eq(ChurchOfBeefDB.ladder, true, "non-table leftover ladder is not wiped")
 assert_eq(ChurchOfBeefDB.scoring, 1, "non-table leftover scoring is not wiped")
@@ -352,6 +395,13 @@ DB:Init()
 assert_eq(ChurchOfBeefDB.futureRoot, "keep-me", "unknown root key survives Init")
 assert_eq(ChurchOfBeefDB.ui.streamerMode, true, "unknown ui key survives Init")
 assert_eq(ChurchOfBeefDB.ui.announce, true, "missing announce is filled")
+assert_eq(ChurchOfBeefDB.ui.welcomeSeen, false, "missing welcomeSeen fills false")
+assert_eq(ChurchOfBeefDB.version, 8, "welcomeSeen fill stays schema 8")
+ChurchOfBeefDB.ui.welcomeSeen = true
+DB:Init()
+assert_eq(ChurchOfBeefDB.ui.welcomeSeen, true, "existing welcomeSeen is kept")
+assert_eq(ChurchOfBeefDB.ui.streamerMode, true, "streamerMode pin stays after welcomeSeen keep")
+assert_eq(ChurchOfBeefDB.version, 8, "keeping welcomeSeen stays schema 8")
 assert_eq(type(ChurchOfBeefDB.store), "table", "unknown-key merge keeps store")
 assert_eq(type(ChurchOfBeefDB.event), "table", "unknown-key merge keeps event")
 assert_eq(type(ChurchOfBeefDB.decree), "table", "unknown-key merge keeps decree")
@@ -412,7 +462,7 @@ restoreCalls = 0
 ChurchOfBeefDB = nil
 DB:Init()
 assert_eq(restoreCalls, 0, "fresh Init does not Restore the empty hook")
-assert_eq(ChurchOfBeefDB.version, 7, "schema version stays 7")
+assert_eq(ChurchOfBeefDB.version, 8, "schema version stays 7")
 assert_eq(type(ChurchOfBeefDB.store), "table", "fresh Init with Store still has store")
 assert_eq(storeKeys(ChurchOfBeefDB.store), "", "Init does not Snapshot")
 assert_eq(ChurchOfBeefDB.store.humans, nil, "Init does not invent humans")
@@ -535,7 +585,7 @@ assert_eq(eventField(ChurchOfBeefDB.event, "ladder"), nil, "filled Save does not
 assert_eq(decreeKeys(ChurchOfBeefDB.decree), "", "filled Store Save does not invent a decree snapshot")
 assert_eq(decreeField(ChurchOfBeefDB.decree, "ladder"), nil, "filled Save does not copy ladder into decree")
 assert_eq(ChurchOfBeefDB.ui.shown, true, "Save still keeps ui")
-assert_eq(ChurchOfBeefDB.version, 7, "filled Save stamps schema 7")
+assert_eq(ChurchOfBeefDB.version, 8, "filled Save stamps schema 8")
 
 local saved = ChurchOfBeefDB.store
 resetStore()
@@ -564,7 +614,7 @@ assert_eq(ChurchOfBeefDB.suggestions.leftover, true, "Init does not wipe leftove
 assert_eq(ChurchOfBeefDB.store.ladder, nil, "Init does not copy leftovers into store")
 assert_eq(eventKeys(ChurchOfBeefDB.event), "", "Init without Runtime leaves event empty")
 assert_eq(decreeKeys(ChurchOfBeefDB.decree), "", "Init without Decree leaves decree empty")
-assert_eq(ChurchOfBeefDB.version, 7, "Init after Snapshot stamps schema 7")
+assert_eq(ChurchOfBeefDB.version, 8, "Init after Snapshot stamps schema 8")
 
 --------------------------------------------------------------------------------
 -- Leftovers + empty hook: still no Restore, still no import
@@ -590,7 +640,7 @@ assert_eq(eventKeys(ChurchOfBeefDB.event), "", "leftovers are not imported into 
 assert_eq(eventField(ChurchOfBeefDB.event, "ladder"), nil, "ladder stays at the SV root, not in event")
 assert_eq(decreeKeys(ChurchOfBeefDB.decree), "", "leftovers are not imported into decree on persist Init")
 assert_eq(decreeField(ChurchOfBeefDB.decree, "ladder"), nil, "ladder stays at the SV root, not in decree")
-assert_eq(ChurchOfBeefDB.version, 7, "old leftover table stamps schema 7")
+assert_eq(ChurchOfBeefDB.version, 8, "old leftover table stamps schema 8")
 
 assert_true(DB:Save(), "Save with leftovers and Store succeeds")
 assert_eq(ChurchOfBeefDB.ladder.records[1], "Alice", "Save with Store keeps leftover ladder")
@@ -625,6 +675,9 @@ assert_eq(type(Runtime), "table", "event persist section has Runtime")
 assert_eq(type(Runtime.Snapshot), "function", "Runtime.Snapshot exists")
 assert_eq(type(Runtime.Restore), "function", "Runtime.Restore exists")
 assert_eq(type(Store), "table", "event persist keeps Store loaded")
+-- Ceremony Save is Pope-only. Isolated tests with no Sender leave blobs.
+-- Stub Pope so existing event Save pins still write.
+stubWriterPope(true)
 
 local function resetRuntime()
   assert_eq(Runtime:ResetForTests(), true, "Runtime ResetForTests runs under _IN_TEST")
@@ -645,13 +698,13 @@ eventRestoreCalls = 0
 ChurchOfBeefDB = nil
 DB:Init()
 assert_eq(eventRestoreCalls, 0, "fresh Init does not Restore the empty event hook")
-assert_eq(ChurchOfBeefDB.version, 7, "fresh Init with Runtime stays schema 7")
+assert_eq(ChurchOfBeefDB.version, 8, "fresh Init with Runtime stays schema 8")
 assert_eq(type(ChurchOfBeefDB.event), "table", "fresh Init with Runtime still has event")
 assert_eq(eventKeys(ChurchOfBeefDB.event), "", "Init does not Snapshot the event")
 assert_eq(eventField(ChurchOfBeefDB.event, "state"), nil, "Init does not invent event state")
 assert_eq(type(ChurchOfBeefDB.decree), "table", "fresh Init with Runtime still has decree")
 assert_eq(decreeKeys(ChurchOfBeefDB.decree), "", "Init without Decree does not invent a decree snapshot")
-assert_eq(rootKeys(ChurchOfBeefDB), "decree,event,store,ui,version", "Runtime Init root is { version, ui, store, event, decree }")
+assert_eq(rootKeys(ChurchOfBeefDB), "decree,event,gora,nights,store,ui,version", "Runtime Init root is { version, ui, store, event, gora, decree }")
 
 assert_true(DB:Save(), "Save with Runtime succeeds")
 assert_eq(type(ChurchOfBeefDB.event), "table", "Save writes an event table")
@@ -741,7 +794,7 @@ assert_eq(eventField(ChurchOfBeefDB.event, "suggestions"), nil, "filled Save doe
 assert_eq(ChurchOfBeefDB.store.ladder, nil, "event Save does not copy leftovers into store")
 assert_eq(eventField(ChurchOfBeefDB.event, "holdSeconds"), nil, "filled Save does not invent holdSeconds")
 assert_eq(decreeKeys(ChurchOfBeefDB.decree), "", "filled event Save does not invent a decree snapshot")
-assert_eq(ChurchOfBeefDB.version, 7, "filled event Save stamps schema 7")
+assert_eq(ChurchOfBeefDB.version, 8, "filled event Save stamps schema 8")
 
 local savedEvent = ChurchOfBeefDB.event
 resetRuntime()
@@ -768,11 +821,57 @@ assert_eq(ChurchOfBeefDB.scoring.granted.dayKey, "2026-01-01", "event Init does 
 assert_eq(ChurchOfBeefDB.suggestions.leftover, true, "event Init does not wipe leftover suggestions")
 assert_eq(eventField(ChurchOfBeefDB.event, "ladder"), nil, "event Init does not copy leftovers into event")
 assert_eq(decreeKeys(ChurchOfBeefDB.decree), "", "event Init without Decree leaves decree empty")
-assert_eq(ChurchOfBeefDB.version, 7, "Init after event Snapshot stamps schema 7")
+assert_eq(ChurchOfBeefDB.version, 8, "Init after event Snapshot stamps schema 8")
 
 local afterClose = Runtime:CloseRite() or {}
 assert_eq(afterClose.state, "CONSEQUENCE", "verbs resume from the restored event")
 assert_eq(afterClose.sequence, 3, "sequence increments from the restored value")
+
+--------------------------------------------------------------------------------
+-- Task 10: DB:Init still Restores a saved RITE with no local-character gate.
+-- The pew Quiet drop is PLAYER_LOGIN, not ADDON_LOADED.
+--------------------------------------------------------------------------------
+do
+  local srcFile = io.open("addon/ChurchOfBeef/Core/DB.lua", "r")
+  assert_true(srcFile ~= nil, "DB.lua is readable for the Task 10 source pin")
+  local src = srcFile:read("*a")
+  srcFile:close()
+  assert_eq(src:find("UnitName", 1, true), nil, "DB.lua does not mention UnitName")
+  local initStart = src:find("function DB:Init", 1, true)
+  local saveStart = src:find("function DB:Save", 1, true)
+  assert_true(initStart ~= nil, "DB:Init is present")
+  assert_true(saveStart ~= nil, "DB:Save is present")
+  local initChunk = src:sub(initStart, saveStart - 1)
+  assert_eq(initChunk:find("IsRegisteredPope", 1, true), nil, "DB:Init does not mention IsRegisteredPope")
+  assert_eq(initChunk:find("UnitName", 1, true), nil, "DB:Init does not mention UnitName")
+  assert_true(src:find("localWriterIsPope", 1, true) ~= nil, "Save documents the Pope writer predicate")
+
+  resetRuntime()
+  Runtime:StartEvent()
+  Runtime:OpenRite("Gora", { fighters = { 21, 22 } })
+  local live = Runtime:Snapshot()
+  ChurchOfBeefDB = { version = 7, ui = {}, event = live }
+  resetRuntime()
+  assert_eq(Runtime:Snapshot().state, "QUIET", "reset before the Task 10 Init pin")
+  local savedUnit = UnitName
+  local savedSender = ChurchOfBeef.Sender
+  UnitName = function(unit)
+    if unit == "player" then return "Pewalt" end
+    return nil
+  end
+  ChurchOfBeef.Sender = {
+    IsRegisteredPope = function() return false end,
+  }
+  eventRestoreCalls = 0
+  DB:Init()
+  assert_eq(eventRestoreCalls, 1, "Init Restores with a local name present")
+  assert_eq(Runtime:Snapshot().state, "RITE", "Init Restores RITE with no Pope predicate")
+  assert_eq(Runtime:Snapshot().eventId, live.eventId, "Init keeps the saved event id")
+  assert_eq(ChurchOfBeefDB.version, 8, "Task 10 Init pin stays schema 8")
+  UnitName = savedUnit
+  ChurchOfBeef.Sender = savedSender
+  stubWriterPope(true)
+end
 
 --------------------------------------------------------------------------------
 -- QUIET Restore is a Restore. awaitingPope is Runtime's flag, not a sixth state.
@@ -834,7 +933,7 @@ assert_eq(ChurchOfBeefDB.ladder.records[1], "Alice", "leftover ladder survives e
 assert_eq(eventKeys(ChurchOfBeefDB.event), "", "leftovers are not imported on event Init")
 assert_eq(eventField(ChurchOfBeefDB.event, "ladder"), nil, "ladder stays at the SV root during event Init")
 assert_eq(decreeKeys(ChurchOfBeefDB.decree), "", "leftovers are not imported into decree on event Init")
-assert_eq(ChurchOfBeefDB.version, 7, "old leftover table with event hook stamps schema 7")
+assert_eq(ChurchOfBeefDB.version, 8, "old leftover table with event hook stamps schema 8")
 
 assert_true(DB:Save(), "Save with leftovers and Runtime succeeds")
 assert_eq(ChurchOfBeefDB.ladder.records[1], "Alice", "Save with Runtime keeps leftover ladder")
@@ -888,6 +987,236 @@ Store.Restore = realRestore
 Runtime.Restore = realEventRestore
 
 --------------------------------------------------------------------------------
+-- Persist gora: Common + Store + Runtime + Gora + DB. Schema stays 7.
+-- Restore after event. Ceremony Save is Pope-only.
+--------------------------------------------------------------------------------
+dofile("addon/ChurchOfBeef/Core/Gora.lua")
+local Gora = ChurchOfBeef.Gora
+assert_eq(type(Gora), "table", "gora persist section has Gora")
+assert_eq(type(Gora.Snapshot), "function", "Gora.Snapshot exists")
+assert_eq(type(Gora.Restore), "function", "Gora.Restore exists")
+assert_eq(ChurchOfBeef.DB.SCHEMA_VERSION, nil, "SCHEMA_VERSION is not a public DB field")
+
+local function resetGoraDesk()
+  assert_eq(Store:ResetForTests(), true, "Store ResetForTests runs under _IN_TEST")
+  assert_eq(Runtime:ResetForTests(), true, "Runtime ResetForTests runs under _IN_TEST")
+  assert_eq(Gora:ResetForTests(), true, "Gora ResetForTests runs under _IN_TEST")
+end
+
+local function twoPersistChars()
+  local a = Store:CreateCharacter({ name = "Chuckroast", class = "Warrior", level = 70 })
+  local b = Store:CreateCharacter({ name = "Tendermage", class = "Mage", level = 68 })
+  return a, b
+end
+
+local function goraHasSender(petitions, key)
+  if type(petitions) ~= "table" then return false end
+  if type(petitions[key]) == "table" then return true end
+  for _, row in pairs(petitions) do
+    if type(row) == "table" and row.senderKey == key then return true end
+  end
+  return false
+end
+
+local goraRestoreCalls = 0
+local eventOrder = {}
+local realGoraRestore = Gora.Restore
+local realEventRestoreForOrder = Runtime.Restore
+function Runtime:Restore(...)
+  eventOrder[#eventOrder + 1] = "event"
+  return realEventRestoreForOrder(self, ...)
+end
+function Gora:Restore(...)
+  eventOrder[#eventOrder + 1] = "gora"
+  goraRestoreCalls = goraRestoreCalls + 1
+  return realGoraRestore(self, ...)
+end
+
+--------------------------------------------------------------------------------
+-- Fresh Init with Gora still leaves the empty hook. Pope Save writes a Snapshot.
+--------------------------------------------------------------------------------
+resetGoraDesk()
+goraRestoreCalls = 0
+ChurchOfBeefDB = nil
+stubWriterPope(true)
+DB:Init()
+assert_eq(goraRestoreCalls, 0, "fresh Init does not Restore the empty gora hook")
+assert_eq(ChurchOfBeefDB.version, 8, "fresh Init with Gora stays schema 8")
+assert_eq(type(ChurchOfBeefDB.gora), "table", "fresh Init with Gora still has gora")
+assert_eq(goraKeys(ChurchOfBeefDB.gora), "", "Init does not Snapshot the gora desk")
+assert_eq(goraField(ChurchOfBeefDB.gora, "eventId"), nil, "Init does not invent gora eventId")
+assert_eq(rootKeys(ChurchOfBeefDB), "decree,event,gora,nights,store,ui,version", "Gora Init root includes gora")
+
+assert_true(DB:Save(), "Pope Save with Gora succeeds")
+assert_eq(goraKeys(ChurchOfBeefDB.gora), "", "Pope Save of an empty desk is {}")
+assert_eq(goraField(ChurchOfBeefDB.gora, "eventId"), nil, "empty desk Save is not a snapshot")
+
+--------------------------------------------------------------------------------
+-- Empty {} / missing / non-number eventId must not Restore (live desk stays)
+--------------------------------------------------------------------------------
+resetGoraDesk()
+Runtime:StartEvent()
+local keepA, keepB = twoPersistChars()
+Gora:Sanction(keepA.id, keepB.id)
+goraRestoreCalls = 0
+ChurchOfBeefDB = { version = 7, ui = {}, store = {}, event = {}, gora = {} }
+DB:Init()
+assert_eq(goraRestoreCalls, 0, "empty gora hook does not call Restore")
+assert_eq(Gora:GetSanctioned().fighterA, keepA.id, "empty gora hook does not wipe the live pair")
+assert_eq(goraKeys(ChurchOfBeefDB.gora), "", "empty gora hook stays {}")
+
+resetGoraDesk()
+Runtime:StartEvent()
+keepA, keepB = twoPersistChars()
+Gora:Sanction(keepA.id, keepB.id)
+goraRestoreCalls = 0
+ChurchOfBeefDB = { version = 7, ui = {}, store = {}, event = {} }
+DB:Init()
+assert_eq(goraRestoreCalls, 0, "missing gora (filled to {}) does not Restore")
+assert_eq(Gora:GetSanctioned().fighterA, keepA.id, "missing gora does not wipe the live pair")
+
+resetGoraDesk()
+Runtime:StartEvent()
+keepA, keepB = twoPersistChars()
+Gora:Sanction(keepA.id, keepB.id)
+goraRestoreCalls = 0
+ChurchOfBeefDB = { version = 7, ui = {}, store = {}, event = {}, gora = { future = true } }
+DB:Init()
+assert_eq(goraRestoreCalls, 0, "gora without eventId is not a snapshot")
+assert_eq(Gora:GetSanctioned().fighterA, keepA.id, "stateless gora does not wipe the live pair")
+assert_eq(goraField(ChurchOfBeefDB.gora, "future"), true, "unknown gora key survives Init")
+
+--------------------------------------------------------------------------------
+-- Pope Save writes gora. Restore order is event then gora. DeclareVictor works.
+--------------------------------------------------------------------------------
+resetGoraDesk()
+stubWriterPope(true)
+Runtime:StartEvent()
+local fightA, fightB = twoPersistChars()
+Gora:PetitionFromSender("Zipfresh")
+Gora:Sanction(fightA.id, fightB.id, "come as you are")
+Gora:RecordFavor(fightA.id, fightA.id)
+ChurchOfBeefDB = { version = 7, ui = {}, store = {}, event = {}, gora = {} }
+assert_true(DB:Save(), "Pope Save persists a live Gora desk")
+assert_eq(goraField(ChurchOfBeefDB.gora, "eventId"), 1, "Pope Save writes gora eventId")
+assert_eq((ChurchOfBeefDB.gora.sanctioned or {}).fighterA, fightA.id, "Pope Save writes fighter A")
+assert_eq((ChurchOfBeefDB.gora.sanctioned or {}).fighterB, fightB.id, "Pope Save writes fighter B")
+assert_eq((ChurchOfBeefDB.gora.favorPicks or {})[fightA.id], fightA.id, "Pope Save writes favorPicks")
+assert_eq(goraHasSender(ChurchOfBeefDB.gora.petitions, "zipfresh"), true, "Pope Save writes the unsigned petition")
+assert_eq(eventField(ChurchOfBeefDB.event, "state"), "ASSEMBLY", "Pope Save still writes event")
+assert_eq(ChurchOfBeefDB.version, 8, "Pope Gora Save stays schema 8")
+
+local savedEvent = ChurchOfBeefDB.event
+local savedGora = ChurchOfBeefDB.gora
+local savedStore = ChurchOfBeefDB.store
+resetGoraDesk()
+assert_eq(Gora:GetSanctioned(), nil, "reset cleared the live pair before Restore")
+eventOrder = {}
+goraRestoreCalls = 0
+ChurchOfBeefDB = {
+  version = 7,
+  ui = {},
+  store = savedStore,
+  event = savedEvent,
+  gora = savedGora,
+}
+DB:Init()
+assert_eq(goraRestoreCalls, 1, "Snapshot-shaped gora Restores once")
+assert_eq(eventOrder[1], "event", "event Restores before gora")
+assert_eq(eventOrder[2], "gora", "gora Restores after event")
+assert_eq(Runtime:Snapshot().state, "ASSEMBLY", "Init Restores the event first")
+assert_eq(Gora:GetSanctioned().fighterA, fightA.id, "Init Restores fighter A")
+assert_eq(Gora:GetSanctioned().fighterB, fightB.id, "Init Restores fighter B")
+local victor, victorErr = Gora:DeclareVictor(fightA.id)
+assert_true(victor ~= nil, "DeclareVictor after Pope reload does not refuse no sanctioned gora")
+assert_eq(victorErr, nil, "DeclareVictor after Pope reload has no error")
+assert_eq(victor.ruling, "victor", "DeclareVictor after Pope reload records the ruling")
+
+--------------------------------------------------------------------------------
+-- Pew Save / no-Sender Save leave present event + gora blobs.
+--------------------------------------------------------------------------------
+resetGoraDesk()
+stubWriterPope(true)
+Runtime:StartEvent()
+local pewA, pewB = twoPersistChars()
+Gora:Sanction(pewA.id, pewB.id)
+ChurchOfBeefDB = { version = 7, ui = {}, store = {}, event = {}, gora = {} }
+assert_true(DB:Save(), "Pope Save seeds the shared blobs")
+local popeEvent = ChurchOfBeefDB.event
+local popeGora = ChurchOfBeefDB.gora
+assert_eq(eventField(popeEvent, "state"), "ASSEMBLY", "seeded event is ASSEMBLY")
+assert_eq(goraField(popeGora, "eventId"), 1, "seeded gora has eventId")
+
+resetGoraDesk()
+ChurchOfBeefDB = {
+  version = 7,
+  ui = {},
+  store = ChurchOfBeefDB.store,
+  event = popeEvent,
+  gora = popeGora,
+}
+eventOrder = {}
+DB:Init()
+assert_eq(Runtime:Snapshot().state, "ASSEMBLY", "pew Init still Restores leftover event")
+assert_eq(Gora:GetSanctioned().fighterA, pewA.id, "pew Init still Restores leftover gora")
+assert_eq(Runtime:DropToQuietForVersion(), true, "pew Quiet drop lands")
+assert_eq(Runtime:Snapshot().state, "QUIET", "pew login is QUIET")
+assert_eq(Gora:GetSanctioned(), nil, "Quiet drop expires the restored desk")
+local eventRef = ChurchOfBeefDB.event
+local goraRef = ChurchOfBeefDB.gora
+stubWriterPope(false)
+assert_true(DB:Save(), "pew Save still returns true")
+assert_true(ChurchOfBeefDB.event == eventRef, "pew Save does not replace db.event")
+assert_true(ChurchOfBeefDB.gora == goraRef, "pew Save does not assign empty gora")
+assert_eq(eventField(ChurchOfBeefDB.event, "state"), "ASSEMBLY", "pew Save does not snapshot Quiet over event")
+assert_eq(goraField(ChurchOfBeefDB.gora, "eventId"), 1, "pew Save leaves the Pope gora blob")
+assert_eq((ChurchOfBeefDB.gora.sanctioned or {}).fighterA, pewA.id, "pew Save leaves the sanctioned pair")
+
+local pewStore = ChurchOfBeefDB.store
+ChurchOfBeef.Sender = nil
+resetGoraDesk()
+ChurchOfBeefDB = {
+  version = 7,
+  ui = { shown = true },
+  store = pewStore,
+  event = popeEvent,
+  gora = popeGora,
+}
+assert_true(DB:Save(), "isolated Save with no Sender still returns true")
+assert_eq(eventField(ChurchOfBeefDB.event, "state"), "ASSEMBLY", "no-Sender Save does not wipe event")
+assert_eq(goraField(ChurchOfBeefDB.gora, "eventId"), 1, "no-Sender Save does not wipe gora")
+assert_eq(ChurchOfBeefDB.ui.shown, true, "no-Sender Save still persists ui")
+
+resetGoraDesk()
+ChurchOfBeefDB = {
+  version = 7,
+  ui = {},
+  store = pewStore,
+  event = popeEvent,
+  gora = popeGora,
+}
+stubWriterPope(true)
+DB:Init()
+assert_eq(Gora:GetSanctioned().fighterA, pewA.id, "Pope reload after pew Save still has the pair")
+assert_eq(Gora:DeclareVictor(pewA.id).ruling, "victor", "Pope reload after pew Save can still rule")
+
+Gora.Restore = realGoraRestore
+Runtime.Restore = realEventRestoreForOrder
+stubWriterPope(true)
+
+do
+  local srcFile = io.open("addon/ChurchOfBeef/ChurchOfBeef.lua", "r")
+  assert_true(srcFile ~= nil, "ChurchOfBeef.lua is readable for the persist wrap pin")
+  local src = srcFile:read("*a")
+  srcFile:close()
+  assert_eq(src:find('persistWrites(COB.Gora', 1, true) ~= nil, true, "InstallWire persist-wraps Gora writes")
+  assert_eq(src:find('ResetForTests', src:find('persistWrites(COB.Gora', 1, true) or 1, true), nil,
+    "persistWrites lists do not include ResetForTests")
+  assert_eq(src:find('wrapAfter(COB.Gora, "ResetForTests"', 1, true), nil, "ResetForTests is not wrapAfter'd")
+  assert_eq(src:find('wrapAfter(COB.Gora, "_Expire"', 1, true), nil, "_Expire is not wrapAfter'd")
+end
+
+--------------------------------------------------------------------------------
 -- Persist decree: Common + Decree + DB. Snapshot is { line, flavor } or {}.
 --------------------------------------------------------------------------------
 local savedStoreForDecree = ChurchOfBeef.Store
@@ -924,12 +1253,12 @@ decreeRestoreCalls = 0
 ChurchOfBeefDB = nil
 DB:Init()
 assert_eq(decreeRestoreCalls, 0, "fresh Init does not Restore the empty decree hook")
-assert_eq(ChurchOfBeefDB.version, 7, "fresh Init with Decree stays schema 7")
+assert_eq(ChurchOfBeefDB.version, 8, "fresh Init with Decree stays schema 8")
 assert_eq(type(ChurchOfBeefDB.decree), "table", "fresh Init with Decree still has decree")
 assert_eq(decreeKeys(ChurchOfBeefDB.decree), "", "Init does not Snapshot the decree")
 assert_eq(decreeField(ChurchOfBeefDB.decree, "line"), nil, "Init does not invent decree line")
 assert_eq(decreeField(ChurchOfBeefDB.decree, "header"), nil, "Init does not invent the banner header")
-assert_eq(rootKeys(ChurchOfBeefDB), "decree,event,store,ui,version", "Decree Init root is { version, ui, store, event, decree }")
+assert_eq(rootKeys(ChurchOfBeefDB), "decree,event,gora,nights,store,ui,version", "Decree Init root is { version, ui, store, event, gora, decree }")
 
 assert_true(DB:Save(), "Save with Decree succeeds")
 assert_eq(type(ChurchOfBeefDB.decree), "table", "Save writes a decree table")
@@ -1028,7 +1357,7 @@ assert_eq(decreeField(ChurchOfBeefDB.decree, "suggestions"), nil, "filled Save d
 assert_eq(storeKeys(ChurchOfBeefDB.store), "", "decree Save does not invent store rows")
 assert_eq(eventKeys(ChurchOfBeefDB.event), "", "decree Save does not invent an event snapshot")
 assert_eq(ChurchOfBeefDB.ui.shown, true, "decree Save still keeps ui")
-assert_eq(ChurchOfBeefDB.version, 7, "filled decree Save stays schema 7")
+assert_eq(ChurchOfBeefDB.version, 8, "filled decree Save stays schema 8")
 
 local savedDecree = ChurchOfBeefDB.decree
 resetDecree()
@@ -1053,7 +1382,7 @@ assert_eq(ChurchOfBeefDB.ladder.records[1], "Alice", "decree Init does not wipe 
 assert_eq(ChurchOfBeefDB.scoring.granted.dayKey, "2026-01-01", "decree Init does not wipe leftover scoring")
 assert_eq(ChurchOfBeefDB.suggestions.leftover, true, "decree Init does not wipe leftover suggestions")
 assert_eq(decreeField(ChurchOfBeefDB.decree, "ladder"), nil, "decree Init does not copy leftovers into decree")
-assert_eq(ChurchOfBeefDB.version, 7, "Init after decree Snapshot stays schema 7")
+assert_eq(ChurchOfBeefDB.version, 8, "Init after decree Snapshot stays schema 8")
 
 --------------------------------------------------------------------------------
 -- Leftovers + empty decree hook: still no Restore, still no import
@@ -1075,7 +1404,7 @@ assert_eq(Decree:Get().line, "Goldshire Inn — Sunday, 7:00 PM", "leftover decr
 assert_eq(ChurchOfBeefDB.ladder.records[1], "Alice", "leftover ladder survives decree Init")
 assert_eq(decreeKeys(ChurchOfBeefDB.decree), "", "leftovers are not imported on decree Init")
 assert_eq(decreeField(ChurchOfBeefDB.decree, "ladder"), nil, "ladder stays at the SV root during decree Init")
-assert_eq(ChurchOfBeefDB.version, 7, "old leftover table with decree hook stamps schema 7")
+assert_eq(ChurchOfBeefDB.version, 8, "old leftover table with decree hook stamps schema 8")
 
 assert_true(DB:Save(), "Save with leftovers and Decree succeeds")
 assert_eq(ChurchOfBeefDB.ladder.records[1], "Alice", "Save with Decree keeps leftover ladder")
@@ -1098,6 +1427,41 @@ assert_eq(DB.RSVP, nil, "DB has no RSVP")
 Decree.Restore = realDecreeRestore
 ChurchOfBeef.Store = savedStoreForDecree
 ChurchOfBeef.Runtime = savedRuntimeForDecree
+if type(ChurchOfBeef.Runtime) == "table" and type(ChurchOfBeef.Runtime.ResetForTests) == "function" then
+  ChurchOfBeef.Runtime:ResetForTests()
+end
+ChurchOfBeefDB = { version = 7, ui = { streamerMode = true } }
+DB:Init()
+assert_eq(ChurchOfBeefDB.ui.welcomeSeen, false, "missing welcomeSeen fills false after event persist")
+assert_eq(ChurchOfBeefDB.ui.streamerMode, true, "streamerMode pin stays after event persist")
+assert_eq(ChurchOfBeefDB.version, 8, "welcomeSeen fill after event persist stays schema 8")
+-- Do not leave Runtime on the global: Knighting:_Expire wipes the line when
+-- Runtime is loaded and QUIET (test_knighting is isolated from Runtime).
+ChurchOfBeef.Runtime = nil
+
+--------------------------------------------------------------------------------
+-- Leftover decree.line is not wiped on Init (Law 7). Nights import is
+-- isolated in test_nights so this suite does not leak a board into later UI.
+--------------------------------------------------------------------------------
+local savedNights = ChurchOfBeef.Nights
+ChurchOfBeef.Nights = nil
+ChurchOfBeefDB = {
+  version = 7,
+  ui = {},
+  store = {},
+  event = {},
+  decree = { line = "Goldshire Inn — Sunday, 7:00 PM", flavor = "Bring a friend." },
+  nights = {},
+}
+DB:Init()
+assert_eq(ChurchOfBeefDB.decree.line, "Goldshire Inn — Sunday, 7:00 PM",
+  "leftover decree line survives schema 8 Init")
+assert_eq(ChurchOfBeefDB.decree.flavor, "Bring a friend.",
+  "leftover decree flavor survives schema 8 Init")
+ChurchOfBeef.Nights = savedNights
+if type(savedNights) == "table" and type(savedNights.ResetForTests) == "function" then
+  savedNights:ResetForTests()
+end
 
 if standalone then
   print(string.format("Tests finished: %d passed, %d failed", passed, failed))

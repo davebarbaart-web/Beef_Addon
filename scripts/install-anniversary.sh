@@ -4,18 +4,34 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 SRC="$ROOT/addon/ChurchOfBeef"
-DST_DEFAULT="/Applications/World of Warcraft/_anniversary_/Interface/AddOns/ChurchOfBeef"
-DST="${WOW_ADDONS_DIR:-$DST_DEFAULT}"
+ADDONS_DEFAULT="/Applications/World of Warcraft/_anniversary_/Interface/AddOns"
+DST_DEFAULT="$ADDONS_DEFAULT/ChurchOfBeef"
+
+# Accept either the AddOns parent (skill / 00-INSTALL-PATH) or the full
+# ChurchOfBeef destination. Never treat the AddOns folder itself as DST.
+if [[ -n "${WOW_ADDONS_DIR:-}" ]]; then
+  case "${WOW_ADDONS_DIR%/}" in
+    */ChurchOfBeef) DST="${WOW_ADDONS_DIR%/}" ;;
+    *) DST="${WOW_ADDONS_DIR%/}/ChurchOfBeef" ;;
+  esac
+else
+  DST="$DST_DEFAULT"
+fi
 
 if [[ ! -f "$SRC/ChurchOfBeef.toc" ]]; then
   echo "error: missing $SRC/ChurchOfBeef.toc" >&2
   exit 1
 fi
 
+if [[ "$(basename "$DST")" != "ChurchOfBeef" ]]; then
+  echo "error: refusing to install outside ChurchOfBeef/ (got $DST)" >&2
+  exit 1
+fi
+
 PARENT="$(dirname "$DST")"
 if [[ ! -d "$PARENT" ]]; then
   echo "error: Anniversary AddOns directory not found: $PARENT" >&2
-  echo "Set WOW_ADDONS_DIR to the full ChurchOfBeef install path." >&2
+  echo "Set WOW_ADDONS_DIR to AddOns or the full ChurchOfBeef install path." >&2
   exit 1
 fi
 

@@ -119,7 +119,7 @@ The ordinary-day experience encourages members to play WoW together through reco
 
 The add-on has exactly two presentation states, and every feature must declare which it lives in.
 
-**Quiet Mode** (normal WoW): at most a minimap presence and the active Decree. No feeds, no dashboards, no toasts, no sound. This is contractual, not aspirational — it is the strongest standing defense against scope creep, because most creep arrives as "just a small always-visible panel."
+**Quiet Mode** (normal WoW): at most a hideable minimap presence. The Nights board (§14.1) is player-opened (the `/beef` week strip and the Nights parchment), not an always-on overlay. The one licensed unbidden cue is a faint minimap glow when the board changed since the player last opened the card — not a pip for “a night exists,” not a toast, not a reminder. No feeds, no dashboards, no toasts, no sound. This is contractual, not aspirational — it is the strongest standing defense against scope creep, because most creep arrives as "just a small always-visible panel."
 
 **Event Mode** (ceremonies and Goras): theatrical presentation — proclamations, fight HUD, favor, outcomes, sound. Entered and exited only through the ceremony runtime (§20).
 
@@ -450,19 +450,19 @@ Church gameplay never fails because someone lacks the add-on. Non-users fully pa
 
 Outside ceremonies, the add-on helps answer: **what is the Church doing together?** — without chores, currencies, or FOMO.
 
-## 14.1 The Decree *(new in v1.1 — MVP)*
+## 14.1 The Nights board *(was the Decree; David 2026-09-14)*
 
-The one Quiet Mode feature beyond mere presence. The Pope (or one designated deputy) posts a single active Decree:
+The Quiet Mode feature beyond mere presence. The Pope posts **Church nights** (Gathering, Knighting night, Gora night) as a weekly series he can skip or move for a given week. Designated Council (workspace list, same pattern as registered Popes) may post **Discord stubs** (Raid, PvP) — title, when/where, and the cue “Sign up on Discord” — including when the Pope is offline. Congregation may tap **Going** on a Church occurrence: everyone sees a count; names stay on the Pope desk. Going is informational, not attendance, not a score, not a rank gate.
 
-> **A GATHERING HAS BEEN DECREED**
-> *Goldshire Inn — Sunday, 7:00 PM*
-> *(one optional line of flavor)*
+The board is a **notice**. It does not start ASSEMBLY. The Pope still starts the Gathering from the Director Console.
 
-Shown once per login as a parchment banner; thereafter reachable from the minimap. That is the entire feature. **Hard boundary:** no calendar, no RSVPs, no reminders, no recurring events, no attendance tracking. The Decree exists because the Cooked Beef → Knight funnel runs entirely through attending a ceremony, and because the quiet state deserves one purposeful thing in it. It is a proclamation, not a scheduling suite.
+**Quiet surfaces:** no login parchment. `/beef` shows the next seven local days; a click-through Nights parchment shows twenty-eight. Minimap left-click opens the card; right-click opens the parchment. A faint glow means the board changed since the player last opened the card; it stops when they view it.
+
+**Hard boundary:** no Discord API or URLs; no role signup; no reminders or toasts; no auto-start; no attendance ledger; no Blizzard calendar sync. Raid and PvP nights are Discord stubs on this board, not in-addon RSVP. The Cooked Beef → Knight funnel still runs through attending a ceremony; the board is how the next nights are posted.
 
 ## 14.2 The Honest MVP Answer for a Random Tuesday
 
-A Beef Knight logging in on an ordinary evening sees: **almost nothing, plus the Decree.** Their profile and records exist and are browsable; the next Gathering is announced; the add-on is otherwise silent. This is deliberate. Everyday *features* are a later phase; everyday *value* in MVP is identity, history, and anticipation. We state this honestly so nobody "fixes" the quiet with a feed.
+A Beef Knight logging in on an ordinary evening sees: **almost nothing** — a hideable minimap, glowing only if the Nights board changed since they last opened `/beef`. Their profile, records, and the week of posted nights are player-opened; the add-on is otherwise silent. This is deliberate. Everyday *features* beyond identity, history, and the posted nights are a later phase. We state this honestly so nobody "fixes" the quiet with a feed.
 
 ## 14.3 Later-Phase Everyday Systems
 
@@ -562,7 +562,7 @@ The congregation receives **theater, not administration**: proclamations, fighte
 
 ## 19.1 The Quiet Mode Contract
 
-In Quiet Mode the add-on renders **at most a minimap presence and the active Decree.** No bars, feeds, toasts, or sound. Every feature proposal must declare its mode (§24, filter 8); "just a small always-visible panel" is how products die.
+In Quiet Mode the add-on renders **at most a hideable minimap.** The Nights board is player-opened. The one licensed unbidden cue is the unseen-change glow (§14.1). No bars, feeds, toasts, reminders, or sound. Every feature proposal must declare its mode (§24, filter 8); "just a small always-visible panel" is how products die.
 
 ## 19.2 Event Mode
 
@@ -572,7 +572,7 @@ Temporarily theatrical during Church moments, entered and exited only via the ru
 
 Dark iron, charcoal, aged parchment, muted gold; gothic/ecclesiastical typography; Warcraft-compatible ornamentation; official seals and proclamations. An ancient institution treating completely ridiculous Beef matters with absolute seriousness. **The comedy comes from the contrast between institutional dignity and complete stupidity — therefore the UI itself never tells jokes.** No meme clutter. The institution is funny because it appears not to know it is funny.
 
-**The hybrid visual law** *(ruled in v1.1.1)*: functional surfaces — the Director Console's desks, lists, settings — stay stock-Blizzard-template pragmatic; **theatrical surfaces — proclamations, fighter cards, seals, verdicts, the Records Book, the Decree — receive the full ecclesiastical identity, and this is non-negotiable.** The visual contrast between the plain working tool and the absurdly dignified theater is itself part of the §19.3 comedy engine. Custom media is therefore permitted and expected, but only where the theater lives.
+**The hybrid visual law** *(ruled in v1.1.1)*: functional surfaces — the Director Console's desks, lists, settings — stay stock-Blizzard-template pragmatic; **theatrical surfaces — proclamations, fighter cards, seals, verdicts, the Records Book, the Nights parchment — receive the full ecclesiastical identity, and this is non-negotiable.** The visual contrast between the plain working tool and the absurdly dignified theater is itself part of the §19.3 comedy engine. Custom media is therefore permitted and expected, but only where the theater lives.
 
 ## 19.4 Sound *(new in v1.1)*
 
@@ -639,7 +639,7 @@ The MVP proves the thesis and its quality — not the full long-term design.
 6. **Pope-authoritative synchronization** — §13.1 star topology; sender/authority validation (§13.4).
 7. **Basic Church identity** — player + linked characters (human-confirmed via the Rite of Recognition), rank, records, plain profile. Aggregate views stay simple.
 8. **Records Book** — §10.9 categories; no ranked ladder.
-9. **The Decree** — §14.1, hard-bounded.
+9. **The Nights board** — §14.1, hard-bounded (Church series + Discord stubs + informational Going; no reminders, no attendance ledger, no Discord API).
 10. **Sound cues** — the §19.4 MVP set.
 11. **Manual overrides on every automated step** — standing requirement.
 12. **The Sacred Archive** — export, import, weekly ritual reminder, cold mirror.
@@ -715,7 +715,7 @@ Ordered by design impact; each item names its dependent feature and fallback. Va
 10. **Profession/tradeskill links on TBC client** → later-phase self-reported profession directory.
 11. **Guild bank transaction log queryability** → later-phase tithe recognition.
 12. **Dungeon "completion" signals** (final-boss-kill heuristic per dungeon) → later-phase Expeditions.
-13. **Login/reload event timing** → Decree banner display, snapshot requests.
+13. **Login/reload event timing** → Nights persist / snapshot requests; no login banner.
 
 Any item that fails validation triggers a design fallback decision *before* implementation improvises one.
 
@@ -725,7 +725,7 @@ Any item that fails validation triggers a design fallback decision *before* impl
 2. **Fight HUD feasibility:** Appendix A item 1 result decides HUD final form.
 3. **Records Book categories:** §10.9 list awaits David's veto/additions — ideally checked against what members actually brag about in Discord.
 4. **Curtain UX:** direction fixed (§17); interaction details open.
-5. **Decree authorship:** Pope + one designated deputy is the default; confirm against real weekly logistics.
+5. **Nights authorship:** Church nights are Pope-only. Discord stubs may be posted by designated Council (`Data/Council.lua`). See `docs/superpowers/specs/2026-09-14-nights-board-design.md`.
 6. **Classic+ trigger:** on any official announcement, re-validate Appendix A and revisit §3 before further platform-dependent work.
 7. **Council flagging of Chronicle moments:** MVP is Pope-only MARK; decide when/whether Council nomination unlocks.
 

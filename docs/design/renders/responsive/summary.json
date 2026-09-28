@@ -1,0 +1,23 @@
+{
+  "status": "PASS",
+  "cases": [
+    {
+      "name": "compact_800x600",
+      "width": 800,
+      "height": 600,
+      "scenarios": 14
+    },
+    {
+      "name": "stream_1024x768",
+      "width": 1024,
+      "height": 768,
+      "scenarios": 14
+    },
+    {
+      "name": "widescreen_1920x1080",
+      "width": 1920,
+      "height": 1080,
+      "scenarios": 14
+    }
+  ]
+}

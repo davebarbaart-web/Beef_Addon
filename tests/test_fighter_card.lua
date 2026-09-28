@@ -44,9 +44,9 @@ dofile("addon/ChurchOfBeef/UI/Theme.lua")
 dofile("addon/ChurchOfBeef/UI/FighterCard.lua")
 
 local EN_DASH = "\226\128\147"
-local ROMAN_FRESH = "N" .. EN_DASH .. "N"
-local ROMAN_WIN = "I" .. EN_DASH .. "N"
-local ROMAN_LOSS = "N" .. EN_DASH .. "I"
+local ARABIC_FRESH = "0" .. EN_DASH .. "0"
+local ARABIC_WIN = "1" .. EN_DASH .. "0"
+local ARABIC_LOSS = "0" .. EN_DASH .. "1"
 
 local COB = ChurchOfBeef
 local FighterCard = COB.FighterCard
@@ -87,6 +87,7 @@ local function reset()
   assert_eq(Runtime:ResetForTests(), true, "Runtime ResetForTests runs under _IN_TEST")
   assert_eq(Gora:ResetForTests(), true, "Gora ResetForTests runs under _IN_TEST")
   assert_eq(FighterCard:ResetForTests(), true, "FighterCard ResetForTests runs under _IN_TEST")
+  COB._lastCastNames = nil
   sounds = 0
   healthReads = 0
 end
@@ -139,6 +140,25 @@ local function sameRgb(color, sample)
     and color.r == sample.r and color.g == sample.g and color.b == sample.b
 end
 
+local function isBagStock(path)
+  return type(path) == "string"
+    and (path:find("EmptySlot", 1, true) ~= nil
+      or path:find("Quickslot", 1, true) ~= nil)
+end
+
+local function assertThemeOrFill(tex, themeName, fillRole, msg)
+  local path = COB.Theme:Texture(themeName)
+  if isBagStock(path) then
+    assert_eq(tex._cobTexture, nil, msg .. " refuses bag-slot stock")
+    if fillRole then
+      assert_eq(tex._cobColor and tex._cobColor.r, select(1, COB.Theme:Color(fillRole)),
+        msg .. " fills Theme " .. fillRole)
+    end
+  else
+    assert_eq(tex._cobTexture, path, msg)
+  end
+end
+
 local function countSpecial(name)
   local n = 0
   if type(UISpecialFrames) ~= "table" then return 0 end
@@ -158,7 +178,7 @@ assert_true(Gora ~= nil, "Gora is loaded")
 assert_true(Ranks ~= nil, "Ranks is loaded for Church titles")
 assert_true(COB.Names ~= nil, "Common name law is loaded")
 assert_true(COB.Theme ~= nil, "Theme is loaded for dress")
-assert_true(COB.Common ~= nil, "Common is loaded for roman numerals")
+assert_true(COB.Common ~= nil, "Common is loaded")
 assert_true(type(COB.Common.RomanPair) == "function", "RomanPair is available")
 assert_true(type(COB.Common.RomanNumeral) == "function", "RomanNumeral is available")
 
@@ -249,16 +269,35 @@ assert_true(src:find('Texture("seal_papal")', 1, true) ~= nil
 assert_true(src:find("glyph_record", 1, true) ~= nil, "ledger uses Theme glyph_record")
 assert_true(src:find("glyph_defenses", 1, true) ~= nil, "ledger uses Theme glyph_defenses")
 assert_true(src:find("glyph_headtohead", 1, true) ~= nil, "ledger uses Theme glyph_headtohead")
-assert_true(src:find("glyph_stipulation", 1, true) ~= nil, "ledger uses Theme glyph_stipulation")
+assert_eq(src:find("glyph_stipulation", 1, true), nil, "ledger has no stipulation glyph")
 assert_true(src:find("frame_fightercard", 1, true) ~= nil, "frame slot is Theme frame_fightercard")
 assert_true(src:find("frame_proclamation_center", 1, true) ~= nil,
   "parchment reuses Theme frame_proclamation_center")
-assert_true(src:find("RomanPair", 1, true) ~= nil, "records use Common.RomanPair")
-assert_true(src:find("RomanNumeral", 1, true) ~= nil, "defenses use Common.RomanNumeral")
+assert_eq(src:find("RomanPair", 1, true), nil, "records no longer use Common.RomanPair")
+assert_eq(src:find("RomanNumeral", 1, true), nil, "defenses no longer use Common.RomanNumeral")
+assert_eq(src:find("SetBackdrop", 1, true), nil, "source does not tile a Backdrop")
+assert_eq(src:find("tileSize", 1, true), nil, "source does not use bag-slot tileSize")
+assert_eq(src:find("BackdropTemplate", 1, true), nil, "source does not mint BackdropTemplate chrome")
+assert_true(src:find("isBagSlotPath", 1, true) ~= nil, "source refuses bag-slot stock paths")
+assert_true(src:find('buildPlate(widget, "LEFT")', 1, true) ~= nil, "plates are LEFT tape")
+assert_eq(src:find('buildPlate(widget, "RIGHT")', 1, true), nil, "no RIGHT-facing plate")
+assert_true(src:find('applyFont(plate.name, "display", "name"', 1, true) ~= nil,
+  "names use Theme.FontSize.name")
+assert_true(src:find('applyFont(plate.level, "body", "caption"', 1, true) ~= nil,
+  "level uses Theme.FontSize.caption")
+assert_true(src:find("layoutHonorific", 1, true) ~= nil, "honorifics wrap inside the plate")
+assert_true(src:find("SetWordWrap", 1, true) ~= nil, "honorifics call SetWordWrap")
+assert_eq(src:find("R3-fightercard-REFERENCE", 1, true), nil,
+  "source does not dress toward the discarded R3 PNG")
+assert_eq(src:find("themeFontSize(sizeKey, 10", 1, true), nil, "no leftover 10px font")
+assert_eq(src:find("themeFontSize(sizeKey, 6", 1, true), nil, "no leftover 6px font")
+assert_eq(src:find("if plateH < 72", 1, true), nil, "plate min is Theme.Space, not 72")
+assert_true(src:find('space("glyph"', 1, true) ~= nil, "glyph size is Theme.Space")
+assert_true(src:find('space("footer"', 1, true) ~= nil, "footer reserve is Theme.Space")
 assert_true(src:find('"Record"', 1, true) ~= nil, "ledger chrome includes Record")
 assert_true(src:find('"Defenses"', 1, true) ~= nil, "ledger chrome includes Defenses")
 assert_true(src:find('"Head-to-head"', 1, true) ~= nil, "ledger chrome includes Head-to-head")
-assert_true(src:find('"Stipulation"', 1, true) ~= nil, "ledger chrome includes Stipulation")
+assert_eq(src:find('"Stipulation"', 1, true), nil, "ledger chrome has no Stipulation")
 assert_eq(src:find("skull", 1, true), nil, "source has no skull imagery")
 assert_true(src:find("UISpecialFrames", 1, true) ~= nil, "source registers UISpecialFrames")
 assert_true(src:find("OnHide", 1, true) ~= nil, "source hooks OnHide")
@@ -286,28 +325,45 @@ assert_eq(frame:GetScript("OnUpdate"), nil, "a resting card runs nothing per fra
 assert_eq(findStatusBar(frame), nil, "Init mints no StatusBar")
 assert_eq(countType(frame, "Button"), 0, "card has no close button")
 assert_eq(frame:GetWidth(), 420, "unknown UIParent width keeps the compact third")
-assert_eq(frame:GetHeight(), 220, "unknown UIParent height keeps the compact third")
+assert_eq(frame:GetHeight(), 360, "unknown UIParent height keeps the stacked tape")
 assert_true(frame.parchment ~= nil, "iron/parchment dress has a parchment field")
 assert_eq(frame.parchment._cobTexture, COB.Theme:Texture("frame_proclamation_center"),
   "parchment is Theme frame_proclamation_center")
 assert_eq(frame.iron._cobTexture, COB.Theme:Texture("frame_fightercard"),
   "iron frame is Theme frame_fightercard")
 assert_true(frame.bullhorn ~= nil, "bull-horn header slot exists")
-assert_eq(frame.bullhorn._cobTexture, COB.Theme:Texture("ornament_bullhorn"),
-  "bullhorn is Theme ornament_bullhorn")
+assertThemeOrFill(frame.bullhorn, "ornament_bullhorn", "gold", "bullhorn")
 assert_true(frame.seal ~= nil, "papal seal slot exists")
-assert_eq(frame.seal._cobTexture, COB.Theme:Texture("seal_papal"),
-  "seal is Theme seal_papal")
+assertThemeOrFill(frame.seal, "seal_papal", "gold", "seal")
 assert_true(frame.plateA ~= nil, "left facing plate exists")
 assert_true(frame.plateB ~= nil, "right facing plate exists")
+assert_eq(frame.plateA._justify, "LEFT", "plate A is LEFT tape")
+assert_eq(frame.plateB._justify, "LEFT", "plate B is LEFT tape")
+assert_eq(frame.plateA.name:GetJustifyH(), "LEFT", "name A is LEFT")
+assert_eq(frame.plateB.name:GetJustifyH(), "LEFT", "name B is LEFT")
 assert_eq(frame.plateA._type, "Frame", "plate A is a frame")
 assert_eq(frame.plateB._type, "Frame", "plate B is a frame")
+assert_true(frame.plateA.header ~= nil, "plate A has a dark name band")
+assert_true(frame.plateB.header ~= nil, "plate B has a dark name band")
+assert_eq(frame.plateA.header._cobColor.r, select(1, COB.Theme:Color("charcoal")),
+  "plate A name band is Theme charcoal")
+assert_eq(frame.plateB.header._cobColor.r, select(1, COB.Theme:Color("charcoal")),
+  "plate B name band is Theme charcoal")
+assert_eq(frame.plateA.headerEdge._cobColor.r, select(1, COB.Theme:Color("gold")),
+  "plate A name-band edge is Theme gold")
+assert_eq(frame.plateB.headerEdge._cobColor.r, select(1, COB.Theme:Color("gold")),
+  "plate B name-band edge is Theme gold")
 
 local point, relativeTo, relativePoint = frame:GetPoint(1)
 assert_eq(point, "LEFT", "default anchor is LEFT")
 assert_eq(relativeTo, UIParent, "default relative is UIParent")
 assert_eq(relativePoint, "LEFT", "default relative point is LEFT")
+point, relativeTo, relativePoint = frame.plateA.name:GetPoint(1)
+assert_eq(point, "TOPLEFT", "name A is pinned to the header band")
+assert_eq(relativeTo, frame.plateA.header, "name A lives on the charcoal header")
 assert_eq(frame._clamped, true, "card stays clamped to screen")
+assert_eq(frame:IsEventRegistered("DISPLAY_SIZE_CHANGED"), true,
+  "card resizes when the display changes")
 assert_eq(frame.plateA.name._template, "GameFontHighlight", "name fallback is GameFontHighlight")
 assert_eq(frame.plateB.name._template, "GameFontHighlight", "name B fallback is GameFontHighlight")
 assert_eq(frame.plateA.title._template, "GameFontNormal", "titles stay GameFont*")
@@ -331,9 +387,8 @@ assert_eq(frame.plateB.recordLabel:GetText(), "Record", "ledger label Record is 
 assert_eq(frame.plateA.defensesLabel:GetText(), "Defenses", "ledger label Defenses is on plate A")
 assert_eq(frame.plateB.defensesLabel:GetText(), "Defenses", "ledger label Defenses is on plate B")
 assert_eq(frame.headToHeadLabel:GetText(), "Head-to-head", "ledger label Head-to-head exists")
-assert_eq(frame.stipulationLabel:GetText(), "Stipulation", "ledger label Stipulation exists")
+assert_eq(frame.stipulationLabel, nil, "ledger has no Stipulation label")
 assert_eq(frame.headToHeadLabel:IsShown(), false, "Head-to-head label starts hidden")
-assert_eq(frame.stipulationLabel:IsShown(), false, "Stipulation label starts hidden")
 assert_eq(frame.plateA.recordGlyph._cobTexture, COB.Theme:Texture("glyph_record"),
   "record glyph is Theme glyph_record")
 assert_eq(frame.plateB.recordGlyph._cobTexture, COB.Theme:Texture("glyph_record"),
@@ -342,8 +397,7 @@ assert_eq(frame.plateA.defensesGlyph._cobTexture, COB.Theme:Texture("glyph_defen
   "defenses glyph is Theme glyph_defenses")
 assert_eq(frame.headToHeadGlyph._cobTexture, COB.Theme:Texture("glyph_headtohead"),
   "head-to-head glyph is Theme glyph_headtohead")
-assert_eq(frame.stipulationGlyph._cobTexture, COB.Theme:Texture("glyph_stipulation"),
-  "stipulation glyph is Theme glyph_stipulation")
+assert_eq(frame.stipulationGlyph, nil, "ledger has no stipulation glyph")
 assert_eq(frame.plateA.name._cobFont, COB.Theme:FontPath("display"),
   "name A uses Theme display path")
 assert_eq(frame.plateB.name._cobFont, COB.Theme:FontPath("display"),
@@ -352,6 +406,28 @@ assert_true(frame.plateA.name._cobFontSize ~= nil
   and frame.plateA.name._cobFontSize >= 16, "name A is at least 16px")
 assert_true(frame.plateB.name._cobFontSize ~= nil
   and frame.plateB.name._cobFontSize >= 16, "name B is at least 16px")
+assert_eq(frame.plateA.name._cobFontSize, COB.Theme.FontSize.name,
+  "name A uses Theme.FontSize.name")
+assert_eq(frame.plateB.name._cobFontSize, COB.Theme.FontSize.name,
+  "name B uses Theme.FontSize.name")
+assert_eq(frame.plateA.level._cobFontSize, COB.Theme.FontSize.caption,
+  "level uses Theme.FontSize.caption")
+assert_eq(frame.plateA.recordLabel._cobFontSize, COB.Theme.FontSize.label,
+  "Record label uses Theme.FontSize.label")
+assert_eq(frame.plateA.record._cobFontSize, COB.Theme.FontSize.body,
+  "Record value uses Theme.FontSize.body")
+assert_eq(frame.plateA.honorific._cobFontSize, COB.Theme.FontSize.body,
+  "honorific uses Theme.FontSize.body")
+assert_eq(frame.vs._cobFontSize, COB.Theme.FontSize.label,
+  "VS uses Theme.FontSize.label")
+assert_eq(frame.plateA.name._wordWrap, false, "name A stays one line on the charcoal band")
+assert_eq(frame.plateB.name._wordWrap, false, "name B stays one line on the charcoal band")
+assert_eq(frame.plateA.honorific._wordWrap, true, "honorific A wraps")
+assert_eq(frame.plateB.honorific._wordWrap, true, "honorific B wraps")
+assert_true(type(frame.plateA.honorific:GetWidth()) == "number"
+  and frame.plateA.honorific:GetWidth() > 0, "honorific A has a wrap width")
+assert_true(frame.plateA.honorific:GetWidth() < frame:GetWidth(),
+  "honorific wrap width stays inside the card")
 assert_eq(frame.plateA.recordLabel._cobFont, COB.Theme:FontPath("label"),
   "Record label uses Theme label path")
 assert_eq(frame.plateA.record._cobFont, COB.Theme:FontPath("body"),
@@ -431,10 +507,10 @@ assert_eq(frame.plateA.level:GetText(), "70", "level A is painted")
 assert_eq(frame.plateB.level:GetText(), "68", "level B is painted")
 assert_eq(frame.plateA.title:GetText(), "Beef Knight", "title A is painted")
 assert_eq(frame.plateB.title:GetText(), "Fresh Beef", "title B is painted")
-assert_eq(frame.plateA.record:GetText(), ROMAN_FRESH, "record A is roman Store W/L")
-assert_eq(frame.plateB.record:GetText(), ROMAN_FRESH, "record B is roman Store W/L")
+assert_eq(frame.plateA.record:GetText(), ARABIC_FRESH, "record A is arabic Store W/L")
+assert_eq(frame.plateB.record:GetText(), ARABIC_FRESH, "record B is arabic Store W/L")
 assert_eq(frame.headToHead:IsShown(), false, "head-to-head widget hides without history")
-assert_eq(frame.stipulation:IsShown(), false, "stipulation widget hides when none")
+assert_eq(frame.stipulation, nil, "the card has no stipulation widget")
 assert_eq(frame.plateA.honorific:IsShown(), false, "no honorifics → widget hidden")
 assert_eq(frame.plateB.honorific:IsShown(), false, "other plate hides without honorifics")
 assert_eq(frame.plateA.honorific:GetText(), "", "empty honorific paints empty")
@@ -444,7 +520,6 @@ assert_eq(frame.plateA.defenses:GetText(), "", "zero defenses paint empty")
 assert_eq(frame.plateA.recordLabel:IsShown(), true, "Record label stays on a shown card")
 assert_eq(frame.plateA.defensesLabel:IsShown(), false, "Defenses label hides with a zero count")
 assert_eq(frame.headToHeadLabel:IsShown(), false, "Head-to-head label hides without history")
-assert_eq(frame.stipulationLabel:IsShown(), false, "Stipulation label hides when none")
 assert_eq(findStatusBar(frame), nil, "shown card still has no StatusBar")
 assert_eq(sounds, 0, "showing the card plays no sound")
 assert_eq(healthReads, 0, "showing the card does not read live health")
@@ -476,15 +551,46 @@ assert_eq(sameRgb(frame.plateA.defenses._cobColor, warrior), false, "defenses A 
 assert_eq(sameRgb(frame.plateB.level._cobColor, mage), false, "level B is not class-colored")
 assert_eq(sameRgb(frame.plateB.title._cobColor, mage), false, "title B is not class-colored")
 assert_eq(sameRgb(frame.plateB.record._cobColor, mage), false, "record B is not class-colored")
+do
+  local charcoal = { r = select(1, COB.Theme:Color("charcoal")),
+    g = select(2, COB.Theme:Color("charcoal")),
+    b = select(3, COB.Theme:Color("charcoal")) }
+  assert_eq(sameRgb(frame.plateA.recordLabel._cobColor, charcoal), true,
+    "Record label is charcoal on parchment")
+  assert_eq(sameRgb(frame.plateA.title._cobColor, charcoal), true,
+    "title A is charcoal on parchment")
+  assert_eq(sameRgb(frame.plateA.level._cobColor, charcoal), true,
+    "level A is charcoal on parchment")
+  assert_eq(sameRgb(frame.plateA.record._cobColor, charcoal), true,
+    "record A is charcoal on parchment")
+  assert_eq(sameRgb(frame.vs._cobColor, charcoal), true,
+    "VS is charcoal on parchment")
+  local gold = { r = select(1, COB.Theme:Color("gold")),
+    g = select(2, COB.Theme:Color("gold")),
+    b = select(3, COB.Theme:Color("gold")) }
+  local silver = { r = select(1, COB.Theme:Color("silver")),
+    g = select(2, COB.Theme:Color("silver")),
+    b = select(3, COB.Theme:Color("silver")) }
+  assert_eq(sameRgb(frame.plateA.level._cobColor, gold), false,
+    "level A is not gold on parchment")
+  assert_eq(sameRgb(frame.plateA.level._cobColor, silver), false,
+    "level A is not silver on parchment")
+  assert_eq(sameRgb(frame.plateA.title._cobColor, gold), false,
+    "title A is not gold on parchment")
+  assert_eq(sameRgb(frame.plateA.record._cobColor, gold), false,
+    "record A is not gold on parchment")
+  assert_eq(sameRgb(frame.plateA.honorific._cobColor, gold), false,
+    "honorific A is not gold on parchment")
+end
 
 --------------------------------------------------------------------------------
--- Unlinked characters have no invented title. Pope stipulation paints as-is.
+-- Unlinked characters have no invented title. Stipulation never paints.
 --------------------------------------------------------------------------------
 reset()
 Runtime:StartEvent()
 a, b = twoChars()
 pair = Gora:Sanction(a.id, b.id, "no potions")
-assert_eq(FighterCard:Show(), true, "Show accepts a Pope stipulation")
+assert_eq(FighterCard:Show(), true, "Show accepts a sanctioned pair")
 view = FighterCard:GetView()
 assert_eq(view.fighterA.title, nil, "unlinked characters have no invented title")
 assert_eq(view.fighterB.title, nil, "the other unlinked character has no invented title")
@@ -493,13 +599,8 @@ assert_eq(view.fighterA.honorific, nil, "unlinked characters have no invented ho
 assert_eq(view.fighterB.honorific, nil, "the other unlinked character has no invented honorific")
 assert_eq(frame.plateA.honorific:IsShown(), false, "unlinked honorific stays hidden")
 assert_eq(frame.plateA.honorific:GetText(), "", "unlinked honorific paints empty")
-assert_eq(view.stipulation, "no potions", "stipulation comes from GetSanctioned")
-assert_eq(frame.stipulation:IsShown(), true, "stipulation widget shows when the Pope wrote one")
-assert_eq(frame.stipulation:GetText(), "no potions", "stipulation is the Pope line")
-assert_eq(frame.stipulationLabel:IsShown(), true, "Stipulation label shows with the Pope line")
-assert_eq(frame.stipulationGlyph:IsShown(), true, "Stipulation glyph shows with the Pope line")
-assert_eq(string.find(frame.stipulation:GetText() or "", "meeting", 1, true), nil,
-  "stipulation is not narration")
+assert_eq(view.stipulation, nil, "the card never paints a stipulation")
+assert_eq(frame.stipulation, nil, "the card has no stipulation widget")
 
 --------------------------------------------------------------------------------
 -- Head-to-head appears only when Store already has history. Numbers, not prose.
@@ -516,9 +617,9 @@ assert_eq(view.verdict, nil, "card does not invent a verdict qualifier")
 assert_eq(Store:GetCharacter(a.id).gora.wins, 1, "Store recorded the win")
 assert_eq(Store:GetCharacter(b.id).gora.losses, 1, "Store recorded the loss")
 assert_eq(Store:GetCharacter(a.id).gora.defenses, nil, "Store still nils defenses")
-assert_eq(frame.plateA.record:GetText(), ROMAN_WIN, "persist paint keeps roman I–N after the ruling")
-assert_eq(frame.plateB.record:GetText(), ROMAN_LOSS, "persist paint keeps the loser roman N–I")
-assert_eq(frame.headToHead:GetText(), ROMAN_WIN, "persist H2H is the Store roman I–N")
+assert_eq(frame.plateA.record:GetText(), ARABIC_WIN, "persist paint keeps arabic 1-0 after the ruling")
+assert_eq(frame.plateB.record:GetText(), ARABIC_LOSS, "persist paint keeps the loser arabic 0-1")
+assert_eq(frame.headToHead:GetText(), ARABIC_WIN, "persist H2H is the Store arabic 1-0")
 assert_eq(frame.headToHead:IsShown(), true, "persist H2H shows after the ruling")
 
 local rematch = Gora:Sanction(a.id, b.id)
@@ -530,15 +631,15 @@ assert_eq(view.fighterA.wins, 1, "W/L reflects Store after the first ruling")
 assert_eq(view.fighterA.losses, 0, "winner has no loss")
 assert_eq(view.fighterB.wins, 0, "loser has no win")
 assert_eq(view.fighterB.losses, 1, "loser has one loss")
-assert_eq(frame.plateA.record:GetText(), ROMAN_WIN, "painted record A follows Store in roman")
-assert_eq(frame.plateB.record:GetText(), ROMAN_LOSS, "painted record B follows Store in roman")
+assert_eq(frame.plateA.record:GetText(), ARABIC_WIN, "painted record A follows Store in arabic")
+assert_eq(frame.plateB.record:GetText(), ARABIC_LOSS, "painted record B follows Store in arabic")
 assert_true(view.headToHead ~= nil, "Store history produces a head-to-head line")
 assert_eq(view.headToHead.wins, 1, "head-to-head wins are fighter A's")
 assert_eq(view.headToHead.losses, 0, "head-to-head losses are fighter A's")
 assert_eq(view.headToHead.fights, 1, "head-to-head fights come from Store")
 assert_eq(view.headToHead.score, nil, "head-to-head has no pairing score")
 assert_eq(frame.headToHead:IsShown(), true, "head-to-head widget shows when history exists")
-assert_eq(frame.headToHead:GetText(), ROMAN_WIN, "head-to-head line is the Store roman record")
+assert_eq(frame.headToHead:GetText(), ARABIC_WIN, "head-to-head line is the Store arabic record")
 assert_eq(frame.headToHeadLabel:IsShown(), true, "Head-to-head label shows with history")
 assert_eq(frame.headToHeadGlyph:IsShown(), true, "Head-to-head glyph shows with history")
 assert_eq(string.find(frame.headToHead:GetText() or "", "meeting", 1, true), nil,
@@ -646,7 +747,7 @@ assert_eq(view.verdict, nil, "subjects path does not invent a verdict")
 assert_eq(view.stipulation, nil, "subjects pair has no invented stipulation")
 assert_eq(frame.plateA.name:GetText(), "Chuckroast", "subjects name A is painted")
 assert_eq(frame.plateB.name:GetText(), "Tendermage", "subjects name B is painted")
-assert_eq(frame.plateA.record:GetText(), ROMAN_FRESH, "fresh subjects W/L stays roman N–N")
+assert_eq(frame.plateA.record:GetText(), ARABIC_FRESH, "fresh subjects W/L stays arabic 0-0")
 assert_eq(healthReads, 0, "subjects path does not scrape health")
 
 assert_true(Runtime:CloseRite() ~= nil, "CloseRite reaches CONSEQUENCE")
@@ -692,7 +793,7 @@ assert_eq(view.fighterB.honorific, nil, "the other fresh human omits the honorif
 assert_eq(frame.plateA.honorific:IsShown(), false, "no honorifics → widget hidden")
 assert_eq(frame.plateB.honorific:IsShown(), false, "other plate hides without honorifics")
 assert_eq(frame.plateA.honorific:GetText(), "", "empty honorific paints empty")
-assert_eq(frame.plateA.record:GetText(), ROMAN_FRESH, "honorific path keeps a fresh roman W/L")
+assert_eq(frame.plateA.record:GetText(), ARABIC_FRESH, "honorific path keeps a fresh arabic W/L")
 
 local humanA = Store:GetHuman(Store:GetCharacter(ha.id).humanId)
 assert_true(humanA ~= nil, "linked fighter has a Store human")
@@ -704,7 +805,7 @@ assert_eq(frame.plateA.honorific:GetText(), "Defender of the Faith", "paints exa
 assert_eq(view.fighterB.honorific, nil, "unseeded human stays empty")
 assert_eq(frame.plateB.honorific:IsShown(), false, "unseeded honorific stays hidden")
 assert_eq(frame.plateB.honorific:GetText(), "", "unseeded honorific paints empty")
-assert_eq(frame.plateA.record:GetText(), ROMAN_FRESH, "seeding an honorific does not change W/L")
+assert_eq(frame.plateA.record:GetText(), ARABIC_FRESH, "seeding an honorific does not change W/L")
 assert_eq(string.find(frame.plateA.honorific:GetText() or "", "Duke of", 1, true), nil,
   "painted honorific is not an invented Duke")
 assert_eq(sameRgb(frame.plateA.honorific._cobColor, RAID_CLASS_COLORS.WARRIOR), false,
@@ -715,9 +816,9 @@ local rematchHonor = Gora:Sanction(ha.id, hb.id)
 assert_true(rematchHonor ~= nil, "honorific rematch may be sanctioned")
 assert_eq(FighterCard:Show(), true, "honorific rematch Show is true")
 view = FighterCard:GetView()
-assert_eq(frame.plateA.record:GetText(), ROMAN_WIN, "roman I–N pin stays with honorific")
-assert_eq(frame.plateB.record:GetText(), ROMAN_LOSS, "loser record stays roman N–I with honorific")
-assert_eq(frame.headToHead:GetText(), ROMAN_WIN, "H2H roman I–N pin stays with honorific")
+assert_eq(frame.plateA.record:GetText(), ARABIC_WIN, "arabic 1-0 pin stays with honorific")
+assert_eq(frame.plateB.record:GetText(), ARABIC_LOSS, "loser record stays arabic 0-1 with honorific")
+assert_eq(frame.headToHead:GetText(), ARABIC_WIN, "H2H arabic 1-0 pin stays with honorific")
 assert_eq(frame.headToHead:IsShown(), true, "H2H still shows after honorific paint")
 assert_eq(view.fighterA.honorific, "Defender of the Faith", "honorific survives rematch")
 assert_eq(frame.plateA.honorific:GetText(), "Defender of the Faith", "rematch paints the same Pope text")
@@ -755,14 +856,14 @@ assert_eq(view.fighterB.defenses, nil, "zero CountDefenses stays omitted")
 assert_eq(view.defenses, nil, "view does not invent a top-level defenses field")
 assert_eq(view.health, nil, "defenses paint does not invent health")
 assert_eq(frame.plateA.defenses:IsShown(), true, "nonzero defenses show")
-assert_eq(frame.plateA.defenses:GetText(), "I", "defenses is a mute roman numeral")
+assert_eq(frame.plateA.defenses:GetText(), "1", "defenses is a mute arabic integer")
 assert_eq(frame.plateA.defensesLabel:IsShown(), true, "Defenses label shows with a nonzero count")
 assert_eq(frame.plateA.defensesGlyph:IsShown(), true, "Defenses glyph shows with a nonzero count")
 assert_eq(frame.plateB.defenses:IsShown(), false, "zero defenses hide on the other plate")
 assert_eq(frame.plateB.defenses:GetText(), "", "zero defenses paint empty")
-assert_eq(frame.plateA.record:GetText(), ROMAN_WIN, "roman I–N pin stays with defenses")
-assert_eq(frame.plateB.record:GetText(), ROMAN_LOSS, "loser record stays roman N–I with defenses")
-assert_eq(frame.headToHead:GetText(), ROMAN_WIN, "H2H roman I–N pin stays with defenses")
+assert_eq(frame.plateA.record:GetText(), ARABIC_WIN, "arabic 1-0 pin stays with defenses")
+assert_eq(frame.plateB.record:GetText(), ARABIC_LOSS, "loser record stays arabic 0-1 with defenses")
+assert_eq(frame.headToHead:GetText(), ARABIC_WIN, "H2H arabic 1-0 pin stays with defenses")
 assert_eq(frame.headToHead:IsShown(), true, "H2H still shows after defenses paint")
 assert_eq(string.find(frame.plateA.defenses:GetText() or "", "realm", 1, true), nil,
   "defenses line is not realm flavor")
@@ -776,9 +877,9 @@ view = FighterCard:Refresh()
 assert_eq(view.fighterA.honorific, "Defender of the Faith", "honorific stays with defenses")
 assert_eq(frame.plateA.honorific:IsShown(), true, "honorific still shown with defenses")
 assert_eq(frame.plateA.honorific:GetText(), "Defender of the Faith", "honorific text unchanged")
-assert_eq(frame.plateA.defenses:GetText(), "I", "defenses stay roman while honorific paints")
-assert_eq(frame.plateA.record:GetText(), ROMAN_WIN, "roman I–N stays with honorific and defenses")
-assert_eq(frame.headToHead:GetText(), ROMAN_WIN, "H2H roman I–N stays with honorific and defenses")
+assert_eq(frame.plateA.defenses:GetText(), "1", "defenses stay arabic while honorific paints")
+assert_eq(frame.plateA.record:GetText(), ARABIC_WIN, "arabic 1-0 stays with honorific and defenses")
+assert_eq(frame.headToHead:GetText(), ARABIC_WIN, "H2H arabic 1-0 stays with honorific and defenses")
 
 Store.CountDefenses = function(_, id)
   if id == lordChar.id then return 2 end
@@ -786,10 +887,10 @@ Store.CountDefenses = function(_, id)
 end
 view = FighterCard:Refresh()
 assert_eq(view.fighterA.defenses, 2, "card paints whatever CountDefenses returns")
-assert_eq(frame.plateA.defenses:GetText(), "II", "stub integer paints as roman")
+assert_eq(frame.plateA.defenses:GetText(), "2", "stub integer paints as arabic")
 assert_eq(frame.plateA.honorific:IsShown(), true, "honorific stays when the integer changes")
-assert_eq(frame.plateA.record:GetText(), ROMAN_WIN, "stubbing CountDefenses does not change W/L")
-assert_eq(frame.headToHead:GetText(), ROMAN_WIN, "H2H roman I–N stays when CountDefenses is stubbed")
+assert_eq(frame.plateA.record:GetText(), ARABIC_WIN, "stubbing CountDefenses does not change W/L")
+assert_eq(frame.headToHead:GetText(), ARABIC_WIN, "H2H arabic 1-0 stays when CountDefenses is stubbed")
 
 Store.CountDefenses = nil
 view = FighterCard:Refresh()
@@ -799,13 +900,13 @@ assert_eq(frame.plateA.defenses:GetText(), "", "missing CountDefenses paints emp
 assert_eq(frame.plateA.defensesLabel:IsShown(), false, "missing CountDefenses hides the label")
 assert_eq(frame.plateA.defensesGlyph:IsShown(), false, "missing CountDefenses hides the glyph")
 assert_eq(frame.plateA.honorific:IsShown(), true, "honorific stays when defenses hide")
-assert_eq(frame.plateA.record:GetText(), ROMAN_WIN, "roman I–N stays when CountDefenses is missing")
-assert_eq(frame.headToHead:GetText(), ROMAN_WIN, "H2H roman I–N stays when CountDefenses is missing")
+assert_eq(frame.plateA.record:GetText(), ARABIC_WIN, "arabic 1-0 stays when CountDefenses is missing")
+assert_eq(frame.headToHead:GetText(), ARABIC_WIN, "H2H arabic 1-0 stays when CountDefenses is missing")
 
 Store.CountDefenses = savedCountDefenses
 
 --------------------------------------------------------------------------------
--- Both-nonzero records paint through Common.RomanPair (no nulla side)
+-- Both-nonzero records paint as Arabic W–L
 --------------------------------------------------------------------------------
 do
   reset()
@@ -820,17 +921,17 @@ do
     assert_true(Gora:Sanction(vetA.id, vetB.id) ~= nil, "vet answer sanction " .. i)
     assert_true(Gora:DeclareVictor(vetB.id) ~= nil, "vet answer ruling " .. i)
   end
-  assert_true(Gora:Sanction(vetA.id, vetB.id) ~= nil, "vet rubber match sanctions")
+  assert_true(Gora:Sanction(vetA.id, vetB.id) ~= nil, "vet rematch sanctions")
   assert_eq(FighterCard:Show(), true, "both-nonzero card shows")
   local vetView = FighterCard:GetView()
-  assert_eq(vetView.fighterA.wins, 3, "view keeps numeric wins under roman paint")
-  assert_eq(vetView.fighterA.losses, 2, "view keeps numeric losses under roman paint")
-  assert_eq(frame.plateA.record:GetText(), "III" .. EN_DASH .. "II",
-    "both-nonzero record paints III–II via RomanPair")
-  assert_eq(frame.plateB.record:GetText(), "II" .. EN_DASH .. "III",
-    "loser side paints II–III via RomanPair")
-  assert_eq(frame.headToHead:GetText(), "III" .. EN_DASH .. "II",
-    "both-nonzero H2H paints III–II via RomanPair")
+  assert_eq(vetView.fighterA.wins, 3, "view keeps numeric wins under arabic paint")
+  assert_eq(vetView.fighterA.losses, 2, "view keeps numeric losses under arabic paint")
+  assert_eq(frame.plateA.record:GetText(), "3" .. EN_DASH .. "2",
+    "both-nonzero record paints 3–2")
+  assert_eq(frame.plateB.record:GetText(), "2" .. EN_DASH .. "3",
+    "loser side paints 2–3")
+  assert_eq(frame.headToHead:GetText(), "3" .. EN_DASH .. "2",
+    "both-nonzero H2H paints 3–2")
   assert_eq(frame.headToHead:IsShown(), true, "both-nonzero H2H shows")
 end
 
@@ -922,8 +1023,11 @@ local budgeted = FighterCard:Init()
 assert_eq(countSpecial("ChurchOfBeefFighterCard"), 1, "rebuild Init still does not duplicate")
 assert_eq(budgeted:GetWidth(), math.floor(1024 / 3), "known UIParent width is the left third")
 assert_true(budgeted:GetWidth() < 1024, "width is not full-screen")
-assert_true(budgeted:GetHeight() <= math.floor(768 / 3), "height stays inside the left third")
-assert_true(budgeted:GetHeight() <= 220, "height does not grow into a toast")
+assert_true(budgeted:GetHeight() < 768, "height is not full-screen")
+assert_true(budgeted:GetHeight() <= 360, "height stays a left-third tape, not a toast")
+assert_eq(budgeted:GetHeight(), 360, "known 768 height clamps to 360")
+assert_eq(budgeted.plateA._justify, "LEFT", "rebuilt plate A is LEFT tape")
+assert_eq(budgeted.plateB._justify, "LEFT", "rebuilt plate B is LEFT tape")
 local bp, brto, brp = budgeted:GetPoint(1)
 assert_eq(bp, "LEFT", "rebuilt default anchor is LEFT")
 assert_eq(brto, UIParent, "rebuilt relative is UIParent")
@@ -939,12 +1043,14 @@ assert_true(budgeted.plateA.defenses ~= nil, "rebuilt card still has defenses A"
 assert_true(budgeted.plateB.defenses ~= nil, "rebuilt card still has defenses B")
 assert_eq(budgeted.plateA.defenses:IsShown(), false, "rebuilt Quiet hides defenses")
 assert_true(budgeted.bullhorn ~= nil, "rebuilt card still has the bullhorn slot")
-assert_eq(budgeted.bullhorn._cobTexture, COB.Theme:Texture("ornament_bullhorn"),
-  "rebuilt bullhorn is still Theme ornament_bullhorn")
-assert_eq(budgeted.seal._cobTexture, COB.Theme:Texture("seal_papal"),
-  "rebuilt seal is still Theme seal_papal")
+assertThemeOrFill(budgeted.bullhorn, "ornament_bullhorn", "gold", "rebuilt bullhorn")
+assertThemeOrFill(budgeted.seal, "seal_papal", "gold", "rebuilt seal")
 assert_eq(budgeted.plateA.name._cobFont, COB.Theme:FontPath("display"),
   "rebuilt name still uses Theme display")
+assert_eq(budgeted.plateA.name._cobFontSize, COB.Theme.FontSize.name,
+  "rebuilt name still uses Theme.FontSize.name")
+assert_eq(budgeted.plateA.honorific._wordWrap, true, "rebuilt honorific still wraps")
+assert_eq(budgeted.plateA.name._wordWrap, false, "rebuilt name stays on the charcoal band")
 assert_eq(budgeted.plateA.recordLabel:GetText(), "Record", "rebuilt ledger still has Record")
 assert_eq(findStatusBar(budgeted), nil, "rebuilt card still has no StatusBar")
 assert_eq(budgeted:IsShown(), false, "rebuild in Quiet still hides the card")
@@ -1526,8 +1632,106 @@ local function runB28D()
     end
   end
   runB39B()
+
+  -- U-Q: long honorifics wrap inside the plate and stay above the footer.
+  -- Class-tinted names stay on the charcoal band. Ledger stays charcoal.
+  local function runUQ()
+    local ua = sanctionPair()
+    local human = Store:GetHuman(Store:GetCharacter(ua.id).humanId)
+    local long = "Keeper of the Long Remembered Faithful Watch of the Iron Parish"
+    Store:AddHonorific(human.id, long)
+    assert_eq(FighterCard:Show(), true, "U-Q wrap needs a sanctioned pair")
+    local widget = FighterCard:Init()
+    assert_eq(widget.plateA.honorific:GetText(), long, "long honorific paints Pope text")
+    assert_eq(widget.plateA.honorific:IsShown(), true, "long honorific shows")
+    assert_eq(widget.plateA.honorific._wordWrap, true, "long honorific wraps")
+    assert_eq(widget.plateA.honorific._justifyV, "TOP", "long honorific is TOP")
+    assert_eq(widget.plateA.honorific._maxLines, 2, "long honorific caps at two lines")
+    assert_true(type(widget.plateA.honorific:GetWidth()) == "number"
+      and widget.plateA.honorific:GetWidth() > 0, "long honorific has a wrap width")
+    assert_true(widget.plateA.honorific:GetWidth() < widget:GetWidth(),
+      "honorific wrap width stays inside the card")
+    local foundA, foundB = false, false
+    local yA, yB, relA, relB
+    for i = 1, widget.plateA.honorific:GetNumPoints() do
+      local p, rel, _, _, y = widget.plateA.honorific:GetPoint(i)
+      if p == "BOTTOM" then
+        foundA = true
+        relA = rel
+        yA = y
+      end
+    end
+    for i = 1, widget.plateB.honorific:GetNumPoints() do
+      local p, rel, _, _, y = widget.plateB.honorific:GetPoint(i)
+      if p == "BOTTOM" then
+        foundB = true
+        relB = rel
+        yB = y
+      end
+    end
+    assert_eq(foundA, true, "honorific A is bottom-bound")
+    assert_eq(relA, widget.plateA, "honorific A bottom is the plate")
+    assert_true(type(yA) == "number" and yA >= COB.Theme.Space.lg,
+      "honorific A reserve clears VS")
+    assert_eq(foundB, true, "honorific B is bottom-bound")
+    assert_eq(relB, widget.plateB, "honorific B bottom is the plate")
+    assert_true(type(yB) == "number" and yB >= 0,
+      "honorific B stays inside plate B")
+    local hp, href = widget.headToHeadLabel:GetPoint(1)
+    assert_eq(hp, "BOTTOMLEFT", "H2H stays in the footer")
+    assert_eq(href, widget.parchment, "H2H stays on the footer parchment")
+    local charcoal = { r = select(1, COB.Theme:Color("charcoal")),
+      g = select(2, COB.Theme:Color("charcoal")),
+      b = select(3, COB.Theme:Color("charcoal")) }
+    local gold = { r = select(1, COB.Theme:Color("gold")),
+      g = select(2, COB.Theme:Color("gold")),
+      b = select(3, COB.Theme:Color("gold")) }
+    assert_eq(sameRgb(widget.plateA.honorific._cobColor, charcoal), true,
+      "long honorific stays charcoal")
+    assert_eq(sameRgb(widget.plateA.level._cobColor, gold), false,
+      "level is not gold on parchment")
+    assert_eq(sameRgb(widget.plateA.level._cobColor, charcoal), true,
+      "level stays charcoal on parchment")
+    assert_eq(widget.plateA.record:GetText(), ARABIC_FRESH, "wrap path keeps arabic W/L")
+    assert_eq(widget.plateA.name._wordWrap, false, "names do not wrap off the band")
+    assert_eq(widget.plateA.name._maxLines, 1, "names stay one line on the band")
+    assert_eq(widget.plateA.name._cobFontSize, COB.Theme.FontSize.name,
+      "wrap path keeps Theme.FontSize.name")
+    assert_eq(string.find(widget.plateA.honorific:GetText() or "", "Duke of", 1, true), nil,
+      "long honorific is not an invented Duke")
+    assert_eq(sounds, 0, "U-Q wrap plays no sound")
+    assert_eq(healthReads, 0, "U-Q wrap does not scrape health")
+    if standalone then
+      assert_eq(COB.Console, nil, "U-Q isolation still does not load Console")
+    end
+  end
+  runUQ()
 end
 runB28D()
+
+--------------------------------------------------------------------------------
+-- Empty-store names paint from the inbound stash. No Store upsert.
+--------------------------------------------------------------------------------
+reset()
+assert_true(Runtime:StartEvent() ~= nil, "stash card starts an event")
+assert_eq(Runtime:Restore({
+  eventId = 1,
+  state = "ASSEMBLY",
+  subjects = { fighters = { 8, 9 } },
+  sequence = 2,
+}), true, "stash card Restores a congregation pair")
+COB._lastCastNames = {
+  fighterA = "AAAAAAAAAAAA",
+  fighterB = "BBBBBBBBBBBB",
+}
+assert_eq(Store:GetCharacter(8), nil, "card fighter A is not in Store")
+assert_eq(FighterCard:Show(), true, "empty-store pair still Shows from Runtime subjects")
+local stashView = FighterCard:GetView()
+assert_eq(stashView.fighterA.name, "AAAAAAAAAAAA", "card paints stash name A")
+assert_eq(stashView.fighterB.name, "BBBBBBBBBBBB", "card paints stash name B")
+assert_eq(Store:GetCharacter(8), nil, "card stash paint does not upsert")
+assert_eq(Store:GetCharacter(9), nil, "card stash paint does not upsert B")
+COB._lastCastNames = nil
 
 restore()
 

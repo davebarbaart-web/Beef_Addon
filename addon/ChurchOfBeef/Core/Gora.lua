@@ -13,14 +13,17 @@ local Gora = {
 }
 COB.Gora = Gora
 
--- Standing picks only. Latest replaces earlier. Never SV / Store / Archive.
+-- Standing picks only. Latest replaces earlier. Never Store / Archive.
+-- Pope SV persist is Gora:Snapshot → ChurchOfBeefDB.gora (schema 7).
+-- Congregation must not flush this map over the shared account file.
 -- Tagged to the event the picks belong to so leftovers die with that event,
 -- not merely when sanctioned is nil (consequence beat still needs the map).
 local favorPicks = {}
 local favorEventId = nil
 
--- Cleared-bout snapshot for CONSEQUENCE / HUD persist. Memory only. Never SV.
--- GetSanctioned stays nil after a ruling; last pair is the just-cleared bout.
+-- Cleared-bout snapshot for CONSEQUENCE / HUD persist. GetSanctioned stays
+-- nil after a ruling; last pair is the just-cleared bout. Pope SV persist
+-- is Gora:Snapshot (lastSanctioned + eventId). Congregation must not flush.
 local lastSanctioned = nil
 local lastFavorSplit = { a = 0, b = 0 }
 
@@ -97,12 +100,91 @@ local function knownCharacter(id)
   return true
 end
 
+-- Name → store id. Look up only. Never Ensure / CreateHuman / LinkCharacter.
+local function lookupCharacterId(name)
+  if not (COB.Store and type(COB.Store.Snapshot) == "function") then
+    return nil
+  end
+  local snap = COB.Store:Snapshot()
+  local chars = type(snap) == "table" and snap.characters or nil
+  if type(chars) ~= "table" then return nil end
+  for i = 1, #chars do
+    local row = chars[i]
+    if type(row) == "table" and sameName(row.name, name) then
+      return row.id
+    end
+  end
+  return nil
+end
+
+local function isUnsignedPetition(entry)
+  return type(entry) == "table" and type(entry.senderKey) == "string" and not isId(entry.characterId)
+end
+
 local function copyPetition(entry)
-  local out = { characterId = entry.characterId }
+  local out = {}
+  if entry.characterId ~= nil then
+    out.characterId = entry.characterId
+  end
   if entry.namedOpponentId ~= nil then
     out.namedOpponentId = entry.namedOpponentId
   end
+  if entry.senderKey ~= nil then
+    out.senderKey = entry.senderKey
+  end
+  if entry.name ~= nil then
+    out.name = entry.name
+  end
   return out
+end
+
+local function copyPetitionPersist(entry)
+  local out = copyPetition(entry)
+  if type(entry) == "table" and entry.eventId ~= nil then
+    out.eventId = entry.eventId
+  end
+  return out
+end
+
+local function copyMap(map)
+  local out = {}
+  if type(map) ~= "table" then return out end
+  for k, v in pairs(map) do
+    out[k] = v
+  end
+  return out
+end
+
+local function copyLastPair(row)
+  if type(row) ~= "table" then return nil end
+  if not isId(row.fighterA) or not isId(row.fighterB) then return nil end
+  local out = { fighterA = row.fighterA, fighterB = row.fighterB }
+  if isId(row.eventId) then out.eventId = row.eventId end
+  return out
+end
+
+-- Snapshot gate: eventId is a ≥1 integer. Empty {} / missing is not a snapshot
+-- (same shape as event.state / decree.line).
+local function isGoraSnapshot(snap)
+  return type(snap) == "table" and isId(snap.eventId)
+end
+
+local function deskEventId(self)
+  if self.sanctioned and isId(self.sanctioned.eventId) then
+    return self.sanctioned.eventId
+  end
+  if lastSanctioned and isId(lastSanctioned.eventId) then
+    return lastSanctioned.eventId
+  end
+  if isId(favorEventId) then
+    return favorEventId
+  end
+  for _, entry in pairs(self.petitions) do
+    if type(entry) == "table" and isId(entry.eventId) then
+      return entry.eventId
+    end
+  end
+  return liveEventId()
 end
 
 local function copySanctioned(row)
@@ -260,24 +342,65 @@ function Gora:Petition(characterId, namedOpponentId)
   return copyPetition(entry)
 end
 
+-- INPUT apply. Ignore payload character ids. Known sender names resolve to a
+-- store id; unknown senders sit as an unsigned name-key row. Unknown opponents
+-- are dropped; the ask is still recorded. Never CreateHuman / Ensure / Link.
+function Gora:PetitionFromSender(sender, namedOpponentId)
+  self:_Expire()
+  local eventId = liveEventId()
+  if not eventId then return nil, "no event" end
+  local key = nameKey(sender)
+  if not key then return nil, "invalid sender" end
+  local shown = normalizeName(sender)
+  local characterId = lookupCharacterId(sender)
+  local opponentId
+  if namedOpponentId ~= nil and isId(namedOpponentId) and knownCharacter(namedOpponentId) then
+    if not (characterId and namedOpponentId == characterId) then
+      opponentId = namedOpponentId
+    end
+  end
+  if characterId then
+    return self:Petition(characterId, opponentId)
+  end
+  local entry = { senderKey = key, name = shown, eventId = eventId }
+  if opponentId ~= nil then entry.namedOpponentId = opponentId end
+  self.petitions[key] = entry
+  return copyPetition(entry)
+end
+
 function Gora:Dismiss(characterId)
   self:_Expire()
-  if not isId(characterId) or not self.petitions[characterId] then return false end
-  self.petitions[characterId] = nil
+  if isId(characterId) then
+    if not self.petitions[characterId] then return false end
+    self.petitions[characterId] = nil
+    return true
+  end
+  local key = nameKey(characterId) or (type(characterId) == "string" and characterId or nil)
+  if not key or not self.petitions[key] then return false end
+  self.petitions[key] = nil
   return true
 end
 
 function Gora:GetPetitions(presentAndAlive)
   self:_Expire()
   local out = {}
-  if type(presentAndAlive) ~= "table" then return out end
+  local present = type(presentAndAlive) == "table" and presentAndAlive or nil
   for id, entry in pairs(self.petitions) do
-    if presentAndAlive[id] == true then
+    if isUnsignedPetition(entry) then
+      out[#out + 1] = copyPetition(entry)
+    elseif present and present[id] == true then
       out[#out + 1] = copyPetition(entry)
     end
   end
   table.sort(out, function(a, b)
-    return a.characterId < b.characterId
+    local aId, bId = a.characterId, b.characterId
+    local aKnown, bKnown = isId(aId), isId(bId)
+    if aKnown and bKnown then return aId < bId end
+    if aKnown then return true end
+    if bKnown then return false end
+    local aKey = a.senderKey or a.name or ""
+    local bKey = b.senderKey or b.name or ""
+    return aKey < bKey
   end)
   return out
 end
@@ -367,6 +490,58 @@ function Gora:GetProposal()
   if self.proposal == nil then return nil end
   if type(self.proposal) == "table" then return deepcopy(self.proposal) end
   return self.proposal
+end
+
+-- A normal WoW duel ends at 1 hit point, not 0 / not percent == 0.
+Gora.DUEL_FLOOR = 1
+
+-- Winner *side* of the sanctioned pair: "A" or "B". Pure. No UnitHealth.
+function Gora.GuessKnockout(curA, curB)
+  if type(curA) ~= "number" or type(curB) ~= "number" then return nil end
+  local a = math.floor(curA)
+  local b = math.floor(curB)
+  local floor = Gora.DUEL_FLOOR
+  if a == floor and b > floor then return "B" end
+  if b == floor and a > floor then return "A" end
+  return nil
+end
+
+function Gora:ConsiderRaidHealth(curA, curB)
+  self:_Expire()
+  if not self.sanctioned then return nil, "no sanctioned gora" end
+  local side = Gora.GuessKnockout(curA, curB)
+  if not side then return nil, "no knockout" end
+  local winnerId, loserId
+  if side == "A" then
+    winnerId, loserId = self.sanctioned.fighterA, self.sanctioned.fighterB
+  else
+    winnerId, loserId = self.sanctioned.fighterB, self.sanctioned.fighterA
+  end
+  local prev = self.proposal
+  if type(prev) == "table"
+      and prev.ruling == "victor"
+      and prev.winnerId == winnerId
+      and prev.source == "raid-health" then
+    return nil, "already proposed"
+  end
+  return self:Propose({
+    ruling = "victor",
+    winnerId = winnerId,
+    loserId = loserId,
+    source = "raid-health",
+  })
+end
+
+local function copyProposal(proposal)
+  if type(proposal) ~= "table" then return nil end
+  if proposal.ruling ~= "victor" or not isId(proposal.winnerId) then return nil end
+  local out = {
+    ruling = "victor",
+    winnerId = proposal.winnerId,
+    source = proposal.source,
+  }
+  if isId(proposal.loserId) then out.loserId = proposal.loserId end
+  return out
 end
 
 local function writeBoth(idA, idB, ruling, wonA, wonB, text)
@@ -489,6 +664,21 @@ function Gora:RecordFavor(characterId, pickId)
   return true
 end
 
+-- INPUT apply. Key by Names.Key(sender). Never write favorPicks[payloadId].
+function Gora:RecordFavorFromSender(sender, pickId)
+  self:_Expire()
+  if not self.sanctioned then return nil, "no sanctioned gora" end
+  local key = nameKey(sender)
+  if not key then return nil, "invalid sender" end
+  if not isId(pickId) then return nil, "pick must be a character id" end
+  if pickId ~= self.sanctioned.fighterA and pickId ~= self.sanctioned.fighterB then
+    return nil, "pick must be a sanctioned fighter"
+  end
+  favorPicks[key] = pickId
+  favorEventId = self.sanctioned.eventId
+  return true
+end
+
 function Gora:GetFavor()
   self:_Expire()
   local out = {}
@@ -508,7 +698,97 @@ function Gora:GetLastFavorSplit()
   return { a = lastFavorSplit.a, b = lastFavorSplit.b }
 end
 
+-- Copy of the live desk. Does not call _Expire (no congregation Quiet wipe
+-- as a Snapshot side effect). Missing eventId → {} (not a snapshot).
+function Gora:Snapshot()
+  local eventId = deskEventId(self)
+  if not isId(eventId) then
+    return {}
+  end
+  local petitions = {}
+  for key, entry in pairs(self.petitions) do
+    if type(entry) == "table" then
+      petitions[key] = copyPetitionPersist(entry)
+    end
+  end
+  local out = {
+    eventId = eventId,
+    petitions = petitions,
+    favorPicks = copyMap(favorPicks),
+  }
+  if self.sanctioned then
+    out.sanctioned = {
+      fighterA = self.sanctioned.fighterA,
+      fighterB = self.sanctioned.fighterB,
+      stipulation = self.sanctioned.stipulation,
+      eventId = self.sanctioned.eventId or eventId,
+    }
+  end
+  local last = copyLastPair(lastSanctioned)
+  if last then
+    if not last.eventId then last.eventId = eventId end
+    out.lastSanctioned = last
+  end
+  local proposal = copyProposal(self.proposal)
+  if proposal then out.proposal = proposal end
+  return out
+end
+
+-- Replace live desk from a snapshot. Empty {} / missing eventId is not a
+-- snapshot and must not wipe memory. Caller Restores event first so the
+-- next _Expire keeps the pair. Does not Save. Does not call _Expire.
+function Gora:Restore(snap)
+  if not isGoraSnapshot(snap) then
+    return nil, "not a snapshot"
+  end
+  local eventId = snap.eventId
+  self.petitions = {}
+  if type(snap.petitions) == "table" then
+    for key, entry in pairs(snap.petitions) do
+      if type(entry) == "table" then
+        local row = copyPetitionPersist(entry)
+        if not isId(row.eventId) then row.eventId = eventId end
+        self.petitions[key] = row
+      end
+    end
+  end
+  if type(snap.sanctioned) == "table" and isId(snap.sanctioned.fighterA)
+      and isId(snap.sanctioned.fighterB) then
+    self.sanctioned = {
+      fighterA = snap.sanctioned.fighterA,
+      fighterB = snap.sanctioned.fighterB,
+      stipulation = snap.sanctioned.stipulation,
+      eventId = isId(snap.sanctioned.eventId) and snap.sanctioned.eventId or eventId,
+    }
+  else
+    self.sanctioned = nil
+  end
+  self.proposal = nil
+  local proposal = copyProposal(snap.proposal)
+  if proposal and self.sanctioned then
+    if proposal.winnerId == self.sanctioned.fighterA
+        or proposal.winnerId == self.sanctioned.fighterB then
+      self.proposal = proposal
+    end
+  end
+  wipeFavor()
+  if type(snap.favorPicks) == "table" then
+    favorPicks = copyMap(snap.favorPicks)
+    favorEventId = eventId
+  end
+  local last = copyLastPair(snap.lastSanctioned)
+  if last then
+    last.eventId = isId(last.eventId) and last.eventId or eventId
+    lastSanctioned = last
+    lastFavorSplit = favorSplitFor(last)
+  else
+    wipeLast()
+  end
+  return true
+end
+
 -- Test-only, matching the rest of Core: never clear live state in game.
+-- Must not call DB:Save (wraps never attach here).
 function Gora:ResetForTests()
   if not COB._IN_TEST then return false end
   self.pending = {}

@@ -21,18 +21,29 @@ on the Anniversary client.
 
 ## Honesty (today)
 
-Most Event boxes cannot be walked yet. **Do not tick leftovers as done.**
+Event desks are hosted. **Do not tick leftovers as done.** A human walk
+is still required before any Event box is ticked.
 
-- `/beef` is player-opened Quiet: the **Records Book**. `/beef console`
-  opens the Director Console. Fight HUD shows only for a real sanctioned
-  pair in Event Mode.
-- **`OPEN_QUESTIONS.md` #8** is coded as empty `Data/Popes.lua` plus
-  `ChurchOfBeefDB.ui.popeOverrides`. Rituals and STATE / SNAPSHOT stay
-  fail-closed until David lists a Pope character. Designated-Council UX
-  stays open.
-- Named leftovers — stay unnamed-as-done: **favor**, **SUMMON**,
-  **INPUT / Confession**, **Decree wire**, **Console `SendState`**,
-  **live HUD health**.
+- `/beef` is player-opened Quiet: the **player card** (Church rank and
+  its §5 relationship line, Gathering plate under rank, story rubrics
+  `BEEF GORA` / `BEEF RIVALS` / `BEEF LEGACY` only when they have rows;
+  height 380 with no story, 580 with a story; thin empty charcoal close
+  band) with the **Records Book** behind its one button. A live guild
+  rank name fills the gold plate when the store has no human row (canon
+  titles get the §5 relationship line).
+  `/beef console` opens the
+  target-driven **Director Console**; Presence is a rank census, not a
+  name dump. Fight HUD shows only for a real sanctioned pair in Event Mode.
+- **`OPEN_QUESTIONS.md` #8** is coded as `Data/Popes.lua` (shipped name:
+  **Thedave**) plus `ChurchOfBeefDB.ui.popeOverrides`. Rituals and
+  STATE / SNAPSHOT accept on listed characters only. Designated-Council
+  UX stays open.
+- Coded and walkable: favor (HUD plates, whisper-to-Pope, Pope tallies),
+  the Decree wire (Post → DECREE broadcast), STATE on every transition,
+  HELLO-triggered re-broadcast for late joiners, petition INPUT.
+- Named leftovers — stay unnamed-as-done: **SUMMON**, **confession inbox
+  UI**, **live HUD health**, **cold-tools UI** (Archive / Canonize /
+  Recognition / Honorific / Notebook are Core-only), **two-client smoke**.
 
 `solo-smoke.md`, `two-client-smoke.md`, and `guild-night-playtest.md` were
 rewritten against the Bible. They are not this file's law.
@@ -49,7 +60,7 @@ Not a Gathering. Do not treat a green row here as MVP.
 - [ ] **Errors on.** `/console scriptErrors 1`. Prefer BugGrabber + BugSack
 - [ ] **Two clients** ready for any net / ceremony / star walk (Pope writer +
       congregation display). One client is enough for Quiet Tuesday and the
-      empty `/beef` shell
+      `/beef` Church card
 
 ---
 
@@ -70,9 +81,9 @@ A random Tuesday login sees **almost nothing, plus the Decree.** Do not
       No feeds, dashboards, bars, toasts, pips, or ambient sound
 - [ ] When a Decree is already in the store: parchment
       **A GATHERING HAS BEEN DECREED** shows once per login; thereafter
-      minimap left-click replays it. No calendar, RSVP, reminders,
-      recurrence, or attendance. (Posting a Decree from a hosted Console is
-      leftover — do not tick Console Post here)
+      minimap right-click replays it. No calendar, RSVP, reminders,
+      recurrence, or attendance. (Console **Post the Decree** is coded —
+      do not tick Console Post here; this box is login parchment + replay)
 - [ ] When no Decree is set: no empty parchment. Minimap left-click opens
       player-opened Quiet
 - [ ] Quiet Mode is silent. The only Quiet notice allowed is the §13.4
@@ -84,12 +95,15 @@ A random Tuesday login sees **almost nothing, plus the Decree.** Do not
 - [ ] `/beef` opens a real frame, not a chat-only reply, including on a
       fresh install. Esc / close hides it. Open/close in combat does not
       taint bags or character
-- [ ] **Today this frame is an empty Quiet shell.** It is not the Director
-      Console, not the Fight HUD, not the Records Book, and not Event
-      theater. Bible §14.2 destination is browsable identity/history, not a
-      standing ladder. Do not tick hosted Records or Console on this box
+- [ ] **Today this frame is the player card** — rank plate, Gathering
+      plate under rank (live Decree line or muted `No gathering is posted.`),
+      `BEEF GORA` / `BEEF RIVALS` / `BEEF LEGACY` only when they have
+      rows, and a thin empty charcoal close band, with the Records
+      Book behind **CHURCH RECORDS**. It is not the Director Console, not
+      the Fight HUD, and not Event theater. Bible §14.2 destination is
+      browsable identity/history — never a position among members
 - [ ] `/beef minimap` hides the button; `/beef minimap` brings it back.
-      `/beef` still opens the shell when the button is hidden
+      `/beef` still opens the card when the button is hidden
 
 ---
 
@@ -102,35 +116,46 @@ possible.
 - [ ] **1. Exceptional Beef Gora** — petition hygiene, sanction with
       stipulations, mute fighter cards, favor with split display,
       adjudication verbs (Victor / Cowardice / Void / free ruling),
-      elevation, character records. **Today:** Core verbs exist; **#8**
-      fail-closes them; **favor** is uncoded; Console is **unhosted**
+      elevation, character records. **Today:** the full loop is coded —
+      target-driven Sanction on the console, favor on HUD plates
+      (whisper-to-Pope), four rulings, elevation beat, store writes.
+      Needs a live walk on Thedave
 - [ ] **2. Live Fight HUD** — Event Mode, sanctioned pair, defined
-      no-live-health fallback (§10.7). **Today: unhosted.** Live-health
-      form waits on Appendix A item 1 / OPEN_QUESTIONS #2 — do not treat
-      the no-health module as a validation pass
+      no-live-health fallback (§10.7). **Today:** hosted; paints for a
+      real sanctioned pair only. Live-health form waits on Appendix A
+      item 1 / OPEN_QUESTIONS #2 — do not treat the no-health module as
+      a validation pass
 - [ ] **3. Beef Pope Director Console** — Presence, Knighting, Gora desk,
-      MARK THIS MOMENT, Notebook (§18). **Today: unhosted.** No slash.
-      Rituals fail-closed on **#8**
+      MARK THIS MOMENT, Notebook (§18). **Today:** hosted at
+      `/beef console` as the target-driven kit; verbs accept on listed
+      Pope characters (shipped: Thedave). Notebook is Core-only
 - [ ] **4. Knighting administration** — KNIGHT THIS BEEF workflow; no
-      generic ceremony engine. **Today:** Core verb; **unhosted**; **#8**
-      fail-closed. Guild-rank write where the API permits is leftover
-      (Bible §8) — not a "never promote" success
+      generic ceremony engine. **Today:** hosted; target the Beef, one
+      click, record writes. Guild-rank write where the API permits is
+      leftover (Bible §8) — not a "never promote" success
 - [ ] **5. Ceremony runtime** — QUIET → ASSEMBLY → RITE (typed) →
       CONSEQUENCE, including late join, reload, Pope-disconnect recovery,
-      and version degradation (§20). **Today:** Core machine exists; a
-      hosted night does not
+      and version degradation (§20). **Today:** the machine is coded and
+      persisted; late join is Pope re-broadcast on HELLO; a hosted night
+      has not been walked
 - [ ] **6. Pope-authoritative synchronization** — star topology; sender
-      validation (§13.1, §13.4). **Today:** fail-closed until **#8**
+      validation (§13.1, §13.4). **Today:** coded; accepts listed-Pope
+      senders only (Thedave shipped). Two-client walk is leftover
 - [ ] **7. Basic Church identity** — player + linked characters (Rite of
       Recognition), rank, records, plain profile. Walkable as identity,
-      not as a points ladder
+      not as a points ladder. **Today:** the player card shows identity,
+      rank and relationship line, record, rivalries, distinctions;
+      targeting a stranger and Knighting/Sanctioning them is the
+      recognition (§12.2); the alt-linking rite UI is parked
 - [ ] **8. Records Book** — §10.9 superlatives; no ranked ladder.
-      **Today: unhosted** (no slash, not wired to `/beef` or the minimap)
+      **Today:** hosted behind **CHURCH RECORDS** — Chronicle across both
+      leaves, superlatives only when held, leaf-caption navigation
 - [ ] **9. The Decree** — single active proclamation, hard-bounded
-      (§14.1). Banner + minimap replay exist when a line is in the store.
-      Console Post is leftover
-- [ ] **10. Sound cues** — §19.4 MVP set, Event Mode only. **Today:** the
-      verb exists; **callers are not wired**. Quiet stays silent
+      (§14.1). **Today:** banner on post and once per login, minimap
+      right-click replay, Console **Post the Decree**, DECREE broadcast
+- [ ] **10. Sound cues** — §19.4 MVP set, Event Mode only. **Today:**
+      cues fire from theater after successful ritual verbs. Quiet stays
+      silent
 - [ ] **11. Manual overrides on every automated step** — software
       proposes; the Pope ratifies. Nothing auto-declares, auto-advances,
       or auto-announces in the Pope's voice
@@ -169,9 +194,11 @@ A green harness does not tick this section.
 - [ ] David never opens Blizzard's guild roster during the performance
 - [ ] David never touches an external spreadsheet during the performance
 
-Do not tick this section while **#8**, hosted Console / HUD / Records,
-**favor**, Sound callers, or **SUMMON** remain leftovers that the night
-still needs. SUMMON is stretch-MVP; the Gathering still requires Decree,
+Do not tick this section while two-client smoke, inbound congregation
+Sound / Proclaim (**#27**), or **SUMMON** remain leftovers the night still
+needs, or while **#8** designated-Council UX is still open. Hosted Console /
+HUD / Records / favor / Decree are coded; they still need a human Gathering
+walk. SUMMON is stretch-MVP; the Gathering still requires Decree,
 Knightings, HUD, and favor.
 
 ## 6. Release gate — dress rehearsal
@@ -210,10 +237,9 @@ Do not add these back as ticks:
 
 | Leftover | Why it stays unchecked |
 |----------|------------------------|
-| **#8** registered-Pope / designated-Council | Uncoded. Rituals and star sync fail-closed |
-| **Hosted Director Console** | Module exists; no slash; not wired to `/beef` |
-| **Hosted Fight HUD** | Module exists; not hosted into a night |
-| **Hosted Records Book** | Module exists; not wired to `/beef` or minimap |
-| **Favor** | Uncoded. §22.3 requires it on the Gathering |
-| **Sound callers** | Verb exists; nothing plays it |
-| **SUMMON THE FAITHFUL** | Uncoded. Stretch-MVP (§22.1) |
+| **#8** designated-Council remainder | `Data/Popes.lua` ships **Thedave** plus `ChurchOfBeefDB.ui.popeOverrides`. Rituals and STATE / SNAPSHOT accept on listed characters only. Designated-Council UX stays open. |
+| **SUMMON THE FAITHFUL** | Uncoded leftover. Stretch-MVP (§22.1). |
+| **Confession inbox UI** | No inbox surface. Stay unnamed-as-done. |
+| **Live HUD health** | No-health HUD is hosted. Live-health form is leftover. |
+| **Cold-tools UI** | Archive / Canonize / Recognition / Honorific / Notebook are Core-only. |
+| **Two-client smoke** | Coded star still needs a Pope + congregation walk. |

@@ -19,18 +19,20 @@ alwaysApply: false
 | `COB` key | File | Owns |
 |-----------|------|------|
 | `Ranks` | `Data/Ranks.lua` | ids, titles |
+| `Popes` / `Council` | `Data/Popes.lua` / `Data/Council.lua` | registered Pope list; stub-sender Council list |
+| `Nights` | `Core/Nights.lua` | Church series, Discord stubs, Going counts, board revision |
 | `DB` | `Core/DB.lua` | `ChurchOfBeefDB` shape, defaults, migrate |
 | `Common` | `Core/Common.lua` | identity keys, injectable clock |
 | `Officer` | `Core/Officer.lua` | future Pope/Council authority module |
 | `Roster` | `Core/Roster.lua` | live guild snapshot |
 | `Gora` / `Ceremony` | matching `Core/*.lua` | domain records and ceremony flow — not scoring feeders |
 | `Net` | `Net/BeefNet.lua` | send/recv, validate, dispatch into Core |
-| `UI` | `UI/MainFrame.lua` (+ shell) | frames; views over Core |
+| `RecordsBook` / `Console` / `Hud` / … | matching `UI/*.lua` | frames; views over Core. No `COB.UI` shell — bootstrap (`ChurchOfBeef.lua`) owns per-module Init |
 
 ## Coupling
 
 ```
-✅ Roster update: GUILD_ROSTER_UPDATE → Roster:Refresh → UI refresh
+✅ Roster update: GUILD_ROSTER_UPDATE → Roster:Refresh → player-opened surfaces read Roster on Show
 ✅ Net apply: BeefNet validate → Core store; UI reads copies
 
 ❌ Core → UI / CreateFrame / SendAddonMessage / slash

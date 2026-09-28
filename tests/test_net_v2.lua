@@ -190,7 +190,17 @@ end
 
 assert_eq(Net.Prefix, "COB", "the prefix is COB")
 assert_eq(Net.Channel, "GUILD", "HELLO and STATE travel on GUILD")
-assert_eq(Net.PROTOCOL, 1, "protocol major stays 1")
+assert_eq(Net.PROTOCOL, 2, "protocol major is 2")
+do
+  local fh = io.open("addon/ChurchOfBeef/Net/BeefNet.lua", "r")
+  assert_true(fh ~= nil, "BeefNet.lua is readable")
+  local src = fh:read("*a")
+  fh:close()
+  assert_eq(src:find("EnsureCharacterByName", 1, true), nil,
+    "INPUT apply does not call EnsureCharacterByName")
+  assert_eq(src:find("CreateHuman", 1, true), nil, "INPUT apply does not CreateHuman")
+  assert_eq(src:find("LinkCharacter", 1, true), nil, "INPUT apply does not LinkCharacter")
+end
 assert_eq(type(Net.SendHello), "function", "SendHello stays")
 assert_eq(type(Net._WarnVersion), "function", "_WarnVersion stays")
 assert_eq(type(Net.SendState), "function", "SendState exists")
@@ -200,6 +210,7 @@ assert_eq(type(Net.SendFavor), "function", "SendFavor exists")
 assert_eq(type(Net.SendPetition), "function", "SendPetition exists")
 assert_eq(type(Net.SendConfession), "function", "SendConfession exists")
 assert_eq(type(Net.RequestSnapshot), "function", "RequestSnapshot exists")
+assert_eq(type(Net.DefaultDest), "function", "DefaultDest is the shared whisper dest helper")
 assert_eq(type(Net.OnAddonMessage), "function", "OnAddonMessage stays")
 
 assert_eq(Net.SendSuggestion, nil, "SUGGESTION send is gone")
@@ -229,7 +240,7 @@ assert_eq(COB.Popes, nil, "no COB.Popes (#8 is not coded)")
 -- HELLO unchanged: GUILD, prefix COB, presence, throttle, one version notice.
 --------------------------------------------------------------------------------
 reset()
-assert_eq(hello_payload("0.1.0"), "1:HELLO:0.1.0", "HELLO framing is unchanged")
+assert_eq(hello_payload("0.1.0"), "2:HELLO:0.1.0", "HELLO framing is unchanged")
 assert_eq(guild(hello_payload("0.1.0"), "Steakina"), true, "a peer HELLO on GUILD is accepted")
 assert_eq(Net:PeerCount(), 1, "HELLO still seats presence")
 assert_eq(Net.peers.steakina, "0.1.0", "presence is keyed by the shared name law")
@@ -246,11 +257,15 @@ assert_eq(Net:OnAddonMessage(Net.Prefix, hello_payload(), "WHISPER", "Steakina")
 assert_eq(Net:PeerCount(), 1, "wrong-channel HELLO is not a peer")
 
 reset()
-local _, helloWhy = guild("2:HELLO:9.9.9", "Steakina")
+local _, helloWhy = guild("1:HELLO:9.9.9", "Steakina")
 assert_eq(helloWhy, "protocol mismatch", "a mismatched HELLO is discarded")
 assert_eq(Net.warnedVersion, true, "the first mismatch is the Quiet version notice")
 assert_eq(#chats, 1, "incompatible HELLO chats once")
-assert_eq(Net:_WarnVersion(2), false, "the version notice fires once")
+assert_true(chats[1]:find("the Church's software has advanced", 1, true) ~= nil,
+  "incompatible HELLO names the Church's software has advanced")
+assert_true(chats[1]:find("update the addon", 1, true) ~= nil,
+  "incompatible HELLO tells the player to update the addon")
+assert_eq(Net:_WarnVersion(1), false, "the version notice fires once")
 assert_eq(#chats, 1, "a second _WarnVersion does not chat again")
 assert_eq(Net:PeerCount(), 0, "a mismatched HELLO is not a peer")
 
@@ -405,7 +420,7 @@ Runtime:StartEvent()
 Runtime:OpenRite("Confession", { candidate = 5 })
 local beforeReq = Runtime:Snapshot()
 local reqWire = Snapshot:Request()
-assert_eq(reqWire, "1:SNAPSHOT:request", "Request wire is role only")
+assert_eq(reqWire, "2:SNAPSHOT:request", "Request wire is role only")
 assert_eq(Sender:IsRegisteredPope("Beefina"), false, "local player is not a registered Pope")
 assert_eq(Sender:IsRegisteredPope(Net:PlayerName()), false, "PlayerName is not a registered Pope")
 
@@ -517,7 +532,7 @@ assert_eq(favorSendWhy, nil, "SendFavor does not name the Pope gate")
 assert_eq(#wire, 1, "SendFavor whispers once")
 assert_eq(wire[1].channel, "WHISPER", "SendFavor is whisper")
 assert_eq(wire[1].target, "Pope", "SendFavor uses the given target")
-assert_eq(wire[1].payload, "1:INPUT:favor:2:1", "SendFavor encodes favor+pick")
+assert_eq(wire[1].payload, "2:INPUT:favor:2:1", "SendFavor encodes favor+pick")
 
 local noTgt, noTgtWhy = Net:SendFavor({ kind = "favor", characterId = 2, pick = 1 })
 assert_eq(noTgt, false, "SendFavor requires a whisper target")
@@ -553,7 +568,7 @@ assert_eq(petSendWhy, nil, "SendPetition does not name the Pope gate")
 assert_eq(#wire, 1, "SendPetition whispers once")
 assert_eq(wire[1].channel, "WHISPER", "SendPetition is whisper")
 assert_eq(wire[1].target, "Pope", "SendPetition uses the given target")
-assert_eq(wire[1].payload, "1:INPUT:petition:12", "SendPetition encodes petition+id only")
+assert_eq(wire[1].payload, "2:INPUT:petition:12", "SendPetition encodes petition+id only")
 assert_eq(sent, 1, "SendPetition SendAddonMessage once")
 assert_eq(#Net.queue, 0, "SendPetition does not enqueue on GUILD")
 
@@ -575,7 +590,7 @@ assert_eq(confSendWhy, nil, "SendConfession does not name the Pope gate")
 assert_eq(#wire, 2, "SendConfession whispers once")
 assert_eq(wire[2].channel, "WHISPER", "SendConfession is whisper")
 assert_eq(wire[2].target, "Pope", "SendConfession uses the given target")
-assert_eq(wire[2].payload, "1:INPUT:confession:3:free text", "SendConfession encodes confession+text")
+assert_eq(wire[2].payload, "2:INPUT:confession:3:free text", "SendConfession encodes confession+text")
 
 local nlOk, nlWhy = Net:SendConfession({ characterId = 3, text = "a\nb" }, "Pope")
 assert_eq(nlOk, false, "SendConfession refuses a newline in the text")
@@ -584,7 +599,7 @@ assert_eq(#wire, 2, "newline confession does not whisper")
 
 local silentOk = Net:SendConfession({ characterId = 3 }, "Pope")
 assert_eq(silentOk, true, "SendConfession text is optional")
-assert_eq(wire[3].payload, "1:INPUT:confession:3", "SendConfession encodes id without text")
+assert_eq(wire[3].payload, "2:INPUT:confession:3", "SendConfession encodes id without text")
 
 local stillPetBlocked, stillPetWhy = Net:SendState({
   eventId = 1,
@@ -622,7 +637,7 @@ assert_eq(#wire, 1, "RequestSnapshot whispers once")
 assert_eq(wire[1].channel, "WHISPER", "RequestSnapshot is whisper")
 assert_eq(wire[1].target, "Steakina", "RequestSnapshot uses the given target")
 assert_eq(wire[1].payload, Snapshot:Request(), "RequestSnapshot body is Snapshot:Request")
-assert_eq(wire[1].payload, "1:SNAPSHOT:request", "RequestSnapshot encodes request role only")
+assert_eq(wire[1].payload, "2:SNAPSHOT:request", "RequestSnapshot encodes request role only")
 assert_eq(sent, 1, "RequestSnapshot SendAddonMessage once")
 assert_eq(#Net.queue, 0, "RequestSnapshot does not enqueue on GUILD")
 
@@ -677,7 +692,7 @@ do
   assert_eq(#wire, 0, "RequestSnapshot whitespace dest does not whisper")
   assert_eq(sent, 0, "RequestSnapshot whitespace dest does not SendAddonMessage")
 
-  ok, why = Net:_TransmitWhisper("1:SNAPSHOT:request", space)
+  ok, why = Net:_TransmitWhisper("2:SNAPSHOT:request", space)
   assert_eq(ok, false, "_TransmitWhisper whitespace dest fails")
   assert_eq(why, "no target", "_TransmitWhisper whitespace dest is no target")
   assert_eq(#wire, 0, "_TransmitWhisper whitespace dest does not whisper")
@@ -700,10 +715,10 @@ do
   ok, why = Net:SendPetition({ characterId = 12 })
   assert_eq(ok, false, "SendPetition nil dest still fails")
   assert_eq(why, "no target", "SendPetition nil dest stays no target")
-  ok, why = Net:_TransmitWhisper("1:SNAPSHOT:request", "")
+  ok, why = Net:_TransmitWhisper("2:SNAPSHOT:request", "")
   assert_eq(ok, false, "_TransmitWhisper empty dest still fails")
   assert_eq(why, "no target", "_TransmitWhisper empty dest stays no target")
-  ok, why = Net:_TransmitWhisper("1:SNAPSHOT:request")
+  ok, why = Net:_TransmitWhisper("2:SNAPSHOT:request")
   assert_eq(ok, false, "_TransmitWhisper nil dest still fails")
   assert_eq(why, "no target", "_TransmitWhisper nil dest stays no target")
   ok, why = Net:SendFavor({ kind = "favor", characterId = 2, pick = 1 }, "")
@@ -725,39 +740,39 @@ do
   assert_eq(#wire, 1, "SendPetition padded dest whispers once")
   assert_eq(wire[1].channel, "WHISPER", "SendPetition padded dest stays whisper")
   assert_eq(wire[1].target, "Host", "SendPetition trims dest before transmit")
-  assert_eq(wire[1].payload, "1:INPUT:petition:12", "SendPetition padded dest has no dest on INPUT")
+  assert_eq(wire[1].payload, "2:INPUT:petition:12", "SendPetition padded dest has no dest on INPUT")
 
   ok, why = Net:SendConfession({ characterId = 3, text = "free text" }, hostPad)
   assert_eq(ok, true, "SendConfession padded dest sends")
   assert_eq(why, nil, "SendConfession padded dest has no refusal")
   assert_eq(wire[2].target, "Host", "SendConfession trims dest before transmit")
-  assert_eq(wire[2].payload, "1:INPUT:confession:3:free text",
+  assert_eq(wire[2].payload, "2:INPUT:confession:3:free text",
     "SendConfession padded dest has no dest on INPUT")
 
   ok, why = Net:RequestSnapshot(hostPad)
   assert_eq(ok, true, "RequestSnapshot padded dest sends")
   assert_eq(why, nil, "RequestSnapshot padded dest is not Pope-gated")
   assert_eq(wire[3].target, "Host", "RequestSnapshot trims dest before transmit")
-  assert_eq(wire[3].payload, "1:SNAPSHOT:request", "RequestSnapshot padded dest body is unchanged")
+  assert_eq(wire[3].payload, "2:SNAPSHOT:request", "RequestSnapshot padded dest body is unchanged")
 
   ok, why = Net:SendFavor({ kind = "favor", characterId = 2, pick = 1 }, hostPad)
   assert_eq(ok, true, "SendFavor padded dest sends")
   assert_eq(why, nil, "SendFavor padded dest has no refusal")
   assert_eq(wire[4].target, "Host", "SendFavor trims dest before transmit")
-  assert_eq(wire[4].payload, "1:INPUT:favor:2:1", "SendFavor padded dest has no dest on INPUT")
+  assert_eq(wire[4].payload, "2:INPUT:favor:2:1", "SendFavor padded dest has no dest on INPUT")
 
-  ok, why = Net:_TransmitWhisper("1:SNAPSHOT:request", hostPad)
+  ok, why = Net:_TransmitWhisper("2:SNAPSHOT:request", hostPad)
   assert_eq(ok, true, "_TransmitWhisper padded dest sends")
   assert_eq(why, nil, "_TransmitWhisper padded dest has no refusal")
   assert_eq(wire[5].target, "Host", "_TransmitWhisper trims dest before transmit")
-  assert_eq(wire[5].payload, "1:SNAPSHOT:request", "_TransmitWhisper padded dest body is unchanged")
+  assert_eq(wire[5].payload, "2:SNAPSHOT:request", "_TransmitWhisper padded dest body is unchanged")
   assert_eq(#wire, 5, "padded dest pins whisper five times")
 
   assert_eq(Codec.TYPES.INPUT, true, "INPUT stays a Codec type")
   assert_eq(Codec.TYPES.SNAPSHOT, true, "SNAPSHOT stays a Codec type")
-  assert_eq(Codec:Decode("1:INPUT:petition:12").kind, "petition", "petition kind is unchanged")
-  assert_eq(Codec:Decode("1:INPUT:favor:2:1").kind, "favor", "favor kind is unchanged")
-  assert_eq(Codec:Decode("1:INPUT:confession:3:free text").kind, "confession",
+  assert_eq(Codec:Decode("2:INPUT:petition:12").kind, "petition", "petition kind is unchanged")
+  assert_eq(Codec:Decode("2:INPUT:favor:2:1").kind, "favor", "favor kind is unchanged")
+  assert_eq(Codec:Decode("2:INPUT:confession:3:free text").kind, "confession",
     "confession kind is unchanged")
   assert_eq(Runtime:Snapshot().state, "QUIET", "dest pins do not change Runtime")
   assert_eq(Net.LookupPope, nil, "dest trim does not grow a Pope-name lookup")
@@ -842,7 +857,7 @@ do
   assert_eq(#wire, 1, "SendSnapshot padded dest whispers once")
   assert_eq(wire[1].channel, "WHISPER", "SendSnapshot padded dest stays whisper")
   assert_eq(wire[1].target, "Host", "SendSnapshot trims dest before transmit")
-  assert_eq(wire[1].payload, "1:SNAPSHOT:request", "SendSnapshot has no dest on SNAPSHOT")
+  assert_eq(wire[1].payload, "2:SNAPSHOT:request", "SendSnapshot has no dest on SNAPSHOT")
   assert_eq(Codec:Decode(wire[1].payload).role, "request", "padded dest SNAPSHOT role is unchanged")
   assert_eq(Codec:Decode(wire[1].payload).dest, nil, "padded dest SNAPSHOT body has no dest")
 
@@ -878,7 +893,7 @@ do
   assert_eq(#wire, 1, "SendConfession padded text whispers once")
   assert_eq(wire[1].channel, "WHISPER", "SendConfession padded text stays whisper")
   assert_eq(wire[1].target, "Pope", "SendConfession padded text dest is unchanged")
-  assert_eq(wire[1].payload, "1:INPUT:confession:3:forgive me",
+  assert_eq(wire[1].payload, "2:INPUT:confession:3:forgive me",
     "SendConfession encodes trimmed text")
   assert_eq(Codec:Decode(wire[1].payload).text, "forgive me",
     "padded confession text decodes trimmed")
@@ -889,14 +904,14 @@ do
   ok, why = Net:SendConfession({ characterId = 3, text = "   " }, "Pope")
   assert_eq(ok, true, "SendConfession whitespace text still sends")
   assert_eq(why, nil, "SendConfession whitespace text is not a refusal")
-  assert_eq(wire[2].payload, "1:INPUT:confession:3",
+  assert_eq(wire[2].payload, "2:INPUT:confession:3",
     "SendConfession whitespace text omits text")
   assert_eq(Codec:Decode(wire[2].payload).text, nil, "whitespace confession has no text")
 
   ok, why = Net:SendConfession({ characterId = 3, text = "" }, "Pope")
   assert_eq(ok, true, "SendConfession empty text still sends")
   assert_eq(why, nil, "SendConfession empty text is not a refusal")
-  assert_eq(wire[3].payload, "1:INPUT:confession:3",
+  assert_eq(wire[3].payload, "2:INPUT:confession:3",
     "SendConfession empty text omits text")
   assert_eq(wire[3].payload, wire[2].payload, "empty text matches whitespace omit")
 
@@ -907,7 +922,7 @@ do
 
   ok, why = Net:SendConfession({ characterId = 3 }, "Pope")
   assert_eq(ok, true, "SendConfession optional text stays")
-  assert_eq(wire[4].payload, "1:INPUT:confession:3", "SendConfession no-text payload stays")
+  assert_eq(wire[4].payload, "2:INPUT:confession:3", "SendConfession no-text payload stays")
   assert_eq(wire[4].payload, wire[2].payload, "whitespace omit matches no-text")
 
   ok, why = Net:SendConfession({ characterId = 3, text = "free text" }, "   ")
@@ -920,7 +935,7 @@ do
   assert_eq(ok, true, "SendConfession padded dest still sends")
   assert_eq(why, nil, "SendConfession padded dest still has no refusal")
   assert_eq(wire[1].target, "Host", "SendConfession dest trim stays")
-  assert_eq(wire[1].payload, "1:INPUT:confession:3:free text",
+  assert_eq(wire[1].payload, "2:INPUT:confession:3:free text",
     "SendConfession padded dest still has no dest on INPUT")
   assert_eq(Codec:Decode(wire[1].payload).dest, nil,
     "padded dest confession body has no dest")
@@ -1038,16 +1053,17 @@ Runtime:StartEvent()
 local liveFavor = Runtime:Snapshot()
 local favorCalls = {}
 COB.Gora = {
-  RecordFavor = function(_, characterId, pick)
-    favorCalls[#favorCalls + 1] = { characterId = characterId, pick = pick }
+  RecordFavorFromSender = function(_, sender, pick)
+    favorCalls[#favorCalls + 1] = { sender = sender, pick = pick }
     return true
   end,
 }
 ok, stateWhy = whisper(favor, "Petitioner")
 assert_eq(ok, true, "favor INPUT on WHISPER to a Pope client is accepted")
-assert_eq(#favorCalls, 1, "Pope-side favor calls RecordFavor")
-assert_eq(favorCalls[1].characterId, 2, "RecordFavor receives characterId")
-assert_eq(favorCalls[1].pick, 1, "RecordFavor receives pick")
+assert_eq(#favorCalls, 1, "Pope-side favor calls RecordFavorFromSender")
+assert_eq(favorCalls[1].sender, "Petitioner", "RecordFavorFromSender receives the server sender")
+assert_eq(COB.Names.Key(favorCalls[1].sender), "petitioner", "favor apply keys by Names.Key(sender)")
+assert_eq(favorCalls[1].pick, 1, "RecordFavorFromSender receives pick")
 assert_unchanged(liveFavor, Runtime:Snapshot(), "favor INPUT does not Restore Runtime")
 assert_eq(Net.inbox, nil, "favor INPUT does not invent a console queue")
 assert_eq(#wire, 0, "favor INPUT does not fan out")
@@ -1055,9 +1071,9 @@ assert_eq(#wire, 0, "favor INPUT does not fan out")
 ok, stateWhy = guild(favor, "Petitioner")
 assert_eq(ok, false, "favor INPUT on GUILD is still discarded on a Pope client")
 assert_eq(stateWhy, "unknown message type", "favor on GUILD stays unknown")
-assert_eq(#favorCalls, 1, "favor on GUILD does not RecordFavor")
+assert_eq(#favorCalls, 1, "favor on GUILD does not RecordFavorFromSender")
 
-COB.Gora.RecordFavor = function()
+COB.Gora.RecordFavorFromSender = function()
   return nil, "no sanctioned gora"
 end
 ok, stateWhy = whisper(favor, "Petitioner")
@@ -1078,9 +1094,9 @@ Runtime:StartEvent()
 local livePetition = Runtime:Snapshot()
 local petitionCalls = {}
 COB.Gora = {
-  Petition = function(_, characterId, namedOpponentId)
+  PetitionFromSender = function(_, sender, namedOpponentId)
     petitionCalls[#petitionCalls + 1] = {
-      characterId = characterId,
+      sender = sender,
       namedOpponentId = namedOpponentId,
     }
     return true
@@ -1088,15 +1104,17 @@ COB.Gora = {
 }
 local confessionCalls = {}
 COB.Confession = {
-  Receive = function(_, characterId, text)
-    confessionCalls[#confessionCalls + 1] = { characterId = characterId, text = text }
+  ReceiveFromSender = function(_, sender, text)
+    confessionCalls[#confessionCalls + 1] = { sender = sender, text = text }
     return true
   end,
 }
 ok, stateWhy = whisper(petition, "Petitioner")
 assert_eq(ok, true, "petition INPUT on WHISPER to a Pope client is accepted")
-assert_eq(#petitionCalls, 1, "Pope-side petition calls Gora:Petition")
-assert_eq(petitionCalls[1].characterId, 12, "Petition receives characterId")
+assert_eq(#petitionCalls, 1, "Pope-side petition calls Gora:PetitionFromSender")
+assert_eq(petitionCalls[1].sender, "Petitioner", "PetitionFromSender receives the server sender")
+assert_eq(COB.Names.Key(petitionCalls[1].sender), "petitioner",
+  "petition apply keys by Names.Key(sender)")
 assert_eq(petitionCalls[1].namedOpponentId, nil, "Petition does not pass a named opponent")
 assert_unchanged(livePetition, Runtime:Snapshot(), "petition INPUT does not Restore Runtime")
 assert_eq(Net.inbox, nil, "petition INPUT does not invent a console queue")
@@ -1104,9 +1122,11 @@ assert_eq(#wire, 0, "petition INPUT does not fan out")
 
 ok, stateWhy = whisper(confession, "Petitioner")
 assert_eq(ok, true, "confession INPUT on WHISPER to a Pope client is accepted")
-assert_eq(#confessionCalls, 1, "Pope-side confession calls Confession:Receive")
-assert_eq(confessionCalls[1].characterId, 3, "Receive receives characterId")
-assert_eq(confessionCalls[1].text, "free text", "Receive receives text")
+assert_eq(#confessionCalls, 1, "Pope-side confession calls Confession:ReceiveFromSender")
+assert_eq(confessionCalls[1].sender, "Petitioner", "ReceiveFromSender receives the server sender")
+assert_eq(COB.Names.Key(confessionCalls[1].sender), "petitioner",
+  "confession apply keys by Names.Key(sender)")
+assert_eq(confessionCalls[1].text, "free text", "ReceiveFromSender receives text")
 assert_unchanged(livePetition, Runtime:Snapshot(), "confession INPUT does not Restore Runtime")
 assert_eq(Net.inbox, nil, "confession INPUT does not invent a console queue")
 assert_eq(#wire, 0, "confession INPUT does not fan out")
@@ -1131,7 +1151,7 @@ end
 Runtime:StartEvent()
 local liveInputErr = Runtime:Snapshot()
 COB.Gora = {
-  Petition = function()
+  PetitionFromSender = function()
     return nil, "no event"
   end,
 }
@@ -1175,7 +1195,7 @@ do
   local namedFrame = wire[1] or {}
   assert_eq(namedFrame.channel, "WHISPER", "SendPetition with opponent is whisper")
   assert_eq(namedFrame.target, "Host", "SendPetition with opponent uses the given target")
-  assert_eq(namedFrame.payload, "1:INPUT:petition:12:Chuckroast",
+  assert_eq(namedFrame.payload, "2:INPUT:petition:12:Chuckroast",
     "SendPetition encodes petition+id+opponent name")
 
   reset()
@@ -1189,14 +1209,14 @@ do
   }, "Host")
   assert_eq(idLeakOk, true, "SendPetition still sends when namedOpponentId is also set")
   local leakFrame = wire[1] or {}
-  assert_eq(leakFrame.payload, "1:INPUT:petition:12:Chuckroast",
+  assert_eq(leakFrame.payload, "2:INPUT:petition:12:Chuckroast",
     "SendPetition does not copy namedOpponentId onto the wire")
 
   local namedCalls = {}
   COB.Gora = {
-    Petition = function(_, characterId, namedOpponentId)
+    PetitionFromSender = function(_, sender, namedOpponentId)
       namedCalls[#namedCalls + 1] = {
-        characterId = characterId,
+        sender = sender,
         namedOpponentId = namedOpponentId,
       }
       return true
@@ -1207,21 +1227,25 @@ do
       return { characters = { { id = 7, name = "Chuckroast" } } }
     end,
   }
-  local namedWire = "1:INPUT:petition:12:Chuckroast"
+  local namedWire = "2:INPUT:petition:12:Chuckroast"
   local hitOk, hitWhy = whisper(namedWire, "Petitioner")
   assert_eq(hitOk, true, "named-opponent petition on WHISPER to a Pope client is accepted")
   assert_eq(hitWhy, nil, "resolved opponent has no refusal")
-  assert_eq(#namedCalls, 1, "resolved opponent calls Gora:Petition")
+  assert_eq(hitWhy ~= "unknown opponent", true, "known opponent is not an unknown-opponent refuse")
+  assert_eq(#namedCalls, 1, "resolved opponent calls Gora:PetitionFromSender")
   local hit = namedCalls[1] or {}
-  assert_eq(hit.characterId, 12, "resolved Petition receives characterId")
-  assert_eq(hit.namedOpponentId, 7, "resolved Petition receives namedOpponentId")
+  assert_eq(hit.sender, "Petitioner", "resolved PetitionFromSender receives the server sender")
+  assert_eq(COB.Names.Key(hit.sender), "petitioner", "resolved apply ignores payload characterId")
+  assert_eq(hit.namedOpponentId, 7, "resolved PetitionFromSender receives namedOpponentId")
 
   local beforeNil = #namedCalls
   COB.Store = nil
   local nilOk, nilWhy = whisper(namedWire, "Petitioner")
-  assert_eq(nilOk, false, "named-opponent petition without Store is refused")
-  assert_eq(nilWhy, "unknown opponent", "missing Store names unknown opponent")
-  assert_eq(#namedCalls, beforeNil, "missing Store does not call Petition")
+  assert_eq(nilOk, true, "named-opponent petition without Store still records the ask")
+  assert_eq(nilWhy, nil, "missing Store does not return unknown opponent")
+  assert_eq(#namedCalls, beforeNil + 1, "missing Store still calls PetitionFromSender")
+  assert_eq(namedCalls[#namedCalls].namedOpponentId, nil, "missing Store ignores the opponent")
+  assert_eq(namedCalls[#namedCalls].sender, "Petitioner", "missing Store still keys by sender")
 
   COB.Store = {
     Snapshot = function()
@@ -1230,9 +1254,10 @@ do
   }
   local beforeEmpty = #namedCalls
   local emptyOk, emptyWhy = whisper(namedWire, "Petitioner")
-  assert_eq(emptyOk, false, "named-opponent petition with empty characters is refused")
-  assert_eq(emptyWhy, "unknown opponent", "empty characters names unknown opponent")
-  assert_eq(#namedCalls, beforeEmpty, "empty characters does not call Petition")
+  assert_eq(emptyOk, true, "named-opponent petition with empty characters still records the ask")
+  assert_eq(emptyWhy, nil, "empty characters does not return unknown opponent")
+  assert_eq(#namedCalls, beforeEmpty + 1, "empty characters still calls PetitionFromSender")
+  assert_eq(namedCalls[#namedCalls].namedOpponentId, nil, "empty characters ignores the opponent")
 
   local beforeGuild = #namedCalls
   local guildOk, guildWhy = guild(namedWire, "Petitioner")
@@ -1250,34 +1275,44 @@ do
 end
 
 --------------------------------------------------------------------------------
--- Incompatible version: _WarnVersion + discard. No second Quiet notice. No toast.
+-- Incompatible version: _WarnVersion + discard + Quiet drop. No second notice. No toast.
 --------------------------------------------------------------------------------
 reset()
 Runtime:StartEvent()
 local beforeSkew = Runtime:Snapshot()
+assert_eq(beforeSkew.state, "ASSEMBLY", "skew starts from a live event")
 assert_eq(Net.Toast, nil, "Net has no toast")
 assert_eq(Runtime.Toast, nil, "Runtime has no toast")
 assert_eq(Snapshot.Toast, nil, "Snapshot has no toast")
 
-local foreignStateWire = "2:STATE:1:ASSEMBLY::::1"
+local foreignStateWire = "1:STATE:1:ASSEMBLY::::1"
 assert_true(Codec:Decode(foreignStateWire) ~= nil, "foreign-major STATE still decodes")
-assert_eq(Codec:IsCompatible(2), false, "protocol 2 is incompatible")
+assert_eq(Codec:IsCompatible(1), false, "protocol 1 is incompatible")
 local skewOk, skewWhy = guild(foreignStateWire, "Steakina")
 assert_eq(skewOk, false, "incompatible STATE is discarded")
 assert_eq(skewWhy, "protocol mismatch", "incompatible STATE names the mismatch")
 assert_eq(Net.warnedVersion, true, "incompatible STATE is the Quiet version notice")
 assert_eq(#chats, 1, "incompatible STATE chats once")
-assert_unchanged(beforeSkew, Runtime:Snapshot(), "incompatible STATE does not Restore")
+assert_true(chats[1]:find("the Church's software has advanced", 1, true) ~= nil,
+  "incompatible STATE names the Church's software has advanced")
+assert_true(chats[1]:find("update the addon", 1, true) ~= nil,
+  "incompatible STATE tells the player to update the addon")
+local afterStateSkew = Runtime:Snapshot()
+assert_eq(afterStateSkew.state, "QUIET", "version skew drops the live event")
+assert_eq(afterStateSkew.eventId, nil, "incompatible STATE does not Restore the foreign event")
+assert_eq(afterStateSkew.riteType, nil, "incompatible STATE drops rite chrome")
+assert_eq(afterStateSkew.sequence, 0, "incompatible STATE Restores clean QUIET")
 
-local foreignSnap = "2:SNAPSHOT:response:1:ASSEMBLY::::1"
+local foreignSnap = "1:SNAPSHOT:response:1:ASSEMBLY::::1"
 local snapSkewOk, snapSkewWhy = whisper(foreignSnap, "Steakina")
 assert_eq(snapSkewOk, false, "incompatible SNAPSHOT is discarded")
 assert_eq(snapSkewWhy, "protocol mismatch", "incompatible SNAPSHOT names the mismatch")
 assert_eq(#chats, 1, "incompatible SNAPSHOT does not chat a second notice")
-assert_eq(Net:_WarnVersion(2), false, "the version notice still fires once")
+assert_eq(Net:_WarnVersion(1), false, "the version notice still fires once")
 assert_eq(#chats, 1, "no second Quiet notice")
-assert_unchanged(beforeSkew, Runtime:Snapshot(), "incompatible SNAPSHOT does not Apply")
-assert_eq(Runtime:Snapshot().state, "ASSEMBLY", "version skew does not drop the live event")
+local afterSnapSkew = Runtime:Snapshot()
+assert_eq(afterSnapSkew.state, "QUIET", "incompatible SNAPSHOT stays Quiet")
+assert_eq(afterSnapSkew.eventId, nil, "incompatible SNAPSHOT does not Apply")
 
 reset()
 local zeroOk, zeroWhy = guild("0:STATE:1:RITE:Gora::3,4:2", "Steakina")
@@ -1317,7 +1352,7 @@ guild(petition, "Petitioner")
 Net:SendState({ eventId = 1, state = "ASSEMBLY", sequence = 1 })
 Net:SendSnapshot({ role = "request" }, "Pope")
 guild("1:SUGGESTION:x", "Beefina")
-guild("2:STATE:1:ASSEMBLY::::1", "Steakina")
+guild("1:STATE:1:ASSEMBLY::::1", "Steakina")
 assert_eq(framed, 0, "v2 handlers never CreateFrame")
 assert_eq(guildReads, 0, "v2 handlers do not read guild rank")
 assert_eq(ChurchOfBeefDB.sentinel, 1, "v2 handlers do not write ChurchOfBeefDB")
@@ -1333,7 +1368,333 @@ assert_eq(Codec.TYPES.INPUT, true, "INPUT stays a Codec type")
 assert_eq(Codec.TYPES.DECREE, true, "DECREE is a Codec type")
 assert_eq(Codec.TYPES.HELLO, nil, "HELLO stays on the transport")
 assert_eq(type(Net.Encode), "function", "transport Encode stays for HELLO")
-assert_eq(Net:Encode("HELLO", "0.1.0"), "1:HELLO:0.1.0", "HELLO is still the transport type")
+assert_eq(Net:Encode("HELLO", "0.1.0"), "2:HELLO:0.1.0", "HELLO is still the transport type")
+
+--------------------------------------------------------------------------------
+-- Lane W: default whisper destination. Explicit target wins; else the last
+-- accepted STATE sender; else the first listed Pope; else refuse. The destName
+-- trim applies to whichever source wins. A self dest is legal and not skipped.
+--------------------------------------------------------------------------------
+do
+  reset()
+  assert_eq(Net._lastStateSender, nil, "no STATE sender is remembered yet")
+  assert_eq(COB.Popes, nil, "no Pope list is loaded in this suite")
+
+  local ok, why
+
+  ok, why = Net:SendPetition({ characterId = 12 })
+  assert_eq(ok, false, "SendPetition with no default anywhere still refuses")
+  assert_eq(why, "no target", "SendPetition with no default anywhere names no target")
+  assert_eq(#wire, 0, "no default anywhere does not whisper")
+  assert_eq(sent, 0, "no default anywhere does not SendAddonMessage")
+
+  COB.Popes = { List = { "Popeonius" } }
+  assert_eq(Net:DefaultDest(), "Popeonius", "DefaultDest falls back to the listed Pope")
+  ok, why = Net:SendPetition({ characterId = 12 })
+  assert_eq(ok, true, "SendPetition falls back to the listed Pope")
+  assert_eq(why, nil, "listed-Pope Petition has no refusal")
+  assert_eq(#wire, 1, "listed-Pope Petition whispers once")
+  assert_eq(wire[1].channel, "WHISPER", "listed-Pope Petition stays whisper")
+  assert_eq(wire[1].target, "Popeonius", "listed-Pope Petition dest is the list head")
+  assert_eq(wire[1].payload, "2:INPUT:petition:12", "listed-Pope Petition body is unchanged")
+
+  ok, why = Net:SendFavor({ characterId = 2, pick = 1 })
+  assert_eq(ok, true, "SendFavor falls back to the listed Pope")
+  assert_eq(why, nil, "listed-Pope SendFavor has no refusal")
+  assert_eq(wire[2].target, "Popeonius", "listed-Pope SendFavor dest is the list head")
+  assert_eq(wire[2].payload, "2:INPUT:favor:2:1", "listed-Pope SendFavor body is unchanged")
+
+  ok, why = Net:SendConfession({ characterId = 3, text = "free text" })
+  assert_eq(ok, true, "SendConfession falls back to the listed Pope")
+  assert_eq(wire[3].target, "Popeonius", "listed-Pope SendConfession dest is the list head")
+  assert_eq(wire[3].payload, "2:INPUT:confession:3:free text",
+    "listed-Pope SendConfession body is unchanged")
+
+  ok, why = Net:RequestSnapshot()
+  assert_eq(ok, true, "RequestSnapshot falls back to the listed Pope")
+  assert_eq(why, nil, "listed-Pope RequestSnapshot has no refusal")
+  assert_eq(wire[4].target, "Popeonius", "listed-Pope RequestSnapshot dest is the list head")
+  assert_eq(wire[4].payload, "2:SNAPSHOT:request", "listed-Pope RequestSnapshot body is unchanged")
+
+  Net._lastStateSender = "Steakina"
+  assert_eq(Net:DefaultDest(), "Steakina",
+    "DefaultDest prefers the remembered STATE sender over List[1]")
+  ok, why = Net:SendPetition({ characterId = 12 })
+  assert_eq(ok, true, "SendPetition prefers the remembered STATE sender")
+  assert_eq(wire[5].target, "Steakina", "remembered STATE sender beats the listed Pope")
+  assert_eq(wire[5].target, Net:DefaultDest(),
+    "SendPetition dest matches DefaultDest when no explicit target")
+  ok, why = Net:RequestSnapshot()
+  assert_eq(ok, true, "RequestSnapshot prefers the remembered STATE sender")
+  assert_eq(wire[6].target, "Steakina", "remembered STATE sender beats the list for snapshots")
+
+  ok, why = Net:SendPetition({ characterId = 12 }, "Host")
+  assert_eq(ok, true, "an explicit target always wins")
+  assert_eq(wire[7].target, "Host", "explicit target beats sender and list")
+  ok, why = Net:SendFavor({ characterId = 2, pick = 1 }, "  Host  ")
+  assert_eq(ok, true, "a padded explicit target always wins")
+  assert_eq(wire[8].target, "Host", "explicit target trim stays")
+
+  Net._lastStateSender = "  Steakina  "
+  ok, why = Net:SendPetition({ characterId = 12 })
+  assert_eq(ok, true, "a padded remembered sender still resolves")
+  assert_eq(wire[9].target, "Steakina", "the remembered sender is destName-trimmed")
+
+  COB.Popes = { List = { "  Popeonius  " } }
+  Net._lastStateSender = nil
+  ok, why = Net:SendPetition({ characterId = 12 })
+  assert_eq(ok, true, "a padded listed Pope still resolves")
+  assert_eq(wire[10].target, "Popeonius", "the listed Pope is destName-trimmed")
+
+  Net._lastStateSender = "Beefina"
+  ok, why = Net:SendPetition({ characterId = 12 })
+  assert_eq(ok, true, "a self dest is legal and not skipped")
+  assert_eq(wire[11].target, "Beefina", "self-whisper resolves like any other dest")
+
+  Net._lastStateSender = nil
+  COB.Popes = { List = {} }
+  ok, why = Net:SendPetition({ characterId = 12 })
+  assert_eq(ok, false, "an empty Pope list refuses")
+  assert_eq(why, "no target", "an empty Pope list names no target")
+
+  COB.Popes = { List = { "" } }
+  ok, why = Net:SendFavor({ characterId = 2, pick = 1 })
+  assert_eq(ok, false, "an empty-string Pope refuses")
+  assert_eq(why, "no target", "an empty-string Pope names no target")
+
+  COB.Popes = { List = { "   " } }
+  ok, why = Net:RequestSnapshot()
+  assert_eq(ok, false, "a whitespace Pope refuses")
+  assert_eq(why, "no target", "a whitespace Pope names no target")
+
+  COB.Popes = {}
+  ok, why = Net:SendConfession({ characterId = 3 })
+  assert_eq(ok, false, "a Pope table without a List refuses")
+  assert_eq(why, "no target", "a Pope table without a List names no target")
+
+  COB.Popes = nil
+  assert_eq(#wire, 11, "refused defaults do not whisper")
+  assert_eq(Runtime:Snapshot().state, "QUIET", "default-dest pins do not change Runtime")
+  assert_eq(Net.LookupPope, nil, "default dest does not grow a Pope-name lookup")
+  assert_eq(Net.FindPope, nil, "default dest does not grow FindPope")
+end
+
+--------------------------------------------------------------------------------
+-- Lane W: _lastStateSender is set only when an inbound STATE passes sender
+-- auth. Rejected senders and accepted SNAPSHOT / DECREE / INPUT never set it.
+--------------------------------------------------------------------------------
+do
+  reset()
+  local savedAccept = Sender.Accept
+  local savedPred = Sender.IsRegisteredPope
+
+  assert_eq(Sender:Accept("Steakina", "STATE"), false, "unstubbed Accept STATE stays false")
+  local _, rejectedWhy = guild(state_wire({
+    eventId = 4,
+    state = "ASSEMBLY",
+    sequence = 1,
+  }), "Steakina")
+  assert_eq(rejectedWhy, "not accepted", "rejected STATE still names the Accept gate")
+  assert_eq(Net._lastStateSender, nil, "rejected STATE does not remember the sender")
+
+  Sender.Accept = function() return true end
+  Sender.IsRegisteredPope = function(_, sender)
+    return COB.Names.Key(sender) == "beefina"
+  end
+
+  Runtime:StartEvent()
+  local snapWire = Snapshot:BuildResponse()
+  assert_true(snapWire ~= nil, "a live event builds a SNAPSHOT response")
+  assert_eq(whisper(snapWire, "Steakina"), true, "accepted SNAPSHOT response applies")
+  assert_eq(Net._lastStateSender, nil, "accepted SNAPSHOT does not remember the sender")
+
+  local decreeSets = 0
+  COB.Decree = {
+    Set = function()
+      decreeSets = decreeSets + 1
+      return { line = "x" }
+    end,
+  }
+  assert_eq(guild(Codec:EncodeDecree({ line = "Gather at the Pit" }), "Beefina"), true,
+    "accepted DECREE sets")
+  assert_eq(decreeSets, 1, "accepted DECREE reached Decree:Set")
+  assert_eq(Net._lastStateSender, nil, "accepted DECREE does not remember the sender")
+
+  COB.Gora = {
+    RecordFavorFromSender = function() return true end,
+  }
+  assert_eq(whisper(Codec:EncodeInput({ kind = "favor", characterId = 2, pick = 1 }), "Petitioner"), true,
+    "accepted favor INPUT lands")
+  assert_eq(Net._lastStateSender, nil, "accepted INPUT does not remember the sender")
+
+  assert_eq(guild(state_wire({
+    eventId = 5,
+    state = "ASSEMBLY",
+    sequence = 2,
+  }), "Steakina"), true, "accepted STATE restores")
+  assert_eq(Net._lastStateSender, "Steakina", "accepted STATE remembers the raw sender")
+
+  assert_eq(guild(state_wire({
+    eventId = 5,
+    state = "ASSEMBLY",
+    sequence = 3,
+  }), "Porkina"), true, "a second accepted STATE restores")
+  assert_eq(Net._lastStateSender, "Porkina", "the newest accepted STATE sender wins")
+
+  assert_eq(whisper(snapWire, "Steakina"), true, "another accepted SNAPSHOT applies")
+  assert_eq(Net._lastStateSender, "Porkina", "SNAPSHOT does not overwrite the sender")
+  assert_eq(guild(Codec:EncodeDecree({ line = "Gather at the Pit" }), "Beefina"), true,
+    "another accepted DECREE sets")
+  assert_eq(Net._lastStateSender, "Porkina", "DECREE does not overwrite the sender")
+  assert_eq(whisper(Codec:EncodeInput({ kind = "favor", characterId = 2, pick = 1 }), "Petitioner"), true,
+    "another accepted INPUT lands")
+  assert_eq(Net._lastStateSender, "Porkina", "INPUT does not overwrite the sender")
+
+  Net._lastStateSender = "Steakina"
+  reset()
+  assert_eq(Net._lastStateSender, nil, "ResetForTests forgets the remembered STATE sender")
+
+  COB.Decree = nil
+  COB.Gora = nil
+  Sender.Accept = savedAccept
+  Sender.IsRegisteredPope = savedPred
+  assert_eq(Sender:Accept("Steakina", "STATE"), false, "Accept stub is restored")
+  assert_eq(Sender:IsRegisteredPope(Net:PlayerName()), false, "Pope stub is restored")
+end
+
+--------------------------------------------------------------------------------
+-- Lane W: COB._OnPeerHello fires (pcall'd) only on a compatible, non-self
+-- HELLO. Absent function, self-HELLO, and version-mismatch paths never fire
+-- and never error.
+--------------------------------------------------------------------------------
+do
+  reset()
+  assert_eq(COB._OnPeerHello, nil, "no peer-HELLO callback outside the bootstrap")
+
+  local helloCalls = {}
+  COB._OnPeerHello = function(sender)
+    helloCalls[#helloCalls + 1] = sender
+  end
+
+  assert_eq(guild(hello_payload("0.1.0"), "Steakina"), true, "compatible HELLO is still accepted")
+  assert_eq(#helloCalls, 1, "compatible non-self HELLO fires the callback")
+  assert_eq(helloCalls[1], "Steakina", "the callback receives the raw sender")
+  assert_eq(Net:PeerCount(), 1, "the peer record still seats")
+
+  assert_eq(guild(hello_payload("0.1.0"), "Beefina"), false, "self HELLO is still not a peer")
+  assert_eq(#helloCalls, 1, "self HELLO does not fire the callback")
+
+  local _, mismatchWhy = guild("1:HELLO:9.9.9", "Porkina")
+  assert_eq(mismatchWhy, "protocol mismatch", "mismatched HELLO is still discarded")
+  assert_eq(#helloCalls, 1, "mismatched HELLO does not fire the callback")
+
+  COB._OnPeerHello = function()
+    error("boom")
+  end
+  assert_eq(guild(hello_payload("0.1.0"), "Chuckina"), true, "a throwing callback is swallowed")
+  assert_eq(Net.peers.chuckina, "0.1.0", "a throwing callback still seats the peer")
+
+  COB._OnPeerHello = nil
+  assert_eq(guild(hello_payload("0.1.0"), "Ribeye"), true, "a missing callback is a no-op")
+  assert_eq(Net.peers.ribeye, "0.1.0", "a missing callback still seats the peer")
+
+  COB._OnPeerHello = nil
+end
+
+--------------------------------------------------------------------------------
+-- Latest-wins favor overlay (Option C). Accept stub + favor spy on the
+-- existing if-ok glue: equal sequence still paints; older does not overlay.
+--------------------------------------------------------------------------------
+do
+  reset()
+  local savedAccept = Sender.Accept
+  Sender.Accept = function() return true end
+
+  local favorSpy = {}
+  local origHandle = Net._HandleState
+  Net._HandleState = function(self, decoded, channel, sender)
+    local ok, err = origHandle(self, decoded, channel, sender)
+    if ok then
+      favorSpy[#favorSpy + 1] = decoded and decoded.favor or nil
+    end
+    return ok, err
+  end
+
+  local greaterWire, greaterErr = Codec:EncodeState({
+    eventId = 1,
+    state = "RITE",
+    riteType = "Gora",
+    subjects = { fighters = { 8, 9 } },
+    sequence = 2,
+    favor = { a = 1, b = 0 },
+  })
+  assert_true(greaterWire ~= nil, "greater STATE with favor encodes")
+  assert_eq(greaterErr, nil, "greater STATE encode has no error")
+  assert_eq(guild(greaterWire, "Steakina"), true, "greater sequence applies ceremony")
+  assert_eq(Runtime:Snapshot().state, "RITE", "greater sequence lands RITE")
+  assert_eq(Runtime:Snapshot().sequence, 2, "greater sequence lands sequence")
+  assert_eq(Runtime:Snapshot().subjects.fighters[1], 8, "greater sequence lands fighter A")
+  assert_eq(Runtime:Snapshot().favor, nil, "Restore does not keep favor")
+  assert_eq(#favorSpy, 1, "greater sequence overlays favor")
+  assert_eq(favorSpy[1] and favorSpy[1].a, 1, "greater sequence favor a")
+  assert_eq(favorSpy[1] and favorSpy[1].b, 0, "greater sequence favor b")
+
+  favorSpy = {}
+  local equalWire, equalErr = Codec:EncodeState({
+    eventId = 1,
+    state = "RITE",
+    riteType = "Gora",
+    subjects = { fighters = { 1, 2 } },
+    sequence = 2,
+    favor = { a = 4, b = 3 },
+  })
+  assert_true(equalWire ~= nil, "equal STATE with favor encodes")
+  assert_eq(equalErr, nil, "equal STATE encode has no error")
+  assert_eq(guild(equalWire, "Steakina"), true, "equal sequence still accepts")
+  assert_eq(Runtime:Snapshot().subjects.fighters[1], 8, "equal sequence does not replace fighters")
+  assert_eq(Runtime:Snapshot().subjects.fighters[2], 9, "equal sequence keeps later fighters")
+  assert_eq(Runtime:Snapshot().sequence, 2, "equal sequence does not move ceremony")
+  assert_eq(#favorSpy, 1, "equal sequence still paints favor")
+  assert_eq(favorSpy[1] and favorSpy[1].a, 4, "equal sequence overlays later favor")
+  assert_eq(favorSpy[1] and favorSpy[1].b, 3, "equal sequence overlays later favor b")
+
+  favorSpy = {}
+  local olderWire, olderEncErr = Codec:EncodeState({
+    eventId = 1,
+    state = "ASSEMBLY",
+    subjects = { fighters = { 8, 9 } },
+    sequence = 1,
+    favor = { a = 9, b = 9 },
+  })
+  assert_true(olderWire ~= nil, "older STATE with favor encodes")
+  assert_eq(olderEncErr, nil, "older STATE encode has no error")
+  local olderOk, olderWhy = guild(olderWire, "Steakina")
+  assert_eq(olderOk, nil, "older sequence does not apply")
+  assert_eq(olderWhy, "stale sequence", "older sequence is not-ok")
+  assert_eq(Runtime:Snapshot().state, "RITE", "older sequence leaves later ceremony")
+  assert_eq(Runtime:Snapshot().sequence, 2, "older sequence does not rewind")
+  assert_eq(#favorSpy, 0, "older sequence does not overlay favor")
+
+  favorSpy = {}
+  local otherWire, otherErr = Codec:EncodeState({
+    eventId = 2,
+    state = "ASSEMBLY",
+    subjects = { fighters = { 3, 4 } },
+    sequence = 1,
+    favor = { a = 2, b = 2 },
+  })
+  assert_true(otherWire ~= nil, "different-event STATE encodes")
+  assert_eq(otherErr, nil, "different-event STATE encode has no error")
+  assert_eq(guild(otherWire, "Steakina"), true, "different eventId applies")
+  assert_eq(Runtime:Snapshot().eventId, 2, "different eventId lands")
+  assert_eq(Runtime:Snapshot().state, "ASSEMBLY", "different eventId applies ceremony")
+  assert_eq(Runtime:Snapshot().sequence, 1, "new event keeps its own sequence")
+  assert_eq(#favorSpy, 1, "different eventId overlays favor")
+  assert_eq(favorSpy[1] and favorSpy[1].a, 2, "different eventId favor a")
+
+  Net._HandleState = origHandle
+  Sender.Accept = savedAccept
+end
 
 reset()
 

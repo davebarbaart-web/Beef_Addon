@@ -542,6 +542,7 @@ assert_eq(rite.scripture, nil, "ceremony log has no scripture")
 assert_eq(rite.narration, nil, "ceremony log has no narration")
 assert_eq(rite.text, nil, "ceremony log has no generated text")
 assert_eq(rite.flavor, nil, "ceremony log has no flavor text")
+assert_eq(rite.eventId, nil, "3-arg ceremony does not invent an event id")
 
 local log = Store:GetCeremonyLog()
 assert_eq(#log, 1, "ceremony log is append-only and readable")
@@ -578,6 +579,15 @@ local badLine, badLineErr = Store:AppendCeremony("free", { c1.id }, 4006, 99)
 assert_eq(badLine, nil, "non-string ceremony text is refused")
 assert_true(type(badLineErr) == "string", "non-string ceremony text returns an error string")
 assert_eq(#Store:GetCeremonyLog(), 4, "refused 4-arg text is not stored")
+
+local withEvent = Store:AppendCeremony("Knighting", { p1.id }, 4007, nil, 7)
+assert_eq(withEvent.eventId, 7, "optional event id is stored")
+assert_eq(withEvent.text, nil, "nil text with an event id is omitted")
+assert_eq(#Store:GetCeremonyLog(), 5, "event-id append is stored")
+local badEvent, badEventErr = Store:AppendCeremony("Knighting", { p1.id }, 4008, nil, 0)
+assert_eq(badEvent, nil, "event id 0 is refused")
+assert_true(type(badEventErr) == "string", "invalid event id returns an error string")
+assert_eq(#Store:GetCeremonyLog(), 5, "refused event id is not stored")
 
 --------------------------------------------------------------------------------
 -- Marked moments: flag-hot only — timestamp, optional location; no canon text
@@ -973,6 +983,135 @@ local function runCountDefenses()
   assert_eq(Store:GetCharacter(lordC.id).gora.defenses, nil, "Restore still strips gora.defenses")
 end
 runCountDefenses()
+
+--------------------------------------------------------------------------------
+-- EnsureCharacterByName (Lane K): the Pope's target-verb spine. Knighting or
+-- Sanctioning a targeted stranger IS the recognition (Bible §4.4, §12.2):
+-- one action, Pope present, character logged in. Lookup is over characters by
+-- Names.Key (realm-stripped, case-insensitive). Never merges into an existing
+-- human by name similarity; a new character always gets a fresh human.
+-- Function-wrapped: the main chunk is at Lua 5.1's 200-local cap.
+--------------------------------------------------------------------------------
+local function runEnsureCharacterByName()
+reset()
+assert_eq(type(Store.EnsureCharacterByName), "function", "EnsureCharacterByName exists")
+
+-- String form: an unknown name creates human + character + link.
+local charId, humanId, created = Store:EnsureCharacterByName("Chuckroast", 9000)
+assert_true(isInt(charId), "unknown name returns a character id")
+assert_true(isInt(humanId), "unknown name returns a human id")
+assert_eq(created, true, "unknown name reports created")
+assert_eq(Store:GetCharacter(charId).name, "Chuckroast", "created character keeps the display spelling")
+assert_eq(Store:GetCharacter(charId).humanId, humanId, "created character is linked")
+assert_eq(Store:GetHuman(humanId).characterIds[1], charId, "created human lists the character")
+assert_eq(Store:GetHuman(humanId).name, "Chuckroast", "created human takes the character name")
+assert_eq(Store:GetHuman(humanId).rankId, nil, "created human starts unranked")
+
+-- A repeat call finds the linked rows and creates nothing.
+local beforeRepeat = Store:Snapshot()
+local againChar, againHuman, againCreated = Store:EnsureCharacterByName("chuckroast", 9001)
+assert_eq(againChar, charId, "case-insensitive repeat finds the same character")
+assert_eq(againHuman, humanId, "repeat finds the same human")
+assert_eq(againCreated, false, "linked repeat reports not-created")
+local afterRepeat = Store:Snapshot()
+assert_eq(#afterRepeat.characters, #beforeRepeat.characters, "repeat adds no character row")
+assert_eq(#afterRepeat.humans, #beforeRepeat.humans, "repeat adds no human row")
+
+-- Realm-suffixed spellings hit the realm-stripped row.
+local realmChar, realmHuman, realmCreated = Store:EnsureCharacterByName("Chuckroast-Whitemane", 9002)
+assert_eq(realmChar, charId, "realm-suffixed name finds the realm-stripped row")
+assert_eq(realmHuman, humanId, "realm-suffixed name finds the same human")
+assert_eq(realmCreated, false, "realm hit reports not-created")
+
+-- Table form passes class / level through to the created character.
+local tChar, tHuman, tCreated = Store:EnsureCharacterByName(
+  { name = "Tendermage", class = "Mage", level = 68 }, 9003)
+assert_eq(tCreated, true, "table form creates")
+assert_eq(Store:GetCharacter(tChar).class, "Mage", "class passes through")
+assert_eq(Store:GetCharacter(tChar).level, 68, "level passes through")
+assert_eq(Store:GetCharacter(tChar).humanId, tHuman, "table form links")
+assert_eq(Store:GetHuman(tHuman).name, "Tendermage", "table-form human takes the character name")
+
+-- Table form may omit class / level.
+local bareChar, bareHuman, bareCreated = Store:EnsureCharacterByName({ name = "Barebeef" }, 9004)
+assert_eq(bareCreated, true, "bare table form creates")
+assert_eq(Store:GetCharacter(bareChar).class, nil, "class may be omitted")
+assert_eq(Store:GetCharacter(bareChar).level, nil, "level may be omitted")
+assert_eq(Store:GetCharacter(bareChar).humanId, bareHuman, "bare table form links")
+
+-- Found but unlinked: a fresh human is created and linked; the character row stays.
+local stray = Store:CreateCharacter({ name = "Straybeef", class = "Warrior", level = 70 }, 9005)
+local beforeStray = Store:Snapshot()
+local sChar, sHuman, sCreated = Store:EnsureCharacterByName("straybeef", 9006)
+assert_eq(sChar, stray.id, "unlinked hit keeps the existing character row")
+assert_true(isInt(sHuman), "unlinked hit returns a human id")
+assert_eq(sCreated, true, "unlinked hit reports created")
+assert_eq(Store:GetCharacter(stray.id).humanId, sHuman, "unlinked hit links the new human")
+assert_eq(Store:GetHuman(sHuman).name, "Straybeef", "the new human takes the character's stored name")
+assert_eq(#Store:Snapshot().characters, #beforeStray.characters, "unlinked hit adds no character row")
+assert_eq(#Store:Snapshot().humans, #beforeStray.humans + 1, "unlinked hit adds exactly one human")
+local sAgain, sHumanAgain, sCreatedAgain = Store:EnsureCharacterByName("Straybeef", 9007)
+assert_eq(sAgain, stray.id, "now-linked hit keeps the character")
+assert_eq(sHumanAgain, sHuman, "now-linked hit keeps the human")
+assert_eq(sCreatedAgain, false, "now-linked hit reports not-created")
+
+-- Invalid / blank names refuse.
+local badName, badErr = Store:EnsureCharacterByName("")
+assert_eq(badName, nil, "empty name refuses")
+assert_eq(badErr, "invalid name", "empty name error")
+local blankName, blankErr = Store:EnsureCharacterByName("   ")
+assert_eq(blankName, nil, "blank name refuses")
+assert_eq(blankErr, "invalid name", "blank name error")
+local nilName, nilErr = Store:EnsureCharacterByName(nil)
+assert_eq(nilName, nil, "nil name refuses")
+assert_eq(nilErr, "invalid name", "nil name error")
+local noField, noFieldErr = Store:EnsureCharacterByName({ class = "Mage" })
+assert_eq(noField, nil, "table without a name refuses")
+assert_eq(noFieldErr, "invalid name", "nameless table error")
+local numName, numErr = Store:EnsureCharacterByName(42)
+assert_eq(numName, nil, "numeric name refuses")
+assert_eq(numErr, "invalid name", "numeric name error")
+
+-- A refused ensure creates nothing (no orphan human).
+local beforeBad = Store:Snapshot()
+local badClass, badClassErr = Store:EnsureCharacterByName({ name = "Badclass", class = 42 }, 9008)
+assert_eq(badClass, nil, "a non-string class refuses")
+assert_true(type(badClassErr) == "string", "bad class returns an error string")
+assert_eq(#Store:Snapshot().humans, #beforeBad.humans, "a refused ensure creates no human")
+assert_eq(#Store:Snapshot().characters, #beforeBad.characters, "a refused ensure creates no character")
+
+-- No alt-merge: a new spelling always gets a fresh human, even when an
+-- existing human's name is similar (or identical) but owns no such character.
+local baseHuman = Store:CreateHuman({ name = "Chuck" }, 9009)
+local baseChar = Store:CreateCharacter({ name = "Chuckroast" }, 9010)
+Store:LinkCharacter(baseChar.id, baseHuman.id, 9011)
+local altChar, altHuman, altCreated = Store:EnsureCharacterByName("Chuckles", 9012)
+assert_eq(altCreated, true, "a new spelling creates")
+assert_true(altHuman ~= baseHuman.id, "no alt-merge into the existing human")
+assert_eq(#Store:GetHuman(baseHuman.id).characterIds, 1, "the existing human gains no character")
+assert_eq(Store:GetHuman(altHuman).name, "Chuckles", "the fresh human takes the new name")
+
+local lonelyHuman = Store:CreateHuman({ name = "Solo" }, 9013)
+local soloChar, soloHuman, soloCreated = Store:EnsureCharacterByName("Solo", 9014)
+assert_eq(soloCreated, true, "a name with no character row creates")
+assert_true(isInt(soloChar), "a fresh character row is created")
+assert_true(soloHuman ~= lonelyHuman.id, "a name-matching human with no character row is not reused")
+assert_eq(#Store:GetHuman(lonelyHuman.id).characterIds, 0, "the pre-existing human stays unlinked")
+
+-- Snapshot / Restore keeps the created rows; a post-restore ensure finds them.
+local ensSnap = Store:Snapshot()
+reset()
+assert_eq(Store:Restore(ensSnap), true, "Restore accepts the ensure snapshot")
+local restoredChar = Store:GetCharacter(charId)
+assert_true(restoredChar ~= nil, "restored character survives")
+assert_eq(restoredChar.humanId, humanId, "restored link survives")
+assert_eq(Store:GetHuman(humanId).name, "Chuckroast", "restored human survives")
+local postChar, postHuman, postCreated = Store:EnsureCharacterByName("Chuckroast", 9015)
+assert_eq(postChar, charId, "post-restore ensure finds the restored character")
+assert_eq(postHuman, humanId, "post-restore ensure finds the restored human")
+assert_eq(postCreated, false, "post-restore ensure does not recreate")
+end
+runEnsureCharacterByName()
 
 --------------------------------------------------------------------------------
 -- Banned product: no Grant, standing, points, Prophet, Director, Archive codec

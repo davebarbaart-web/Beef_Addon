@@ -37,8 +37,8 @@ assert_eq(Roster:GetChurchRankId("Popeina"), nil, "no Church id while unread")
 
 stub.inGuild = true
 stub.guildRoster = {
-  { name = "Popeina", rankIndex = 0 },
-  { name = "Beefina", rankIndex = 6 },
+  { name = "Popeina", rankIndex = 0, rankName = "Guild Master" },
+  { name = "Beefina", rankIndex = 6, rankName = "Beef Knight" },
   { name = "Steakina-Nightslayer", rankIndex = 6 },
 }
 
@@ -54,9 +54,13 @@ assert_eq(Roster:HasMember("Steakina"), true, "HasMember matches the character p
 assert_eq(Roster:HasMember("Nobody"), false, "unknown name is not a member")
 assert_eq(Roster:GetGuildRankIndex("Popeina"), 0, "guild rankIndex is display only")
 assert_eq(Roster:GetGuildRankIndex("Beefina"), 6, "display index 6 is kept")
+assert_eq(Roster:GetGuildRankName("Popeina"), "Guild Master", "GM slot keeps its live name")
+assert_eq(Roster:GetGuildRankName("Beefina"), "Beef Knight", "roster keeps a canon guild rank name")
+assert_eq(Roster:GetGuildRankName("Steakina"), "Beefling", "unnamed entries keep the stub fallback")
 assert_eq(Roster:GetChurchRankId("Popeina"), nil, "Church store is empty this phase")
-assert_eq(Roster:GetChurchRankId("Beefina"), nil, "no invented Fresh Beef from index 6")
+assert_eq(Roster:GetChurchRankId("Beefina"), nil, "a matching title is not written as Church truth")
 assert_eq(Roster:GetChurchRankId("Nobody"), nil, "unknown name has no Church id")
+assert_eq(Roster:GetGuildRankName("Nobody"), nil, "unknown name has no guild rank name")
 
 -- A failed/empty read must not wipe a good snapshot (Classic empty-update race).
 stub.guildRoster = {}
@@ -87,5 +91,6 @@ assert_eq(Roster:GetOccupantCount(), 1, "seed is one occupant")
 assert_eq(Roster:HasMember("Popeina"), true, "seeded local player is present")
 assert_eq(Roster:GetChurchRankId("Popeina"), nil, "seed does not invent a Church rank")
 assert_eq(Roster:GetGuildRankIndex("Popeina"), 0, "seed keeps display rankIndex")
+assert_eq(Roster:GetGuildRankName("Popeina"), "Beefling", "seed keeps the GetGuildInfo rank name")
 
 restore()

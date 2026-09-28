@@ -42,3 +42,40 @@ assert_eq(R.ChurchRankIdForGuildIndex(0), nil, "guild 0 is not a Church rank")
 assert_eq(R.ChurchRankIdForGuildIndex(1), nil, "guild 1 is not a Church rank")
 assert_eq(R.ChurchRankIdForGuildIndex(6), nil, "guild 6 is not a Church rank")
 assert_eq(R.ChurchRankIdForGuildIndex(nil), nil, "nil index maps to nil")
+
+-- Display match is by live guild rank title, never by slot number.
+assert_eq(type(R.IdForTitle), "function", "IdForTitle exists")
+for i, title in ipairs(TITLES) do
+  assert_eq(R.IdForTitle(title), i, "IdForTitle(" .. title .. ")")
+  assert_eq(R.IdForTitle(string.lower(title)), i, "IdForTitle folds case for " .. title)
+end
+assert_eq(R.IdForTitle("  Beef Knight  "), 3, "IdForTitle trims")
+assert_eq(R.IdForTitle("Guild Master"), nil, "Guild Master is not a Church rank")
+assert_eq(R.IdForTitle("Beef Pope"), nil, "the Pope is not a rank")
+assert_eq(R.IdForTitle("Beef Prophet"), nil, "the retired seventh rung is not a rank")
+assert_eq(R.IdForTitle("Officer"), nil, "Officer is not a Church rank")
+assert_eq(R.IdForTitle("Beef  Knight"), nil, "internal spacing does not match")
+assert_eq(R.IdForTitle(""), nil, "empty title is not a rank")
+assert_eq(R.IdForTitle(nil), nil, "nil title is not a rank")
+assert_eq(R.IdForTitle(3), nil, "numeric title is not a rank")
+
+-- Bible §5: each rank is a kind of relationship with the Church, not a rung.
+-- The player card paints this line under the rank; it never invents rank copy.
+local RELATIONSHIPS = {
+  "Recruitment",
+  "Engagement",
+  "Belonging",
+  "Proven prestige",
+  "The Raiding Team",
+  "Trusted leadership",
+}
+
+assert_eq(type(R.Relationship), "function", "Relationship(id) exists")
+for i, line in ipairs(RELATIONSHIPS) do
+  assert_eq(R.List[i].relationship, line, "rank " .. i .. " relationship (Bible §5)")
+  assert_eq(R.Relationship(i), line, "Relationship(" .. i .. ")")
+end
+assert_eq(R.Relationship(7), nil, "Relationship of a non-rank is nil")
+assert_eq(R.Relationship(nil), nil, "Relationship(nil) is nil")
+assert_eq(R.NextRank, nil, "no next-rank helper — ranks are not a ladder")
+assert_eq(R.Progress, nil, "no progress helper")

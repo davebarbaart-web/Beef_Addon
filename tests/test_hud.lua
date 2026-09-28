@@ -2,33 +2,39 @@
 -- + B8-D mute defense integer + B9-E persist through the verdict
 -- + B10-B congregation pair from Runtime subjects.fighters
 -- + B11-B leftover plate clicks never use lastPair
--- + B16-C congregation picks only while RITE and riteType Gora
--- + B17-D livePair runtime arm only while RITE and riteType Gora
+-- + B16-C congregation picks while ASSEMBLY sanction or RITE Gora
+-- + B17-D livePair runtime arm while ASSEMBLY sanction or RITE Gora
 -- + B19-C lastPair does not paint during a non-Gora RITE
 -- + B21-B lastPair does not paint during a non-Gora CONSEQUENCE
 -- + B32-A non-Gora refuse forgets lastPair
--- + B22-B fighter names use Theme:FontPath("display") at size ≥ 16
+-- + B22-B fighter names use Theme:FontPath("label") at size ≥ 16
 -- + B25-D Refresh/paintShown re-applies applyNameFont
 -- + B34-A paintShown re-tints names after applyNameFont
 -- + B35-A defenseA / defenseB SetWidth(28)
--- + B37-B Quiet forgetPersist also nils broadcastFavor). Isolated:
+-- + B37-B Quiet forgetPersist also nils broadcastFavor
+-- + U-Q glanceable 420×100 iron bar; names ≥16 serif; format no-wrap;
+--   charcoal identity halves; favor percents parchment on iron;
+--   leftover 6/10/14 → Theme.Space; caption ≥ 12). Isolated:
 -- wow_ui_stub + Common + Theme + Ranks + Runtime + Store + Gora + Hud.
--- Event Mode only. No live health, favor economy, sound, or toasts.
+-- Event Mode only. Live health is raid/party UnitHealth only; no
+-- nameplate or combat-log scrape. No favor economy, sound, or toasts.
 -- Standalone wrap. Congregation never Sanctions; the star pair is
 -- subjects.fighters. Congregation favor is broadcast-only. Pope stub
 -- fills from Gora:GetFavorSplit; after the pair clears, the last split
 -- is frozen. Plate picks: live GetSanctioned (isolated / Pope) or
--- Runtime fighters only while RITE and riteType Gora (B16-C). Display
--- livePair runtime arm is the same Gora-RITE gate (B17-D). lastPair
+-- Runtime fighters while ASSEMBLY or while RITE and riteType Gora
+-- (B16-C). A blank favorTarget is not a refusal: Net resolves the
+-- default whisper destination, and SetFavorTarget stays an override
+-- (Lane W). Display livePair runtime arm matches that gate (B17-D). lastPair
 -- does not paint during a non-Gora RITE (B19-C) or a non-Gora
 -- CONSEQUENCE (B21-B). A non-Gora refuse forgets lastPair so Knighting
 -- Continue stays hidden (B32-A). paintShown restores class tint after
 -- applyNameFont (B34-A). Defense labels are SetWidth(28) (B35-A). Quiet
 -- forget also drops leftover congregation favor (B37-B). Never lastPair
 -- clicks. Dress is Theme HUD-B — no faction crests, no hardcoded Media
--- or font paths. Thin frame_proclamation_center fields sit behind
--- name+format. Defense count is Store:CountDefenses as a mute integer;
--- zero or a missing method hides. Painted records are RomanPair.
+-- or font paths. Dark charcoal fields sit behind name+format.
+-- Defense count is Store:CountDefenses as a mute integer;
+-- zero or a missing method hides. Painted records are Arabic W–L.
 -- Ranks is Data for Church titles. No TOC / bootstrap / run.lua edits.
 package.path = package.path .. ";./tests/?.lua"
 
@@ -108,6 +114,9 @@ local function reset()
   assert_eq(Hud:ResetForTests(), true, "Hud ResetForTests runs under _IN_TEST")
   sounds = 0
   healthReads = 0
+  stub.groupSize = 0
+  stub.inRaid = false
+  stub.group = {}
 end
 
 local function twoChars(fieldsA, fieldsB)
@@ -185,6 +194,9 @@ assert_eq(type(Hud.SetBroadcastFavor), "function", "SetBroadcastFavor is the con
 assert_eq(type(Hud.SetFavorTarget), "function", "SetFavorTarget remembers the whisper dest")
 assert_eq(type(Hud.SetLocalCharacterId), "function", "SetLocalCharacterId remembers the picker")
 assert_eq(type(Hud.PickFavor), "function", "PickFavor is the congregation send")
+assert_eq(Hud.COPY.favorHint, "Click to pick this side.", "hover copy is pinned")
+assert_eq(Hud.COPY.pickSide, "Pick a side", "pre-pick footer is Pick a side")
+assert_eq(Hud.COPY.ruled, "Ruled", "ruled footer is Ruled")
 assert_eq(Hud.Favor, nil, "no favor economy table")
 assert_eq(Hud.SendFavor, nil, "no public SendFavor alias")
 assert_eq(Hud.INPUT, nil, "no invented INPUT channel")
@@ -204,12 +216,15 @@ local srcFile = io.open("addon/ChurchOfBeef/UI/Hud.lua", "r")
 assert_true(srcFile ~= nil, "Hud.lua is readable")
 local src = srcFile:read("*a")
 srcFile:close()
-assert_eq(src:find("UnitHealth", 1, true), nil, "source does not read UnitHealth")
+assert_true(src:find("UnitHealth", 1, true) ~= nil, "source may read UnitHealth for raid/party tokens")
+assert_true(src:find("groupUnitFor", 1, true) ~= nil, "source binds fighters to group units")
 assert_eq(src:find("COMBAT_LOG", 1, true), nil, "source does not read the combat log")
 assert_eq(src:find("NamePlate", 1, true), nil, "source does not scrape nameplates")
 assert_eq(src:find("C_NamePlate", 1, true), nil, "source does not call C_NamePlate")
 assert_eq(src:find("PlaySound", 1, true), nil, "source does not play sound")
 assert_true(src:find("StatusBar", 1, true) ~= nil, "source mints a stock StatusBar")
+assert_true(src:find('CreateFrame("Frame", FRAME_NAME, parent, "BackdropTemplate")', 1, true) ~= nil,
+  "Hud inherit string is BackdropTemplate until a live 20506 abort")
 assert_true(src:find('Theme:Texture("bar_stainedglass_fill")', 1, true) ~= nil,
   "mute rails resolve bar_stainedglass_fill through Theme")
 assert_true(src:find('Theme:Texture("bar_favor_fill")', 1, true) ~= nil,
@@ -218,10 +233,11 @@ assert_eq(src:find("UI-StatusBar", 1, true), nil, "source does not hardcode UI-S
 assert_eq(src:find(".tga", 1, true), nil, "source does not load custom tga")
 assert_eq(src:find(".blp", 1, true), nil, "source does not load custom blp")
 do
-  -- B22-B: Theme display font on fighter names. No hardcoded font paths.
+  -- B22-B: Theme label serif on fighter names (HUD-B, not blackletter).
   -- B25-D: applyNameFont is called from paintShown, not only build().
-  assert_true(src:find('Theme:FontPath("display")', 1, true) ~= nil,
-    "names resolve through Theme display")
+  assert_true(src:find('FontPath("label")', 1, true) ~= nil
+    or src:find('applyFont(fs, "label"', 1, true) ~= nil,
+    "names resolve through Theme label")
   assert_eq(src:find("Fonts\\\\MORPHEUS", 1, true), nil, "source does not hardcode Morpheus")
   assert_eq(src:find("MORPHEUS.TTF", 1, true), nil, "name path is not uppercase TTF")
   assert_eq(src:find("MORPHEUS_CYR", 1, true), nil, "source does not use GlueFonts MORPHEUS_CYR")
@@ -247,7 +263,15 @@ do
 end
 assert_eq(src:find("Media\\", 1, true), nil, "source does not require custom Media")
 assert_eq(src:find("Toasts", 1, true), nil, "source does not drive Toasts")
+assert_eq(src:find("Proclaim", 1, true), nil, "HUD does not inbound Proclaim")
 assert_eq(src:find("SendChatMessage", 1, true), nil, "source does not send chat")
+assert_true(src:find("Click to pick this side.", 1, true) ~= nil,
+  "plates hover Click to pick this side.")
+assert_true(src:find("Pick a side", 1, true) ~= nil, "footer names Pick a side")
+assert_true(src:find("OnEnter", 1, true) ~= nil, "plates have OnEnter")
+assert_true(src:find("GameTooltip", 1, true) ~= nil, "hover uses GameTooltip")
+assert_true(src:find('"Ruled"', 1, true) ~= nil or src:find("Ruled", 1, true) ~= nil,
+  "ruled persist names Ruled")
 assert_eq(src:find("ShowUIPanel", 1, true), nil, "insecure Show/Hide only")
 assert_eq(src:find("Interface\\PvPFrame\\", 1, true), nil, "source does not use PvPFrame crests")
 assert_eq(src:find("PVP-Banner", 1, true), nil, "source does not use a PVP banner")
@@ -262,22 +286,21 @@ assert_true(src:find('Theme:Texture("sigil_gora")', 1, true) ~= nil,
   "crest routes through Theme sigil_gora")
 assert_true(src:find('Theme:Texture("sigil_favor")', 1, true) ~= nil,
   "FAVOR sigil routes through Theme sigil_favor")
-assert_true(src:find("RomanPair", 1, true) ~= nil, "records use Common.RomanPair")
+assert_eq(src:find("RomanPair", 1, true), nil, "records no longer use Common.RomanPair")
+assert_eq(src:find("RomanNumeral", 1, true), nil, "defenses no longer use Common.RomanNumeral")
 assert_true(src:find("nameFieldA", 1, true) ~= nil, "source names nameFieldA")
 assert_true(src:find("nameFieldB", 1, true) ~= nil, "source names nameFieldB")
 assert_true(src:find("CountDefenses", 1, true) ~= nil, "source reads Store:CountDefenses")
 assert_true(src:find("subjects", 1, true) ~= nil, "source reads Runtime subjects")
 assert_true(src:find("fighters", 1, true) ~= nil, "source reads subjects.fighters")
 assert_true(src:find('riteType == "Gora"', 1, true) ~= nil,
-  "congregation pick requires snap.riteType Gora")
-do
-  local goraRiteGates = 0
-  for _ in src:gmatch('state == "RITE" and snap%.riteType == "Gora"') do
-    goraRiteGates = goraRiteGates + 1
-  end
-  assert_true(goraRiteGates >= 2,
-    "livePair and pickPair both gate runtimePair to Gora RITE")
-end
+  "congregation pick still requires snap.riteType Gora on the RITE arm")
+assert_true(src:find('state == "ASSEMBLY"', 1, true) ~= nil,
+  "livePair and pickPair show an ASSEMBLY sanction")
+assert_true(src:find("congregationPair", 1, true) ~= nil,
+  "congregation livePair and pickPair share the ASSEMBLY / Gora-RITE arm")
+assert_true(src:find("_lastCastNames", 1, true) ~= nil,
+  "HUD paints inbound stash names when Store is empty")
 assert_true(src:find('riteType ~= "Gora"', 1, true) ~= nil,
   "displayPair refuses lastPair during a non-Gora RITE or CONSEQUENCE")
 assert_true(src:find('state == "RITE" or snap.state == "CONSEQUENCE"', 1, true) ~= nil,
@@ -301,6 +324,48 @@ assert_eq(src:find("defenses of", 1, true), nil, "source does not invent defense
 assert_eq(src:find("of the realm", 1, true), nil, "source does not invent realm copy")
 assert_eq(src:find("UI-EmptySlot-White", 1, true), nil, "crest is not the EmptySlot ring")
 assert_eq(src:find("MiniMap-TrackingBorder", 1, true), nil, "crest is not TrackingBorder")
+do
+  -- U-Q: leftover 6/10/14 offsets become Theme.Space; format cannot
+  -- wrap onto the favor row; parchment slot stays a hidden drop target.
+  assert_true(src:find('space("xs"', 1, true) ~= nil, "HUD reads Theme.Space.xs")
+  assert_true(src:find('space("sm"', 1, true) ~= nil, "HUD reads Theme.Space.sm")
+  assert_true(src:find('space("md"', 1, true) ~= nil, "HUD reads Theme.Space.md")
+  assert_true(src:find('space("rule"', 1, true) ~= nil, "HUD reads Theme.Space.rule")
+  assert_true(src:find('space("footer"', 1, true) ~= nil, "HUD reads Theme.Space.footer")
+  assert_true(src:find('space("glyph"', 1, true) ~= nil, "HUD reads Theme.Space.glyph")
+  assert_eq(src:find(", 6, 0)", 1, true), nil, "no leftover 6px favor-bar gap")
+  assert_eq(src:find(", -10)", 1, true), nil, "no leftover 10px format drop")
+  assert_eq(src:find("SetSize(10, 10)", 1, true), nil, "no leftover 10px favor sigil")
+  assert_eq(src:find("BOTTOM\", 0, 22", 1, true), nil, "no leftover 22px head-to-head")
+  assert_eq(src:find("SetPoint(\"TOPLEFT\", widget, \"TOPLEFT\", 8, -6)", 1, true), nil,
+    "no leftover 6px pick plate")
+  assert_eq(src:find("tallyReserve", 1, true), nil,
+    "format no longer steals a 68px tally reserve")
+  assert_eq(src:find("space(\"xl\"", 1, true), nil,
+    "format no longer reserves Theme.Space.xl for W–L")
+  assert_true(src:find("SetWordWrap(false)", 1, true) ~= nil,
+    "format line disables wrap")
+  assert_true(src:find("SetMaxLines(1)", 1, true) ~= nil,
+    "format line is one line")
+  assert_true(src:find("parchment:Hide", 1, true) ~= nil,
+    "proclamation-center parchment slot is hidden")
+  assert_true(src:find('themeColorTable("parchment")', 1, true) ~= nil,
+    "favor percents resolve Theme parchment")
+  local paintFavorAt = src:find("function paintFavor", 1, true)
+  assert_true(paintFavorAt ~= nil, "paintFavor exists")
+  local paintFavorEnd = src:find("\nlocal function ", paintFavorAt + 1, true)
+  if not paintFavorEnd then
+    paintFavorEnd = src:find("\nfunction ", paintFavorAt + 1, true)
+  end
+  assert_true(paintFavorEnd ~= nil, "paintFavor body has a following function")
+  local favorBody = src:sub(paintFavorAt, paintFavorEnd - 1)
+  assert_true(favorBody:find('themeColorTable("parchment")', 1, true) ~= nil,
+    "paintFavor tints percents parchment")
+  assert_eq(favorBody:find('tint(frame.pctA, themeColorTable("silver")', 1, true), nil,
+    "paintFavor does not tint percent A silver")
+  assert_eq(favorBody:find('tint(frame.pctB, themeColorTable("silver")', 1, true), nil,
+    "paintFavor does not tint percent B silver")
+end
 
 --------------------------------------------------------------------------------
 -- Init: hidden, top-center, movable, clamped. No per-frame script at rest.
@@ -315,9 +380,11 @@ assert_eq(Hud:IsShown(), false, "HUD starts hidden in Quiet")
 assert_eq(frame:IsShown(), false, "the widget starts hidden")
 assert_eq(frame._movable, true, "HUD is movable")
 assert_eq(frame._clamped, true, "HUD is clamped to screen")
+assert_eq(frame:IsEventRegistered("DISPLAY_SIZE_CHANGED"), true,
+  "HUD re-clamps when the display changes")
 assert_eq(frame:GetScript("OnUpdate"), nil, "a resting HUD runs nothing per frame")
 assert_true(findStatusBar(frame) ~= nil, "Init mints a stock favor StatusBar")
-assert_eq(countStatusBars(frame), 2, "only the two favor halves are StatusBars")
+assert_eq(countStatusBars(frame), 6, "favor halves plus live and ghost health StatusBars")
 assert_eq(frame:GetWidth(), 420, "width stays a compact spectator card")
 assert_eq(frame:GetHeight(), 100, "unknown UIParent height keeps the compact card")
 assert_true(frame.parchment ~= nil, "iron/parchment dress has a parchment field")
@@ -327,10 +394,14 @@ assert_true(frame.nameFieldA ~= nil, "name field A sits behind name+format")
 assert_true(frame.nameFieldB ~= nil, "name field B sits behind name+format")
 assert_eq(frame.nameFieldA._type, "Texture", "name field A is a texture, not a StatusBar")
 assert_eq(frame.nameFieldB._type, "Texture", "name field B is a texture, not a StatusBar")
-assert_eq(frame.nameFieldA._cobTexture, Theme:Texture("frame_proclamation_center"),
-  "name field A is Theme frame_proclamation_center")
-assert_eq(frame.nameFieldB._cobTexture, Theme:Texture("frame_proclamation_center"),
-  "name field B is Theme frame_proclamation_center")
+assert_eq(frame.nameFieldA._cobColor.r, select(1, Theme:Color("charcoal")),
+  "name field A is Theme charcoal")
+assert_eq(frame.nameFieldB._cobColor.r, select(1, Theme:Color("charcoal")),
+  "name field B is Theme charcoal")
+assert_eq(frame.nameFieldEdgeA._cobColor.r, select(1, Theme:Color("gold")),
+  "name field A hairline is Theme gold")
+assert_eq(frame.nameFieldEdgeB._cobColor.r, select(1, Theme:Color("gold")),
+  "name field B hairline is Theme gold")
 assert_true(
   frame.nameFieldA._layer == "BACKGROUND" or frame.nameFieldA._layer == "BORDER",
   "name field A draws behind name+format"
@@ -350,10 +421,10 @@ assert_eq(frame.barA._cobTexture, Theme:Texture("bar_favor_fill"),
   "favor bar A is Theme bar_favor_fill")
 assert_eq(frame.barB._cobTexture, Theme:Texture("bar_favor_fill"),
   "favor bar B is Theme bar_favor_fill")
-assert_eq(frame.nameA._cobFont, Theme:FontPath("display"),
-  "name A font is Theme display")
-assert_eq(frame.nameB._cobFont, Theme:FontPath("display"),
-  "name B font is Theme display")
+assert_eq(frame.nameA._cobFont, Theme:FontPath("label"),
+  "name A font is Theme label")
+assert_eq(frame.nameB._cobFont, Theme:FontPath("label"),
+  "name B font is Theme label")
 assert_true(type(frame.nameA._cobFontSize) == "number" and frame.nameA._cobFontSize >= 16,
   "name A size is ≥ 16")
 assert_true(type(frame.nameB._cobFontSize) == "number" and frame.nameB._cobFontSize >= 16,
@@ -382,6 +453,29 @@ assert_eq(frame.recordA._template, "GameFontNormal", "record A stays GameFont")
 assert_eq(frame.recordB._template, "GameFontNormal", "record B stays GameFont")
 assert_eq(frame.vs._template, "GameFontNormal", "VS stays GameFont")
 assert_eq(frame.favorLabel._template, "GameFontHighlightSmall", "FAVOR stays GameFont")
+assert_eq(frame.parchment:IsShown(), false, "proclamation-center parchment slot starts hidden")
+assert_eq(frame.titleA._wordWrap, false, "format A does not wrap onto the favor row")
+assert_eq(frame.titleB._wordWrap, false, "format B does not wrap onto the favor row")
+assert_eq(frame.titleA._maxLines, 1, "format A is one line")
+assert_eq(frame.titleB._maxLines, 1, "format B is one line")
+assert_eq(frame.railA:GetHeight(), Theme.Space.sm, "class rail A is Theme.Space.sm")
+assert_eq(frame.railB:GetHeight(), Theme.Space.sm, "class rail B is Theme.Space.sm")
+assert_eq(frame.healthA:GetHeight(), Theme.Space.sm, "live health A matches the sm rail")
+assert_eq(frame.healthGhostA:GetHeight(), Theme.Space.sm, "ghost health A matches the sm rail")
+assert_eq(Theme.FontSize.caption, 12, "Theme caption floor is 12")
+assert_true(type(frame.vs._cobFontSize) == "number" and frame.vs._cobFontSize >= 12,
+  "VS caption is ≥ 12")
+assert_true(type(frame.headToHead._cobFontSize) == "number" and frame.headToHead._cobFontSize >= 12,
+  "head-to-head caption is ≥ 12")
+assert_true(type(frame.defenseA._cobFontSize) == "number" and frame.defenseA._cobFontSize >= 12,
+  "defense A caption is ≥ 12")
+assert_true(type(frame.defenseB._cobFontSize) == "number" and frame.defenseB._cobFontSize >= 12,
+  "defense B caption is ≥ 12")
+assert_true(frame.footerField ~= nil, "favor register exists")
+assert_eq(frame.footerField._cobColor.r, select(1, Theme:Color("iron")),
+  "favor register is Theme iron")
+assert_eq(frame.iron._cobColor.r, select(1, Theme:Color("iron")),
+  "chassis is Theme iron")
 
 local point, relativeTo, relativePoint, x, y = frame:GetPoint(1)
 assert_eq(point, "TOP", "default anchor is the top")
@@ -397,6 +491,7 @@ assert_eq(view0.fighterB, nil, "Quiet view has no fighter B")
 assert_eq(view0.headToHead, nil, "Quiet view has no head-to-head")
 assert_eq(view0.health, nil, "view never carries health")
 assert_eq(view0.favor, nil, "Quiet view has no favor")
+assert_eq(view0.ruled, false, "Quiet view is not ruled")
 
 --------------------------------------------------------------------------------
 -- Quiet and Event-without-a-pair stay hidden
@@ -448,13 +543,17 @@ assert_eq(frame.nameB:GetText(), "Tendermage", "name B is painted")
 assert_eq(frame.levelA:GetText(), "70", "level A is painted")
 assert_eq(frame.levelB:GetText(), "68", "level B is painted")
 assert_eq(frame.titleA:GetText(),
-  "Chuckroast" .. FORMAT_DOT .. "70" .. FORMAT_DOT .. "Warrior",
-  "format A is Name · Level · Class")
+  "70" .. FORMAT_DOT .. "Warrior",
+  "format A is Level · Class")
 assert_eq(frame.titleB:GetText(),
-  "Tendermage" .. FORMAT_DOT .. "68" .. FORMAT_DOT .. "Mage",
-  "format B is Name · Level · Class")
-assert_eq(frame.recordA:GetText(), "N" .. EN_DASH .. "N", "record A is roman 0–0")
-assert_eq(frame.recordB:GetText(), "N" .. EN_DASH .. "N", "record B is roman 0–0")
+  "68" .. FORMAT_DOT .. "Mage",
+  "format B is Level · Class")
+assert_eq(frame.parchment:IsShown(), false,
+  "shown HUD keeps the proclamation-center parchment slot hidden")
+assert_eq(frame.titleA._wordWrap, false, "shown format A still does not wrap")
+assert_eq(frame.titleB._wordWrap, false, "shown format B still does not wrap")
+assert_eq(frame.recordA:GetText(), "0" .. EN_DASH .. "0", "record A is arabic 0–0")
+assert_eq(frame.recordB:GetText(), "0" .. EN_DASH .. "0", "record B is arabic 0–0")
 assert_eq(frame.headToHead:IsShown(), false, "head-to-head widget hides without history")
 assert_eq(frame.favorLabel:IsShown(), false, "congregation without broadcast hides FAVOR")
 assert_eq(frame.barA:IsShown(), false, "congregation without broadcast hides bar A")
@@ -480,13 +579,19 @@ assert_true(frame.nameA._cobColor ~= nil, "name A stores the applied tint")
 assert_eq(frame.nameA._cobColor.r, warrior.r, "name A widget is class-tinted")
 assert_eq(sameRgb(frame.levelA._cobColor, warrior), false, "level A is not class-colored")
 assert_eq(sameRgb(frame.titleA._cobColor, warrior), false, "title A is not class-colored")
+assert_eq(frame.titleA._cobColor.r, select(1, Theme:Color("parchment")),
+  "format A is parchment on the charcoal identity half")
 assert_eq(sameRgb(frame.recordA._cobColor, warrior), false, "record A is not class-colored")
 assert_eq(sameRgb(frame.levelB._cobColor, mage), false, "level B is not class-colored")
 assert_eq(sameRgb(frame.titleB._cobColor, mage), false, "title B is not class-colored")
 assert_eq(sameRgb(frame.recordB._cobColor, mage), false, "record B is not class-colored")
 assert_eq(sameRgb(frame.railA._cobColor, warrior), true, "mute rail A is fighter-tinted")
 assert_eq(sameRgb(frame.railB._cobColor, mage), true, "mute rail B is fighter-tinted")
-assert_eq(countStatusBars(frame), 2, "decorative rails did not add health StatusBars")
+assert_eq(countStatusBars(frame), 6, "health StatusBars exist even when unbound")
+assert_eq(frame.healthA:IsShown(), false, "unbound health A stays hidden")
+assert_eq(frame.healthB:IsShown(), false, "unbound health B stays hidden")
+assert_eq(frame.healthGhostA:IsShown(), false, "unbound ghost A stays hidden")
+assert_eq(frame.railA:IsShown(), true, "mute rail A stays when HP is unbound")
 
 --------------------------------------------------------------------------------
 -- Church title from the human rank. No Fresh Beef default on an unlinked row.
@@ -497,13 +602,33 @@ Store:SetRank(human.id, 3)
 view = Hud:Refresh()
 assert_eq(view.fighterA.title, "Beef Knight", "linked Knight title comes from Ranks")
 assert_eq(frame.titleA:GetText(),
-  "Chuckroast" .. FORMAT_DOT .. "70" .. FORMAT_DOT .. "Beef Knight" .. FORMAT_DOT .. "Warrior",
-  "format A is Name · Level · Title · Class")
+  "70" .. FORMAT_DOT .. "Beef Knight" .. FORMAT_DOT .. "Warrior",
+  "format A is Level · Title · Class")
+do
+  -- P1 (critic d2ed74c0): titled format must keep Class. Identity half
+  -- minus seal notch and md gutters is ≥116px at Theme label 12.
+  local _, titleRel, titleRelPoint, titleX = frame.titleA:GetPoint(2)
+  assert_eq(titleRel, frame.nameFieldA, "format A still widths against name field A")
+  assert_eq(titleRelPoint, "RIGHT", "format A still uses field RIGHT")
+  assert_true(type(titleX) == "number" and titleX >= -Theme.Space.md,
+    "format A inner gutter is ≤ Theme.Space.md")
+  local fieldW = (420 / 2) - math.floor(Theme.Space.seal / 2) - 2
+  local avail = fieldW - Theme.Space.md - math.abs(titleX)
+  assert_true(avail >= 116, "format A has ≥116px for 70 · Beef Knight · Warrior")
+  local rp, rrel, rrp = frame.recordA:GetPoint(1)
+  assert_eq(rp, "TOPLEFT", "record A stacks under the format line")
+  assert_eq(rrel, frame.titleA, "record A still belongs to format A")
+  assert_eq(rrp, "BOTTOMLEFT", "record A sits below format A")
+  assert_eq(frame.titleA._wordWrap, false, "titled format still does not wrap")
+  assert_eq(frame.titleA._maxLines, 1, "titled format stays one line")
+  assert_eq(frame:GetWidth(), 420, "titled format does not grow the card")
+  assert_eq(frame:GetHeight(), 100, "titled format does not grow the card height")
+end
 assert_eq(string.find(frame.titleA:GetText() or "", "Paladin", 1, true), nil,
   "title is the Church title, not a class mash")
 assert_eq(view.fighterB.title, nil, "unlinked opponent still has no title")
 assert_eq(frame.titleB:GetText(),
-  "Tendermage" .. FORMAT_DOT .. "68" .. FORMAT_DOT .. "Mage",
+  "68" .. FORMAT_DOT .. "Mage",
   "unlinked format omits a title, not Fresh Beef")
 
 --------------------------------------------------------------------------------
@@ -520,6 +645,11 @@ assert_eq(view.fighterB.name, "Tendermage", "remembered pair still paints fighte
 assert_eq(view.health, nil, "persist still has no health")
 assert_eq(view.favor, nil, "congregation persist still follows W-F (no broadcast)")
 assert_eq(view.verdict, nil, "HUD does not invent a verdict qualifier")
+assert_eq(view.ruled, true, "HUD reads as ruled after DeclareVictor")
+assert_eq(view.winner, nil, "ruled persist does not invent a winner string")
+assert_eq(frame.favorLabel:GetText(), "Ruled", "footer says Ruled after a ruling")
+assert_eq(frame.barA:IsShown(), false, "ruled persist hides favor bar A")
+assert_eq(frame.barB:IsShown(), false, "ruled persist hides favor bar B")
 assert_eq(Store:GetCharacter(a.id).gora.wins, 1, "Store recorded the win")
 assert_eq(Store:GetCharacter(b.id).gora.losses, 1, "Store recorded the loss")
 
@@ -531,15 +661,15 @@ assert_eq(view.fighterA.wins, 1, "W/L reflects Store after the first ruling")
 assert_eq(view.fighterA.losses, 0, "winner has no loss")
 assert_eq(view.fighterB.wins, 0, "loser has no win")
 assert_eq(view.fighterB.losses, 1, "loser has one loss")
-assert_eq(frame.recordA:GetText(), "I" .. EN_DASH .. "N", "painted record A follows Store in roman")
-assert_eq(frame.recordB:GetText(), "N" .. EN_DASH .. "I", "painted record B follows Store in roman")
+assert_eq(frame.recordA:GetText(), "1" .. EN_DASH .. "0", "painted record A follows Store in arabic")
+assert_eq(frame.recordB:GetText(), "0" .. EN_DASH .. "1", "painted record B follows Store in arabic")
 assert_true(view.headToHead ~= nil, "Store history produces a head-to-head line")
 assert_eq(view.headToHead.wins, 1, "head-to-head wins are fighter A's")
 assert_eq(view.headToHead.losses, 0, "head-to-head losses are fighter A's")
 assert_eq(view.headToHead.fights, 1, "head-to-head fights come from Store")
 assert_eq(view.headToHead.score, nil, "head-to-head has no pairing score")
 assert_eq(frame.headToHead:IsShown(), true, "head-to-head widget shows when history exists")
-assert_eq(frame.headToHead:GetText(), "I" .. EN_DASH .. "N", "head-to-head line is the roman Store record")
+assert_eq(frame.headToHead:GetText(), "1" .. EN_DASH .. "0", "head-to-head line is the arabic Store record")
 assert_eq(string.find(frame.headToHead:GetText() or "", "meeting", 1, true), nil,
   "head-to-head is a record, not narration")
 assert_eq(string.find(frame.headToHead:GetText() or "", "odds", 1, true), nil,
@@ -655,7 +785,7 @@ view = Hud:Refresh()
 assert_eq(view.fighterA.defenses, 3, "CountDefenses 3 is the mute integer")
 assert_eq(view.fighterB.defenses, nil, "CountDefenses 0 hides fighter B")
 assert_eq(frame.defenseA:IsShown(), true, "nonzero defense A is visible")
-assert_eq(frame.defenseA:GetText(), "III", "defense A paints roman III")
+assert_eq(frame.defenseA:GetText(), "3", "defense A paints arabic 3")
 assert_eq(frame.defenseB:IsShown(), false, "zero defense B hides")
 assert_eq(frame.defenseB:GetText(), "", "hidden defense B has no zero glyph")
 assert_eq(string.find(frame.defenseA:GetText() or "", "odds", 1, true), nil,
@@ -770,7 +900,7 @@ assert_eq(view.favor.pctB, 0, "zero total is 0 percent B")
 assert_eq(view.health, nil, "Pope view still has no health")
 assert_eq(frame.favorLabel:IsShown(), true, "Pope FAVOR label shows on a live pair")
 assert_eq(frame.favorSigil:IsShown(), true, "Pope FAVOR sigil shows with the label")
-assert_eq(frame.favorLabel:GetText(), "FAVOR", "favor label is FAVOR")
+assert_eq(frame.favorLabel:GetText(), "Pick a side", "pre-pick footer is Pick a side")
 assert_eq(frame.barA:IsShown(), true, "Pope bar A shows")
 assert_eq(frame.barB:IsShown(), true, "Pope bar B shows")
 assert_eq(frame.pctA:GetText(), "0%", "Pope zero paints 0% A")
@@ -792,6 +922,15 @@ assert_eq(view.favor.pctA, 66, "floor(100*2/3) is 66")
 assert_eq(view.favor.pctB, 34, "remainder percent is 34")
 assert_eq(frame.pctA:GetText(), "66%", "bar paints 66%")
 assert_eq(frame.pctB:GetText(), "34%", "bar paints 34%")
+assert_eq(frame.favorLabel:GetText(), "FAVOR", "after a pick the rubric may stay FAVOR")
+assert_eq(frame.pctA._cobColor.r, select(1, Theme:Color("parchment")),
+  "favor percent A is parchment on iron")
+assert_eq(frame.pctB._cobColor.r, select(1, Theme:Color("parchment")),
+  "favor percent B is parchment on iron")
+assert_eq(frame.pctA._cobColor.r == select(1, Theme:Color("silver")), false,
+  "favor percent A is not silver")
+assert_eq(frame.pctB._cobColor.r == select(1, Theme:Color("silver")), false,
+  "favor percent B is not silver")
 assert_eq(sameRgb(frame.barA._cobColor, warrior), true, "bar A is fighter-tinted")
 assert_eq(sameRgb(frame.barB._cobColor, mage), true, "bar B is fighter-tinted")
 view.favor.a = 99
@@ -827,9 +966,13 @@ assert_eq(view.favor.a, 0, "broadcast zeros are a real split")
 assert_eq(view.favor.pctA, 0, "broadcast zeros are 0%")
 assert_eq(view.favor.pctB, 0, "broadcast zeros are 0% B")
 assert_eq(frame.favorLabel:IsShown(), true, "broadcast zeros still show the bar")
+assert_eq(frame.favorLabel:GetText(), "Pick a side", "broadcast zeros still say Pick a side")
 
 --------------------------------------------------------------------------------
--- PickFavor stubs Net. Missing target / character. Plate click is gated.
+-- PickFavor stubs Net. Missing character is refused. A missing target is no
+-- longer refused: Net resolves the default destination (Lane W). Congregation
+-- plate click uses a placeholder id when the local store id is missing.
+-- Pope plate click records locally and does not SendFavor.
 --------------------------------------------------------------------------------
 local sent = {}
 COB.Net = {
@@ -850,29 +993,36 @@ assert_eq(sent[1].fields.pick, a.id, "SendFavor carries pick")
 assert_eq(sent[1].fields.pickId, nil, "fields use pick, not pickId")
 
 ok, err = Hud:PickFavor(a.id, nil, picker.id)
-assert_eq(ok, nil, "missing target is refused")
-assert_eq(err, "no target", "missing target names the error")
+assert_eq(ok, true, "missing target sends through Net for the default destination")
+assert_eq(err, nil, "missing target has no refusal")
+assert_eq(sent[2].target, nil, "missing target passes nil so Net resolves the default")
 ok, err = Hud:PickFavor(a.id, "", picker.id)
-assert_eq(ok, nil, "empty target is refused")
-assert_eq(err, "no target", "empty target is no target")
-assert_eq(#sent, 1, "refused PickFavor does not send")
+assert_eq(ok, true, "empty target sends through Net for the default destination")
+assert_eq(err, nil, "empty target has no refusal")
+assert_eq(sent[3].target, "", "empty target passes through so Net resolves the default")
+assert_eq(#sent, 3, "default-dest PickFavor sends both")
 
 ok, err = Hud:PickFavor(a.id, "Host", nil)
 assert_eq(ok, nil, "missing character is refused")
 assert_eq(err, "no character", "missing character names the error")
-assert_eq(#sent, 1, "missing character does not send")
+assert_eq(#sent, 3, "missing character does not send")
 
 sent = {}
 Hud:SetFavorTarget(nil)
 Hud:SetLocalCharacterId(nil)
 assert_eq(stub.fire(frame.pickA, "OnClick"), true, "plate A has an OnClick")
-assert_eq(#sent, 0, "plate click without target and id is a no-op")
-assert_eq(#stub.chat, 0, "no-op click does not chat")
+assert_eq(#sent, 1, "congregation plate without a store id still sends")
+assert_eq(sent[1].fields.characterId, 1, "missing store id uses placeholder 1")
+assert_eq(sent[1].target, nil, "unbound dest still passes nil")
+assert_eq(#stub.chat, 0, "placeholder click does not chat")
 
 Hud:SetFavorTarget("Host")
 assert_eq(stub.fire(frame.pickB, "OnClick"), true, "plate B click with only target")
-assert_eq(#sent, 0, "plate click without local id is a no-op")
+assert_eq(#sent, 2, "congregation plate B without a store id still sends")
+assert_eq(sent[2].fields.characterId, 1, "plate B missing store id uses placeholder 1")
+assert_eq(sent[2].fields.pick, b.id, "plate B still picks fighter B")
 
+sent = {}
 Hud:SetLocalCharacterId(picker.id)
 assert_eq(stub.fire(frame.pickA, "OnClick"), true, "plate A click with both set")
 assert_eq(#sent, 1, "plate click sends favor")
@@ -885,13 +1035,68 @@ assert_eq(stub.fire(frame.pickB, "OnClick"), true, "plate B click with both set"
 assert_eq(#sent, 1, "plate B sends favor")
 assert_eq(sent[1].fields.pick, b.id, "plate B picks fighter B")
 
+sent = {}
+Hud:SetFavorTarget(nil)
+assert_eq(stub.fire(frame.pickA, "OnClick"), true, "plate A click with id and no bound target")
+assert_eq(#sent, 1, "plate click without a bound target still sends through Net")
+assert_eq(sent[1].target, nil, "plate click passes nil so Net resolves the default")
+assert_eq(sent[1].fields.characterId, picker.id, "default-dest plate click keeps the local id")
+assert_eq(sent[1].fields.pick, a.id, "default-dest plate A still picks fighter A")
+
+Hud:SetFavorTarget("Host")
+sent = {}
+assert_eq(stub.fire(frame.pickA, "OnClick"), true, "plate A click with an explicit target again")
+assert_eq(#sent, 1, "explicit target plate click sends")
+assert_eq(sent[1].target, "Host", "explicit SetFavorTarget still wins")
+
 assert_eq(Hud:ResetForTests(), true, "ResetForTests clears favor glue")
 sent = {}
 assert_eq(stub.fire(frame.pickA, "OnClick"), true, "plate still has OnClick after reset")
-assert_eq(#sent, 0, "ResetForTests clears target so click is a no-op")
+assert_eq(#sent, 1, "ResetForTests still sends congregation favor with placeholder id")
+assert_eq(sent[1].fields.characterId, 1, "reset plate uses placeholder 1")
+assert_eq(sent[1].target, nil, "reset plate has no bound dest")
 view = Hud:Refresh()
 assert_eq(view.favor, nil, "ResetForTests clears broadcast favor")
 
+COB.Net = nil
+COB.Sender = nil
+
+--------------------------------------------------------------------------------
+-- Pope plate: RecordFavorFromSender locally. No store id. No self-whisper.
+--------------------------------------------------------------------------------
+reset()
+Runtime:StartEvent()
+a, b = twoChars()
+Gora:Sanction(a.id, b.id)
+stubLocalPope(true)
+Hud:SetLocalCharacterId(nil)
+Hud:SetFavorTarget("Host")
+local popeSent = {}
+COB.Net = {
+  SendFavor = function(_, fields, target)
+    popeSent[#popeSent + 1] = { fields = fields, target = target }
+    return true
+  end,
+}
+local popeFrame = Hud:Init()
+view = Hud:Refresh()
+assert_eq(view.favor.a, 0, "Pope starts with an empty split")
+assert_eq(frame.favorLabel:GetText(), "Pick a side", "Pope footer starts as Pick a side")
+assert_eq(stub.fire(popeFrame.pickA, "OnClick"), true, "Pope plate A clicks without a store id")
+assert_eq(#popeSent, 0, "Pope plate does not self-whisper favor")
+assert_eq(Gora:GetFavorSplit().a, 1, "Pope pick stands on fighter A")
+assert_eq(Gora:GetFavorSplit().b, 0, "Pope pick does not stand on fighter B")
+view = Hud:GetView()
+assert_eq(view.favor.a, 1, "Pope HUD shows the local pick")
+assert_eq(view.favor.pctA, 100, "one Pope pick is 100% A")
+assert_eq(frame.favorLabel:GetText(), "FAVOR", "Pope footer reads FAVOR after a pick")
+assert_eq(frame.pctA:GetText(), "100%", "Pope bar paints 100% A")
+assert_eq(stub.fire(popeFrame.pickB, "OnClick"), true, "Pope plate B replaces the pick")
+assert_eq(#popeSent, 0, "Pope plate B still does not whisper")
+assert_eq(Gora:GetFavorSplit().a, 0, "latest Pope pick replaces A")
+assert_eq(Gora:GetFavorSplit().b, 1, "latest Pope pick stands on B")
+view = Hud:GetView()
+assert_eq(view.favor.b, 1, "Pope HUD shows the replaced pick")
 COB.Net = nil
 COB.Sender = nil
 
@@ -936,22 +1141,22 @@ view = Hud:Refresh()
 assert_eq(Hud:IsShown(), true, "Pope HUD persists through the verdict")
 assert_eq(view.shown, true, "Pope shown stays true after the ruling")
 assert_eq(view.fighterA.name, "Chuckroast", "Pope persist still paints fighter A")
-assert_eq(view.favor.a, 2, "Pope favor frozen on last split a")
-assert_eq(view.favor.b, 1, "Pope favor frozen on last split b")
-assert_eq(view.favor.pctA, 66, "Pope favor frozen at 66")
-assert_eq(view.favor.pctB, 34, "Pope favor frozen at 34")
-assert_eq(frame.pctA:GetText(), "66%", "frozen bar still paints 66%")
-assert_eq(view.health, nil, "frozen persist has no health")
+assert_eq(view.favor, nil, "Pope hide favor after a ruling")
+assert_eq(view.ruled, true, "Pope HUD reads as ruled until Continue")
+assert_eq(view.winner, nil, "Pope persist does not invent a winner string")
+assert_eq(frame.favorLabel:GetText(), "Ruled", "Pope footer says Ruled after a ruling")
+assert_eq(frame.barA:IsShown(), false, "Pope ruled persist hides bar A")
+assert_eq(frame.pctA:GetText(), "", "Pope ruled persist clears percent A")
+assert_eq(view.health, nil, "ruled persist has no health")
 assert_eq(view.verdict, nil, "Pope persist does not invent a verdict qualifier")
-assert_eq(sameRgb(frame.barA._cobColor, warrior), true, "frozen bar A stays fighter-tinted")
 
 COB.Sender = nil
 Hud:SetBroadcastFavor({ a = 2, b = 1 })
 view = Hud:Refresh()
 assert_eq(Hud:IsShown(), true, "congregation HUD still persists after the ruling")
-assert_eq(view.favor.a, 2, "congregation persist still follows W-F broadcast a")
-assert_eq(view.favor.b, 1, "congregation persist still follows W-F broadcast b")
-assert_eq(view.favor.pctA, 66, "congregation persist 66")
+assert_eq(view.favor, nil, "congregation hide favor after a ruling")
+assert_eq(view.ruled, true, "congregation HUD reads as ruled")
+assert_eq(frame.favorLabel:GetText(), "Ruled", "congregation footer says Ruled")
 Hud:SetBroadcastFavor(nil)
 view = Hud:Refresh()
 assert_eq(view.favor, nil, "congregation persist hides favor without broadcast")
@@ -1065,9 +1270,10 @@ assert_eq(Runtime:Snapshot().subjects.fighters[1], a.id, "Runtime fighter A rema
 assert_eq(Gora:GetFavorSplit().a, 0, "Gora split is empty after the pair clears")
 view = Hud:Refresh()
 assert_eq(Hud:IsShown(), true, "HUD persists with Runtime subjects after the ruling")
-assert_eq(view.favor.a, 2, "Pope freeze survives Runtime subjects after the ruling")
-assert_eq(view.favor.b, 1, "Pope freeze b survives Runtime subjects")
-assert_eq(view.favor.pctA, 66, "Pope freeze stays 66 with leftover subjects")
+assert_eq(view.favor, nil, "leftover subjects hide favor after a ruling")
+assert_eq(view.ruled, true, "leftover subjects read as ruled")
+assert_eq(view.winner, nil, "leftover subjects do not invent a winner string")
+assert_eq(frame.favorLabel:GetText(), "Ruled", "leftover subjects footer says Ruled")
 assert_eq(view.health, nil, "subjects leftover persist has no health")
 assert_eq(view.verdict, nil, "subjects leftover persist has no verdict qualifier")
 COB.Sender = nil
@@ -1080,7 +1286,7 @@ assert_eq(healthReads, 0, "subjects lane never scraped health")
 -- Pick never lastPair. Pope / live GetSanctioned only. Congregation
 -- Runtime subjects.fighters only while RITE and riteType Gora (B16-C).
 -- CONSEQUENCE / Continue persist / QUIET do not SendFavor. PickFavor
--- missing-target pins stay.
+-- missing-character pins stay; a missing target rides the Net default (Lane W).
 --------------------------------------------------------------------------------
 local pickSent = {}
 COB.Net = {
@@ -1213,12 +1419,13 @@ assert_eq(stub.fire(pickFrame.pickA, "OnClick"), true, "QUIET plate still clicks
 assert_eq(#pickSent, 0, "QUIET plate does not SendFavor")
 
 local pickOk, pickErr = Hud:PickFavor(riteA.id, nil, ritePicker.id)
-assert_eq(pickOk, nil, "PickFavor missing-target pin stays")
-assert_eq(pickErr, "no target", "PickFavor still names no target")
+assert_eq(pickOk, true, "PickFavor without a bound target sends through Net")
+assert_eq(pickErr, nil, "PickFavor without a bound target has no refusal")
+assert_eq(pickSent[1].target, nil, "PickFavor passes nil so Net resolves the default")
 pickOk, pickErr = Hud:PickFavor(riteA.id, "Host", nil)
 assert_eq(pickOk, nil, "PickFavor missing-character pin stays")
 assert_eq(pickErr, "no character", "PickFavor still names no character")
-assert_eq(#pickSent, 0, "PickFavor refusals still do not send")
+assert_eq(#pickSent, 1, "PickFavor missing-character refusal does not send")
 
 COB.Net = nil
 COB.Sender = nil
@@ -1520,8 +1727,8 @@ local function runB19C()
     painted = Hud:Refresh()
     assert_eq(painted.fighterA.defenses, 3, "CountDefenses 3 is still the mute integer")
     assert_eq(painted.fighterB.defenses, 12, "two-digit CountDefenses stays arabic")
-    assert_eq(hud.defenseA:GetText(), "III", "defense A still paints roman III")
-    assert_eq(hud.defenseB:GetText(), "XII", "defense B paints roman XII")
+    assert_eq(hud.defenseA:GetText(), "3", "defense A still paints arabic 3")
+    assert_eq(hud.defenseB:GetText(), "12", "defense B paints arabic 12")
     assert_eq(hud.defenseA:GetWidth(), 28, "nonzero paint keeps defense A at 28")
     assert_eq(hud.defenseB:GetWidth(), 28, "two-digit paint keeps defense B at 28")
     assert_eq(hud.defenseA:IsShown(), true, "nonzero defense A stays visible")
@@ -1622,8 +1829,8 @@ end
 runB19C()
 
 --------------------------------------------------------------------------------
--- U-E HUD-B dress: Theme-sourced bar / crest / name font; roman record
--- XVIII–VI for a known Store record; favor percents stay Arabic (52%).
+-- U-E HUD-B dress: Theme-sourced bar / crest / name font; arabic record
+-- 18–6 for a known Store record; favor percents stay Arabic (52%).
 --------------------------------------------------------------------------------
 reset()
 Runtime:StartEvent()
@@ -1640,16 +1847,14 @@ assert_true(Gora:Sanction(recA.id, recB.id) ~= nil, "known-record pair is sancti
 view = Hud:Refresh()
 assert_eq(view.fighterA.wins, 18, "view wins stay an integer")
 assert_eq(view.fighterA.losses, 6, "view losses stay an integer")
-assert_eq(frame.recordA:GetText(), "XVIII" .. EN_DASH .. "VI",
-  "known record paints XVIII–VI")
-assert_eq(frame.recordA:GetText(), COB.Common.RomanPair(18, 6),
-  "painted record matches Common.RomanPair")
+assert_eq(frame.recordA:GetText(), "18" .. EN_DASH .. "6",
+  "known record paints 18–6")
 assert_eq(frame.railA._cobTexture, Theme:Texture("bar_stainedglass_fill"),
   "shown rail still uses Theme stainedglass")
 assert_eq(frame.seal._cobTexture, Theme:Texture("sigil_gora"),
   "shown crest still uses Theme sigil_gora")
-assert_eq(frame.nameA._cobFont, Theme:FontPath("display"),
-  "shown name still uses Theme display")
+assert_eq(frame.nameA._cobFont, Theme:FontPath("label"),
+  "shown name still uses Theme label")
 
 Hud:SetBroadcastFavor({ a = 13, b = 12 })
 view = Hud:Refresh()
@@ -1662,8 +1867,8 @@ assert_eq(string.find(frame.pctA:GetText() or "", "LII", 1, true), nil,
 Hud:SetBroadcastFavor(nil)
 
 --------------------------------------------------------------------------------
--- V-D height budget: ≤ 12% of UIParent when the parent height is known.
--- Unknown parent stays the compact card (pinned at Init). Do not grow into a toast.
+-- V-D height budget: target 12% of UIParent, with the 92-unit legibility
+-- floor required by the four compact rows. Unknown parent stays at 100.
 --------------------------------------------------------------------------------
 UIParent:SetHeight(768)
 dofile("addon/ChurchOfBeef/UI/Hud.lua")
@@ -1682,13 +1887,235 @@ assert_true(budgeted.defenseA ~= nil, "rebuilt HUD still has defense A")
 assert_true(budgeted.defenseB ~= nil, "rebuilt HUD still has defense B")
 assert_eq(budgeted.defenseA:IsShown(), false, "Quiet rebuild hides defense A")
 assert_eq(budgeted.defenseB:IsShown(), false, "Quiet rebuild hides defense B")
-assert_eq(countStatusBars(budgeted), 2, "rebuilt HUD still has only favor StatusBars")
+assert_eq(countStatusBars(budgeted), 6, "rebuilt HUD keeps favor, live, and ghost health StatusBars")
 assert_eq(Hud:IsShown(), false, "rebuild in Quiet still hides the HUD")
 local copy = Hud:GetView()
 copy.shown = true
 copy.health = { a = 1 }
 assert_eq(Hud:GetView().shown, false, "GetView is still a copy after a rebuild")
 assert_eq(Hud:GetView().health, nil, "rebuilt view still has no health")
+
+UIParent:SetHeight(600)
+stub.fire(budgeted, "OnEvent", "DISPLAY_SIZE_CHANGED")
+assert_eq(budgeted:GetHeight(), 92,
+  "compact screens preserve the legibility floor instead of crushing rows")
+
+--------------------------------------------------------------------------------
+-- I-12 / Task 8: congregation ASSEMBLY sanction + empty-store stash names.
+--------------------------------------------------------------------------------
+reset()
+assert_true(Runtime:StartEvent() ~= nil, "ASSEMBLY stash starts an event")
+assert_eq(Runtime:Restore({
+  eventId = 1,
+  state = "ASSEMBLY",
+  subjects = { fighters = { 8, 9 } },
+  sequence = 2,
+}), true, "congregation ASSEMBLY Restores a sanctioned pair")
+assert_eq(Gora:GetSanctioned(), nil, "congregation has no local GetSanctioned")
+assert_eq(Store:GetCharacter(8), nil, "fighter A is not in Store")
+assert_eq(Store:GetCharacter(9), nil, "fighter B is not in Store")
+COB._lastCastNames = {
+  fighterA = "AAAAAAAAAAAA",
+  fighterB = "BBBBBBBBBBBB",
+}
+local stashFrame = Hud:Init()
+local stashView = Hud:Refresh()
+assert_eq(Hud:IsShown(), true, "ASSEMBLY sanctioned pair shows on the congregation HUD")
+assert_eq(stashView.shown, true, "ASSEMBLY stash view is shown")
+assert_eq(stashView.fighterA.name, "AAAAAAAAAAAA", "empty Store paints stash name A")
+assert_eq(stashView.fighterB.name, "BBBBBBBBBBBB", "empty Store paints stash name B")
+assert_eq(stashView.fighterA.id, 8, "stash pair keeps fighter A id")
+assert_eq(stashView.fighterB.id, 9, "stash pair keeps fighter B id")
+assert_eq(Store:GetCharacter(8), nil, "stash paint does not upsert fighter A")
+assert_eq(Store:GetCharacter(9), nil, "stash paint does not upsert fighter B")
+
+local assemblySent = {}
+COB.Net = {
+  SendFavor = function(_, fields, target)
+    assemblySent[#assemblySent + 1] = { fields = fields, target = target }
+    return true
+  end,
+}
+COB.Sender = nil
+local picker = Store:CreateCharacter({ name = "Fan", class = "Priest", level = 70 })
+Hud:SetLocalCharacterId(picker.id)
+Hud:SetFavorTarget("Host")
+assert_eq(stub.fire(stashFrame.pickA, "OnClick"), true, "ASSEMBLY plate A clicks")
+assert_eq(#assemblySent, 1, "ASSEMBLY sanctioned pair sends favor")
+assert_eq(assemblySent[1].fields.pick, 8, "ASSEMBLY pick is fighter A")
+COB.Net = nil
+COB._lastCastNames = nil
+
+--------------------------------------------------------------------------------
+-- Task 13: hover, Pick a side, ruled until Continue. No winner string.
+--------------------------------------------------------------------------------
+local function runTask13()
+  reset()
+  Runtime:StartEvent()
+  local sideA, sideB = twoChars()
+  Gora:Sanction(sideA.id, sideB.id)
+  stubLocalPope(true)
+  local hud = Hud:Init()
+  local painted = Hud:Refresh()
+  assert_eq(painted.ruled, false, "live pair is not ruled")
+  assert_eq(hud.favorLabel:GetText(), "Pick a side", "Pope zero still says Pick a side")
+  assert_eq(stub.fire(hud.pickA, "OnEnter"), true, "plate A has OnEnter")
+  assert_eq(GameTooltip._text, "Click to pick this side.",
+    "hover is Click to pick this side.")
+  assert_eq(stub.fire(hud.pickA, "OnLeave"), true, "plate A has OnLeave")
+
+  local t13fan = Store:CreateCharacter({ name = "Task13Fan", class = "Priest", level = 70 })
+  assert_true(Gora:RecordFavor(t13fan.id, sideA.id) ~= nil, "first pick lands")
+  painted = Hud:Refresh()
+  assert_eq(hud.favorLabel:GetText(), "FAVOR", "after a pick the rubric may stay FAVOR")
+  assert_eq(painted.favor.a, 1, "live split still paints after the first pick")
+
+  Gora:DeclareVictor(sideA.id)
+  painted = Hud:Refresh()
+  assert_eq(painted.ruled, true, "ruling reads as ruled")
+  assert_eq(painted.favor, nil, "ruling hides favor")
+  assert_eq(painted.winner, nil, "ruling does not invent a winner")
+  assert_eq(hud.favorLabel:GetText(), "Ruled", "footer says Ruled")
+  assert_eq(hud.barA:IsShown(), false, "ruled hides bar A")
+  assert_eq(stub.fire(hud.pickA, "OnEnter"), true, "ruled plate still has OnEnter")
+  assert_eq(GameTooltip:IsShown(), false, "ruled hover does not offer a pick")
+
+  assert_true(Runtime:OpenRite("Gora", { fighters = { sideA.id, sideB.id } }) ~= nil,
+    "OpenRite after a ruling")
+  assert_true(Runtime:CloseRite() ~= nil, "CloseRite reaches CONSEQUENCE")
+  painted = Hud:Refresh()
+  assert_eq(Runtime:Snapshot().state, "CONSEQUENCE", "runtime is CONSEQUENCE")
+  assert_eq(painted.ruled, true, "CONSEQUENCE leftover still reads as ruled")
+  assert_eq(painted.favor, nil, "CONSEQUENCE leftover still hides favor")
+
+  assert_true(Runtime:Continue() ~= nil, "Continue returns to ASSEMBLY")
+  painted = Hud:Refresh()
+  assert_eq(Runtime:Snapshot().state, "ASSEMBLY", "runtime is ASSEMBLY after Continue")
+  assert_eq(painted.shown, true, "lastPair persist still shows after Continue")
+  assert_eq(painted.ruled, false, "Continue clears the ruled footer")
+  assert_eq(painted.favor, nil, "Continue persist does not restore favor")
+  assert_eq(hud.favorLabel:IsShown(), false, "Continue persist hides the favor label")
+  assert_eq(painted.winner, nil, "Continue persist does not invent a winner")
+
+  COB.Sender = nil
+  assert_eq(sounds, 0, "Task 13 played no sound")
+  assert_eq(healthReads, 0, "Task 13 never scraped health")
+end
+runTask13()
+
+--------------------------------------------------------------------------------
+-- Raid/party UnitHealth: bound tokens paint; unbound stay mute rails.
+--------------------------------------------------------------------------------
+reset()
+stub.groupSize = 2
+stub.inRaid = true
+stub.group = {
+  raid1 = { name = "Chuckroast" },
+  raid2 = { name = "Tendermage" },
+}
+local hp = {
+  raid1 = { cur = 80, max = 100 },
+  raid2 = { cur = 40, max = 100 },
+}
+local savedUH, savedUHM = UnitHealth, UnitHealthMax
+UnitHealth = function(unit)
+  healthReads = healthReads + 1
+  local row = hp[unit]
+  return row and row.cur or 0
+end
+UnitHealthMax = function(unit)
+  healthReads = healthReads + 1
+  local row = hp[unit]
+  return row and row.max or 0
+end
+assert_true(Runtime:StartEvent() ~= nil, "raid-health event starts")
+local raidA, raidB = twoChars()
+assert_true(Gora:Sanction(raidA.id, raidB.id) ~= nil, "raid-health pair is sanctioned")
+local raidHud = Hud:Init()
+local raidView = Hud:Refresh()
+assert_eq(raidView.health ~= nil, true, "grouped fighters expose health")
+assert_eq(raidView.health.a, 80, "raid1 paints 80%")
+assert_eq(raidView.health.b, 40, "raid2 paints 40%")
+assert_eq(Gora:GetProposal(), nil, "80/40 is not a knockout draft")
+assert_eq(Gora.ParseDuel, nil, "no duel-chat parser")
+assert_eq(raidHud.healthA:IsShown(), true, "bound health A shows")
+assert_eq(raidHud.healthB:IsShown(), true, "bound health B shows")
+assert_eq(raidHud.railA:IsShown(), false, "bound rail A hides")
+assert_eq(raidHud.railB:IsShown(), false, "bound rail B hides")
+assert_eq(raidHud.healthA:GetValue(), 80, "health A value is 80")
+assert_eq(raidHud.healthB:GetValue(), 40, "health B value is 40")
+assert_eq(raidHud.healthGhostA:IsShown(), false, "first bind has no loss trail")
+assert_eq(raidHud:GetScript("OnUpdate"), nil, "settled health runs no per-frame script")
+assert_true(healthReads > 0, "bound paint reads UnitHealth")
+assert_eq(raidHud:IsEventRegistered("UNIT_HEALTH"), true, "shown HUD listens for UNIT_HEALTH")
+assert_eq(stub.fire(raidHud, "OnEvent", "UNIT_HEALTH", "raid3"), true,
+  "other raid UNIT_HEALTH is received")
+assert_eq(raidHud.healthA:GetValue(), 80, "unrelated raid unit does not repaint A")
+
+hp.raid1.cur = 20
+assert_eq(stub.fire(raidHud, "OnEvent", "UNIT_HEALTH", "raid1"), true,
+  "fighter UNIT_HEALTH is received")
+assert_eq(Hud:GetView().health.a, 20, "raid1 tick updates view health")
+assert_eq(raidHud.healthA:GetValue(), 20, "raid1 tick updates the bar")
+assert_eq(raidHud.healthGhostA:IsShown(), true, "damage leaves a gold loss trail")
+assert_eq(raidHud.healthGhostA:GetValue(), 80, "trail holds the pre-hit value")
+assert_true(raidHud:GetScript("OnUpdate") ~= nil, "trail drain uses a short OnUpdate")
+assert_eq(stub.fire(raidHud, "OnUpdate", 0.25), true, "trail tick runs")
+assert_true(raidHud.healthGhostA:GetValue() < 80, "trail drains toward live HP")
+assert_true(raidHud.healthGhostA:GetValue() > 20, "trail has not caught the live bar yet")
+assert_eq(stub.fire(raidHud, "OnUpdate", 1), true, "trail finishes")
+assert_eq(raidHud.healthGhostA:IsShown(), false, "caught-up trail hides")
+assert_eq(raidHud:GetScript("OnUpdate"), nil, "finished trail clears OnUpdate")
+assert_eq(Gora:GetProposal(), nil, "20/40 is not a knockout draft")
+
+hp.raid1.cur = 1
+assert_eq(stub.fire(raidHud, "OnEvent", "UNIT_HEALTH", "raid1"), true,
+  "floor tick is received")
+assert_eq(Gora:GetProposal() ~= nil, true, "1 HP proposes")
+assert_eq(Gora:GetProposal().winnerId, raidB.id, "living raid2 is the draft winner")
+assert_eq(Gora:GetProposal().source, "raid-health", "HUD draft source is raid-health")
+assert_eq(Hud:GetView().winner, nil, "HUD does not invent a winner string")
+assert_eq(Store:GetCharacter(raidA.id).gora.losses, 0, "HUD propose does not record")
+
+stub.groupSize = 1
+stub.group = { raid1 = { name = "Chuckroast" } }
+assert_eq(stub.fire(raidHud, "OnEvent", "GROUP_ROSTER_UPDATE"), true,
+  "roster update rebinds")
+local mixed = Hud:GetView()
+assert_eq(mixed.health.a, 1, "still-grouped fighter A keeps live HP")
+assert_eq(mixed.health.b, nil, "ungrouped fighter B drops HP")
+assert_eq(raidHud.healthB:IsShown(), false, "unbound health B hides")
+assert_eq(raidHud.railB:IsShown(), true, "unbound rail B returns")
+
+stub.groupSize = 0
+stub.inRaid = false
+stub.group = {}
+assert_eq(stub.fire(raidHud, "OnEvent", "GROUP_ROSTER_UPDATE"), true,
+  "empty roster rebinds")
+assert_eq(Hud:GetView().health, nil, "no group units leaves health nil")
+assert_eq(raidHud.healthA:IsShown(), false, "unbound health A hides")
+assert_eq(raidHud.railA:IsShown(), true, "mute rail A returns")
+
+reset()
+stub.groupSize = 2
+stub.inRaid = true
+stub.group = {
+  raid1 = { name = "Chuckroast" },
+  raid2 = { name = "Tendermage" },
+}
+hp.raid1, hp.raid2 = { cur = 0, max = 100 }, { cur = 80, max = 100 }
+assert_true(Runtime:StartEvent() ~= nil, "dead-hp event starts")
+local deadA, liveB = twoChars()
+assert_true(Gora:Sanction(deadA.id, liveB.id) ~= nil, "dead-hp pair is sanctioned")
+Hud:Init()
+Hud:Refresh()
+assert_eq(Gora:GetProposal(), nil, "0 HP is not a duel knockout draft")
+assert_true(deadA ~= nil and liveB ~= nil, "dead-hp fixtures exist")
+
+UnitHealth = savedUH
+UnitHealthMax = savedUHM
+reset()
+assert_eq(healthReads, 0, "raid-health reset clears the scrape counter")
 
 restore()
 

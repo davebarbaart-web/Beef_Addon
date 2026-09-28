@@ -2,6 +2,16 @@
 
 Short map for coding agents. Policy lives in `.cursor/rules/`; the operational loop lives in the skill. Do not fork either here.
 
+## Agent rule loading
+
+`AGENTS.md` is the cross-client entry point. Before changing files, every coding agent must:
+
+1. Read the three always-on rules: `ten-laws.mdc`, `architecture-overview.mdc`, and `verification.mdc`.
+2. Read every `.cursor/rules/*.mdc` whose `globs` match the files being inspected or edited.
+3. Use `.agents/skills/church-of-beef-dev/SKILL.md` for test, install, reload, and UI-polish work.
+
+Cursor may apply these rules automatically; other clients must load them explicitly. Do not copy rule content into this file.
+
 ## What this is
 
 **Church of Beef** — social ceremony, Gora, and memory layer for **WoW TBC Classic Anniversary** (`## Interface: 20506`). The add-on formalizes ritual, sanctioned duels, Pope-facing direction, and Church records. It is **not** a roster-backed standing ladder and not combat/raid tooling.
@@ -26,7 +36,7 @@ Addon code currently lives at `addon/ChurchOfBeef/` on this workspace. `.worktre
 | Ten Laws (Phase 0) | [`docs/reformation/phase-0/TEN_LAWS.md`](docs/reformation/phase-0/TEN_LAWS.md) |
 | Archived law (historical) | [`docs/archive/pre-reformation/`](docs/archive/pre-reformation/) |
 | Cursor rules | [`.cursor/rules/`](.cursor/rules/) |
-| Install / reload / test | [`.cursor/skills/church-of-beef-dev/SKILL.md`](.cursor/skills/church-of-beef-dev/SKILL.md) |
+| Install / reload / test | [`.agents/skills/church-of-beef-dev/SKILL.md`](.agents/skills/church-of-beef-dev/SKILL.md) |
 | Editor defaults (Lua 5.1) | [`.vscode/`](.vscode/) |
 | DevEx backlog (needs approval) | [`OPTIMIZATIONS.md`](OPTIMIZATIONS.md) |
 | Research library (≠ law) | `docs/research/` |

@@ -67,6 +67,10 @@ expect_rgb("parchmentMid", 217, 201, 163)
 expect_rgb("gold",         201, 165, 74)
 expect_rgb("oxblood",      110, 31,  31)
 expect_rgb("silver",       154, 150, 142)
+expect_rgb("gathering",    74,  52,  36)
+expect_rgb("knighting",    72,  56,  28)
+expect_rgb("gora",         36,  48,  58)
+expect_rgb("notice",       52,  50,  46)
 
 local ur, ug, ub = Theme:Color("red")
 assert_eq(ur, nil, "unknown color role 'red' is nil — red is not a token")
@@ -114,20 +118,33 @@ assert_eq(Theme.FontSize.headline, 22, "headline size")
 assert_eq(Theme.FontSize.name, 18, "name size")
 assert_eq(Theme.FontSize.label, 12, "label size")
 assert_eq(Theme.FontSize.body, 12, "body size")
+assert_eq(Theme.FontSize.caption, 12, "caption is the 12px stream floor")
 assert_true(Theme.FontSize.headline >= 16, "headline never below 16")
 assert_true(Theme.FontSize.name >= 16, "name never below 16")
+assert_true(Theme.FontSize.caption >= 12, "caption never below 12")
+
+assert_true(type(Theme.Space) == "table", "Space table is public")
+assert_eq(Theme.Space.xs, 4, "xs is 4")
+assert_eq(Theme.Space.sm, 8, "sm is 8")
+assert_eq(Theme.Space.md, 16, "md is 16")
+assert_eq(Theme.Space.lg, 24, "lg is 24")
+assert_eq(Theme.Space.rule, 2, "gold hairline is 2px")
+assert_eq(Theme.Space.band, 48, "title band is 48")
+assert_eq(Theme.Space.footer, 40, "footer band is 40")
 
 local MEDIA = "Interface\\AddOns\\ChurchOfBeef\\Media\\Fonts\\"
 
 local display = Theme:FontPath("display")
 assert_true(type(display) == "string", "display FontPath is a string")
 assert_true(display:find(MEDIA, 1, true) == 1, "display uses the addon Media prefix")
-assert_true(display:find("UnifrakturMaguntia%-Book%.ttf") ~= nil
-  or display:find("UnifrakturMaguntia", 1, true) ~= nil, "display is the static blackletter")
+assert_true(display:find("GrenzeGotisch%-Regular%.ttf") ~= nil
+  or display:find("GrenzeGotisch", 1, true) ~= nil, "display is the stream-readable static blackletter")
 
 local label = Theme:FontPath("label")
 assert_true(label:find(MEDIA, 1, true) == 1, "label uses the addon Media prefix")
 assert_true(label:find("EBGaramond", 1, true) ~= nil, "label is the shipped serif")
+assert_true(label:find("EBGaramond%-Regular%.ttf") ~= nil
+  or label:find("EBGaramond-Regular", 1, true) ~= nil, "label is static Regular, not [wght]")
 
 local body = Theme:FontPath("body")
 assert_true(body:find(MEDIA, 1, true) == 1, "body uses the addon Media prefix")
@@ -203,6 +220,17 @@ local SEMANTIC = {
   "glyph_defenses",
   "glyph_headtohead",
   "glyph_stipulation",
+  "close_up",
+  "close_down",
+  "close_highlight",
+  "close_disabled",
+  "stock_dialog_bg",
+  "stock_dialog_border",
+  "stock_tooltip_bg",
+  "stock_tooltip_border",
+  "stock_grabber_up",
+  "stock_grabber_down",
+  "stock_grabber_highlight",
 }
 
 local SEALS = {
@@ -244,6 +272,10 @@ assert_eq(Theme:Texture("bar_stainedglass_fill"), "Interface\\TargetingFrame\\UI
   "stained-glass fill is the tintable status bar")
 assert_eq(Theme:Texture("bar_favor_fill"), "Interface\\TargetingFrame\\UI-StatusBar",
   "favor fill is the tintable status bar")
+assert_eq(Theme.CloseSize, 32, "close is the stock 32px window X")
+assert_eq(Theme:Texture("close_up"), "Interface\\Buttons\\UI-Panel-MinimizeButton-Up",
+  "close_up is the stock panel X")
+assert_eq(type(Theme.CloseButton), "function", "Theme:CloseButton is the shared factory")
 
 assert_eq(Theme:Texture("not_a_texture"), nil, "unknown texture name is nil")
 assert_eq(Theme:Texture(nil), nil, "nil texture name is nil")
@@ -263,6 +295,43 @@ assert_eq(Theme:Texture("seal_papal"), stockPapal, "non-string manifest value fa
 
 ChurchOfBeefMediaManifest = "not-a-table"
 assert_eq(Theme:Texture("seal_papal"), stockPapal, "non-table manifest is ignored")
+
+assert_eq(Theme:Texture("stock_dialog_bg"), "Interface\\DialogFrame\\UI-DialogBox-Background",
+  "dialog fill is the LootFrame stock")
+assert_eq(Theme:Texture("stock_tooltip_bg"), "Interface\\Tooltips\\UI-Tooltip-Background",
+  "tooltip fill is the Inputs stock")
+assert_eq(Theme:Texture("stock_grabber_up"), "Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-Up",
+  "size grabber is the chat grip")
+
+local dialog = Theme:Backdrop("dialog")
+assert_true(type(dialog) == "table", "dialog backdrop exists")
+assert_eq(dialog.bgFile, "Interface\\DialogFrame\\UI-DialogBox-Background", "dialog bgFile")
+assert_eq(dialog.edgeFile, "Interface\\DialogFrame\\UI-DialogBox-Border", "dialog edgeFile")
+assert_eq(dialog.tileSize, 32, "dialog tile matches LootFrame")
+assert_eq(dialog.insets.left, 11, "dialog left inset matches LootFrame")
+dialog.tileSize = 99
+assert_eq(Theme:Backdrop("dialog").tileSize, 32, "Backdrop returns a copy")
+assert_eq(Theme:Backdrop("paper").bgFile, "Interface\\QuestFrame\\QuestBG",
+  "paper fill is QuestBG")
+assert_eq(Theme:Backdrop("missing"), nil, "unknown backdrop kind is nil")
+
+local fake = {
+  SetBackdrop = function(self, spec) self._spec = spec end,
+  SetBackdropColor = function(self, r, g, b, a)
+    self._fill = { r = r, g = g, b = b, a = a }
+  end,
+  SetBackdropBorderColor = function(self, r, g, b, a)
+    self._edge = { r = r, g = g, b = b, a = a }
+  end,
+}
+assert_eq(Theme:ApplyBackdrop(nil, "tooltip"), false, "nil frame is refused")
+assert_true(Theme:ApplyBackdrop(fake, "tooltip", "charcoal", "gold", 0.96),
+  "ApplyBackdrop paints a tooltip")
+assert_eq(fake._cobBackdrop, "tooltip", "kind is recorded")
+assert_eq(fake._spec.bgFile, "Interface\\Tooltips\\UI-Tooltip-Background",
+  "applied spec is the tooltip table")
+assert_eq(fake._fill.a, 0.96, "fill alpha is honored")
+assert_eq(type(Theme.PanelButton), "function", "Theme:PanelButton is the shared factory")
 
 --------------------------------------------------------------------------------
 -- Restore globals the suite touched.

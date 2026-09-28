@@ -19,15 +19,16 @@ Before any `CreateFrame` / theater / juice work: read Bible §19 and `quiet-even
 ## Hybrid visual law
 
 - **Functional** (Director Console desks, lists, settings): stock Blizzard templates, pragmatic, opaque high-contrast, `GameFont*`. Working tools stay working tools.
-- **Theatrical** (proclamations, fighter cards, seals, verdicts, Records Book, Decree): full ecclesiastical identity — dark iron, charcoal, aged parchment, muted gold; gothic/ecclesiastical typography; Warcraft-compatible ornamentation; official seals. **Non-negotiable.**
+- **Theatrical** (proclamations, fighter cards, seals, verdicts, Records Book, Nights parchment): full ecclesiastical identity — dark iron, charcoal, aged parchment, muted gold; gothic/ecclesiastical typography; Warcraft-compatible ornamentation; official seals. **Non-negotiable.**
 - The contrast between the plain desk and the dignified theater is the comedy engine. **The UI itself never tells jokes.** No meme clutter. The software never narrates (Law 4).
 - Custom media is permitted and expected **only where theater lives**. Missing media must not fail load — fall back to default UI.
 - Dual-encode status (color + text). Class color on **names** only.
+- **Ink discipline (measured, 2026-08-18):** parchment grounds carry charcoal or iron ink only — never gold, silver, or class-tinted text (1.2–3.3:1 contrast, illegible). Class-tinted names sit on dark (iron/charcoal) grounds, where class colors pass (3.1–15:1). Gold/silver text only on dark grounds; on parchment, gold and silver are ornament (rules, seals, edges), never text.
 - UI displays Core / Pope-ratified outcomes; never awards points, standing, or ranks (Law 1).
 
 ## Mode (juice)
 
-- **Quiet Mode:** no toasts, no sound, no pips, no ambient surfaces. At most minimap presence and the active Decree. The **only** Quiet notice is the Bible’s gentle version-mismatch drop (§13.4 / §20.3) — see `quiet-event-modes.mdc`. Not a toast-kind family.
+- **Quiet Mode:** no toasts, no sound, no reminders, no ambient surfaces. Hideable minimap; Nights board is player-opened. The licensed unseen-change glow is not a toast-kind family. The other Quiet notice is the Bible’s gentle version-mismatch drop (§13.4 / §20.3) — see `quiet-event-modes.mdc`.
 - **Event Mode:** consequence beats and §19.4 ceremonial cues only. Rhythm: Quiet → Ritual Begins → Spectacle → Consequence → Quiet.
 - Sound is sparse and meaningful: Sanction bell, Verdict, Elevation, Knighting, Cowardice Recorded; later, Canonization seal. Quiet Mode is silent, absolutely. No ambient audio, UI clicks-and-whooshes, or notification sounds.
 

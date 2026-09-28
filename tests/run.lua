@@ -13,6 +13,7 @@ dofile("addon/ChurchOfBeef/Core/Common.lua")
 -- Same reasoning for the design system: every dressed surface reads palette, fonts,
 -- and textures from Theme, so suites never load it themselves.
 dofile("addon/ChurchOfBeef/UI/Theme.lua")
+dofile("addon/ChurchOfBeef/UI/NightRows.lua")
 
 local failed = 0
 local passed = 0
@@ -40,6 +41,7 @@ local suites = {
   "test_sender",
   "test_db",
   "test_store",
+  "test_records_core",
   "test_archive",
   "test_recognition",
   "test_knighting",
@@ -50,20 +52,23 @@ local suites = {
   "test_net_adversarial",
   "test_net_v2",
   "test_ceremony_chaos",
-  "test_ui",
+  "test_toasts",
   "test_console",
-  "test_console_dock",
   "test_hud",
   "test_fighter_card",
   "test_inputs",
   "test_markers",
   "test_records",
+  "test_player_card",
   "test_minimap",
   "test_gora",
   "test_confession",
   "test_gora_ceremony",
   "test_decree",
+  "test_nights",
+  "test_night_rows",
   "test_decree_ui",
+  "test_welcome",
   "test_sound",
   "test_wire_glue",
 }

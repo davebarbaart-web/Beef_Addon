@@ -1,0 +1,1 @@
+Built-in ImageGen, 2026-08-20. Canonical Beef Gora sigil: forward-facing bull above crossed axes inside a dark-iron heater shield with antique-gold engraved edging; compact Warcraft-compatible game UI icon; orthographic, no text or faction marks, transparent alpha. Background extraction pass preserved the sigil and produced true transparency.

@@ -102,16 +102,22 @@ assert_eq(type(Gora.Sanction), "function", "Sanction is one verb")
 assert_eq(type(Gora.GetSanctioned), "function", "GetSanctioned reads the live pair")
 assert_eq(type(Gora.Propose), "function", "Propose is caller-supplied")
 assert_eq(type(Gora.GetProposal), "function", "GetProposal reads the proposal")
+assert_eq(type(Gora.GuessKnockout), "function", "GuessKnockout is a pure helper")
+assert_eq(type(Gora.ConsiderRaidHealth), "function", "ConsiderRaidHealth is a verb")
 assert_eq(type(Gora.DeclareVictor), "function", "DECLARE VICTOR is a verb")
 assert_eq(type(Gora.CowardiceRecorded), "function", "COWARDICE RECORDED is a verb")
 assert_eq(type(Gora.Void), "function", "VOID is a verb")
 assert_eq(type(Gora.FreeRuling), "function", "free ruling is a verb")
 assert_eq(type(Gora.RecordFavor), "function", "RecordFavor is a verb")
+assert_eq(type(Gora.PetitionFromSender), "function", "PetitionFromSender is the unsigned INPUT verb")
+assert_eq(type(Gora.RecordFavorFromSender), "function", "RecordFavorFromSender is the unsigned favor verb")
 assert_eq(type(Gora.GetFavor), "function", "GetFavor reads standing picks")
 assert_eq(type(Gora.GetFavorSplit), "function", "GetFavorSplit reads the live split")
 assert_eq(type(Gora.GetLastSanctioned), "function", "GetLastSanctioned reads the last cleared pair")
 assert_eq(type(Gora.GetLastFavorSplit), "function", "GetLastFavorSplit reads the last cleared split")
 assert_eq(type(Gora.Recommend), "function", "Recommend is optional context")
+assert_eq(type(Gora.Snapshot), "function", "Snapshot copies the live desk")
+assert_eq(type(Gora.Restore), "function", "Restore loads a desk snapshot")
 assert_eq(type(Gora.Challenge), "function", "leftover Challenge remains")
 assert_eq(type(Gora.GetPending), "function", "leftover GetPending remains")
 
@@ -261,6 +267,67 @@ assert_true(Gora:Petition(p1.id) ~= nil, "a new event accepts a fresh petition")
 assert_eq(#Gora:GetPetitions(present(p1.id)), 1, "the new petition is the current event")
 
 --------------------------------------------------------------------------------
+-- Sender-keyed unsigned petitions / favor. Petition(id) still refuses names.
+--------------------------------------------------------------------------------
+local function runUnsignedDesk()
+  reset()
+  local humans0 = #Store:Snapshot().humans
+  local chars0 = #Store:Snapshot().characters
+  assert_eq(humans0, 0, "empty store starts with zero humans")
+  assert_eq(chars0, 0, "empty store starts with zero characters")
+  Runtime:StartEvent()
+  local zip, zipErr = Gora:PetitionFromSender("Zipfresh")
+  assert_true(zip ~= nil, "unknown sender is accepted as an unsigned petition")
+  assert_eq(zipErr, nil, "unsigned petition has no error")
+  assert_eq(zip.senderKey, "zipfresh", "unsigned petition keys by Names.Key")
+  assert_eq(zip.name, "Zipfresh", "unsigned petition keeps the display name")
+  assert_eq(zip.characterId, nil, "unsigned petition has no store character id")
+  assert_eq(zip.namedOpponentId, nil, "unsigned petition may omit an opponent")
+  assert_eq(#Store:Snapshot().humans, 0, "unsigned petition creates no human")
+  assert_eq(#Store:Snapshot().characters, 0, "unsigned petition creates no character")
+  local unsignedShown = Gora:GetPetitions()
+  assert_eq(#unsignedShown, 1, "unsigned name-key shows without a present-id flag")
+  assert_eq(unsignedShown[1].senderKey, "zipfresh", "GetPetitions includes the name-key")
+  assert_eq(unsignedShown[1].name, "Zipfresh", "GetPetitions paints the display name")
+
+  local realmZip = Gora:PetitionFromSender("Zipfresh-Whitemane", 99)
+  assert_true(realmZip ~= nil, "unknown named opponent does not refuse the ask")
+  assert_eq(realmZip.senderKey, "zipfresh", "re-petition deduplicates by sender key")
+  assert_eq(realmZip.namedOpponentId, nil, "unknown opponent id is ignored")
+  assert_eq(#Gora:GetPetitions(), 1, "unknown opponent still records one unsigned row")
+  assert_eq(#Store:Snapshot().humans, 0, "ignored opponent creates no human")
+  assert_eq(#Store:Snapshot().characters, 0, "ignored opponent creates no character")
+
+  local nameStill, nameStillErr = Gora:Petition("Zipfresh")
+  assert_eq(nameStill, nil, "Petition still refuses a name string")
+  assert_true(type(nameStillErr) == "string", "name-string Petition still returns an error")
+
+  local knownA, knownB = twoChars()
+  local knownRow = Gora:PetitionFromSender("Chuckroast", knownB.id)
+  assert_eq(knownRow.characterId, knownA.id, "known sender resolves to the store id")
+  assert_eq(knownRow.namedOpponentId, knownB.id, "known opponent is stored on a known sender")
+  assert_eq(knownRow.name, nil, "known-id pool rows stay id-keyed")
+  local missedOpp = Gora:PetitionFromSender("Tendermage", 9999)
+  assert_true(missedOpp ~= nil, "known sender with unknown opponent is still recorded")
+  assert_eq(missedOpp.characterId, knownB.id, "known sender still resolves")
+  assert_eq(missedOpp.namedOpponentId, nil, "unknown opponent is dropped, not refused")
+
+  Gora:Sanction(knownA.id, knownB.id)
+  local humansBeforeFavor = #Store:Snapshot().humans
+  local charsBeforeFavor = #Store:Snapshot().characters
+  local fav, favErr = Gora:RecordFavorFromSender("Zipfresh", knownA.id)
+  assert_true(fav ~= nil, "unsigned favor from an unknown sender is accepted")
+  assert_eq(favErr, nil, "unsigned favor has no error")
+  local picks = Gora:GetFavor()
+  assert_eq(picks.zipfresh, knownA.id, "favor keys by sender name-key")
+  assert_eq(picks[99], nil, "spoofed numeric id is not a favor key")
+  assert_eq(picks[knownA.id], nil, "unsigned favor does not write the fighter id as the picker")
+  assert_eq(#Store:Snapshot().humans, humansBeforeFavor, "unsigned favor creates no human")
+  assert_eq(#Store:Snapshot().characters, charsBeforeFavor, "unsigned favor creates no character")
+end
+runUnsignedDesk()
+
+--------------------------------------------------------------------------------
 -- Recommend: Store context only. No odds, rating, or auto-sanction.
 --------------------------------------------------------------------------------
 reset()
@@ -364,6 +431,43 @@ assert_eq(Store:GetCharacter(a.id).gora.wins, 0, "a string proposal still does n
 local noProp, noPropErr = Gora:Propose()
 assert_eq(noProp, nil, "Propose without a caller value is refused")
 assert_true(type(noPropErr) == "string", "empty Propose returns an error string")
+
+--------------------------------------------------------------------------------
+-- Raid-health draft: 1 HP loser, living partner. Does not write Store.
+--------------------------------------------------------------------------------
+assert_eq(Gora.GuessKnockout(1, 40), "B", "1 HP on A and living B proposes B")
+assert_eq(Gora.GuessKnockout(40, 1), "A", "1 HP on B and living A proposes A")
+assert_eq(Gora.GuessKnockout(0, 40), nil, "dead A is not a duel knockout")
+assert_eq(Gora.GuessKnockout(1, 1), nil, "both at the floor is ambiguous")
+assert_eq(Gora.GuessKnockout(20, 40), nil, "neither at the floor is not a knockout")
+assert_eq(Gora.GuessKnockout(1, 0), nil, "dead partner is not a knockout")
+assert_eq(Gora.GuessKnockout(nil, 40), nil, "missing reading A is not a knockout")
+assert_eq(Gora.GuessKnockout(1.0, 40), "B", "integer 1.0 still counts as the floor")
+
+local ka, kb = livePair()
+assert_true(Gora:Sanction(ka.id, kb.id) ~= nil, "knockout pair is sanctioned")
+local first, firstErr = Gora:ConsiderRaidHealth(1, 80)
+assert_true(first ~= nil, "ConsiderRaidHealth proposes on a clean 1 HP")
+assert_eq(firstErr, nil, "clean knockout has no error")
+assert_eq(first.ruling, "victor", "raid-health proposal is a victor draft")
+assert_eq(first.winnerId, kb.id, "the living fighter is the proposed winner")
+assert_eq(first.loserId, ka.id, "the 1 HP fighter is the proposed loser")
+assert_eq(first.source, "raid-health", "source is raid-health")
+assert_eq(Store:GetCharacter(ka.id).gora.wins, 0, "ConsiderRaidHealth does not write wins")
+assert_eq(Store:GetCharacter(ka.id).gora.losses, 0, "ConsiderRaidHealth does not write losses")
+assert_eq(Gora:GetProposal().winnerId, kb.id, "GetProposal holds the draft")
+
+local again, againErr = Gora:ConsiderRaidHealth(1, 80)
+assert_eq(again, nil, "duplicate knockout does not re-Propose")
+assert_eq(againErr, "already proposed", "duplicate knockout is already proposed")
+assert_eq(Gora:GetProposal().winnerId, kb.id, "duplicate leaves the same draft")
+
+local flip = Gora:ConsiderRaidHealth(80, 1)
+assert_eq(flip.winnerId, ka.id, "a later opposite floor replaces the draft")
+assert_eq(Gora:GetProposal().winnerId, ka.id, "GetProposal follows the later floor")
+
+Gora:ResetForTests()
+assert_eq(Gora:ConsiderRaidHealth(1, 80), nil, "no sanctioned pair refuses")
 
 --------------------------------------------------------------------------------
 -- DeclareVictor writes Store for both characters. No auto-elevate. Pair clears.
@@ -827,6 +931,118 @@ assert_eq(Gora:IsChallenged("Beefina", "Steakina"), false, "leftover cancel work
 Gora:Challenge("Steakina", "Beefina", 300)
 assert_eq(#Gora:GetPending(300), 1, "leftover challenge is live inside its window")
 assert_eq(#Gora:GetPending(300 + 3600), 0, "leftover stale challenge still expires")
+
+--------------------------------------------------------------------------------
+-- Snapshot / Restore. Empty {} is not a snapshot. Restore after event.
+--------------------------------------------------------------------------------
+local function petitionBySender(rows, key)
+  if type(rows) ~= "table" then return nil end
+  if type(rows[key]) == "table" then return rows[key] end
+  for _, row in pairs(rows) do
+    if type(row) == "table" and row.senderKey == key then return row end
+  end
+  return nil
+end
+
+reset()
+assert_eq(Gora:Snapshot().eventId, nil, "empty desk Snapshot has no eventId")
+assert_eq(Gora:Restore({}), nil, "empty {} is not a snapshot")
+assert_eq(Gora:Restore(nil), nil, "missing Restore is not a snapshot")
+
+local snapA, snapB = livePair()
+Gora:PetitionFromSender("Zipfresh")
+Gora:Sanction(snapA.id, snapB.id, "come as you are")
+Gora:RecordFavor(snapA.id, snapA.id)
+Gora:RecordFavorFromSender("Zipfresh", snapB.id)
+assert_true(Gora:ConsiderRaidHealth(1, 80) ~= nil, "snapshot fixture has a raid-health draft")
+local liveEvent = Runtime:Snapshot()
+local desk = Gora:Snapshot()
+assert_eq(desk.proposal.winnerId, snapB.id, "Snapshot copies the proposed winner")
+assert_eq(desk.proposal.source, "raid-health", "Snapshot copies the proposal source")
+local liveCopy = Gora:GetProposal()
+liveCopy.winnerId = 999
+assert_eq(Gora:GetProposal().winnerId, snapB.id, "mutating a proposal copy does not change live")
+assert_eq(desk.proposal.winnerId, snapB.id, "the snapshot proposal stays the live winner")
+assert_eq(desk.eventId, liveEvent.eventId, "Snapshot carries the live eventId")
+assert_eq(desk.sanctioned.fighterA, snapA.id, "Snapshot keeps fighter A")
+assert_eq(desk.sanctioned.fighterB, snapB.id, "Snapshot keeps fighter B")
+assert_eq(desk.sanctioned.stipulation, "come as you are", "Snapshot keeps the stipulation")
+assert_eq(desk.sanctioned.eventId, liveEvent.eventId, "Snapshot tags the pair to the event")
+local unsigned = petitionBySender(desk.petitions, "zipfresh")
+assert_true(unsigned ~= nil, "Snapshot keeps the unsigned name-key petition")
+assert_eq(unsigned.senderKey, "zipfresh", "unsigned petition key survives Snapshot")
+assert_eq(unsigned.name, "Zipfresh", "unsigned display name survives Snapshot")
+assert_eq(unsigned.characterId, nil, "unsigned Snapshot row has no store id")
+assert_eq(desk.favorPicks[snapA.id], snapA.id, "Snapshot keeps standing favor")
+assert_eq(desk.favorPicks.zipfresh, snapB.id, "Snapshot keeps sender-key favor")
+assert_eq(desk.lastSanctioned, nil, "live pair Snapshot has no last pair")
+
+local livePairSnap = Gora:GetSanctioned()
+assert_eq(Gora:Restore({}), nil, "empty {} does not replace live memory")
+assert_eq(Gora:GetSanctioned().fighterA, livePairSnap.fighterA, "empty Restore keeps fighter A")
+assert_eq(Gora:GetSanctioned().fighterB, livePairSnap.fighterB, "empty Restore keeps fighter B")
+assert_eq(Gora:Restore({ petitions = {}, favorPicks = {} }), nil, "eventId-less table is not a snapshot")
+assert_eq(Gora:GetSanctioned().fighterA, snapA.id, "stateless Restore keeps the live pair")
+
+Gora:ResetForTests()
+Runtime:ResetForTests()
+assert_eq(Gora:GetSanctioned(), nil, "reset cleared the live pair")
+assert_eq(Gora:Restore(desk), true, "gora before event still Restores into memory")
+assert_eq(Gora:GetSanctioned(), nil, "Restore-before-event expires on the next read")
+assert_eq(Runtime:Restore(liveEvent), true, "event Restore lands first")
+assert_eq(Gora:Restore(desk), true, "gora Restore after event succeeds")
+local resumedPair = Gora:GetSanctioned()
+assert_eq(resumedPair.fighterA, snapA.id, "Restore after event keeps fighter A")
+assert_eq(resumedPair.fighterB, snapB.id, "Restore after event keeps fighter B")
+assert_eq(resumedPair.stipulation, "come as you are", "Restore after event keeps the stipulation")
+local resumedUnsigned = Gora:GetPetitions()
+local foundUnsigned = false
+for i = 1, #resumedUnsigned do
+  if resumedUnsigned[i].senderKey == "zipfresh" then foundUnsigned = true end
+end
+assert_eq(foundUnsigned, true, "Restore keeps the unsigned name-key petition")
+assert_eq(Gora:GetFavor()[snapA.id], snapA.id, "Restore keeps standing favor")
+assert_eq(Gora:GetFavor().zipfresh, snapB.id, "Restore keeps sender-key favor")
+assert_eq(Gora:GetProposal().winnerId, snapB.id, "Reload keeps the proposed winner")
+assert_eq(Gora:GetProposal().source, "raid-health", "Reload keeps raid-health source")
+local stripped = Gora:Snapshot()
+stripped.proposal = nil
+assert_eq(Gora:Restore(stripped), true, "Restore without a proposal key succeeds")
+assert_eq(Gora:GetProposal(), nil, "Restore without a proposal key leaves none")
+assert_eq(Gora:Restore(desk), true, "re-Restore brings the draft back")
+assert_eq(Gora:GetProposal().winnerId, snapB.id, "re-Restore keeps the proposed winner")
+local ruled, ruledErr = Gora:DeclareVictor(snapA.id)
+assert_true(ruled ~= nil, "DeclareVictor after Restore does not refuse no sanctioned gora")
+assert_eq(ruledErr, nil, "DeclareVictor after Restore has no error")
+assert_eq(ruled.ruling, "victor", "DeclareVictor after Restore records the ruling")
+assert_eq(Gora:GetSanctioned(), nil, "DeclareVictor after Restore clears the live pair")
+assert_eq(Gora:GetLastSanctioned().fighterA, snapA.id, "ruling after Restore leaves last pair")
+
+local afterRuling = Gora:Snapshot()
+assert_eq(afterRuling.eventId, liveEvent.eventId, "post-ruling Snapshot still has eventId")
+assert_eq(afterRuling.sanctioned, nil, "post-ruling Snapshot has no live pair")
+assert_eq(afterRuling.lastSanctioned.fighterA, snapA.id, "post-ruling Snapshot keeps last pair")
+assert_eq(afterRuling.lastSanctioned.fighterB, snapB.id, "post-ruling Snapshot keeps last pair B")
+
+--------------------------------------------------------------------------------
+-- ResetForTests must not call DB:Save.
+--------------------------------------------------------------------------------
+reset()
+local saveCalls = 0
+local savedDB = COB.DB
+COB.DB = {
+  Save = function()
+    saveCalls = saveCalls + 1
+    return true
+  end,
+}
+assert_eq(Gora:ResetForTests(), true, "ResetForTests still clears under _IN_TEST")
+assert_eq(saveCalls, 0, "ResetForTests does not call DB:Save")
+assert_eq(Runtime:ResetForTests(), true, "Runtime ResetForTests still clears")
+assert_eq(saveCalls, 0, "Runtime ResetForTests does not call DB:Save")
+assert_eq(Store:ResetForTests(), true, "Store ResetForTests still clears")
+assert_eq(saveCalls, 0, "Store ResetForTests does not call DB:Save")
+COB.DB = savedDB
 
 --------------------------------------------------------------------------------
 -- Getters / verbs do not CreateFrame or write ChurchOfBeefDB.

@@ -159,7 +159,7 @@ function Knighting:KnightThisBeef(humanId, now)
   local row, setErr = Store:SetRank(humanId, KNIGHT_ID, now)
   if not row then return nil, setErr end
   if Store.AppendCeremony then
-    Store:AppendCeremony("Knighting", { humanId }, now)
+    Store:AppendCeremony("Knighting", { humanId }, now, nil, liveEventId())
   end
   self:_Expire()
   line[human.id] = nil

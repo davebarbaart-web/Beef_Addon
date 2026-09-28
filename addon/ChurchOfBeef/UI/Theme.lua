@@ -11,6 +11,10 @@ local COB = ChurchOfBeef
 --   parchment  content (light); parchmentMid is the aged mid tone
 --   iron       chrome (dark iron); charcoal is the deeper ground
 --   silver     aged metal / quiet secondary
+--   gathering  night-chip umber (weekly Church night)
+--   knighting  night-chip bronze (sacred elevation; dark, not bright gold)
+--   gora       night-chip steel (sanctioned combat)
+--   notice     night-chip pewter (Discord stub)
 -- Unknown role → nil (no invented tint).
 --
 -- Class colors (Theme:ClassColor): passthrough of RAID_CLASS_COLORS[classFile]
@@ -28,14 +32,16 @@ local COB = ChurchOfBeef
 -- Absent or empty role → stock: display Fonts\MORPHEUS.TTF, label/body
 -- Fonts\FRIZQT__.TTF. Missing media must not fail load.
 --
--- Variable-font caveat: google/fonts ships Grenze Gotisch, EB Garamond, and
--- Alegreya as variable TTFs only (filename "[wght]"). UnifrakturMaguntia is
--- the one static blackletter. Typography LOCKED 2026-08-18 (David delegated
--- the pick): display = UnifrakturMaguntia (static — no default-instance
--- weight gamble; the traditional fraktur is the Church's voice), label/body
--- = EBGaramond (variable, but its default instance is regular 400 — the
--- book serif the ledger wants). Grenze Gotisch and Alegreya stay on disk as
--- the alternates; a swap is the one-line SHIPPED_FONTS edit below.
+-- Typography: display = Grenze Gotisch Regular; label/body = EB Garamond
+-- Regular. Grenze keeps the blackletter/ecclesiastical voice while remaining
+-- legible in 18–22px stream captures; Unifraktur remains inventoried for
+-- larger decorative use.
+-- Anniversary SetFont does not reliably load variable TTFs, and a "[wght]"
+-- filename can fail the file lookup — both drop the surface to Friz and
+-- read as an unfinished addon. SHIPPED_FONTS therefore points at static
+-- Regular instances (fontTools instancer, 2026-08-18). The google/fonts
+-- variable sources stay on disk as inventory; Grenze Gotisch Regular and
+-- Alegreya Regular are the swap candidates.
 --
 -- Textures (Theme:Texture):
 --   1. global ChurchOfBeefMediaManifest[name] (generated Media/manifest.lua;
@@ -59,6 +65,10 @@ local COB = ChurchOfBeef
 --   tome_records, ribbon_bookmark, frame_fightercard, ornament_bullhorn
 --   plate_verb, plate_verb_hover, plate_verb_pressed
 --   glyph_record, glyph_defenses, glyph_headtohead, glyph_stipulation
+--   close_up, close_down, close_highlight, close_disabled
+-- Close chrome is Theme:CloseButton — the stock 32px window X. Surfaces
+-- must not invent CLOSE word plates. Missing stock art falls back to a
+-- gold X so load never fails.
 -- Fighter-card parchment reuses the proclamation center fill when custom
 -- art lands; the single frame_fightercard name is the whole-card fallback.
 
@@ -78,6 +88,10 @@ local PALETTE = {
   gold         = { 201, 165, 74  }, -- #C9A54A
   oxblood      = { 110, 31,  31  }, -- #6E1F1F
   silver       = { 154, 150, 142 }, -- #9A968E
+  gathering    = { 74,  52,  36  }, -- #4A3424
+  knighting    = { 72,  56,  28  }, -- #48381C
+  gora         = { 36,  48,  58  }, -- #24303A
+  notice       = { 52,  50,  46  }, -- #34322E
 }
 
 function Theme:Color(role)
@@ -115,25 +129,47 @@ local STOCK_FONTS = {
 -- blackletter candidates, both serif candidates). Swap a role key after the
 -- in-client pick; do not hardcode these paths outside this file.
 Theme.SHIPPED_FONTS = {
-  display = "UnifrakturMaguntia/UnifrakturMaguntia-Book.ttf",
-  label   = "EBGaramond/EBGaramond[wght].ttf",
-  body    = "EBGaramond/EBGaramond[wght].ttf",
-  -- inventory
-  GrenzeGotisch      = "GrenzeGotisch/GrenzeGotisch[wght].ttf",
+  display = "GrenzeGotisch/GrenzeGotisch-Regular.ttf",
+  label   = "EBGaramond/EBGaramond-Regular.ttf",
+  body    = "EBGaramond/EBGaramond-Regular.ttf",
+  -- inventory (static Regular; variable sources remain beside these)
+  GrenzeGotisch      = "GrenzeGotisch/GrenzeGotisch-Regular.ttf",
   UnifrakturMaguntia = "UnifrakturMaguntia/UnifrakturMaguntia-Book.ttf",
-  EBGaramond         = "EBGaramond/EBGaramond[wght].ttf",
-  Alegreya           = "Alegreya/Alegreya[wght].ttf",
+  EBGaramond         = "EBGaramond/EBGaramond-Regular.ttf",
+  Alegreya           = "Alegreya/Alegreya-Regular.ttf",
 }
 
 -- Recommended sizes for dress lanes. Blackletter (headline / name) never
--- below 16. caption is serif only.
+-- below 16. caption is serif only and never below the 12px stream floor
+-- (10px on parchment failed the 2026-08-18 in-client pass).
 Theme.FontSize = {
   headline = 22,
   name     = 18,
   label    = 12,
   body     = 12,
-  caption  = 10,
+  caption  = 12,
 }
+
+-- Shared rhythm for theatrical composition. Surfaces read these instead of
+-- inventing 5/6/10/14 leftovers. rule is the gold hairline thickness.
+Theme.Space = {
+  xs     = 4,
+  sm     = 8,
+  md     = 16,
+  lg     = 24,
+  xl     = 32,
+  rule   = 2,
+  band   = 48,
+  footer = 40,
+  nail   = 8,
+  seal   = 28,
+  glyph  = 14,
+  close  = 32,
+}
+
+-- Stock UIPanelCloseButton size. Theme:CloseButton reads this so every
+-- player-opened window uses the same X.
+Theme.CloseSize = 32
 
 function Theme:FontPath(role)
   if STOCK_FONTS[role] == nil then return nil end
@@ -179,7 +215,7 @@ local STOCK = {
   bar_favor_fill        = "Interface\\TargetingFrame\\UI-StatusBar",
   sigil_favor           = "Interface\\Buttons\\UI-CheckBox-Up",
 
-  -- Minimap roundel: neutral disc until the bull art lands.
+  -- Minimap roundel: neutral disc when custom bull art is unavailable.
   roundel_minimap            = "Interface\\Minimap\\UI-Minimap-Background",
   roundel_minimap_pushed     = "Interface\\Buttons\\UI-Quickslot-Depress",
   roundel_minimap_highlight  = "Interface\\Minimap\\UI-Minimap-ZoomButton-Highlight",
@@ -203,6 +239,49 @@ local STOCK = {
   glyph_defenses    = "Interface\\Buttons\\UI-CheckBox-Up",
   glyph_headtohead  = "Interface\\Buttons\\UI-RadioButton",
   glyph_stipulation = "Interface\\Buttons\\UI-CheckBox-Check",
+
+  -- Stock window X (UIPanelCloseButtonNoScripts on Anniversary).
+  close_up        = "Interface\\Buttons\\UI-Panel-MinimizeButton-Up",
+  close_down      = "Interface\\Buttons\\UI-Panel-MinimizeButton-Down",
+  close_highlight = "Interface\\Buttons\\UI-Panel-MinimizeButton-Highlight",
+  close_disabled  = "Interface\\Buttons\\UI-Panel-MinimizeButton-Disabled",
+
+  -- Shared FrameXML chrome (LootFrame dialog; tooltip used by Inputs).
+  stock_dialog_bg          = "Interface\\DialogFrame\\UI-DialogBox-Background",
+  stock_dialog_border      = "Interface\\DialogFrame\\UI-DialogBox-Border",
+  stock_tooltip_bg         = "Interface\\Tooltips\\UI-Tooltip-Background",
+  stock_tooltip_border     = "Interface\\Tooltips\\UI-Tooltip-Border",
+  stock_grabber_up         = "Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-Up",
+  stock_grabber_down       = "Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-Down",
+  stock_grabber_highlight  = "Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-Highlight",
+}
+
+-- Anniversary-verified backdrop tables. dialog matches LootFrame.lua.
+Theme.BACKDROP = {
+  dialog = {
+    bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background",
+    edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
+    tile = true,
+    tileSize = 32,
+    edgeSize = 32,
+    insets = { left = 11, right = 12, top = 12, bottom = 11 },
+  },
+  tooltip = {
+    bgFile = "Interface\\Tooltips\\UI-Tooltip-Background",
+    edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+    tile = true,
+    tileSize = 16,
+    edgeSize = 16,
+    insets = { left = 4, right = 4, top = 4, bottom = 4 },
+  },
+  paper = {
+    bgFile = "Interface\\QuestFrame\\QuestBG",
+    edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+    tile = true,
+    tileSize = 256,
+    edgeSize = 16,
+    insets = { left = 4, right = 4, top = 4, bottom = 4 },
+  },
 }
 
 function Theme:Texture(name)
@@ -215,4 +294,129 @@ function Theme:Texture(name)
     end
   end
   return STOCK[name]
+end
+
+-- Shared window close. Parent may be a real client userdata frame.
+-- Does not mint frames at load. Caller owns Show/Hide.
+function Theme:CloseButton(parent, onClick)
+  if type(CreateFrame) ~= "function" or parent == nil then return nil end
+  local size = Theme.CloseSize
+  if type(size) ~= "number" then size = 32 end
+
+  local button
+  local ok, minted = pcall(CreateFrame, "Button", nil, parent, "UIPanelCloseButtonNoScripts")
+  if ok and minted then
+    button = minted
+  else
+    button = CreateFrame("Button", nil, parent)
+  end
+  if not button then return nil end
+
+  button:SetWidth(size)
+  button:SetHeight(size)
+  button._cobClose = true
+
+  local function dress(method, name, extra)
+    local setter = button[method]
+    if type(setter) ~= "function" then return false end
+    local path = Theme:Texture(name)
+    if type(path) ~= "string" or path == "" then return false end
+    if extra then
+      return pcall(setter, button, path, extra)
+    end
+    return pcall(setter, button, path)
+  end
+
+  local painted = dress("SetNormalTexture", "close_up")
+  dress("SetPushedTexture", "close_down")
+  dress("SetHighlightTexture", "close_highlight", "ADD")
+  dress("SetDisabledTexture", "close_disabled")
+
+  if not painted and button.CreateFontString then
+    local fs = button:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    if fs then
+      local r, g, b = Theme:Color("gold")
+      if fs.SetTextColor and type(r) == "number" then
+        fs:SetTextColor(r, g, b, 1)
+      end
+      if fs.SetAllPoints then fs:SetAllPoints(button) end
+      if fs.SetJustifyH then fs:SetJustifyH("CENTER") end
+      if fs.SetText then fs:SetText("X") end
+      if button.SetFontString then button:SetFontString(fs) end
+    end
+    if button.SetText then button:SetText("X") end
+  end
+
+  if type(onClick) == "function" and button.SetScript then
+    button:SetScript("OnClick", onClick)
+  end
+  return button
+end
+
+function Theme:Backdrop(kind)
+  local spec = Theme.BACKDROP[kind]
+  if type(spec) ~= "table" then return nil end
+  local out = {
+    bgFile = spec.bgFile,
+    edgeFile = spec.edgeFile,
+    tile = spec.tile,
+    tileSize = spec.tileSize,
+    edgeSize = spec.edgeSize,
+  }
+  if type(spec.insets) == "table" then
+    out.insets = {
+      left = spec.insets.left,
+      right = spec.insets.right,
+      top = spec.insets.top,
+      bottom = spec.insets.bottom,
+    }
+  end
+  return out
+end
+
+local function widgetFn(frame, name)
+  if frame == nil or type(name) ~= "string" then return nil end
+  local ok, fn = pcall(function() return frame[name] end)
+  if ok and type(fn) == "function" then return fn end
+  return nil
+end
+
+function Theme:ApplyBackdrop(frame, kind, fillRole, edgeRole, fillAlpha)
+  if frame == nil then return false end
+  local spec = Theme:Backdrop(kind)
+  if not spec then return false end
+  local setBackdrop = widgetFn(frame, "SetBackdrop")
+  if not setBackdrop then return false end
+  local ok = pcall(setBackdrop, frame, spec)
+  if not ok then return false end
+  local fr, fg, fb = Theme:Color(fillRole or "charcoal")
+  local setColor = widgetFn(frame, "SetBackdropColor")
+  if type(fr) == "number" and setColor then
+    pcall(setColor, frame, fr, fg, fb, fillAlpha or 1)
+  end
+  local er, eg, eb = Theme:Color(edgeRole or "gold")
+  local setBorder = widgetFn(frame, "SetBackdropBorderColor")
+  if type(er) == "number" and setBorder then
+    pcall(setBorder, frame, er, eg, eb, 1)
+  end
+  frame._cobBackdrop = kind
+  return true
+end
+
+function Theme:PanelButton(parent, text, onClick)
+  if type(CreateFrame) ~= "function" or parent == nil then return nil end
+  local button
+  local ok, minted = pcall(CreateFrame, "Button", nil, parent, "UIPanelButtonTemplate")
+  if ok and minted then
+    button = minted
+    button._cobStockTemplate = "UIPanelButtonTemplate"
+  else
+    button = CreateFrame("Button", nil, parent)
+  end
+  if not button then return nil end
+  if type(text) == "string" and button.SetText then button:SetText(text) end
+  if type(onClick) == "function" and button.SetScript then
+    button:SetScript("OnClick", onClick)
+  end
+  return button
 end

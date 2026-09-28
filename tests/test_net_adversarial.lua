@@ -11,6 +11,7 @@ local restore = stub.install()
 ChurchOfBeef = ChurchOfBeef or {}
 ChurchOfBeef._IN_TEST = true
 dofile("addon/ChurchOfBeef/Core/Common.lua")
+dofile("addon/ChurchOfBeef/Net/Codec.lua")
 dofile("addon/ChurchOfBeef/Net/BeefNet.lua")
 
 local COB = ChurchOfBeef
@@ -151,6 +152,52 @@ stub.advance(1)
 assert_eq(#stub.addonMessages, N.OutboundBurst + 1, "one second buys exactly one more message")
 stub.advance(5)
 assert_eq(#stub.addonMessages, N.OutboundBurst + 6, "and the rate holds at one per second")
+
+--------------------------------------------------------------------------------
+-- A-05: worst-case 12-letter names + favor through Send / _TransmitWhisper.
+-- Codec round-trip alone is not enough. Do not raise MAX_BODY.
+--------------------------------------------------------------------------------
+reset()
+local fat = COB.Codec:EncodeState({
+  eventId = 123456,
+  state = "CONSEQUENCE",
+  riteType = "Proclamation",
+  subjects = { candidate = 123456, fighters = { 234567, 345678 } },
+  sequence = 1234,
+  favor = { a = 999, b = 999 },
+  names = {
+    candidate = "CCCCCCCCCCCC",
+    fighterA = "AAAAAAAAAAAA",
+    fighterB = "BBBBBBBBBBBB",
+  },
+})
+assert_true(fat ~= nil, "fat STATE encodes")
+assert_true(#fat <= 240, "fat STATE #payload is under MAX_BODY")
+local sentOk, sentWhy = N:Send(fat)
+assert_eq(sentOk, true, "fat STATE goes through Net:Send")
+assert_eq(sentWhy, nil, "fat STATE Send has no refusal")
+assert_true(#fat <= 240, "Send accepted a body at or under 240")
+assert_true(#stub.addonMessages >= 1, "fat STATE reached the guild transmit")
+
+local whisperOk, whisperWhy = N:_TransmitWhisper(fat, "Steakina")
+assert_eq(whisperOk, true, "fat STATE goes through _TransmitWhisper")
+assert_eq(whisperWhy, nil, "fat whisper has no refusal")
+assert_eq(N.lastSent, fat, "whisper lastSent is the encoded fat body")
+assert_true(#N.lastSent <= 240, "whisper #payload is under MAX_BODY")
+
+local firstNight = COB.Codec:EncodeState({
+  eventId = 1,
+  state = "RITE",
+  riteType = "Gora",
+  sequence = 3,
+  subjects = { fighters = { 8, 9 } },
+  favor = { a = 2, b = 1 },
+  names = { fighterA = "AAAAAAAAAAAA", fighterB = "BBBBBBBBBBBB" },
+})
+assert_eq(#firstNight, 57, "first-night Gora stays 57 bytes through the live encoder")
+assert_eq(N:Send(firstNight), true, "first-night Gora goes through Net:Send")
+assert_eq(N:_TransmitWhisper(firstNight, "Steakina"), true,
+  "first-night Gora goes through _TransmitWhisper")
 
 reset()
 restore()

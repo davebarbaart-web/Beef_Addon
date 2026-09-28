@@ -1,0 +1,1 @@
+Built-in ImageGen, 2026-08-20. Canonical papal bull wax seal: forward-facing bull head embossed in oxblood wax with a restrained antique-gold rim; Warcraft-compatible ecclesiastical game UI style; orthographic, no text or faction marks, transparent alpha. Background extraction pass preserved the seal and produced true transparency.

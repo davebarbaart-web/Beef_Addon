@@ -32,7 +32,7 @@ One client for Decree timing. Two clients (Pope + congregation, same guild) for 
 1. **Cold login order.** Fresh login (not `/reload`). Record the order and approximate delay of `ADDON_LOADED` (`ChurchOfBeef`), `PLAYER_LOGIN`, and `PLAYER_ENTERING_WORLD` if that last event fires. Note when `ChurchOfBeefDB` is already populated (item 7) vs when UI/Net init has run.
 2. **Decree once-per-login.** With an active Decree already in the store, record whether the parchment appears at login, at which event, and whether a second `/reload` shows it again (once per login vs once per reload). Then hide it and confirm minimap can replay. **Seeing today's banner is not the Result.**
 3. **`/reload` vs logout.** Repeat step 1 on `/reload` only. Note any event that does not re-fire. That difference is the timing fact.
-4. **Snapshot request window (two clients).** Congregation `/reload`s while the Pope is online. Record the earliest moment a whisper-prefix message can be sent and received (server-provided sender — item 3). If `#8` is still fail-closed, record "request timing only; theater snapshot not authorized" — do not invent a Pope list.
+4. **Snapshot request window (two clients).** Congregation `/reload`s while the Pope is online. Record the earliest moment a whisper-prefix message can be sent and received (server-provided sender — item 3). `Data/Popes.lua` ships Thedave; STATE / SNAPSHOT accept listed senders. Record request timing; do not invent designated-Council UX (`#8` remainder).
 5. **Write facts on this sheet.** Event order, banner timing, earliest legal whisper. No calendar. No RSVP. No SUMMON. No INPUT channel.
 
 Do not change addon Lua from this sheet.
@@ -47,8 +47,10 @@ Do not change addon Lua from this sheet.
 
 ## Leftovers
 
-- Snapshot schema (unspecified; do not invent)
-- OPEN_QUESTIONS #8 — registered-Pope list; theater snapshot stays fail-closed until licensed
+- Decree login banner and minimap replay exist; they are not a timing Result.
+- Snapshot request/response exist on whisper; HELLO rebroadcast exists. Wave 2 still forbids RequestSnapshot on a cold Tuesday from `Popes.List[1]` alone.
+- Congregation must not Restore Event Mode from SavedVariables (Wave 2 Task 10 — not implemented here).
+- Do not invent a hold timer.
 - SUMMON THE FAITHFUL protocol (do not invent)
 - INPUT channel (unspecified; do not invent)
 - Decree deputy / authorship (OPEN_QUESTIONS #5; do not invent)

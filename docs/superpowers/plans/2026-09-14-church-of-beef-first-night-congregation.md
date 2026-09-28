@@ -1,5 +1,7 @@
 # First-night congregation Implementation Plan
 
+> **SUPERSEDED 2026-09-14.** Do not implement this plan. Wave 2 review convicted congregation `EnsureCharacterByName`, same-PROTOCOL STATE growth, and inbound Proclaim-without-a-beat. Use `docs/superpowers/plans/2026-09-14-church-of-beef-first-night-wave-2.md`. Kept as a historical artifact of Wave 1 planning.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** A zip-install recruit can understand Tuesday, ask to fight, pick a side, and see named fighters and closed proclamation kinds on a second client — and the Pope can `/reload` mid-Gora without losing the bout.

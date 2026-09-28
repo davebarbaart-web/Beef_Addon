@@ -832,11 +832,191 @@ Writers do not commit and do not edit TOC / `ChurchOfBeef.lua` / `tests/run.lua`
   5. **David's in-client screenshot pass — the wave closes on his acceptance**, surface by surface vs the REFERENCE renders in `docs/design/renders/`. POLISH:CANDIDATE at most until then.
   6. This verdict. No commit (David has not asked; wave-boundary commit question comes at gate close).
 
-### Typography lock (David delegated the pick, 2026-08-18)
+### Typography lock (David delegated the pick; revised after stream-size preview, 2026-08-20)
 
-- **display = UnifrakturMaguntia** (`UnifrakturMaguntia-Book.ttf`, static OFL). Grenze Gotisch is variable-only; a 20506 default-instance load of a wght-100–900 face is a weight gamble the Church's headline voice doesn't need. The static fraktur is predictable at 16/22/30px.
-- **label/body = EB Garamond** (variable, but its default instance is regular 400 — the book-serif read the ledger surfaces want). Alegreya stays on disk as the alternate.
+- **display = Grenze Gotisch Regular** (`GrenzeGotisch-Regular.ttf`, static OFL instance). The deterministic 1024×768 preview showed that Unifraktur's dense capitals lost too much information at the 18–22px stream floor; Grenze retains the ecclesiastical voice with materially clearer word shapes.
+- **label/body = EB Garamond Regular** (`EBGaramond-Regular.ttf`, static OFL instance). The book-serif read remains the ledger-surface default. Alegreya stays on disk as the alternate.
 - Both alternates remain under `Media/Fonts/` with OFL licenses; a swap is a one-line `SHIPPED_FONTS` edit in `UI/Theme.lua`. If David's in-client look disagrees, the pick revisits — this is a decision, not a gate.
 
+### Legibility audit (David's in-client report, 2026-08-18)
 
+David's first in-client look: "still VERY far away from actually being legible." He asked for agents to review with eyes before ship. Two responses:
 
+1. **Contrast math (WCAG relative luminance, computed):** the failures are structural, not taste. Class colors on the fighter card's parchment plates run **1.17:1–3.33:1** (Hunter 1.17 — near-invisible). Gold small text on parchment is **1.62:1** (Decree header/church name). Silver on parchment 2.04:1. Meanwhile class colors on the HUD's dark iron run 3.13:1–15:1 (fine), and charcoal/iron ink on parchment is 10.4–12:1. Fixes must move fighter names onto dark grounds (or confine class tint to accents on parchment) and take small gold text off parchment.
+2. **Lane U-L (orchestrator-added):** offline preview renderer — harness scene dump (`tests/preview_dump.lua`) → Pillow compositor (`scripts/render-preview.py`) → PNGs in `docs/design/renders/preview/` that agents read with image tools before any human screenshot. Not pixel-faithful to the WoW rasterizer; covers the legibility class (contrast, size floors, overflow, busy-ground-behind-text).
+
+- U-L ([preview renderer](5c75f2e6-b9f6-4f45-930a-1a6a04b0f759)): writer DONE. [Review](3bc004ab-1743-4a77-a731-33dc0613c850): Spec PASS; Quality Approved-with-nits → integrator fixed the one Important (compositor defaulted uncolored GameFont strings to parchment; they now inherit stock template colors — GameFont* gold, GameFontHighlight* white — so the HUD favor row can't be mis-scored as invisible). 11 scenario JSONs + theme.json, 11 PNGs + contact sheet, deterministic, real shipped TTFs for Theme roles, no Blizzard font downloads, stub changes record-only. Harness **16774 passed, 0 failed**. Nits riding: live-after-set stub getters; subLayer not z-sorted; texcoords not cropped. Preview dir gitignored (generated artifacts). **Lane U-L signed.**
+- Orchestrator review of the first previews confirmed the audit and added one finding: the HUD chassis paints a near-full QuestBG slab (cream), so class-tinted/silver text on it fails the ink discipline — folded into the U-M legibility lane as a required chassis fix (dark iron bar per HUD-B).
+- U-M ([legibility fixes](e9021ccd-c776-4cf4-b820-b78aaf4c30e3)): writer DONE. [Review](1b2c8687-34c2-4228-bfc6-c752c63be56e): Spec PASS; Quality Approved-with-nits. Ink discipline applied: FighterCard plates carry class-tinted blackletter names on dark charcoal header bands (gold hairline), ledger all-charcoal; HUD chassis is dark iron (QuestBG slab gone dark), one class-tinted serif name per fighter (label role — blackletter fighter names live on the card), dark name fields, format line carries `Level · Title · Class`; Decree header/church/Close charcoal (the blackletter decree line was already legible, untouched); Records ribbons/Prev/Next/Close are dark plates with gold text, chrome title gold on a charcoal band, page-title oxblood rubrication kept. Toasts audited clean, no edit. Orchestrator read the after-renders: all four surfaces pass. Integrator nit fix: HUD favor percents silver → parchment (5.1:1 → 10.4:1; they carry live information). Nits riding: hidden QuestBG slot remains as an art drop target (nothing shows it); Decree Close cramped at 20×20. Harness **16795 passed, 0 failed** (twice + after the percent fix). **Lane U-M signed.** POLISH:CANDIDATE.
+
+### Wave-boundary commit (David asked, 2026-08-18)
+
+`41d2da6` — "feat: UI Overhaul wave — Theme design system, dressed theater, plain console" on `reformation/phase-1-excision`. Lands the UI Overhaul wave plus the previously uncommitted Wire + Vestments work (the tree had been uncommitted since Phase 0). Gate U stays OPEN for David's in-client screenshot pass; Gate W stays OPEN for his two-client smoke; Gate 6 stays OPEN for A01–A04.
+
+### U-N Tightness (David: "still incredibly loose", 2026-08-18)
+
+The token/ink wave dressed colors. It did not compose. `/beef` (Records Book) and Event theater still read as prototype boxes: 8px-tiled QuestBG, bag-slot seals, 1px leftover rules, and — the load-bearing bug — **variable TTFs with `[wght]` in the filename**. Anniversary `SetFont` does not reliably load those; every label/body string fell back to Friz.
+
+- Theme now ships **static Regular** (`EBGaramond-Regular.ttf`, plus Alegreya/Grenze Regular instances). `Theme.Space` is the 4/8/16/24/2/48/40 rhythm.
+- Geometric placeholders generated via `scripts/make-geometry-placeholders.py` → `import-assets.py` (gold-ring seals, iron nails, parchment fields, engraved glyphs). Manifest 29 entries. Not ChatGPT art — honest geometry until masters land.
+- Records Book: title band / two leaves / footer tabs. Page title lives on the left leaf. Medallions stride with the body.
+- Fighter card: stacked A-over-B tape (R3 is one fighter; both sit in one left-third ledger), fallback height 360.
+- HUD: 2px class rails, no 8px tile, format line does not wrap onto the favor row.
+- Decree/Toasts: 8px nail / 12px proclamation inset.
+
+Harness **16804 passed, 0 failed** at the composition cut (recount after the wrap fixes). Gate U item 5 still David's screenshot pass. POLISH:CANDIDATE.
+
+### U-O Console IA (David: "Beef console is very busy and not intuitive", 2026-08-18)
+
+The Director Console was one 780×1050 dump of every Pope verb at equal weight. Law 10 stays: stock desk, no parchment, no Blizzard tab strip.
+
+- Phase strip follows Runtime: QUIET shows **Start Event**; ASSEMBLY shows the four Open rites plus **End Event** (right-aligned, not under Knighting); RITE shows **Close Rite**; CONSEQUENCE shows **Continue** / **End Event**. Mute `Next:` hint names the decision.
+- Gora verdict plates (DECLARE VICTOR / COWARDICE / VOID / FREE RULING) Show only during a Gora RITE or CONSEQUENCE.
+- ARCHIVE / CANONIZE / Recognition / Decree / GRANT HONORIFIC sit on a stock **Records & archive** fold (default hidden). Presence, Knighting, Gora, Confession, CeremonyLog, and MARK THIS MOMENT stay on the ceremony desk. Widgets stay created.
+
+Harness **16870 passed, 0 failed**. Gate U item 5 still David's screenshot pass. POLISH:CANDIDATE.
+
+### U-P Parallel surface pass (David asked for a swarm, 2026-08-18)
+
+Eight exclusive-file writers plus sixteen read-only critics. Integrator kept roman W–L on the fighter card (theater), two-line Decree wrap, parchment fills under Records leaves, and filed Presence “here” as OPEN_QUESTIONS #13. Do not invent an online bit.
+
+Harness **16909 passed, 0 failed**. Gate U item 5 still David's screenshot pass. POLISH:CANDIDATE.
+
+### U-Q Legibility swarm (David asked to continue, 2026-08-19)
+
+Theme caption floor is 12. Exclusive writers plus critics: charcoal/iron on parchment, class/gold on dark only, leftover 6/10/14 onto Theme.Space where unpinned, Petitions labeled, dock mute refuse, HUD format width, Decree Close 24×24. Presence “here” stays OPEN_QUESTIONS #13. `Toasts:Show` stays ungated (harness). Congregation Proclaim fan-out not invented.
+
+Harness **17496 passed, 0 failed**. Gate U item 5 still David's screenshot pass. POLISH:CANDIDATE.
+
+### U-R Navigation + layout-responsive (David: finish a named goal, 2026-08-19)
+
+Named goal: every player-facing surface is clear to scan, easy to navigate, and layout-responsive (clamp, guest `uiScale`, wrap, labeled paths). Not a CSS/web layout. POLISH:CANDIDATE only; David signs PASS.
+
+- Director Console: stock grip-resize (default 780×780, floor 740×520), size persist in `ChurchOfBeefDB.ui.console`, desk columns / list wells / compose boxes follow the frame. Compose fold header is **Decree** (theatrical **A GATHERING HAS BEEN DECREED** stays on the banner). Ceremony log header is **Ceremony log**.
+- Records Book: stock grip-resize (default 720 × `tomeHeight()`, floor 480×320), persist `ChurchOfBeefDB.ui.recordsBook` `w`/`h`. Leaves already stretch.
+- Decree, HUD, Fighter Card, Console Dock, Inputs, Toasts: `DISPLAY_SIZE_CHANGED` / `UI_SCALE_CHANGED` re-clamp or re-budget. Guest on player `uiScale` — never write it.
+- Presence `here` stays OPEN_QUESTIONS #13. Congregation Proclaim fan-out not invented.
+
+Harness **17546 passed, 0 failed**. Gate U item 5 still David's screenshot pass. POLISH:CANDIDATE.
+
+### U-S Generated identity assets + responsive release candidate (2026-08-20)
+
+- Built-in ImageGen produced four identity masters in transparent asset mode: papal wax bull seal, Gora bull-and-axes shield, victor gold seal, and a simplified 20px bull roundel. Source PNGs retain 10% safety margins; prompt sidecars and `ASSET_LOG.md` preserve provenance. The importer clears alpha=1 quantization noise only, then exports the defined 32-bit TGA sizes with stock fallbacks still present.
+- Full-surface parchment/frame art now crops the production safety margin at render time. Proclamation copy, fighter-card ledger rows, and the Decree remain on their intended parchment instead of drifting into transparent master padding.
+- The preview compositor now honors `SetTexCoord`, intrinsic/nested ScrollFrame clipping, and the offset Blizzard tracking-button border. The 20px minimap bull is visible instead of being hidden by an inaccurate centered-ring approximation.
+- Responsive verification is repeatable through `scripts/render-responsive-previews.py`: **3 screen sizes × 11 scenarios**, at compact 800×600, stream 1024×768, and widescreen 1920×1080. All 33 scenes pass non-scroll screen-bound checks. The compact pass found and fixed the HUD's crushed 72px layout; the live HUD now preserves a 92-unit typography floor and fixed ledger-row heights.
+- Harness **17547 passed, 0 failed**. Importer selftest PASS. Candidate ZIP rebuilt and exact source installed under Anniversary `Interface/AddOns/ChurchOfBeef`.
+
+Gate U item 5 remains the in-client `/reload` interaction and screenshot pass. **POLISH:CANDIDATE**, not POLISH:PASS.
+
+### U-T Live Event Input correction (2026-08-20)
+
+The first successful live window capture exposed a surface the offline matrix did not include: the Event Mode congregation input strip. In the client it presented an unlabeled empty field over three equal-weight buttons, so the functional intent was not self-evident.
+
+- The strip remains stock-template pragmatic: Blizzard tooltip backdrop and border, stock input and button templates, no custom Media, no sound, and no Quiet chrome.
+- It now identifies itself as **EVENT INPUT**, displays the injected recipient (or **No recipient**), labels the field **Confession (optional)**, disables actions until their required recipient/character context exists, and provides stock tooltips for Petition, Catch up, and Confess.
+- `event_inputs` is now a first-class deterministic preview scenario. Responsive verification is **3 screen sizes × 12 scenarios**: all **36 scenes** pass screen-bound checks at 800×600, 1024×768, and 1920×1080.
+- Harness **17562 passed, 0 failed**. The exact build was repackaged and reinstalled for the final in-client `/reload` screenshot check.
+
+**Final live smoke (2026-08-20):** after reinstall and `/reload`, `/beef` opened the corrected Records Book in the Anniversary client. The empty superlative and identity states were readable; both right-page sections aligned inside the inset parchment column; Close rendered in full; the frame stayed within the viewport; and no Lua error dialog was visible. The Event Input strip had already passed the same live capture check with explicit recipient state and disabled actions. **POLISH:CANDIDATE** is shipped; David retains the `POLISH:PASS` taste sign-off.
+
+### U-U Live Records Book empty-state correction (2026-08-20)
+
+The first live `/beef` capture found two seeded-preview blind spots: the real account had no recorded outcomes, producing a blank two-page spread, and the 24-unit Close plate truncated its label to `Cl…` at the player's UI scale.
+
+- Empty superlative pages now state **No entries recorded.** without inventing history or outcomes.
+- The identity leaf is permanently structured as **Your Record**, with labeled **Honorifics** and **Marked moments** sections; each honestly states **None recorded.** when empty.
+- Live follow-up found Classic's default centered FontString justification on those two headings; both are now explicitly left-aligned and inset 24 units into the parchment content column.
+- The stock dark Close plate now has a 56-unit text-safe width.
+- Added a deterministic `records_empty` scenario. Responsive verification is now **3 screen sizes × 13 scenarios**; all **39 scenes** pass bounds checks.
+- Harness **17569 passed, 0 failed**. Repackaged and reinstalled for the post-reload live capture.
+
+Gate U item 5 remains David's post-reload interaction and screenshot acceptance. **POLISH:CANDIDATE**, not POLISH:PASS.
+
+### U-V `/beef` congregation overview overhaul (2026-08-20)
+
+The Records Book previously opened on a single archive ranking, which made the main command feel empty and gave little context about the congregation. `/beef` now opens on a dedicated two-page **Church Overview** without turning Quiet into an officer console, points board, or invented online-presence tracker.
+
+- The left leaf identifies the actual guild, current Church state, active Decree, and authoritative counts for the latest roster snapshot, ceremonies, Goras, and marked moments.
+- The right leaf answers **Your Place** with the local character and class, Church rank, separate Blizzard guild role, sanctioned Gora record, and recorded honorifics. Missing data is stated honestly rather than inferred.
+- Overview is a landing spread, not a tenth archive page. Explicit footer paths jump to Overview, Victories, Rivalries, and Martyrs; Previous/Next continue through the nine canonical record pages.
+- The layout reflows its typography and detail budget for the saved Records Book size. The compact presentation suppresses Decree flavor copy before it can collide with the metrics while preserving all primary context.
+- Deterministic `dashboard` fixtures cover state, Decree, roster, archive, identity, and navigation behavior. Responsive verification is now **3 screen sizes × 14 scenarios**; all **42 scenes** pass screen-bound checks.
+- Harness **17604 passed, 0 failed**. No sound, polling loop, Quiet ambient chrome, standings, points, fabricated permissions, or guessed presence was added.
+
+The candidate is packaged for a final in-client `/reload` and `/beef` capture. **POLISH:CANDIDATE**, not POLISH:PASS.
+
+### U-W `/beef` frontispiece legibility correction (2026-08-20)
+
+David rejected U-V in the live client as still weak in legibility and UI execution. The captured screen also showed that an archive leaf could still be mistaken for the main route. The candidate was reopened for the skill's maximum two critique→revise rounds.
+
+- `/beef` now returns an already-open archive leaf to Home; only `/beef` from Home closes the book. Home is therefore the unambiguous entry surface.
+- The saved oversized ledger is migrated once to a focused **680×520** default, with a **620×500** readability floor and ordinary user resizing thereafter.
+- Records parchment crops the generated master's safety margin, removing the translucent inset rectangles exposed by the live screenshot.
+- Typography was rebuilt around in-client floors: 26px display masthead, 24px congregation identity, 22px player identity, 20px leaf titles, 16px Decree/history lines, and 14px body/navigation copy.
+- The frontispiece now uses the papal seal and Gora sigil as focal objects; groups information into congregation state, active Decree, four durable archive totals, personal Church/guild identity, and the latest ceremony/marked moment; and visibly selects the current footer route.
+- Previous/Next are hidden on Home and restored for the nine canonical archive leaves. No new mechanic, feed, ladder, point system, online-presence inference, sound, or ambient Quiet surface was introduced.
+- Harness **17625 passed, 0 failed**. Responsive verification remains **3 screen sizes × 14 scenarios**; all **42 scenes** pass screen-bound checks.
+
+The two-round visual loop is complete and clean offline. Final status remains **POLISH:CANDIDATE** pending David's post-reload live taste sign-off.
+
+### U-X Minimap / Decree comprehension pass (2026-08-20)
+
+David reported that clicking the minimap roundel unpredictably opened a small "Decree" window whose purpose was unclear. The interaction and the theatrical card were reopened as one focused UX slice.
+
+- The minimap roundel now has stable navigation: left-click always opens the Church overview; right-click explicitly opens the active gathering notice. Its tooltip says **GUILD GATHERING**, shows the posted line, and labels both actions in plain language.
+- The Decree is now a 440×280 explanatory card with a dark ceremonial title band, full-color papal seal, high-contrast parchment body, and a dedicated action footer. The canonical **A GATHERING HAS BEEN DECREED** proclamation remains intact.
+- Plain-language purpose copy identifies the surface as the guild's current meetup notice and explains that it carries where and when to gather. The posted line remains the primary 24px headline; optional flavor is visually subordinate and capped at two lines.
+- **OPEN CHURCH BOOK** dismisses the notice and returns directly to the overview. **CLOSE** remains explicit, text-safe, and inside the title band.
+- No calendar, RSVP, reminders, recurrence, attendance, new Decree fields, sound, toast, pip, polling loop, or ambient Quiet surface was added. Once-per-login reveal and minimap replay remain intact.
+- Focused coverage verifies direct Records Book navigation and its fallback, stable left-click behavior, explicit right-click replay, explanatory copy, and tooltip language. Harness **17635 passed, 0 failed**. Responsive verification remains **3 screen sizes × 14 scenarios**; all **42 scenes** pass screen-bound checks.
+
+The two-round critique loop is complete and clean offline. Final status remains **POLISH:CANDIDATE** pending the installed `/reload` interaction and live taste sign-off.
+
+## UX Rebuild wave — re-assessment, then rebuild (2026-09-13)
+
+**Status:** COMPLETE (harness). **POLISH:CANDIDATE** at most — David's in-client pass is the close.
+**Branch:** `reformation/phase-1-excision` (uncommitted; no commit — David has not asked).
+**Trigger:** David, after the installed U-wave: the addon is visible but "still very much looking like a dev test"; asked for a re-assessment of what the addon needs to be, not just UI polish.
+**Plan:** re-assessment against Bible §22.3 (one complete Gathering) — the console had grown 47 public verbs from reading §18 instead of from the paper-prototype run §22.3 orders before console code. David's forks decided 2026-09-13: **target-driven Pope kit**; petitions and the Knighting line stay as secondary strips; **cold tools leave the UI**; both surfaces must succeed on the first night.
+
+### Lanes (implementer + adversarial reviewer each; briefs and reports in `docs/reformation/ux-rebuild/briefs/`)
+
+| Lane | Owns | Verdict |
+|------|------|---------|
+| W — wire | `Net/BeefNet.lua` default whisper dest (last STATE sender → `Popes.List[1]`); Pope re-broadcasts STATE on guildmate HELLO while live; `/beef petition|confess|catchup` retired; Inputs = one Petition button; HUD favor plates use the Net default | Spec PASS; Approved. 17280/0 |
+| K — Pope kit | `UI/Console.lua` rebuilt target-driven (working subject from `PLAYER_TARGET_CHANGED` or strip click; ensure-on-verb recognition via new `Store:EnsureCharacterByName`; human copy; Knighting/Gora rites only; cold tools cut); ConsoleDock retired (file, suite, TOC) | Spec PASS; Approved after fix wave (target listener sleeps while hidden; `UnitIsPlayer` guard; ensure Pope-gated; Elevate non-QUIET). 15907/0 |
+| C — Church card | `UI/RecordsBook.lua` Home = identity + Decree card (no counters); **Chronicle** leaf (dated ceremony log, newest first, no medallions, 2-line stride); superlatives only when held; footer Home/Chronicle/Prev/Next | Spec PASS; Approved after fix wave (no misattributing degrade lines; chronicle geometry; perf; pins). 15905/0 |
+| T — theater | Fighter card = sanction beat (hides on verdict / CloseRite / EndEvent; self-echo skip); HUD stays the persistent Gora surface; `MainFrame.lua` + `Status.lua` + small-toast engine retired; bootstrap owns UI init; `/beef` + minimap + OPEN CHURCH BOOK → `RecordsBook:ToggleHome`; `Decree:Set` wrap shows the banner on post and inbound; verdict wraps refresh the Pope's HUD | Spec PASS; Approved after fix wave (self-echo skip pinned; initUi order/pcall pinned). 15637/0 |
+| H — honesty | `test_inputs` dest-persist pins restored; stale `COB.UI` shell text fixed in `architecture-overview.mdc` / `addon-module-layers.mdc`; `solo-smoke.md` rewritten for the new surfaces; `v1-checklist.md` + `two-client-smoke.md` honesty updated; `OPEN_QUESTIONS.md` #14–19 appended | this row |
+
+### What the addon is now
+
+- **Quiet:** minimap roundel + the Decree. `/beef` is a five-second Church card; Records behind it are a dated Chronicle plus held superlatives only.
+- **Pope:** `/beef console` answers "what do I do next?" — one primary verb per phase, driven by whoever David is targeting. Target the kneeling Beef → KNIGHT THIS BEEF (creates their record — that is the recognition). Target two fighters → SANCTION. Verdicts on target or fighter plates. Elevate appears when earned.
+- **Wire:** congregation sends default to the Pope (last STATE sender, else `Data/Popes.lua`); late joiners are caught up by the Pope's HELLO-triggered re-broadcast — no catch-up UX.
+- **Theater:** fighter card introduces the bout and dies at the ruling; the HUD carries the fight through the verdict; one toast engine (Proclaim); five Event cues; Quiet stays silent.
+
+### Gates and leftovers (unchanged unless named)
+
+- Gate U item 5 (David's screenshot pass), Gate W (two-client smoke), and Gate 6 (A01–A04) remain **OPEN** and owner-David. The two-client smoke now also watches: default-dest sends, HELLO re-broadcast, the Pope-echo card skip.
+- Named leftovers: SUMMON; live HUD health; confession inbox UI; cold-tools UI (Archive/Canonize/Recognition/Honorific/Notebook — Core-only); post-show clipboard; CurseForge/Wago.
+- `OPEN_QUESTIONS.md` #14 (target-verb guild scope) and #15 (name-reuse tie-break) are new and open.
+- Known accepted edges: OPEN CHURCH BOOK on an already-open Home card closes the book; chronicle leaf paints the newest 7 entries (no scrolling); `Roster:SetOnChanged` is callerless (future Core lane).
+- Harness at wave close: **15637 passed, 0 failed** (`lua tests/run.lua`, exit 0). `preview_dump` 13 scenarios exit 0. Installed to Anniversary for David's pass.
+
+### Player card (2026-09-13)
+
+David: the `/beef` main window "doesn't serve any actual useful purpose … should be much more of a player card". Rebuilt as `UI/PlayerCard.lua` (320×540, fixed, movable, Quiet): class-colored name, Church rank plate with the Bible §5 relationship line (`Data/Ranks.lua` `relationship`), Knighting date, guild / Blizzard rank, roman Gora record + longest streak + defenses, three rivalries, distinctions (held superlatives then honorifics), the Decree in the footer, one button (**CHURCH RECORDS**) to the Records Book. Superlative math moved to pure `Core/Records.lua` (`Pages`, `Summary`, `HeldBy`). Records Book lost its Home spread and identity leaf; opens on a two-leaf Chronicle (14 rows); footer is a leaf caption with edge-aware **‹ PREVIOUS** / **NEXT ›**; superlative leaves carry a faint papal watermark. `/beef`, minimap left-click, and the Decree's **YOUR CARD** all land on the card. No position among members (§10.9; OPEN_QUESTIONS #20). Plan: `docs/reformation/ux-rebuild/plans/2026-09-13-player-card.md`; per-task reports under `briefs/PC-task-*`. Harness at close: see ledger. **POLISH:CANDIDATE** — David's in-client pass is the close; the first live check is whether four distinction lines clear the CHURCH RECORDS button at default scale.
+
+### Guild titles + presence census (2026-09-13)
+
+David named the in-game guild ranks to Church titles and asked that they show without a Knighting. When the store has no human row, the player-card gold plate and the console presence census show the live Blizzard rank **name** (not slot index). A name that matches a canon title also gets the §5 relationship line; any other live name is labeled "Guild rank." The plate does not invent "Beef Pope." Display only; `ChurchRankIdForGuildIndex` stays nil; store rows still win. `/beef console` Presence is a count-by-title glance plus Unrecorded; **Add to the line** moved onto the working subject. OPEN_QUESTIONS #21.
+
+### Gathering headline (2026-09-13)
+
+`/beef` now reads as identity + a Gathering plate under rank (live Decree line, or muted `No gathering is posted.`). Empty **BEEF GORA** / **BEEF RIVALS** / **BEEF LEGACY** collapse; height 380 with no story, 580 with a story. Thin empty charcoal close band — no footer Decree. **CHURCH RECORDS** remains the one door. No feed; no position among members. **POLISH:CANDIDATE**.
+
+### Pope's Desk rework (2026-09-14)
+
+Director Console rebuilt as a state-driven Pope's Desk (Gathering / Decrees / Chronicle / Church). Rites are modes, not stacked controls. Candidate and fighter locks, structured verdicts, Favor module, End/Close confirms, census off the live page. Record: `docs/design/POPES_DESK_REWORK.md`. Harness **18990 passed, 0 failed**. Installed to Anniversary. `/reload` session locks and verdicts are covered by `SimulateReloadForTests`; a live client pass is still owner-David. **POLISH:CANDIDATE**.

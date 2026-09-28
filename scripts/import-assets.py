@@ -100,6 +100,11 @@ SIZE_SUFFIXES = ("small", "tiny")
 MAGENTA = (255, 0, 255)
 MARGIN_MIN = 0.08
 UNLISTED_MAX = 1024
+# Image generators sometimes leave mathematically non-zero, visually empty
+# alpha (1/255) on an otherwise transparent canvas edge.  Treat only that
+# single quantization step as transparent before margin validation; real edge
+# content (alpha >= 2) still fails closed.
+ALPHA_NOISE_MAX = 1
 
 # Part 4 inventory: semantic <category>_<name> → [(w, h), ...] largest first.
 # Prefix match at '_' / '-' lets variants/parts inherit (seal_papal_gold,
@@ -362,6 +367,22 @@ def load_rgba(path: Path) -> Tuple[Optional[Image.Image], str]:
     return None, "not RGBA (mode %s)" % original
 
 
+def clear_alpha_quantization_noise(im: Image.Image) -> bool:
+    """Zero invisible 1/255 alpha specks without relaxing edge validation."""
+    alpha = im.split()[3]
+    extrema = alpha.getextrema()
+    if not extrema or extrema[0] > ALPHA_NOISE_MAX:
+        alpha.close()
+        return False
+    cleaned = alpha.point(lambda value: 0 if value <= ALPHA_NOISE_MAX else value)
+    changed = cleaned.tobytes() != alpha.tobytes()
+    if changed:
+        im.putalpha(cleaned)
+    cleaned.close()
+    alpha.close()
+    return changed
+
+
 def validate_and_prepare(path: Path) -> Tuple[Optional[Image.Image], List[str], str]:
     """Return (image, warnings, error). Image is RGBA with transparency applied."""
     warnings: List[str] = []
@@ -372,6 +393,8 @@ def validate_and_prepare(path: Path) -> Tuple[Optional[Image.Image], List[str], 
     extrema = im.split()[3].getextrema()
     min_a = extrema[0] if extrema else 255
     if min_a < 255:
+        if clear_alpha_quantization_noise(im):
+            warnings.append("cleared invisible alpha=1 quantization noise")
         if mode_note and mode_note != "RGBA":
             warnings.append("converted mode %s → RGBA (alpha present)" % mode_note)
         return im, warnings, ""

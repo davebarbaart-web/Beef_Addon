@@ -182,12 +182,35 @@ function Runtime:Snapshot()
   return copyEvent()
 end
 
+-- Latest-wins (Option C). Ceremony Bible fields apply when eventId differs
+-- or sequence is greater. Same eventId + equal sequence is a no-op that
+-- still returns ok so Net/bootstrap can overlay favor. Older sequence is
+-- not-ok so favor is not overlaid. Favor is not a Runtime field.
 function Runtime:Restore(snap)
   local parsed, err = parseEvent(snap)
   if not parsed then return nil, err end
+  local ev = current()
+  if parsed.eventId == ev.eventId then
+    if parsed.sequence < ev.sequence then
+      return nil, "stale sequence"
+    end
+    if parsed.sequence == ev.sequence then
+      return true
+    end
+  end
   event = parsed
   nextEventId = (parsed.eventId or 0) + 1
   return true
+end
+
+-- Bible §13.4 / §20.3: stale protocol drops Event chrome to Quiet presentation.
+-- Restore already accepts QUIET from any state. Do not call EndEvent (illegal from RITE).
+-- Keep nextEventId so a later StartEvent on this client does not reuse 1.
+function Runtime:DropToQuietForVersion()
+  local keep = nextEventId
+  local ok, err = self:Restore(newEvent())
+  if ok then nextEventId = keep end
+  return ok, err
 end
 
 function Runtime:StartEvent()

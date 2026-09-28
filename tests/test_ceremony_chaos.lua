@@ -182,7 +182,7 @@ sent = 0
 local req, reqErr = Snapshot:Request()
 assert_true(req ~= nil, "Request encodes")
 assert_eq(reqErr, nil, "Request has no error")
-assert_eq(req, "1:SNAPSHOT:request", "Request wire is role only")
+assert_eq(req, "2:SNAPSHOT:request", "Request wire is role only")
 assert_unchanged(popeLive, Runtime:Snapshot(), "Request does not change Event Mode")
 assert_eq(sent, 0, "Request does not SendAddonMessage")
 
@@ -423,12 +423,13 @@ assert_eq(Runtime:Snapshot().state, "RITE", "ungated Apply still Restores Bible 
 
 --------------------------------------------------------------------------------
 -- Version skew: ApplyResponse of a foreign-major SNAPSHOT fails closed;
--- Runtime unchanged. Do not add a Quiet toast.
+-- Event chrome drops to Quiet presentation. Do not add a Quiet toast.
 --------------------------------------------------------------------------------
 reset()
 Runtime:StartEvent()
 Runtime:OpenRite("Proclamation")
 local beforeSkew = Runtime:Snapshot()
+assert_eq(beforeSkew.state, "RITE", "skew starts from a live rite")
 assert_eq(Runtime.Toast, nil, "Runtime has no toast")
 assert_eq(Runtime.WarnVersion, nil, "Runtime has no WarnVersion")
 assert_eq(Runtime._WarnVersion, nil, "Runtime has no _WarnVersion")
@@ -436,22 +437,26 @@ assert_eq(Snapshot.Toast, nil, "Snapshot has no toast")
 assert_eq(Sender.Notify, nil, "Sender has no Notify")
 assert_eq(Codec.Toast, nil, "Codec has no toast")
 
-local foreign = "2:SNAPSHOT:response:1:ASSEMBLY::::1"
+local foreign = "1:SNAPSHOT:response:1:ASSEMBLY::::1"
 local foreignMsg, foreignDecErr = Codec:DecodeSnapshot(foreign)
 assert_true(foreignMsg ~= nil, "foreign major still decodes")
 assert_eq(foreignDecErr, nil, "foreign major is versioned, not garbage")
-assert_eq(Codec:IsCompatible(foreignMsg.version), false, "protocol 2 is incompatible")
+assert_eq(Codec:IsCompatible(foreignMsg.version), false, "protocol 1 is incompatible")
 local foreignApply, foreignErr = Snapshot:ApplyResponse(foreign)
 assert_eq(foreignApply, nil, "ApplyResponse refuses an incompatible version")
 assert_eq(foreignErr, "protocol mismatch", "incompatible version fails closed")
-assert_unchanged(beforeSkew, Runtime:Snapshot(), "foreign-major SNAPSHOT does not Restore")
-assert_eq(Runtime:Snapshot().state, "RITE", "version skew does not drop the live rite")
-assert_eq(Runtime:Snapshot().state ~= "QUIET", true, "this lane does not paint Quiet Mode")
+local afterSkew = Runtime:Snapshot()
+assert_eq(afterSkew.state, "QUIET", "version skew drops the live rite")
+assert_eq(afterSkew.state == "QUIET", true, "this lane does drop to Quiet presentation")
+assert_eq(afterSkew.eventId, nil, "foreign-major SNAPSHOT does not Restore")
+assert_eq(afterSkew.riteType, nil, "foreign-major SNAPSHOT does not keep the rite")
+assert_eq(afterSkew.sequence, 0, "foreign-major SNAPSHOT Restores clean QUIET")
 
 local zeroApply, zeroErr = Snapshot:ApplyResponse("0:SNAPSHOT:response:1:RITE:Gora::3,4:2")
 assert_eq(zeroApply, nil, "ApplyResponse refuses protocol 0")
 assert_eq(zeroErr, "protocol mismatch", "protocol 0 is incompatible")
-assert_unchanged(beforeSkew, Runtime:Snapshot(), "protocol 0 does not Restore")
+assert_eq(Runtime:Snapshot().state, "QUIET", "protocol 0 stays Quiet")
+assert_eq(Runtime:Snapshot().riteType, nil, "protocol 0 does not Restore")
 
 --------------------------------------------------------------------------------
 -- Floods: many INPUT Accepts do not change Runtime and do not encode theater.
@@ -490,13 +495,14 @@ refuse_apply(favor, "unknown message type", "INPUT favor does not Apply")
 refuse_apply("1:SUGGESTION:foo", "unknown message type", "SUGGESTION does not Apply")
 refuse_apply("1:SYNC_STATE:1:ASSEMBLY::::1", "unknown message type", "SYNC_STATE does not Apply")
 refuse_apply("1:SYNC_REQUEST", "unknown message type", "SYNC_REQUEST does not Apply")
-refuse_apply("1:HELLO", "unknown message type", "HELLO does not Apply")
+refuse_apply("2:HELLO", "unknown message type", "HELLO does not Apply")
 refuse_apply("1:RANK_COMMIT:1:2", "unknown message type", "RANK_COMMIT does not Apply")
 assert_unchanged(beforeFlood, Runtime:Snapshot(), "retired TYPEs do not Apply")
 
 --------------------------------------------------------------------------------
--- Replayed sequences: assert what Restore / Apply actually do.
--- Do NOT invent a monotonic-sequence gate. Older snapshots Restore.
+-- Latest-wins: ceremony applies only if sequence is greater (same eventId).
+-- Older Apply/Restore do not rewind. Equal sequence does not apply ceremony.
+-- Different eventId still applies. Equal sequence must not fire theater.
 --------------------------------------------------------------------------------
 reset()
 Runtime:StartEvent()
@@ -508,26 +514,71 @@ Runtime:CloseRite()
 local laterSnap = Runtime:Snapshot()
 assert_eq(laterSnap.sequence, 3, "later CONSEQUENCE sequence is 3")
 assert_eq(laterSnap.state, "CONSEQUENCE", "later state is CONSEQUENCE")
+assert_eq(laterSnap.riteType, "Gora", "later rite is Gora")
+
+local proclaims = 0
+local sounds = 0
+COB.Toasts = {
+  Proclaim = function()
+    proclaims = proclaims + 1
+  end,
+}
+COB.Sound = {
+  Play = function()
+    sounds = sounds + 1
+  end,
+}
 
 local replayed, replayErr = Snapshot:ApplyResponse(earlyWire)
-assert_eq(replayed, true, "ApplyResponse of an older snapshot succeeds")
-assert_eq(replayErr, nil, "older Apply has no error")
+assert_eq(replayed, nil, "older Apply does not rewind")
+assert_eq(type(replayErr), "string", "older Apply is not-ok")
 local afterOlder = Runtime:Snapshot()
-assert_eq(afterOlder.sequence, 1, "leftover: older Apply Restores the earlier sequence")
-assert_eq(afterOlder.state, "ASSEMBLY", "leftover: older Apply overwrites later state")
-assert_eq(afterOlder.riteType, nil, "leftover: older Apply drops the later rite")
-assert_bible(afterOlder, earlySnap, "leftover: Apply has no monotonic-sequence gate")
+assert_eq(afterOlder.sequence, 3, "older Apply leaves later sequence")
+assert_eq(afterOlder.state, "CONSEQUENCE", "older Apply leaves later state")
+assert_eq(afterOlder.riteType, "Gora", "older Apply leaves the later rite")
+assert_bible(afterOlder, laterSnap, "ceremony requires a greater sequence")
 
 assert_eq(Runtime:Restore(laterSnap), true, "Restore of the later object succeeds")
 assert_eq(Runtime:Snapshot().sequence, 3, "later Restore returns to sequence 3")
-assert_eq(Runtime:Restore(earlySnap), true, "Restore of an older object succeeds")
-assert_eq(Runtime:Snapshot().sequence, 1, "leftover: older Restore also has no sequence gate")
-assert_eq(Runtime:Snapshot().state, "ASSEMBLY", "leftover: older Restore overwrites later state")
+local olderRestore, olderRestoreErr = Runtime:Restore(earlySnap)
+assert_eq(olderRestore, nil, "older Restore does not rewind")
+assert_eq(type(olderRestoreErr), "string", "older Restore is not-ok")
+assert_eq(Runtime:Snapshot().sequence, 3, "older Restore leaves later sequence")
+assert_eq(Runtime:Snapshot().state, "CONSEQUENCE", "older Restore leaves later state")
+assert_eq(Runtime:Snapshot().riteType, "Gora", "older Restore leaves the later rite")
 
-assert_eq(Runtime:Restore(laterSnap), true, "same-object Restore is also ungated")
+local hijack = {
+  eventId = laterSnap.eventId,
+  state = laterSnap.state,
+  riteType = laterSnap.riteType,
+  subjects = { candidate = laterSnap.subjects.candidate, fighters = { 1, 2 } },
+  sequence = laterSnap.sequence,
+}
+assert_eq(Runtime:Restore(hijack), true, "equal-sequence Restore returns ok")
+assert_eq(Runtime:Snapshot().subjects.fighters[1], 8, "equal sequence does not replace fighters")
+assert_eq(Runtime:Snapshot().subjects.fighters[2], 9, "equal sequence keeps later fighters")
+assert_bible(Runtime:Snapshot(), laterSnap, "equal sequence does not apply ceremony")
+
 local sameWire = Snapshot:BuildResponse()
-assert_eq(Snapshot:ApplyResponse(sameWire), true, "replay of the current sequence Applys")
-assert_bible(Runtime:Snapshot(), laterSnap, "current-sequence replay Restores the same Bible fields")
+assert_eq(Snapshot:ApplyResponse(sameWire), true, "equal-sequence Apply returns ok")
+assert_bible(Runtime:Snapshot(), laterSnap, "equal-sequence Apply does not move ceremony")
+assert_eq(proclaims, 0, "equal sequence does not Proclaim")
+assert_eq(sounds, 0, "equal sequence does not Sound")
+
+local otherEvent = {
+  eventId = (laterSnap.eventId or 1) + 1,
+  state = "ASSEMBLY",
+  riteType = nil,
+  subjects = { candidate = nil, fighters = nil },
+  sequence = 1,
+}
+assert_eq(Runtime:Restore(otherEvent), true, "different eventId still applies")
+assert_eq(Runtime:Snapshot().eventId, otherEvent.eventId, "different eventId lands")
+assert_eq(Runtime:Snapshot().state, "ASSEMBLY", "different eventId applies ceremony")
+assert_eq(Runtime:Snapshot().sequence, 1, "new event keeps its own sequence")
+
+COB.Toasts = nil
+COB.Sound = nil
 
 --------------------------------------------------------------------------------
 -- No SendAddonMessage, no frames, no guild-rank Pope, no SV write.
@@ -547,8 +598,8 @@ Sender:Accept("Spoof", "STATE")
 Sender:IsRegisteredPope("Pope")
 reset()
 Snapshot:ApplyResponse(cycle)
-Snapshot:ApplyResponse("2:SNAPSHOT:response:1:ASSEMBLY::::1")
-Snapshot:ApplyResponse("1:HELLO")
+Snapshot:ApplyResponse("1:SNAPSHOT:response:1:ASSEMBLY::::1")
+Snapshot:ApplyResponse("2:HELLO")
 assert_eq(sent, 0, "chaos paths never SendAddonMessage")
 assert_eq(framed, 0, "chaos paths never CreateFrame")
 assert_eq(guildReads, 0, "Sender does not read guild rank")

@@ -10,17 +10,123 @@ function COB:OnLoad()
   COB.loaded = true
 end
 
-function COB:OnLogin()
-  if COB.UI and COB.UI.Init then
-    COB.UI:Init()
+-- UI init lives on the bootstrap now that the Quiet shell is retired (Lane T).
+-- Every module Init is pcall'd (Wave 2 Task 1). A Hud inherit abort must
+-- still reach Net:Init. No shell frame, no UISpecialFrames listing for it,
+-- no roster event registration on a shell, no ui.shown reopen-on-login
+-- (the SV key stays in DB defaults harmlessly).
+local function initChat(text)
+  if type(DEFAULT_CHAT_FRAME) == "table" and DEFAULT_CHAT_FRAME.AddMessage then
+    DEFAULT_CHAT_FRAME:AddMessage("|cffffaa00Church of Beef|r: " .. text)
   end
+end
+
+local function initModule(name, mod)
+  if type(mod) ~= "table" or type(mod.Init) ~= "function" then
+    return
+  end
+  local ok = pcall(mod.Init, mod)
+  if not ok then
+    initChat(name .. " failed to start.")
+  end
+end
+
+local function initUi()
+  initModule("Minimap", COB.Minimap)
+  initModule("RecordsBook", COB.RecordsBook)
+  initModule("PlayerCard", COB.PlayerCard)
+  initModule("Hud", COB.Hud)
+  initModule("Console", COB.Console)
+  initModule("Toasts", COB.Toasts)
+  initModule("DecreeBanner", COB.DecreeBanner)
+  initModule("Welcome", COB.Welcome)
+  initModule("Sound", COB.Sound)
+  initModule("FighterCard", COB.FighterCard)
+  initModule("Inputs", COB.Inputs)
+  initModule("Markers", COB.Markers)
+end
+
+-- Forward: defined with the wire helpers. OnLogin runs after file load.
+local sendState
+
+local function isLocalPope()
+  if not (COB.Sender and type(COB.Sender.IsRegisteredPope) == "function") then
+    return false
+  end
+  if type(UnitName) ~= "function" then return false end
+  return COB.Sender:IsRegisteredPope(UnitName("player")) == true
+end
+
+-- Pew leftover ChurchOfBeefDB.event is the Pope's ceremony, not this client's.
+-- Nil-eventId Quiet (DropToQuietForVersion / newEvent shape). Do not EndEvent
+-- from RITE, and do not Restore { state="QUIET", eventId=<same>, sequence=0 }.
+local function dropCongregationEventIfNeeded()
+  if isLocalPope() then return end
+  local Runtime = COB.Runtime
+  if type(Runtime) ~= "table" then return end
+  if type(Runtime.DropToQuietForVersion) == "function" then
+    pcall(Runtime.DropToQuietForVersion, Runtime)
+    return
+  end
+  if type(Runtime.Restore) == "function" then
+    pcall(Runtime.Restore, Runtime, {
+      eventId = nil,
+      state = "QUIET",
+      riteType = nil,
+      subjects = { candidate = nil, fighters = nil },
+      sequence = 0,
+    })
+  end
+end
+
+-- Catch-up whisper only after accepted Pope HELLO or live STATE this session
+-- (callers are those two paths). Local still QUIET, once per login. No dest
+-- / Tuesday no-response is not a failure. Do not ask from OnLogin itself.
+local function maybeRequestSnapshot()
+  if COB._snapshotAsked then return end
+  if isLocalPope() then return end
+  local Runtime = COB.Runtime
+  if not (type(Runtime) == "table" and type(Runtime.Snapshot) == "function") then
+    return
+  end
+  local snap = Runtime:Snapshot()
+  if type(snap) ~= "table" or snap.state ~= "QUIET" then return end
+  local Net = COB.Net
+  if not (type(Net) == "table" and type(Net.RequestSnapshot) == "function") then
+    return
+  end
+  COB._snapshotAsked = true
+  pcall(Net.RequestSnapshot, Net)
+end
+
+function COB:OnLogin()
+  COB._snapshotAsked = nil
+  -- Role split is here (PLAYER_LOGIN), not DB:Init (ADDON_LOADED).
+  dropCongregationEventIfNeeded()
+  initUi()
   if COB.Net and COB.Net.Init then
     COB.Net:Init()
   end
   self:InstallWire()
+  -- #48: listed Pope rebroadcasts a restored live event once. Peer HELLO
+  -- rebroadcast stays on _OnPeerHello.
+  if COB.Net and COB.Net.RebroadcastStubs then
+    pcall(COB.Net.RebroadcastStubs, COB.Net)
+  end
+  if isLocalPope() and type(sendState) == "function" then
+    local Runtime = COB.Runtime
+    if type(Runtime) == "table" and type(Runtime.Snapshot) == "function" then
+      local snap = Runtime:Snapshot()
+      if type(snap) == "table" and type(snap.state) == "string" and snap.state ~= "QUIET" then
+        sendState()
+      end
+    end
+  end
 end
 
 function COB:OnLogout()
+  -- Save still runs for store / ui / decree. Ceremony blobs (event + gora)
+  -- write only when DB:Save sees a registered Pope; pew leaves those keys.
   if COB.DB and COB.DB.Save then
     COB.DB:Save()
   end
@@ -72,6 +178,31 @@ local function overlayFighters(fields, pair)
     candidate = candidate,
     fighters = { pair.fighterA, pair.fighterB },
   }
+end
+
+local function displayForId(id)
+  if type(id) ~= "number" then return nil end
+  local Store = COB.Store
+  if not (Store and Store.GetCharacter) then return nil end
+  local ch = Store:GetCharacter(id)
+  if type(ch) ~= "table" or type(ch.name) ~= "string" then return nil end
+  if COB.Names and COB.Names.Display then
+    return COB.Names.Display(ch.name)
+  end
+  return ch.name
+end
+
+local function overlayNames(fields)
+  local names = { candidate = nil, fighterA = nil, fighterB = nil }
+  local subjects = fields.subjects
+  if type(subjects) == "table" then
+    names.candidate = displayForId(subjects.candidate)
+    if type(subjects.fighters) == "table" then
+      names.fighterA = displayForId(subjects.fighters[1])
+      names.fighterB = displayForId(subjects.fighters[2])
+    end
+  end
+  fields.names = names
 end
 
 local function overlayCandidate(fields)
@@ -133,10 +264,11 @@ local function stateFields()
       fields.favor = COB.Gora:GetLastFavorSplit()
     end
   end
+  overlayNames(fields)
   return fields
 end
 
-local function sendState()
+function sendState()
   if skipSend() then return end
   local Net = COB.Net
   if not (Net and Net.SendState) then return end
@@ -148,6 +280,9 @@ local function sendDecree(fields)
   local Net = COB.Net
   if not (Net and Net.SendDecree) then return end
   pcall(Net.SendDecree, Net, fields)
+  if Net.SendNights then
+    pcall(Net.SendNights, Net)
+  end
 end
 
 local function bindLocalCharacter()
@@ -173,12 +308,9 @@ local function bindLocalCharacter()
   end
 end
 
-local function hideInputsAndDock()
+local function hideInputs()
   if COB.Inputs and type(COB.Inputs.Hide) == "function" then
     pcall(COB.Inputs.Hide, COB.Inputs)
-  end
-  if COB.ConsoleDock and type(COB.ConsoleDock.Hide) == "function" then
-    pcall(COB.ConsoleDock.Hide, COB.ConsoleDock)
   end
 end
 
@@ -186,9 +318,6 @@ local function refreshEventFurniture()
   if skipSend() then return end
   if COB.Inputs and type(COB.Inputs.Refresh) == "function" then
     pcall(COB.Inputs.Refresh, COB.Inputs)
-  end
-  if COB.ConsoleDock and type(COB.ConsoleDock.Refresh) == "function" then
-    pcall(COB.ConsoleDock.Refresh, COB.ConsoleDock)
   end
   -- Knighting OpenRite / Continue must forget leftover lastPair in place.
   if COB.Hud and type(COB.Hud.Refresh) == "function" then
@@ -206,6 +335,24 @@ local function hideFighterCard()
   local Card = COB.FighterCard
   if type(Card) == "table" and type(Card.Hide) == "function" then
     pcall(Card.Hide, Card)
+  end
+end
+
+-- The Pope's HUD refresh after a verdict is deterministic on his client — it
+-- does not wait for the STATE echo. skipSend-guarded like its neighbors.
+local function refreshHud()
+  if skipSend() then return end
+  local Hud = COB.Hud
+  if type(Hud) == "table" and type(Hud.Refresh) == "function" then
+    pcall(Hud.Refresh, Hud)
+  end
+end
+
+local function refreshConsole()
+  if skipSend() then return end
+  local Desk = COB.Console
+  if type(Desk) == "table" and type(Desk.Refresh) == "function" then
+    pcall(Desk.Refresh, Desk)
   end
 end
 
@@ -230,7 +377,7 @@ end
 
 local function paintInboundInputs(sender)
   if skipSend() then
-    hideInputsAndDock()
+    hideInputs()
     return
   end
   if COB.Inputs then
@@ -241,19 +388,44 @@ local function paintInboundInputs(sender)
       pcall(COB.Inputs.Refresh, COB.Inputs)
     end
   end
-  if COB.ConsoleDock and type(COB.ConsoleDock.Refresh) == "function" then
-    pcall(COB.ConsoleDock.Refresh, COB.ConsoleDock)
-  end
 end
 
-local function bindSlashInputTarget()
-  local Inputs = COB.Inputs
-  if not (Inputs and Inputs.SetInputTarget) then return end
-  if type(UnitName) ~= "function" then return end
-  local target = UnitName("target")
-  if type(target) == "string" and target ~= "" then
-    pcall(Inputs.SetInputTarget, Inputs, target)
+local function stashInboundCast(decoded)
+  if type(decoded) ~= "table" then return end
+  local names = decoded.names
+  local stash = {
+    candidate = nil,
+    fighterA = nil,
+    fighterB = nil,
+    byId = {},
+  }
+  if type(names) == "table" then
+    stash.candidate = names.candidate
+    stash.fighterA = names.fighterA
+    stash.fighterB = names.fighterB
   end
+  local subjects = decoded.subjects
+  if type(subjects) == "table" then
+    if type(subjects.candidate) == "number" and type(stash.candidate) == "string" then
+      stash.byId[subjects.candidate] = stash.candidate
+    end
+    if type(subjects.fighters) == "table" then
+      if type(subjects.fighters[1]) == "number" and type(stash.fighterA) == "string" then
+        stash.byId[subjects.fighters[1]] = stash.fighterA
+      end
+      if type(subjects.fighters[2]) == "number" and type(stash.fighterB) == "string" then
+        stash.byId[subjects.fighters[2]] = stash.fighterB
+      end
+    end
+  end
+  COB._lastCastNames = stash
+  COB._lastCast = {
+    eventId = decoded.eventId,
+    state = decoded.state,
+    riteType = decoded.riteType,
+    subjects = subjects,
+    names = stash,
+  }
 end
 
 local function paintInboundFavor(decoded, sender)
@@ -281,6 +453,34 @@ local function wrapAfter(module, name, afterFn)
       afterFn(self, result)
     end
     return result, err
+  end
+end
+
+-- Pope desk persist after a successful write. wow_stub has no C_Timer:
+-- Save runs on the write path. Client C_Timer.After coalesces. Logout
+-- still flushes. Never wrap ResetForTests. Never Save from Gora:_Expire.
+local function persistAfterWrite()
+  local DB = COB.DB
+  if not (type(DB) == "table" and type(DB.Save) == "function") then return end
+  if C_Timer and type(C_Timer.After) == "function" then
+    if COB._persistQueued then return end
+    COB._persistQueued = true
+    C_Timer.After(0, function()
+      COB._persistQueued = nil
+      pcall(DB.Save, DB)
+    end)
+    return
+  end
+  pcall(DB.Save, DB)
+end
+
+local function persistWrites(module, names)
+  if type(module) ~= "table" or type(names) ~= "table" then return end
+  for i = 1, #names do
+    local name = names[i]
+    if name ~= "ResetForTests" and name ~= "_Expire" then
+      wrapAfter(module, name, persistAfterWrite)
+    end
   end
 end
 
@@ -346,9 +546,8 @@ local function markCandidate(name)
   if type(name) ~= "string" or name == "" then return end
   local Markers = COB.Markers
   if type(Markers) ~= "table" then return end
-  if type(Markers.Target) == "function" then
-    pcall(Markers.Target, Markers, name)
-  end
+  -- Do not TargetUnit here. Anniversary treats name-target as a Blizzard-only
+  -- action (ADDON_ACTION_FORBIDDEN). MarkCandidate resolves a group unit.
   if type(Markers.MarkCandidate) == "function" then
     pcall(Markers.MarkCandidate, Markers, name)
   end
@@ -371,10 +570,24 @@ function COB:InstallWire()
 
   wrapAfter(COB.Runtime, "StartEvent", afterRuntime)
   wrapAfter(COB.Runtime, "OpenRite", afterRuntime)
-  wrapAfter(COB.Runtime, "CloseRite", sendState)
+  -- The fighter card is a sanction beat: it dies with the ruling beat, and
+  -- CloseRite (CONSEQUENCE) sweeps it if no verdict landed first.
+  wrapAfter(COB.Runtime, "CloseRite", function()
+    sendState()
+    hideFighterCard()
+  end)
   wrapAfter(COB.Runtime, "Continue", afterRuntime)
   wrapAfter(COB.Runtime, "EndEvent", afterEndEvent)
-  wrapAfter(COB.Gora, "RecordFavor", sendState)
+  wrapAfter(COB.Gora, "RecordFavor", function()
+    sendState()
+    refreshHud()
+    refreshConsole()
+  end)
+  wrapAfter(COB.Gora, "RecordFavorFromSender", function()
+    sendState()
+    refreshHud()
+    refreshConsole()
+  end)
   wrapAfter(COB.Gora, "Sanction", function(_, result)
     if type(result) ~= "table" then return end
     local fields = {}
@@ -382,13 +595,19 @@ function COB:InstallWire()
     if a then fields.fighterA = a end
     local b = characterName(result.fighterB)
     if b then fields.fighterB = b end
-    if result.stipulation ~= nil then
-      fields.stipulation = result.stipulation
-    end
     proclaim("sanction", fields)
     showFighterCard()
     markFighters(a, b)
+    refreshHud()
+    refreshConsole()
     sendState()
+  end)
+  wrapAfter(COB.Gora, "Propose", function()
+    local Desk = COB.Console
+    if type(Desk) == "table" and type(Desk.Show) == "function" then
+      pcall(Desk.Show, Desk)
+    end
+    refreshConsole()
   end)
   wrapAfter(COB.Knighting, "Enqueue", sendState)
   wrapAfter(COB.Knighting, "Skip", sendState)
@@ -421,10 +640,14 @@ function COB:InstallWire()
       if name then fields.name = name end
     end
     proclaim("verdict", fields)
+    hideFighterCard()
+    refreshHud()
     sendState()
   end)
   wrapAfter(COB.Gora, "Void", function()
     proclaim("verdict", { ruling = "void" })
+    hideFighterCard()
+    refreshHud()
     sendState()
   end)
   wrapAfter(COB.Gora, "FreeRuling", function(_, result)
@@ -433,6 +656,8 @@ function COB:InstallWire()
       fields.text = result.text
     end
     proclaim("verdict", fields)
+    hideFighterCard()
+    refreshHud()
     sendState()
   end)
   wrapAfter(COB.Gora, "CowardiceRecorded", function(_, result)
@@ -442,11 +667,56 @@ function COB:InstallWire()
       if name then fields.name = name end
     end
     proclaim("cowardice", fields)
+    hideFighterCard()
+    refreshHud()
     sendState()
   end)
   wrapAfter(COB.Console, "SetCongregationFavorVisible", sendState)
   wrapAfter(COB.Console, "PostDecree", function(_, result)
     sendDecree({ line = result.line, flavor = result.flavor })
+  end)
+  wrapAfter(COB.Console, "PostStub", function(_, result)
+    if skipSend() then return end
+    local Net = COB.Net
+    if Net and Net.SendStub and type(result) == "table" then
+      pcall(Net.SendStub, Net, result)
+    end
+  end)
+  wrapAfter(COB.Console, "PostSeries", function()
+    if skipSend() then return end
+    local Net = COB.Net
+    if Net and Net.SendNights then
+      pcall(Net.SendNights, Net)
+    end
+  end)
+  wrapAfter(COB.Console, "SkipWeek", function()
+    if skipSend() then return end
+    local Net = COB.Net
+    if Net and Net.SendNights then
+      pcall(Net.SendNights, Net)
+    end
+  end)
+  wrapAfter(COB.Console, "MoveWeek", function()
+    if skipSend() then return end
+    local Net = COB.Net
+    if Net and Net.SendNights then
+      pcall(Net.SendNights, Net)
+    end
+  end)
+  wrapAfter(COB.Console, "WithdrawSeries", function()
+    if skipSend() then return end
+    local Net = COB.Net
+    if Net and Net.SendNights then
+      pcall(Net.SendNights, Net)
+    end
+  end)
+  wrapAfter(COB.Console, "WithdrawStub", function(_, result)
+    if skipSend() then return end
+    if result == nil then return end
+    local Net = COB.Net
+    if Net and Net.SendStubWithdraw then
+      pcall(Net.SendStubWithdraw, Net, { id = result })
+    end
   end)
   wrapAlways(COB.Decree, "Clear", function()
     local Banner = COB.DecreeBanner
@@ -456,6 +726,27 @@ function COB:InstallWire()
   end)
   wrapAfter(COB.Store, "Restore", bindLocalCharacter)
 
+  persistWrites(COB.Runtime, {
+    "StartEvent", "OpenRite", "CloseRite", "Continue", "EndEvent",
+  })
+  persistWrites(COB.Gora, {
+    "Petition", "PetitionFromSender", "Dismiss", "Sanction", "Propose",
+    "RecordFavor", "RecordFavorFromSender",
+    "DeclareVictor", "Void", "FreeRuling", "CowardiceRecorded",
+  })
+  persistWrites(COB.Store, {
+    "CreateHuman", "CreateCharacter", "LinkCharacter", "EnsureCharacterByName",
+    "SetRank", "SetCouncil", "AddHonorific",
+    "TombstoneHuman", "TombstoneCharacter",
+    "AppendCeremony", "FlagMoment", "CanonizeMoment",
+    "FlagFamousUpset", "RecordGoraResult",
+  })
+  persistWrites(COB.Nights, {
+    "SetSeries", "SkipWeek", "MoveWeek", "WithdrawSeries",
+    "SetStub", "WithdrawStub", "ApplyStub", "ApplyTombstone",
+    "SetGoing", "SetGoingCounts", "ImportDecree", "Restore", "ApplyBroadcast",
+  })
+
   local Net = COB.Net
   if type(Net) == "table" then
     local origState = Net._HandleState
@@ -463,14 +754,38 @@ function COB:InstallWire()
       Net._HandleState = function(self, decoded, channel, sender)
         local ok, err = origState(self, decoded, channel, sender)
         if ok then
+          stashInboundCast(decoded)
           paintInboundFavor(decoded, sender)
           paintInboundInputs(sender)
-          if type(decoded) == "table" and decoded.state == "QUIET" then
-            hideFighterCard()
-          else
-            local fighters = decoded and decoded.subjects and decoded.subjects.fighters
-            if type(fighters) == "table" and fighters[1] and fighters[2] then
-              showFighterCard()
+          -- Live STATE this session is the other snapshot gate. After a
+          -- Restore that left Event Mode the ask no-ops (local not QUIET).
+          if type(decoded) == "table" and decoded.state ~= "QUIET" then
+            maybeRequestSnapshot()
+          end
+          -- The card is a sanction beat. CONSEQUENCE hides it (ruling landed);
+          -- QUIET hides it (event ended). ASSEMBLY + two fighters shows it.
+          -- RITE + two fighters shows only if this event has not already
+          -- hidden the card — post-verdict RITE + lastPair must not resurrect
+          -- (#111). Self-echo still skips the card branch; favor/inputs paint.
+          local selfEcho = type(self.IsSelf) == "function"
+            and self:IsSelf(sender) == true
+          if not selfEcho then
+            if type(decoded) == "table" and decoded.state == "QUIET" then
+              hideFighterCard()
+              COB._fighterCardDismissed = false
+            elseif type(decoded) == "table" and decoded.state == "CONSEQUENCE" then
+              hideFighterCard()
+              COB._fighterCardDismissed = true
+            else
+              local fighters = decoded and decoded.subjects and decoded.subjects.fighters
+              if type(fighters) == "table" and fighters[1] and fighters[2] then
+                if decoded.state == "ASSEMBLY" then
+                  COB._fighterCardDismissed = false
+                  showFighterCard()
+                elseif decoded.state == "RITE" and COB._fighterCardDismissed ~= true then
+                  showFighterCard()
+                end
+              end
             end
           end
         end
@@ -483,21 +798,71 @@ function COB:InstallWire()
       Net._HandleSnapshot = function(self, decoded, channel, sender, payload)
         local ok, err = origSnap(self, decoded, channel, sender, payload)
         if ok and decoded and decoded.role == "response" then
-          local favor = decoded.favor
-          if favor == nil and type(payload) == "string" and COB.Codec and COB.Codec.Decode then
+          local src = decoded
+          if type(payload) == "string" and COB.Codec and COB.Codec.Decode then
             local again = COB.Codec:Decode(payload)
             if type(again) == "table" then
-              favor = again.favor
+              src = again
             end
           end
+          stashInboundCast(src)
+          local favor = src and src.favor or decoded.favor
           paintInboundFavor({ favor = favor }, sender)
         end
         return ok, err
       end
     end
+
+    local function refreshNightsSurfaces()
+      if COB.Minimap and type(COB.Minimap.RefreshGlow) == "function" then
+        pcall(COB.Minimap.RefreshGlow, COB.Minimap)
+      end
+      if COB.PlayerCard and type(COB.PlayerCard.IsShown) == "function"
+          and COB.PlayerCard:IsShown() == true
+          and type(COB.PlayerCard.Refresh) == "function" then
+        pcall(COB.PlayerCard.Refresh, COB.PlayerCard)
+      end
+      if COB.DecreeBanner and type(COB.DecreeBanner.IsShown) == "function"
+          and COB.DecreeBanner:IsShown() == true
+          and type(COB.DecreeBanner.Refresh) == "function" then
+        pcall(COB.DecreeBanner.Refresh, COB.DecreeBanner)
+      end
+    end
+    local nightsHandlers = { "_HandleNights", "_HandleStub", "_HandleStubWithdraw", "_HandleGoing" }
+    for i = 1, #nightsHandlers do
+      local name = nightsHandlers[i]
+      local orig = Net[name]
+      if type(orig) == "function" then
+        Net[name] = function(self, ...)
+          local ok, err = orig(self, ...)
+          if ok then refreshNightsSurfaces() end
+          return ok, err
+        end
+      end
+    end
   end
 
   bindLocalCharacter()
+
+  -- A guildmate HELLO may be a late joiner: the Pope's client re-broadcasts
+  -- live state over the same send-state path the other glue wrappers use.
+  -- No-op on a congregation client or in QUIET. No UI refresh, toast, or
+  -- sound. Net pcalls this; missing pieces return quietly.
+  COB._OnPeerHello = function(sender)
+    -- Congregation catch-up: accepted Pope HELLO + still QUIET → one ask.
+    if COB.Sender and type(COB.Sender.IsRegisteredPope) == "function"
+        and COB.Sender:IsRegisteredPope(sender) == true then
+      maybeRequestSnapshot()
+    end
+    if not (COB.Runtime and COB.Runtime.Snapshot) then return end
+    local snap = COB.Runtime:Snapshot()
+    if type(snap) ~= "table" then return end
+    if type(snap.state) ~= "string" or snap.state == "QUIET" then return end
+    if not (COB.Sender and type(COB.Sender.IsRegisteredPope) == "function") then return end
+    if type(UnitName) ~= "function" then return end
+    if COB.Sender:IsRegisteredPope(UnitName("player")) ~= true then return end
+    sendState()
+  end
   return true
 end
 
@@ -517,11 +882,20 @@ frame:SetScript("OnEvent", function(_, event, arg1)
 end)
 
 SLASH_CHURCHOFBEEF1 = "/beef"
--- Subcommands: minimap (restore the hideable button), console (player-opened
--- Director Console — Bible §18 names the tool, not the slash; OPEN_QUESTIONS #11),
--- petition / confess / catchup (Event congregation inputs; whisper target is
--- UnitName("target") — no Pope-name lookup).
--- Unrecognised arguments open the Records Book. No verbose/debug guild noise.
+-- Subcommands: minimap, help, gora (the sanctioned-record ledger), console
+-- (listed Pope only — do not advertise the desk to congregation). Bare
+-- /beef toggles the player card. Unknown arguments print help; they do
+-- not toggle the card (Wave 2 Task 3).
+local function slashHelp()
+  if not (DEFAULT_CHAT_FRAME and DEFAULT_CHAT_FRAME.AddMessage) then return end
+  DEFAULT_CHAT_FRAME:AddMessage("|cffffaa00Church of Beef|r: The bull or /beef opens your name. When the gathering starts, Ask to fight; when two names appear on the fight bar, pick a side.")
+  local me = type(UnitName) == "function" and UnitName("player") or nil
+  if COB.Sender and type(COB.Sender.CanWriteStub) == "function"
+      and COB.Sender:CanWriteStub(me) == true then
+    DEFAULT_CHAT_FRAME:AddMessage("|cffffaa00Church of Beef|r: The desk is /beef console. /beef start begins a gathering; /beef end stops it.")
+  end
+end
+
 SlashCmdList["CHURCHOFBEEF"] = function(msg)
   local argument = type(msg) == "string" and string.lower((string.gsub(msg, "%s", ""))) or ""
 
@@ -541,59 +915,93 @@ SlashCmdList["CHURCHOFBEEF"] = function(msg)
     return
   end
 
+  if argument == "help" then
+    slashHelp()
+    return
+  end
+
+  if argument == "gora" then
+    local card = COB.PlayerCard
+    if card and card.ShowGora then
+      card:ShowGora()
+      return
+    end
+    DEFAULT_CHAT_FRAME:AddMessage("|cffffaa00Church of Beef|r: player card not ready yet. (" .. COB.VERSION .. ")")
+    return
+  end
+
   if argument == "console" then
     local console = COB.Console
     if not (console and console.Show) then
-      DEFAULT_CHAT_FRAME:AddMessage("|cffffaa00Church of Beef|r: Director Console not ready yet.")
+      DEFAULT_CHAT_FRAME:AddMessage("|cffffaa00Church of Beef|r: desk not ready yet.")
       return
     end
     console:Show()
     return
   end
 
-  if argument == "petition" then
-    local inputs = COB.Inputs
-    if not (inputs and inputs.Petition) then
-      DEFAULT_CHAT_FRAME:AddMessage("|cffffaa00Church of Beef|r: inputs not ready yet.")
+  local me = type(UnitName) == "function" and UnitName("player") or nil
+  local isPope = COB.Sender and type(COB.Sender.IsRegisteredPope) == "function"
+    and COB.Sender:IsRegisteredPope(me) == true
+
+  if argument == "start" then
+    if not isPope then
+      slashHelp()
       return
     end
-    bindSlashInputTarget()
-    pcall(inputs.Petition, inputs)
+    local console = COB.Console
+    if not (console and console.StartEvent) then
+      DEFAULT_CHAT_FRAME:AddMessage("|cffffaa00Church of Beef|r: desk not ready yet.")
+      return
+    end
+    local ok, err = console:StartEvent()
+    if ok == nil and type(err) == "string" then
+      DEFAULT_CHAT_FRAME:AddMessage("|cffffaa00Church of Beef|r: " .. err)
+    elseif DEFAULT_CHAT_FRAME and DEFAULT_CHAT_FRAME.AddMessage then
+      DEFAULT_CHAT_FRAME:AddMessage("|cffffaa00Church of Beef|r: Gathering started.")
+    end
+    if console.Show then console:Show() end
     return
   end
 
-  if argument == "confess" then
-    local inputs = COB.Inputs
-    if not (inputs and inputs.Show) then
-      DEFAULT_CHAT_FRAME:AddMessage("|cffffaa00Church of Beef|r: inputs not ready yet.")
+  if argument == "end" then
+    if not isPope then
+      slashHelp()
       return
     end
-    bindSlashInputTarget()
-    pcall(inputs.Show, inputs)
+    local console = COB.Console
+    if not (console and console.ForceEndGathering) then
+      DEFAULT_CHAT_FRAME:AddMessage("|cffffaa00Church of Beef|r: desk not ready yet.")
+      return
+    end
+    local ok, err = console:ForceEndGathering()
+    if ok == nil and type(err) == "string" then
+      DEFAULT_CHAT_FRAME:AddMessage("|cffffaa00Church of Beef|r: " .. err)
+    elseif DEFAULT_CHAT_FRAME and DEFAULT_CHAT_FRAME.AddMessage then
+      DEFAULT_CHAT_FRAME:AddMessage("|cffffaa00Church of Beef|r: Gathering ended.")
+    end
+    if console.Show then console:Show() end
     return
   end
 
-  if argument == "catchup" then
-    local inputs = COB.Inputs
-    if not (inputs and inputs.Catchup) then
-      DEFAULT_CHAT_FRAME:AddMessage("|cffffaa00Church of Beef|r: inputs not ready yet.")
-      return
-    end
-    bindSlashInputTarget()
-    pcall(inputs.Catchup, inputs)
+  if argument ~= "" then
+    slashHelp()
     return
   end
 
-  if COB.UI and COB.UI.Toggle then
-    COB.UI:Toggle()
+  -- Bare /beef toggles the player card (Bible §12.5, §14.2).
+  local card = COB.PlayerCard
+  if card and card.Toggle then
+    card:Toggle()
     return
   end
-  DEFAULT_CHAT_FRAME:AddMessage("|cffffaa00Church of Beef|r: UI not ready yet. (" .. COB.VERSION .. ")")
+  DEFAULT_CHAT_FRAME:AddMessage("|cffffaa00Church of Beef|r: player card not ready yet. (" .. COB.VERSION .. ")")
 end
 
--- Owner inspection only. Not a slash. Not #8. Does not write Store Gora
--- rows. Sets a Decree (persists) and opens the built surfaces so they can
--- be seen. Runtime is returned to QUIET. Rituals stay fail-closed.
+-- Owner inspection only. Not a slash. Does not write Store Gora rows.
+-- Sets a Decree (persists) and opens the built surfaces so they can be
+-- seen. Runtime is returned to QUIET. Rituals stay fail-closed unless
+-- the local character is listed (Data/Popes.lua or popeOverrides).
 function COB:InspectProgress()
   COB._inspecting = true
   local ok, err = pcall(function()
@@ -606,8 +1014,8 @@ function COB:InspectProgress()
     if COB.DecreeBanner and COB.DecreeBanner.Show then
       COB.DecreeBanner:Show()
     end
-    if COB.RecordsBook and COB.RecordsBook.Show then
-      COB.RecordsBook:Show()
+    if COB.PlayerCard and COB.PlayerCard.Show then
+      COB.PlayerCard:Show()
     end
     if COB.Console and COB.Console.Show then
       COB.Console:Show()
@@ -622,7 +1030,17 @@ function COB:InspectProgress()
       end
     end
     if DEFAULT_CHAT_FRAME and DEFAULT_CHAT_FRAME.AddMessage then
-      DEFAULT_CHAT_FRAME:AddMessage("|cffffaa00Church of Beef|r: Records Book, Decree, and Director Console are open. Buttons still refuse — no registered Pope. Fight HUD needs a sanctioned pair.")
+      local me = type(UnitName) == "function" and UnitName("player") or nil
+      local listed = COB.Sender
+        and type(COB.Sender.IsRegisteredPope) == "function"
+        and COB.Sender:IsRegisteredPope(me) == true
+      local note
+      if listed then
+        note = "Player card, Decree, and Director Console are open. Rituals are live on this character. Fight HUD needs a sanctioned pair."
+      else
+        note = "Player card, Decree, and Director Console are open. Rituals refuse on this character — listed Pope is Thedave. Fight HUD needs a sanctioned pair."
+      end
+      DEFAULT_CHAT_FRAME:AddMessage("|cffffaa00Church of Beef|r: " .. note)
     end
   end)
   COB._inspecting = false

@@ -25,6 +25,7 @@ end
 dofile("addon/ChurchOfBeef/Core/Common.lua")
 local priorPopes = ChurchOfBeef.Popes
 dofile("addon/ChurchOfBeef/Data/Popes.lua")
+dofile("addon/ChurchOfBeef/Data/Council.lua")
 dofile("addon/ChurchOfBeef/Core/Sender.lua")
 
 local COB = ChurchOfBeef
@@ -351,6 +352,24 @@ assert_eq(Sender.held, nil, "rejected SNAPSHOT is not held")
 assert_eq(Sender.inbox, nil, "rejected theater is not queued")
 assert_eq(Sender.queue, nil, "no later-paint queue")
 assert_eq(Sender.pending, nil, "no pending discarded body")
+
+assert_eq(Sender:CanWriteStub("Thedave"), true, "the registered Pope may write stubs")
+assert_eq(Sender:IsListedCouncil("Beefina"), false, "empty Council list lists no one")
+assert_eq(Sender:CanWriteStub("Beefina"), false, "unlisted Beefina cannot write stubs")
+assert_eq(Sender:Accept("Beefina", "STUB"), false, "STUB from an unlisted sender is discarded")
+assert_eq(Sender:Accept("Beefina", "NIGHTS"), false, "NIGHTS from congregation is discarded")
+assert_eq(Sender:Accept("Thedave", "NIGHTS"), true, "NIGHTS from Thedave is accepted")
+assert_eq(Sender:Accept("Thedave", "STUB"), true, "STUB from Thedave is accepted")
+
+local priorCouncilDB = ChurchOfBeefDB
+ChurchOfBeefDB = { ui = { councilOverrides = { "Beefina" } } }
+assert_eq(Sender:IsListedCouncil("Beefina"), true, "councilOverrides lists Beefina")
+assert_eq(Sender:CanWriteStub("Beefina"), true, "listed Council may write stubs")
+assert_eq(Sender:Accept("Beefina", "STUB"), true, "STUB from listed Council is accepted")
+assert_eq(Sender:Accept("Beefina", "STUB_WITHDRAW"), true, "STUB_WITHDRAW from listed Council is accepted")
+assert_eq(Sender:Accept("Beefina", "NIGHTS"), false, "listed Council still cannot send NIGHTS")
+assert_eq(Sender:IsRegisteredPope("Beefina"), false, "Council override is not a Pope")
+ChurchOfBeefDB = priorCouncilDB
 
 assert_eq(guildReads, 0, "Sender does not read guild rank")
 assert_eq(sent, 0, "Sender does not SendAddonMessage")

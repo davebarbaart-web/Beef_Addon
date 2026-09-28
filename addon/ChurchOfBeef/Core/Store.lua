@@ -288,6 +288,58 @@ function Store:RankForCharacter(characterId)
   return human.rankId
 end
 
+-- The Pope Knighting or Sanctioning a targeted stranger IS the recognition
+-- (Bible §4.4, §12.2: one action, Pope present, character logged in). Lookup is
+-- over characters by Names.Key (realm-stripped, case-insensitive). A found +
+-- linked row returns created=false. A found but unlinked row gets a fresh
+-- human linked. An unknown name gets a fresh human + character + link. Never
+-- merges into an existing human by name similarity: a new character always
+-- gets a fresh human. No alt guessing. Character is created before the human
+-- so a refused character leaves no orphan human row.
+function Store:EnsureCharacterByName(fields, now)
+  local rawName = fields
+  local class, level
+  if type(fields) == "table" then
+    rawName = fields.name
+    class = fields.class
+    level = fields.level
+  end
+  local name = displayName(rawName)
+  if not name then return nil, "invalid name" end
+
+  local key = COB.Names and COB.Names.Key(name) or nil
+  if key then
+    local found
+    for id, ch in pairs(characters) do
+      if COB.Names.Key(ch.name) == key then
+        if not found or id < found.id then
+          found = ch
+        end
+      end
+    end
+    if found then
+      if isId(found.humanId) and humans[found.humanId] then
+        return found.id, found.humanId, false
+      end
+      local human = self:CreateHuman({ name = found.name }, now)
+      local linked, linkErr = self:LinkCharacter(found.id, human.id, now)
+      if not linked then return nil, linkErr end
+      return found.id, human.id, true
+    end
+  end
+
+  local ch, charErr = self:CreateCharacter({
+    name = name,
+    class = class,
+    level = level,
+  }, now)
+  if not ch then return nil, charErr end
+  local human = self:CreateHuman({ name = ch.name }, now)
+  local linked, linkErr = self:LinkCharacter(ch.id, human.id, now)
+  if not linked then return nil, linkErr end
+  return ch.id, human.id, true
+end
+
 function Store:SetRank(humanId, rankId, now)
   if not isId(humanId) then return nil, "invalid human id" end
   local human = humans[humanId]
@@ -337,7 +389,7 @@ function Store:TombstoneCharacter(characterId, now)
   return deepcopy(ch)
 end
 
-function Store:AppendCeremony(entryType, participantIds, now, text)
+function Store:AppendCeremony(entryType, participantIds, now, text, eventId)
   local kind = trim(entryType)
   if not kind then return nil, "ceremony type required" end
   local ids = {}
@@ -353,6 +405,9 @@ function Store:AppendCeremony(entryType, participantIds, now, text)
     if type(text) ~= "string" then return nil, "text must be text" end
     text = trim(text)
   end
+  if eventId ~= nil and not isId(eventId) then
+    return nil, "invalid event id"
+  end
   local id
   id, nextCeremonyId = takeId(nextCeremonyId)
   local entry = {
@@ -363,6 +418,9 @@ function Store:AppendCeremony(entryType, participantIds, now, text)
   }
   if text ~= nil then
     entry.text = text
+  end
+  if eventId ~= nil then
+    entry.eventId = eventId
   end
   ceremonyLog[#ceremonyLog + 1] = entry
   return deepcopy(entry)
